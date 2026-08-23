@@ -47,6 +47,12 @@ def auth():
     return {"Authorization": "Bearer test-secret"}
 
 
+def test_application_metadata():
+    assert main.app.title == "VaultBridge"
+    assert main.app.version == "0.1.0"
+    assert main.app.description == "Self-hosted REST and semantic search API for an Obsidian vault."
+
+
 def test_auth_required(tmp_path):
     client = client_for(tmp_path)
     response = client.get("/notes/list")

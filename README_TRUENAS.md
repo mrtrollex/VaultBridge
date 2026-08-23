@@ -1,4 +1,6 @@
-# TrueNAS deployment
+# VaultBridge TrueNAS deployment
+
+The `ObsidianChatGPT*` host paths and `obsidian-chatgpt` container name shown here are legacy compatibility identifiers. Keep them for an existing installation until a separate migration is documented; they do not change the public product name, VaultBridge.
 
 ## Recommended storage
 
@@ -94,7 +96,7 @@ When it finishes, `/health` should show:
 {"ok":true,"vault_exists":true,"semantic_index_ready":true}
 ```
 
-Later semantic searches only re-index Markdown files whose timestamp/content changed. Version 1.1.1 also adds hybrid reranking (semantic similarity + title/path/content overlap); upgrading from 1.1.0 does not require rebuilding the existing semantic index.
+Later semantic searches only re-index Markdown files whose timestamp/content changed. The current `0.1.0` public baseline includes hybrid reranking (semantic similarity + title/path/content overlap) and remains compatible with the existing semantic index.
 
 ## 7. Update the GPT Action
 

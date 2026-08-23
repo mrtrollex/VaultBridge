@@ -1,11 +1,11 @@
 openapi: 3.1.0
 info:
-  title: Obsidian Second Brain API
-  version: 1.1.1
-  description: Read, search, semantically discover, create, and append Markdown notes in a private Obsidian vault.
+  title: VaultBridge
+  version: 0.1.0
+  description: Self-hosted REST and semantic search API for an Obsidian vault.
 servers:
   - url: https://notes.example.com
-    description: Replace with the public HTTPS URL of your Obsidian bridge.
+    description: Replace with the public HTTPS URL of your VaultBridge deployment.
 security:
   - bearerAuth: []
 paths:
