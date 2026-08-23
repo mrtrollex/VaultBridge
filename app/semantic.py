@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import os
 import re
 import sqlite3
 import threading
@@ -13,7 +12,9 @@ from typing import Protocol, Sequence
 
 import numpy as np
 
-DEFAULT_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+from app.core.config import DEFAULT_SEMANTIC_MODEL, Settings
+
+DEFAULT_MODEL = DEFAULT_SEMANTIC_MODEL
 
 
 class Embedder(Protocol):
@@ -469,14 +470,14 @@ class SemanticIndex:
             return False
 
 
-def semantic_index_from_env(vault_root: Path, max_note_bytes: int) -> SemanticIndex:
-    data_path = Path(os.getenv("SEMANTIC_DATA_PATH", "/vault/.obsidian-chatgpt-data")).expanduser()
+def semantic_index_from_settings(settings: Settings) -> SemanticIndex:
+    data_path = settings.semantic_data_path
     return SemanticIndex(
-        vault_root=vault_root,
+        vault_root=settings.vault_path,
         db_path=data_path / "semantic-index.sqlite3",
         cache_dir=data_path / "models",
-        model_name=os.getenv("SEMANTIC_MODEL", DEFAULT_MODEL),
-        max_note_bytes=max_note_bytes,
-        chunk_chars=int(os.getenv("SEMANTIC_CHUNK_CHARS", "600")),
-        chunk_overlap=int(os.getenv("SEMANTIC_CHUNK_OVERLAP", "100")),
+        model_name=settings.semantic_model,
+        max_note_bytes=settings.max_note_bytes,
+        chunk_chars=settings.semantic_chunk_chars,
+        chunk_overlap=settings.semantic_chunk_overlap,
     )
