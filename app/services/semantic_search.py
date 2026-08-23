@@ -27,6 +27,14 @@ class IndexState(str, Enum):
     ERROR = "error"
 
 
+class SemanticSearchUnavailableError(RuntimeError):
+    """No compatible completed semantic index is currently searchable."""
+
+
+class SynchronizationCancelledError(RuntimeError):
+    """Semantic synchronization stopped cooperatively at a safe boundary."""
+
+
 class Embedder(Protocol):
     def embed(self, texts: Sequence[str]) -> list[np.ndarray]: ...
 
@@ -114,7 +122,11 @@ class SemanticSearchService:
             raise ValueError("index_batch_size must be positive")
         self.index_batch_size = index_batch_size
         self.embedder = embedder or FastEmbedder(model_name, self.cache_dir)
-        self._lock = threading.RLock()
+        self._sync_lock = threading.Lock()
+        self._configuration_lock = threading.Lock()
+        self._availability_lock = threading.Lock()
+        self._embed_lock = threading.Lock()
+        self._search_available = False
         self._state_init_lock = threading.Lock()
         self._state_initialized = False
 
@@ -174,8 +186,33 @@ class SemanticSearchService:
     def is_ready(self) -> bool:
         return self.state is IndexState.READY
 
+    def is_search_available(self) -> bool:
+        with self._availability_lock:
+            available = self._search_available
+        if available:
+            return True
+        if self.state is IndexState.READY:
+            with self._availability_lock:
+                self._search_available = True
+            return True
+        return False
+
+    def _set_search_available(self, available: bool) -> None:
+        with self._availability_lock:
+            self._search_available = available
+
+    def _embed(self, texts: Sequence[str]) -> list[np.ndarray]:
+        """Serialize only calls into one embedder instance; the surrounding pipelines stay concurrent."""
+        with self._embed_lock:
+            return self.embedder.embed(texts)
+
+    @staticmethod
+    def _raise_if_cancelled(cancel_event: threading.Event | None) -> None:
+        if cancel_event is not None and cancel_event.is_set():
+            raise SynchronizationCancelledError("Semantic index synchronization was cancelled")
+
     def reconfigure(self, *, vault_root: Path | None = None, max_note_bytes: int | None = None) -> None:
-        with self._lock:
+        with self._configuration_lock:
             if vault_root is not None:
                 self.vault_root = vault_root
             if max_note_bytes is not None:
@@ -341,31 +378,39 @@ class SemanticSearchService:
 
         return [(nearest_heading(chunk), chunk) for chunk in raw_chunks] or [(None, title)]
 
-    def _eligible_files(self) -> list[Path]:
-        if not self.vault_root.exists():
+    @staticmethod
+    def _eligible_files(vault_root: Path, max_note_bytes: int) -> list[Path]:
+        if not vault_root.exists():
             return []
         excluded = {".obsidian", ".trash", ".git", ".obsidian-chatgpt-data"}
         files: list[Path] = []
-        for path in self.vault_root.rglob("*.md"):
+        for path in vault_root.rglob("*.md"):
             try:
-                relative_path = path.relative_to(self.vault_root)
+                relative_path = path.relative_to(vault_root)
                 if any(part in excluded for part in relative_path.parts):
                     continue
-                if path.is_file() and path.stat().st_size <= self.max_note_bytes:
+                if path.is_file() and path.stat().st_size <= max_note_bytes:
                     files.append(path)
             except (OSError, ValueError):
                 continue
         return files
 
-    def sync(self) -> dict[str, int]:
+    def sync(self, cancel_event: threading.Event | None = None) -> dict[str, int]:
         """Index only new/changed notes and remove deleted notes."""
-        with self._lock:
-            self._initialize_state(create_storage=True)
+        with self._sync_lock:
+            initial_state = self._initialize_state(create_storage=True)
+            with self._availability_lock:
+                search_available = self._search_available
+            self._set_search_available(search_available or initial_state is IndexState.READY)
             self._persist_state(IndexState.INDEXING)
             try:
-                files = self._eligible_files()
+                self._raise_if_cancelled(cancel_event)
+                with self._configuration_lock:
+                    vault_root = self.vault_root
+                    max_note_bytes = self.max_note_bytes
+                files = self._eligible_files(vault_root, max_note_bytes)
                 seen = {
-                    str(path.relative_to(self.vault_root)).replace("\\", "/") for path in files
+                    str(path.relative_to(vault_root)).replace("\\", "/") for path in files
                 }
                 indexed = unchanged = removed = 0
 
@@ -374,15 +419,17 @@ class SemanticSearchService:
 
                 stale_paths = set(known) - seen
                 for stale_batch in batched(stale_paths, self.index_batch_size):
+                    self._raise_if_cancelled(cancel_event)
                     with self.repository.transaction() as session:
                         for stale_path in stale_batch:
                             session.delete_note(stale_path)
                     removed += len(stale_batch)
 
                 for file_batch in batched(files, self.index_batch_size):
+                    self._raise_if_cancelled(cancel_event)
                     with self.repository.transaction() as session:
                         for path in file_batch:
-                            relative_path = str(path.relative_to(self.vault_root)).replace("\\", "/")
+                            relative_path = str(path.relative_to(vault_root)).replace("\\", "/")
                             stat = path.stat()
                             previous = known.get(relative_path)
                             if (
@@ -409,7 +456,7 @@ class SemanticSearchService:
                                 continue
 
                             chunks = self._chunk_markdown(path.stem, note_text)
-                            vectors = self.embedder.embed(
+                            vectors = self._embed(
                                 [f"{path.stem}\n{content}" for _, content in chunks]
                             )
                             if len(vectors) != len(chunks):
@@ -450,6 +497,7 @@ class SemanticSearchService:
                 raise
 
             self._persist_state(IndexState.READY)
+            self._set_search_available(True)
             return {"indexed": indexed, "unchanged": unchanged, "removed": removed}
 
     def search(
@@ -460,59 +508,61 @@ class SemanticSearchService:
         limit: int = 5,
         min_score: float = 0.28,
     ) -> list[SemanticResult]:
-        with self._lock:
-            self.sync()
-            embedded_query = self.embedder.embed([text])
-            if not embedded_query:
-                return []
-            query = self._normalize(embedded_query[0])
-            folder = folder.strip().replace("\\", "/").strip("/")
-            prefix = f"{folder}/" if folder else ""
-            best: dict[str, tuple[float, float, float, StoredChunk]] = {}
+        if not self.is_search_available():
+            if self.state is IndexState.ERROR:
+                raise SemanticSearchUnavailableError("Semantic index is unavailable")
+            return []
+        embedded_query = self._embed([text])
+        if not embedded_query:
+            return []
+        query = self._normalize(embedded_query[0])
+        folder = folder.strip().replace("\\", "/").strip("/")
+        prefix = f"{folder}/" if folder else ""
+        best: dict[str, tuple[float, float, float, StoredChunk]] = {}
 
-            for chunk in self.repository.load_chunks():
-                if prefix and not chunk.path.startswith(prefix):
-                    continue
-                vector = np.frombuffer(
-                    chunk.embedding,
-                    dtype=np.float32,
-                    count=chunk.dimensions,
-                )
-                if vector.size != query.size:
-                    continue
-                semantic_score = float(np.dot(query, vector))
-                if semantic_score < min_score:
-                    continue
-                lexical_score = self._lexical_score(
-                    text,
-                    path=chunk.path,
+        for chunk in self.repository.load_chunks():
+            if prefix and not chunk.path.startswith(prefix):
+                continue
+            vector = np.frombuffer(
+                chunk.embedding,
+                dtype=np.float32,
+                count=chunk.dimensions,
+            )
+            if vector.size != query.size:
+                continue
+            semantic_score = float(np.dot(query, vector))
+            if semantic_score < min_score:
+                continue
+            lexical_score = self._lexical_score(
+                text,
+                path=chunk.path,
+                heading=chunk.heading,
+                content=chunk.content,
+            )
+            rank_score = min(1.0, semantic_score + 0.70 * lexical_score)
+            if chunk.path not in best or rank_score > best[chunk.path][0]:
+                best[chunk.path] = (rank_score, semantic_score, lexical_score, chunk)
+
+        results: list[SemanticResult] = []
+        ordered = sorted(best.items(), key=lambda item: item[1][0], reverse=True)
+        relative_floor = ordered[0][1][0] * 0.78 if ordered else 0.0
+        for path, (rank_score, semantic_score, lexical_score, chunk) in ordered:
+            if rank_score < relative_floor:
+                continue
+            results.append(
+                SemanticResult(
+                    path=path,
+                    title=Path(path).stem,
+                    score=round(rank_score, 4),
+                    semantic_score=round(semantic_score, 4),
+                    lexical_score=round(lexical_score, 4),
+                    snippet=" ".join(chunk.content.split())[:500],
                     heading=chunk.heading,
-                    content=chunk.content,
                 )
-                rank_score = min(1.0, semantic_score + 0.70 * lexical_score)
-                if chunk.path not in best or rank_score > best[chunk.path][0]:
-                    best[chunk.path] = (rank_score, semantic_score, lexical_score, chunk)
-
-            results: list[SemanticResult] = []
-            ordered = sorted(best.items(), key=lambda item: item[1][0], reverse=True)
-            relative_floor = ordered[0][1][0] * 0.78 if ordered else 0.0
-            for path, (rank_score, semantic_score, lexical_score, chunk) in ordered:
-                if rank_score < relative_floor:
-                    continue
-                results.append(
-                    SemanticResult(
-                        path=path,
-                        title=Path(path).stem,
-                        score=round(rank_score, 4),
-                        semantic_score=round(semantic_score, 4),
-                        lexical_score=round(lexical_score, 4),
-                        snippet=" ".join(chunk.content.split())[:500],
-                        heading=chunk.heading,
-                    )
-                )
-                if len(results) >= limit:
-                    break
-            return results
+            )
+            if len(results) >= limit:
+                break
+        return results
 
     def is_initialized(self) -> bool:
         """Compatibility alias for callers that previously checked index readiness."""

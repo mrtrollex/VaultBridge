@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import numpy as np
+import pytest
 from fastapi.testclient import TestClient
 
 import app.main as main
@@ -34,6 +35,7 @@ def client_for(
     *,
     api_key: str = "test-secret",
     max_note_bytes: int = 1_000_000,
+    embedder=None,
 ) -> TestClient:
     settings = Settings(api_key=api_key, vault_path=tmp_path, max_note_bytes=max_note_bytes)
     vault_service = VaultService(
@@ -46,7 +48,7 @@ def client_for(
         max_note_bytes=settings.max_note_bytes,
         chunk_chars=300,
         chunk_overlap=50,
-        embedder=FakeEmbedder(),
+        embedder=embedder or FakeEmbedder(),
     )
     app = main.create_app(
         settings=settings,
@@ -166,65 +168,68 @@ def test_create_read_search_append(tmp_path):
     assert response.json()["status"] == "already_applied"
 
 
-def test_find_related_notes_and_incremental_refresh(tmp_path):
+def test_find_related_notes_uses_startup_index_without_inline_write_refresh(tmp_path):
+    home_server = tmp_path / "Infrastructure Notes"
+    oracle_apex = tmp_path / "Oracle APEX"
+    home_server.mkdir()
+    oracle_apex.mkdir()
+    (home_server / "TrueNAS backup strategy.md").write_text(
+        "My NAS stores backups and Docker application data on mirrored storage.",
+        encoding="utf-8",
+    )
+    oracle_note = oracle_apex / "Oracle APEX REST API.md"
+    oracle_note.write_text(
+        "ORDS exposes REST endpoints backed by the Oracle database.",
+        encoding="utf-8",
+    )
     client = client_for(tmp_path)
 
-    for note in [
-        {
-            "title": "TrueNAS backup strategy",
-            "folder": "Infrastructure Notes",
-            "content": "My NAS stores backups and Docker application data on mirrored storage.",
-            "tags": ["truenas"],
-        },
-        {
-            "title": "Oracle APEX REST API",
-            "folder": "Oracle APEX",
-            "content": "ORDS exposes REST endpoints backed by the Oracle database.",
-            "tags": ["oracle-apex"],
-        },
-    ]:
-        assert client.post("/notes", headers=auth(), json=note).status_code == 200
+    with client:
+        assert client.app.state.semantic_indexer.wait(timeout=2) == {
+            "indexed": 2,
+            "unchanged": 0,
+            "removed": 0,
+        }
+        response = client.post(
+            "/notes/related",
+            headers=auth(),
+            json={"text": "network storage and server backups", "limit": 5, "min_score": 0.0},
+        )
+        assert response.status_code == 200
+        assert response.json()["results"][0]["path"] == "Infrastructure Notes/TrueNAS backup strategy.md"
 
-    response = client.post(
-        "/notes/related",
-        headers=auth(),
-        json={"text": "network storage and server backups", "limit": 5, "min_score": 0.0},
-    )
-    assert response.status_code == 200
-    results = response.json()["results"]
-    assert results[0]["path"] == "Infrastructure Notes/TrueNAS backup strategy.md"
+        response = client.post(
+            "/notes/append",
+            headers=auth(),
+            json={"path": "Technical Notes/Oracle APEX REST API.md", "content": "Navidrome audio music note."},
+        )
+        assert response.status_code == 200
 
-    # The next semantic request must notice an appended note and re-index it.
-    response = client.post(
-        "/notes/append",
-        headers=auth(),
-        json={"path": "Technical Notes/Oracle APEX REST API.md", "content": "Navidrome audio music note."},
-    )
-    assert response.status_code == 200
-
-    response = client.post(
-        "/notes/related",
-        headers=auth(),
-        json={"text": "music audio library", "limit": 1, "min_score": 0.0},
-    )
-    assert response.status_code == 200
-    assert response.json()["results"][0]["path"] == "Technical Notes/Oracle APEX REST API.md"
+        response = client.post(
+            "/notes/related",
+            headers=auth(),
+            json={"text": "music audio library", "limit": 1, "min_score": 0.5},
+        )
+        assert response.status_code == 200
+        assert response.json()["results"] == []
 
 
 def test_related_notes_folder_filter(tmp_path):
-    client = client_for(tmp_path)
     (tmp_path / "Infrastructure Notes").mkdir()
     (tmp_path / "Oracle APEX").mkdir()
     (tmp_path / "Infrastructure Notes" / "NAS.md").write_text("TrueNAS storage backup server", encoding="utf-8")
     (tmp_path / "Oracle APEX" / "Database.md").write_text("Oracle APEX database ORDS", encoding="utf-8")
+    client = client_for(tmp_path)
 
-    response = client.post(
-        "/notes/related",
-        headers=auth(),
-        json={"text": "server storage", "folder": "Oracle APEX", "min_score": 0.0},
-    )
-    assert response.status_code == 200
-    assert [item["path"] for item in response.json()["results"]] == ["Technical Notes/Database.md"]
+    with client:
+        client.app.state.semantic_indexer.wait(timeout=2)
+        response = client.post(
+            "/notes/related",
+            headers=auth(),
+            json={"text": "server storage", "folder": "Oracle APEX", "min_score": 0.0},
+        )
+        assert response.status_code == 200
+        assert [item["path"] for item in response.json()["results"]] == ["Technical Notes/Database.md"]
 
 
 def test_health_reports_semantic_state(tmp_path):
@@ -237,15 +242,44 @@ def test_health_reports_semantic_state(tmp_path):
 def test_health_reports_ready_after_successful_empty_vault_index(tmp_path):
     client = client_for(tmp_path)
 
-    response = client.post(
-        "/notes/related",
-        headers=auth(),
-        json={"text": "nothing indexed yet"},
-    )
+    with client:
+        assert client.app.state.semantic_indexer.wait(timeout=2) == {
+            "indexed": 0,
+            "unchanged": 0,
+            "removed": 0,
+        }
+        response = client.post(
+            "/notes/related",
+            headers=auth(),
+            json={"text": "nothing indexed yet"},
+        )
 
-    assert response.status_code == 200
-    assert response.json() == {"text": "nothing indexed yet", "results": []}
-    assert client.get("/health").json()["semantic_index_ready"] is True
+        assert response.status_code == 200
+        assert response.json() == {"text": "nothing indexed yet", "results": []}
+        assert client.get("/health").json()["semantic_index_ready"] is True
+
+
+def test_related_notes_returns_503_after_initial_background_index_failure(tmp_path):
+    class FailingEmbedder:
+        def embed(self, texts):
+            raise RuntimeError("background embedding failure")
+
+    (tmp_path / "note.md").write_text("Semantic content.", encoding="utf-8")
+    client = client_for(tmp_path, embedder=FailingEmbedder())
+
+    with client:
+        with pytest.raises(RuntimeError, match="background embedding failure"):
+            client.app.state.semantic_indexer.wait(timeout=2)
+        response = client.post(
+            "/notes/related",
+            headers=auth(),
+            json={"text": "semantic content"},
+        )
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": "Semantic search unavailable: Semantic index is unavailable"
+    }
 
 
 def test_path_traversal_is_blocked(tmp_path):

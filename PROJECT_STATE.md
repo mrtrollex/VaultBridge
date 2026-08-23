@@ -17,10 +17,11 @@ Completed:
 - VB-005 — Semantic service/repository split
 - VB-010 — Semantic index state model
 - VB-011 — Batch index commits
+- VB-012 — Background startup indexing
 
 Next recommended task:
 
-- **VB-012 — Background startup indexing**
+- **VB-013 — Enqueue reindex after note writes**
 
 Current milestone:
 
@@ -50,7 +51,7 @@ Current milestone:
 
 ```text
 app/main.py
-    application construction, dependency wiring and router registration
+    application construction, dependency wiring, router registration and lifespan management
 
 app/api/
     HTTP routers and API dependencies
@@ -63,6 +64,9 @@ app/services/vault.py
 
 app/services/semantic_search.py
     embedding, batched synchronization orchestration, ranking and lifecycle transitions
+
+app/services/indexer.py
+    single-process background synchronization ownership and cooperative shutdown
 
 app/repositories/semantic.py
     SQLite semantic persistence and lifecycle-state storage
@@ -95,27 +99,35 @@ Deterministic behavior:
 - persisted `indexing` after restart → converted to `error`
 - each completed synchronization batch is durable; interruption rolls back at most the active batch
 - retry reuses already committed batches through incremental change detection
+- application startup schedules synchronization in the background without waiting for completion
+- one application process runs at most one synchronization job at a time
+- first-time semantic search returns no results until the index reaches `ready`
+- failed initial indexing with no valid index makes semantic search unavailable with HTTP `503`
+- a previously ready committed index remains searchable while a background refresh is `indexing`
+- a previously ready committed index remains searchable after a failed compatible refresh
+- synchronization failure persists `error`; the next startup or an explicit manager retry can try again
+- calls into one embedder instance are serialized while the surrounding pipelines remain concurrent
+- shutdown requests cooperative cancellation and stops between batches after the active transaction finishes
+- shutdown still waits if execution is blocked inside model download/inference or filesystem I/O
 
 `semantic_index_ready` is currently derived from `state == ready`.
 
 ## Known limitations observed during real use
 
-1. First semantic indexing can take a long time and appears to block the request.
-2. Indexing progress is not visible through the health endpoint.
-3. Search currently calls synchronization inline.
-4. Background startup indexing does not yet exist.
-5. Note writes do not yet enqueue targeted background reindex work.
-6. Current chunking is still primarily character-based rather than fully Markdown-aware.
-7. Default ranking thresholds require evaluation rather than ad-hoc tuning.
-8. Multiple application processes sharing one index are not coordinated.
-9. GPT/AI clients can invent wikilinks unless client instructions require verified existing notes.
+1. Indexing progress is not visible through the health endpoint.
+2. Note writes do not yet enqueue targeted background reindex work.
+3. Current chunking is still primarily character-based rather than fully Markdown-aware.
+4. Default ranking thresholds require evaluation rather than ad-hoc tuning.
+5. Multiple application processes sharing one index are not coordinated.
+6. GPT/AI clients can invent wikilinks unless client instructions require verified existing notes.
+7. Graceful shutdown cannot interrupt a model download, ONNX inference call, or filesystem operation already in progress.
 
-## Verified baseline after VB-011
+## Verified baseline after VB-012
 
 Linux compatibility run (WSL):
 
 ```text
-52 passed
+64 passed
 ```
 
 Additional checks:
@@ -127,13 +139,13 @@ git diff --check: passed
 all 7 endpoint paths and operation IDs: unchanged
 ```
 
-Focused semantic/config/API tests at VB-011 completion:
+Focused semantic/config/API tests at VB-012 completion:
 
 ```text
-41 passed
+53 passed
 ```
 
-Native Windows: `50 passed, 1 failed, 1 skipped`; the failure remains the known pre-existing
+Native Windows: `62 passed, 1 failed, 1 skipped`; the failure remains the known pre-existing
 path-separator assertion around VaultService paths, and the skip is the privilege-dependent symlink
 test. The Linux compatibility run is green. Docker checks were unavailable because the Docker CLI
 was not installed in the verification environment.

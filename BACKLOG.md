@@ -105,9 +105,9 @@ States:
 - rich health progress,
 - ranking/chunking changes.
 
-### VB-012 — Background startup indexing — P0 ▶
+### VB-012 — Background startup indexing — P0 ✅
 
-**Status:** Next recommended task.
+**Status:** Completed on 2026-08-23.
 
 **Depends on:** VB-010, VB-011
 
@@ -121,7 +121,22 @@ States:
 - shutdown behavior is deterministic,
 - previous valid index may remain searchable during refresh where safe.
 
+**Implemented behavior**
+
+- FastAPI lifespan starts one in-process background synchronization job without waiting for it to finish,
+- concurrent job submission is rejected while synchronization is already running,
+- initial semantic searches return no results until the first index reaches `ready`,
+- an initial synchronization failure with no valid index makes semantic search return HTTP `503`,
+- a previously ready committed index remains searchable while a refresh is `indexing`,
+- a previously ready committed index also remains searchable after a failed compatible refresh,
+- synchronization failures persist `error`; a later application startup or explicit manager retry can run synchronization again,
+- embedder calls are serialized without locking the surrounding search/synchronization pipelines,
+- shutdown requests cooperative cancellation, finishes the active batch normally, and skips remaining batches,
+- shutdown can still wait for an active uninterruptible model or filesystem call to return.
+
 ### VB-013 — Enqueue reindex after note writes — P0
+
+**Status:** Next recommended task.
 
 **Depends on:** VB-012
 
@@ -269,8 +284,8 @@ VB-001 ✓
 → VB-005 ✓
 → VB-010 ✓
 → VB-011 ✓
-→ VB-012  NEXT
-→ VB-013
+→ VB-012 ✓
+→ VB-013  NEXT
 → VB-015
 → VB-020
 → VB-021

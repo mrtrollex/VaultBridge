@@ -78,9 +78,13 @@ Before semantic search is initialized:
 {"ok":true,"vault_exists":true,"semantic_index_ready":false}
 ```
 
-## 6. Warm up the semantic index
+## 6. Verify the semantic index
 
-Do this once from your LAN after deployment. The first call downloads the multilingual ONNX model and embeds the existing vault.
+Startup downloads the multilingual ONNX model when needed and synchronizes the existing vault in the background. Poll `/health` until `semantic_index_ready` is `true`, then verify a semantic request from your LAN:
+
+While the first index is building, semantic requests return no results. If initial indexing fails,
+semantic requests return HTTP `503`; restart the application after correcting the model, storage,
+or vault-access problem to retry synchronization.
 
 PowerShell:
 
@@ -91,13 +95,13 @@ curl.exe -X POST http://TRUENAS_IP:8765/notes/related `
   -d '{"text":"TrueNAS home server storage","limit":3}'
 ```
 
-When it finishes, `/health` should show:
+When startup indexing finishes, `/health` should show:
 
 ```json
 {"ok":true,"vault_exists":true,"semantic_index_ready":true}
 ```
 
-Later semantic searches only re-index Markdown files whose timestamp/content changed. The current `0.1.0` public baseline includes hybrid reranking (semantic similarity + title/path/content overlap) and remains compatible with the existing semantic index.
+Later application startups synchronize only Markdown files whose timestamp/content changed. The current `0.1.0` public baseline includes hybrid reranking (semantic similarity + title/path/content overlap) and remains compatible with the existing semantic index.
 
 ## 7. Update the GPT Action
 

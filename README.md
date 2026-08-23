@@ -102,7 +102,7 @@ docker compose up -d --build
 curl http://127.0.0.1:8765/health
 ```
 
-The first semantic request downloads the embedding model and builds the initial index. Subsequent requests reuse the index and only changed notes need to be re-embedded.
+Application startup begins downloading the embedding model, when needed, and synchronizing the index in the background. Semantic requests return no results while the first index is still building; if that initial build fails, semantic requests return HTTP `503`. Later startups keep the previous compatible committed index searchable while changed notes are synchronized.
 
 ## Application configuration
 

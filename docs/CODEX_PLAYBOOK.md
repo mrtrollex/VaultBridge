@@ -78,7 +78,7 @@ Do not implement the recommended next task.
 At the current project state, the next recommended task is:
 
 ```text
-VB-012 — Background startup indexing
+VB-013 — Enqueue reindex after note writes
 ```
 
 Always verify this against `PROJECT_STATE.md` and `BACKLOG.md` before starting.

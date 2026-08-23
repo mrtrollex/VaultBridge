@@ -53,6 +53,7 @@ app/main.py                     application construction and dependency wiring
 app/api/                        health, note and search routers
 app/core/config.py              typed runtime configuration
 app/services/vault.py           safe Markdown/vault operations
+app/services/indexer.py         background synchronization ownership
 app/services/semantic_search.py semantic orchestration, embeddings, ranking, indexing
 app/repositories/semantic.py    SQLite semantic persistence
 app/semantic.py                 legacy compatibility facade
@@ -67,10 +68,11 @@ app/semantic.py                 legacy compatibility facade
 - [x] **VB-005 — Semantic service/repository split**
 - [x] **VB-010 — Semantic index state model**
 - [x] **VB-011 — Batch index commits**
+- [x] **VB-012 — Background startup indexing**
 
 ## Current verified baseline
 
-At completion of VB-011:
+At completion of VB-012:
 
 ```text
 latest verified test baseline is recorded in PROJECT_STATE.md
@@ -82,16 +84,12 @@ all existing endpoint paths and operationIds verified unchanged
 
 ## Current known limitations
 
-1. Initial/full semantic synchronization still runs synchronously.
-2. A long first index can make a request appear frozen.
-3. Index progress counters are not yet exposed.
-4. Search still performs synchronization inline.
-5. Background startup synchronization does not yet exist.
-6. File changes are not automatically queued outside request-driven synchronization.
-7. Chunking is still primarily character-based rather than Markdown-structure-aware.
-8. Retrieval thresholds/ranking weights need repeatable evaluation.
-9. Multiple VaultBridge processes sharing one semantic index are not coordinated.
-10. AI clients can invent wikilinks unless they use verified note results.
+1. Index progress counters are not yet exposed.
+2. File changes are not automatically queued after note writes or external changes.
+3. Chunking is still primarily character-based rather than Markdown-structure-aware.
+4. Retrieval thresholds/ranking weights need repeatable evaluation.
+5. Multiple VaultBridge processes sharing one semantic index are not coordinated.
+6. AI clients can invent wikilinks unless they use verified note results.
 
 ---
 
@@ -160,30 +158,21 @@ Key behavior:
 - synchronization mutations commit in configurable note-count batches,
 - completed batches remain durable after interruption,
 - retry reuses completed work through incremental synchronization,
-- synchronization is still synchronous.
+- synchronization remains synchronous internally and is safe to run in the background.
+
+### VB-012 — Background startup indexing ✅
+
+Key behavior:
+
+- application startup schedules one in-process background synchronization job,
+- normal semantic search no longer performs synchronization inline,
+- first-time search returns no results until the initial index is ready,
+- a previously ready committed index remains searchable during refresh,
+- shutdown requests cancellation and stops safely between batches; active uninterruptible calls can delay exit.
 
 ## Next
 
-### VB-012 — Background startup indexing — P0 ← NEXT
-
-**Depends on:** VB-010, VB-011
-
-Goal:
-
-```text
-VaultBridge starts
-      |
-      +--> API becomes available
-      |
-      +--> background index synchronization
-                    |
-                    v
-                  ready
-```
-
-No Redis/Celery/task queue.
-
-### VB-013 — Enqueue reindex after note writes — P0
+### VB-013 — Enqueue reindex after note writes — P0 ← NEXT
 
 Writes should enqueue only affected notes for semantic refresh.
 
@@ -225,11 +214,11 @@ Potential approach:
 ## Milestone 2 exit criteria
 
 - [x] synchronization commits durable progress in batches
-- [ ] full vault rebuild no longer runs inline in normal search requests
+- [x] full vault rebuild no longer runs inline in normal search requests
 - [x] restart does not discard already committed batches
 - [ ] lifecycle and progress are observable
 - [ ] note writes can trigger targeted semantic refresh
-- [ ] no external queue/service is required
+- [x] no external queue/service is required
 
 ---
 
@@ -419,9 +408,9 @@ VB-010 ✓
    ↓
 VB-011 ✓
    ↓
-VB-012  ← NEXT
+VB-012 ✓
    ↓
-VB-013
+VB-013  ← NEXT
    ↓
 VB-015
    ↓
