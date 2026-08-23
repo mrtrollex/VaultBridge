@@ -1,0 +1,166 @@
+openapi: 3.1.0
+info:
+  title: Obsidian Second Brain API
+  version: 1.1.1
+  description: Read, search, semantically discover, create, and append Markdown notes in a private Obsidian vault.
+servers:
+  - url: https://notes.example.com
+    description: Replace with the public HTTPS URL of your Obsidian bridge.
+security:
+  - bearerAuth: []
+paths:
+  /notes:
+    post:
+      operationId: createNote
+      summary: Create a new Obsidian note
+      description: Use when the user explicitly asks to save, store, capture, or create a new note. Do not use if a same-topic note should be updated instead.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, content]
+              properties:
+                title:
+                  type: string
+                  description: Concise human-readable title without .md
+                folder:
+                  type: string
+                  default: Inbox
+                  description: Vault-relative folder such as Technical Notes/Example Project
+                content:
+                  type: string
+                  description: Markdown body without YAML front matter
+                tags:
+                  type: array
+                  items: { type: string }
+                  description: Short Obsidian tags without leading #
+      responses:
+        '200':
+          description: Note created or unchanged
+        '409':
+          description: Note with the same filename already exists
+  /notes/append:
+    post:
+      operationId: appendNote
+      summary: Append content to an existing note
+      description: Use when the user wants to add information to a specific existing note. Search or read first if the exact path is unknown.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [path, content]
+              properties:
+                path:
+                  type: string
+                  description: Vault-relative Markdown path
+                content:
+                  type: string
+                  description: Markdown to append
+                dedupe_key:
+                  type: string
+                  description: Optional stable identifier for this append to prevent duplicate retries
+      responses:
+        '200':
+          description: Content appended or already applied
+  /notes/read:
+    get:
+      operationId: readNote
+      summary: Read one note
+      description: Use when the exact vault-relative note path is already known.
+      parameters:
+        - in: query
+          name: path
+          required: true
+          schema: { type: string }
+          description: Vault-relative .md path
+      responses:
+        '200':
+          description: Note content
+  /notes/search:
+    post:
+      operationId: searchNotes
+      summary: Search notes by literal text
+      description: Use for exact words, phrases, identifiers, error codes, SQL object names, page items, filenames, and other literal matches.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query:
+                  type: string
+                folder:
+                  type: string
+                  default: ''
+                limit:
+                  type: integer
+                  minimum: 1
+                  maximum: 50
+                  default: 10
+      responses:
+        '200':
+          description: Matching note paths and snippets
+  /notes/related:
+    post:
+      operationId: findRelatedNotes
+      summary: Find conceptually related notes
+      description: Uses semantic similarity plus lightweight title/path/content reranking. Use for conceptual discovery when the same idea may be described with different wording. Prefer a concise topic phrase over a conversational question.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:
+                  type: string
+                  description: A concept, summary, transcript excerpt, or other text to compare against the vault
+                folder:
+                  type: string
+                  default: ''
+                  description: Optional vault-relative folder restriction
+                limit:
+                  type: integer
+                  minimum: 1
+                  maximum: 20
+                  default: 5
+                min_score:
+                  type: number
+                  minimum: -1
+                  maximum: 1
+                  default: 0.28
+                  description: Minimum semantic cosine similarity before hybrid reranking
+      responses:
+        '200':
+          description: Related notes ranked by hybrid semantic and lexical relevance
+        '503':
+          description: Semantic model or index is temporarily unavailable
+  /notes/list:
+    get:
+      operationId: listNotes
+      summary: List notes
+      description: Use to browse recent notes in the whole vault or a folder.
+      parameters:
+        - in: query
+          name: folder
+          required: false
+          schema: { type: string, default: '' }
+        - in: query
+          name: limit
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+      responses:
+        '200':
+          description: Matching note paths
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer

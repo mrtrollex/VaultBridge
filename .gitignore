@@ -1,0 +1,29 @@
+# Secrets
+.env
+.env.*
+!.env.example
+!.env.truenas.example
+
+# Python
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.py[cod]
+.venv/
+venv/
+
+# Runtime/index/model data
+.obsidian-chatgpt-data/
+.vaultbridge-data/
+semantic-data/
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
+models/
+.cache/
+
+# IDE/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

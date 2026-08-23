@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Tests
+        env:
+          PYTHONPATH: .
+        run: pytest -q
+      - name: Compile check
+        run: python -m compileall -q app
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Compose
+        env:
+          API_KEY: ci-placeholder-secret
+          OBSIDIAN_VAULT_PATH: /tmp/vault
+        run: docker compose config >/dev/null
+      - name: Build image
+        run: docker build -t vaultbridge:ci .

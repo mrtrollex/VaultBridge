@@ -1,0 +1,22 @@
+services:
+  obsidian-api:
+    build:
+      context: .
+    container_name: obsidian-chatgpt
+    restart: unless-stopped
+    user: "568:568"
+    env_file:
+      - .env
+    environment:
+      VAULT_PATH: /vault
+      MAX_NOTE_BYTES: "1000000"
+      SEMANTIC_DATA_PATH: /data
+      SEMANTIC_MODEL: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+      SEMANTIC_CHUNK_CHARS: "600"
+      SEMANTIC_CHUNK_OVERLAP: "100"
+    volumes:
+      # Adjust these two host paths to your TrueNAS datasets/directories.
+      - "/mnt/Apps/AppsData/ObsidianVault:/vault"
+      - "/mnt/Apps/AppsData/ObsidianChatGPTData:/data"
+    ports:
+      - "8765:8000"

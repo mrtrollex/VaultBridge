@@ -1,0 +1,20 @@
+services:
+  obsidian-api:
+    build: .
+    container_name: obsidian-chatgpt
+    restart: unless-stopped
+    user: "${PUID:-1000}:${PGID:-1000}"
+    environment:
+      API_KEY: ${API_KEY}
+      VAULT_PATH: /vault
+      MAX_NOTE_BYTES: ${MAX_NOTE_BYTES:-1000000}
+      SEMANTIC_DATA_PATH: /vault/.obsidian-chatgpt-data
+      SEMANTIC_MODEL: ${SEMANTIC_MODEL:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
+      SEMANTIC_CHUNK_CHARS: ${SEMANTIC_CHUNK_CHARS:-600}
+      SEMANTIC_CHUNK_OVERLAP: ${SEMANTIC_CHUNK_OVERLAP:-100}
+    volumes:
+      - type: bind
+        source: ${OBSIDIAN_VAULT_PATH}
+        target: /vault
+    ports:
+      - "127.0.0.1:${API_PORT:-8765}:8000"

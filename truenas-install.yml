@@ -1,0 +1,4 @@
+# Optional include file for TrueNAS custom app deployment.
+# Adjust the path to the directory where this project is stored.
+include:
+  - /mnt/Apps/AppsData/ObsidianChatGPT/compose.truenas.yml
