@@ -33,6 +33,17 @@ class IndexStorageInfo:
     index_state: str | None
 
 
+@dataclass(frozen=True)
+class SemanticIndexStatus:
+    storage_initialized: bool
+    storage_error: bool
+    index_signature: str | None
+    index_state: str | None
+    indexed_notes: int
+    semantic_chunks: int
+    last_successful_sync: str | None
+
+
 class SemanticRepositorySession:
     """Semantic index operations sharing one SQLite transaction."""
 
@@ -151,7 +162,9 @@ class SemanticRepository:
         if signature_changed:
             connection.execute("DELETE FROM chunks")
             connection.execute("DELETE FROM notes")
-            connection.execute("DELETE FROM meta WHERE key='index_state'")
+            connection.execute(
+                "DELETE FROM meta WHERE key IN ('index_state', 'last_successful_sync')"
+            )
         connection.execute(
             "INSERT INTO meta(key, value) VALUES('index_signature', ?) "
             "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
@@ -243,3 +256,70 @@ class SemanticRepository:
                 connection.close()
         except sqlite3.Error:
             return False
+
+    def read_status(self) -> SemanticIndexStatus:
+        """Read index metadata and counts without creating or changing storage."""
+        if not self.db_path.exists():
+            return SemanticIndexStatus(
+                storage_initialized=False,
+                storage_error=False,
+                index_signature=None,
+                index_state=None,
+                indexed_notes=0,
+                semantic_chunks=0,
+                last_successful_sync=None,
+            )
+
+        try:
+            database_uri = f"{self.db_path.resolve().as_uri()}?mode=ro"
+            connection = sqlite3.connect(database_uri, uri=True, timeout=1)
+            connection.row_factory = sqlite3.Row
+            try:
+                connection.execute("BEGIN")
+                rows = connection.execute(
+                    "SELECT name FROM sqlite_master "
+                    "WHERE type='table' AND name IN ('meta', 'notes', 'chunks')"
+                ).fetchall()
+                if {row["name"] for row in rows} != {"meta", "notes", "chunks"}:
+                    return SemanticIndexStatus(
+                        storage_initialized=False,
+                        storage_error=False,
+                        index_signature=None,
+                        index_state=None,
+                        indexed_notes=0,
+                        semantic_chunks=0,
+                        last_successful_sync=None,
+                    )
+
+                metadata = {
+                    row["key"]: row["value"]
+                    for row in connection.execute(
+                        "SELECT key, value FROM meta "
+                        "WHERE key IN ('index_signature', 'index_state', 'last_successful_sync')"
+                    ).fetchall()
+                }
+                indexed_notes = connection.execute("SELECT COUNT(*) FROM notes").fetchone()[0]
+                semantic_chunks = connection.execute("SELECT COUNT(*) FROM chunks").fetchone()[0]
+                return SemanticIndexStatus(
+                    storage_initialized=True,
+                    storage_error=False,
+                    index_signature=metadata.get("index_signature"),
+                    index_state=metadata.get("index_state"),
+                    indexed_notes=indexed_notes,
+                    semantic_chunks=semantic_chunks,
+                    last_successful_sync=metadata.get("last_successful_sync"),
+                )
+            finally:
+                if connection.in_transaction:
+                    connection.rollback()
+                connection.close()
+        except (OSError, sqlite3.Error):
+            return SemanticIndexStatus(
+                storage_initialized=False,
+                storage_error=True,
+                index_signature=None,
+                index_state=None,
+                indexed_notes=0,
+                semantic_chunks=0,
+                last_successful_sync=None,
+            )

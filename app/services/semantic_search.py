@@ -16,9 +16,11 @@ import numpy as np
 
 from app.core.config import DEFAULT_SEMANTIC_MODEL, Settings
 from app.repositories.semantic import SemanticRepository, StoredChunk, StoredNote
+from app.services.vault import SEMANTIC_EXCLUDED_DIRECTORIES, eligible_markdown_files
 
 DEFAULT_MODEL = DEFAULT_SEMANTIC_MODEL
 INDEX_STATE_METADATA_KEY = "index_state"
+LAST_SUCCESSFUL_SYNC_METADATA_KEY = "last_successful_sync"
 
 
 class IndexState(str, Enum):
@@ -86,6 +88,15 @@ class SemanticResult:
     lexical_score: float
     snippet: str
     heading: str | None
+
+
+@dataclass(frozen=True)
+class SemanticHealthStatus:
+    state: IndexState
+    search_available: bool
+    indexed_notes: int
+    semantic_chunks: int
+    last_successful_sync: str | None
 
 
 class SemanticSearchService:
@@ -201,6 +212,36 @@ class SemanticSearchService:
                 self._search_available = True
             return True
         return False
+
+    def health_status(self) -> SemanticHealthStatus:
+        """Return a read-only lifecycle and storage snapshot for operator health reporting."""
+        storage = self.repository.read_status()
+        compatible_storage = (
+            storage.storage_initialized and storage.index_signature == self.index_signature
+        )
+        if storage.storage_error:
+            state = IndexState.ERROR
+        elif not compatible_storage:
+            state = IndexState.UNINITIALIZED
+        elif storage.index_state is None:
+            state = IndexState.READY if storage.semantic_chunks else IndexState.UNINITIALIZED
+        else:
+            try:
+                state = IndexState(storage.index_state)
+            except ValueError:
+                state = IndexState.ERROR
+            if state is IndexState.INDEXING and not self._state_initialized:
+                state = IndexState.ERROR
+
+        with self._availability_lock:
+            search_available = self._search_available
+        return SemanticHealthStatus(
+            state=state,
+            search_available=compatible_storage and (search_available or state is IndexState.READY),
+            indexed_notes=storage.indexed_notes if compatible_storage else 0,
+            semantic_chunks=storage.semantic_chunks if compatible_storage else 0,
+            last_successful_sync=storage.last_successful_sync if compatible_storage else None,
+        )
 
     def _set_search_available(self, available: bool) -> None:
         with self._availability_lock:
@@ -385,22 +426,7 @@ class SemanticSearchService:
 
     @staticmethod
     def _eligible_files(vault_root: Path, max_note_bytes: int) -> list[Path]:
-        if not vault_root.exists():
-            return []
-        excluded = {".obsidian", ".trash", ".git", ".obsidian-chatgpt-data"}
-        resolved_root = vault_root.resolve()
-        files: dict[Path, None] = {}
-        for discovered_path in vault_root.rglob("*.md"):
-            try:
-                path = discovered_path.resolve()
-                relative_path = path.relative_to(resolved_root)
-                if any(part in excluded for part in relative_path.parts):
-                    continue
-                if path.is_file() and path.stat().st_size <= max_note_bytes:
-                    files[path] = None
-            except (OSError, ValueError):
-                continue
-        return list(files)
+        return eligible_markdown_files(vault_root, max_note_bytes)
 
     @staticmethod
     def _target_files(
@@ -408,7 +434,6 @@ class SemanticSearchService:
         max_note_bytes: int,
         relative_paths: Sequence[str],
     ) -> list[Path]:
-        excluded = {".obsidian", ".trash", ".git", ".obsidian-chatgpt-data"}
         resolved_root = vault_root.resolve()
         files: list[Path] = []
         for raw_path in sorted(set(relative_paths)):
@@ -429,7 +454,9 @@ class SemanticSearchService:
             try:
                 path = (resolved_root / relative_path).resolve()
                 resolved_relative = path.relative_to(resolved_root)
-                if any(part in excluded for part in resolved_relative.parts):
+                if any(
+                    part in SEMANTIC_EXCLUDED_DIRECTORIES for part in resolved_relative.parts
+                ):
                     raise TargetedSynchronizationError(
                         f"Targeted note path is excluded: {normalized}"
                     )
@@ -594,6 +621,8 @@ class SemanticSearchService:
     def _run_synchronization_locked(
         self,
         operation: Callable[[], dict[str, int]],
+        *,
+        record_full_sync: bool = False,
     ) -> dict[str, int]:
         initial_state = self._initialize_state(create_storage=True)
         with self._availability_lock:
@@ -602,6 +631,11 @@ class SemanticSearchService:
         self._persist_state(IndexState.INDEXING)
         try:
             result = operation()
+            if record_full_sync:
+                self.repository.set_metadata(
+                    LAST_SUCCESSFUL_SYNC_METADATA_KEY,
+                    datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                )
         except Exception:
             self._persist_state(IndexState.ERROR)
             raise
@@ -614,7 +648,8 @@ class SemanticSearchService:
         """Index only new/changed notes and remove deleted notes."""
         with self._sync_lock:
             return self._run_synchronization_locked(
-                lambda: self._sync_all_locked(cancel_event)
+                lambda: self._sync_all_locked(cancel_event),
+                record_full_sync=True,
             )
 
     def sync_paths(
@@ -633,7 +668,8 @@ class SemanticSearchService:
                 search_available = self._search_available
             if not search_available and initial_state is not IndexState.READY:
                 return self._run_synchronization_locked(
-                    lambda: self._sync_all_locked(cancel_event)
+                    lambda: self._sync_all_locked(cancel_event),
+                    record_full_sync=True,
                 )
             return self._run_synchronization_locked(
                 lambda: self._sync_targets_locked(paths, cancel_event)

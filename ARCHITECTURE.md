@@ -33,10 +33,10 @@ The `.md` files are authoritative. The SQLite semantic index is disposable deriv
 app/main.py          application construction, dependency wiring, router registration
 app/api/             health, note and search routers plus HTTP dependencies
 app/core/config.py   typed environment configuration
-app/services/vault.py safe path resolution and Markdown note operations
-app/services/semantic_search.py embedding, incremental indexing, hybrid ranking
+app/services/vault.py safe path resolution, Markdown note operations and contained note counting
+app/services/semantic_search.py embedding, incremental indexing, hybrid ranking and semantic health state
 app/services/indexer.py one in-process full/targeted synchronization worker and deduplicating path queue
-app/repositories/semantic.py SQLite schema and semantic index persistence
+app/repositories/semantic.py SQLite schema, semantic index persistence and read-only status statistics
 app/semantic.py      compatibility facade for the pre-VB-005 internal API
 ```
 
@@ -87,6 +87,16 @@ Lifecycle state and search availability are separate: `indexing` can coexist wit
 searchable index, and `error` remains searchable only when the process already established that a
 compatible completed index existed. Failed initial builds, including their durable partial batches,
 are not searchable and semantic requests return HTTP `503`.
+
+`/health` composes facts from their existing owners without starting semantic work. The semantic
+service derives lifecycle and search availability, the repository supplies metadata plus note/chunk
+counts through one read-only SQLite connection, the background indexer supplies process-local running
+and full-sync-required state, and the vault service counts Markdown files accepted by the same
+containment, exclusion and size policy as full semantic synchronization without reading note
+contents. The SQLite status connection uses one explicit short read transaction so lifecycle
+metadata and counts come from one committed WAL snapshot. `last_successful_sync` is stored in the
+existing metadata table only after a successful full synchronization; targeted refresh does not
+update it.
 
 Search and synchronization share one embedder instance. A narrow execution lock serializes only
 calls into that embedder; vault scanning, SQLite access, ranking, and response construction remain
@@ -202,8 +212,8 @@ The semantic store currently needs these concepts:
 - embedding model
 - chunking configuration
 - persisted lifecycle state (`uninitialized`, `indexing`, `ready`, `error`)
-- progress (planned)
-- last completed synchronization
+- explicit per-sync progress such as current note, percentage, batch and ETA (planned)
+- last successful full synchronization
 
 The index is **derived data**. Migrations should be used when cheap; otherwise a safe automatic rebuild is acceptable.
 

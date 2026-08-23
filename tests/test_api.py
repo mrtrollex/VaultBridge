@@ -385,7 +385,19 @@ def test_health_reports_semantic_state(tmp_path):
     client = client_for(tmp_path)
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"ok": True, "vault_exists": True, "semantic_index_ready": False}
+    assert response.json() == {
+        "ok": True,
+        "vault_exists": True,
+        "semantic_index_ready": False,
+        "semantic_index_state": "uninitialized",
+        "semantic_search_available": False,
+        "semantic_indexer_running": False,
+        "full_sync_required": False,
+        "indexed_notes": 0,
+        "semantic_chunks": 0,
+        "vault_notes": 0,
+        "last_successful_sync": None,
+    }
 
 
 def test_health_reports_ready_after_successful_empty_vault_index(tmp_path):
