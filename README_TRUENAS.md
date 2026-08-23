@@ -53,6 +53,7 @@ environment:
   SEMANTIC_MODEL: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
   SEMANTIC_CHUNK_CHARS: "600"
   SEMANTIC_CHUNK_OVERLAP: "100"
+  SEMANTIC_INDEX_BATCH_SIZE: "25"
 ```
 
 Adjust the host paths if your TrueNAS datasets differ.

@@ -1,5 +1,6 @@
 import os
 import sqlite3
+from contextlib import contextmanager
 
 import numpy as np
 import pytest
@@ -33,21 +34,59 @@ class FakeEmbedder:
         return vectors
 
 
+class TrackingSession:
+    def __init__(self, session):
+        self._session = session
+        self.mutations = 0
+
+    def __getattr__(self, name):
+        return getattr(self._session, name)
+
+    def delete_note(self, path):
+        self.mutations += 1
+        return self._session.delete_note(path)
+
+    def update_note_metadata(self, **kwargs):
+        self.mutations += 1
+        return self._session.update_note_metadata(**kwargs)
+
+    def replace_note(self, note, chunks):
+        self.mutations += 1
+        return self._session.replace_note(note, chunks)
+
+
+class TrackingRepository(SemanticRepository):
+    def __init__(self, db_path):
+        super().__init__(db_path)
+        self.committed_batch_sizes = []
+
+    @contextmanager
+    def transaction(self):
+        with super().transaction() as session:
+            tracking_session = TrackingSession(session)
+            yield tracking_session
+        if tracking_session.mutations:
+            self.committed_batch_sizes.append(tracking_session.mutations)
+
+
 def semantic_service(
     tmp_path,
     *,
     embedder=None,
     model_name: str = "example/model",
+    index_batch_size: int = 25,
+    repository=None,
 ) -> SemanticSearchService:
     vault_root = tmp_path / "vault"
     vault_root.mkdir(exist_ok=True)
     return SemanticSearchService(
         vault_root=vault_root,
-        repository=SemanticRepository(tmp_path / "data" / "semantic-index.sqlite3"),
+        repository=repository or SemanticRepository(tmp_path / "data" / "semantic-index.sqlite3"),
         model_name=model_name,
         max_note_bytes=1_000_000,
         chunk_chars=300,
         chunk_overlap=50,
+        index_batch_size=index_batch_size,
         embedder=embedder or FakeEmbedder(),
     )
 
@@ -167,6 +206,58 @@ def test_sync_indexes_incrementally_without_loading_real_model(tmp_path):
     assert service.sync() == {"indexed": 1, "unchanged": 0, "removed": 0}
 
 
+def test_sync_commits_successful_work_in_configured_batches(tmp_path):
+    repository = TrackingRepository(tmp_path / "data" / "semantic-index.sqlite3")
+    service = semantic_service(
+        tmp_path,
+        index_batch_size=2,
+        repository=repository,
+    )
+    for index in range(5):
+        (service.vault_root / f"note-{index}.md").write_text(
+            f"TrueNAS backup storage {index}.",
+            encoding="utf-8",
+        )
+
+    assert service.sync() == {"indexed": 5, "unchanged": 0, "removed": 0}
+    assert repository.committed_batch_sizes == [2, 2, 1]
+    assert len(repository.load_chunks()) == 5
+
+
+def test_interrupted_sync_keeps_completed_batches_and_retry_finishes(tmp_path):
+    class InterruptingEmbedder(FakeEmbedder):
+        def __init__(self):
+            self.calls = 0
+
+        def embed(self, texts):
+            self.calls += 1
+            if self.calls == 4:
+                raise RuntimeError("simulated interruption")
+            return super().embed(texts)
+
+    service = semantic_service(
+        tmp_path,
+        embedder=InterruptingEmbedder(),
+        index_batch_size=2,
+    )
+    for index in range(5):
+        (service.vault_root / f"note-{index}.md").write_text(
+            f"TrueNAS backup storage {index}.",
+            encoding="utf-8",
+        )
+
+    with pytest.raises(RuntimeError, match="simulated interruption"):
+        service.sync()
+
+    assert service.state is IndexState.ERROR
+    assert len(service.repository.load_chunks()) == 2
+
+    restarted = semantic_service(tmp_path, index_batch_size=2)
+    assert restarted.sync() == {"indexed": 3, "unchanged": 2, "removed": 0}
+    assert restarted.state is IndexState.READY
+    assert len(restarted.repository.load_chunks()) == 5
+
+
 def test_sync_removes_stale_notes_and_repository_chunks(tmp_path):
     service = semantic_service(tmp_path)
     note = service.vault_root / "deleted.md"
@@ -177,6 +268,67 @@ def test_sync_removes_stale_notes_and_repository_chunks(tmp_path):
 
     assert service.sync() == {"indexed": 0, "unchanged": 0, "removed": 1}
     assert service.repository.load_chunks() == []
+
+
+def test_interrupted_stale_deletion_keeps_completed_batches_and_retry_finishes(tmp_path):
+    class InterruptingDeleteSession:
+        def __init__(self, session, repository):
+            self._session = session
+            self._repository = repository
+
+        def __getattr__(self, name):
+            return getattr(self._session, name)
+
+        def delete_note(self, path):
+            self._repository.delete_calls += 1
+            self._session.delete_note(path)
+            if self._repository.delete_calls == 4:
+                raise RuntimeError("simulated stale deletion interruption")
+
+    class InterruptingDeleteRepository(SemanticRepository):
+        def __init__(self, db_path):
+            super().__init__(db_path)
+            self.delete_calls = 0
+
+        @contextmanager
+        def transaction(self):
+            with super().transaction() as session:
+                yield InterruptingDeleteSession(session, self)
+
+    service = semantic_service(tmp_path, index_batch_size=2)
+    note_paths = []
+    for index in range(5):
+        note_path = service.vault_root / f"stale-{index}.md"
+        note_path.write_text(f"TrueNAS backup storage {index}.", encoding="utf-8")
+        note_paths.append(note_path)
+    service.sync()
+
+    for note_path in note_paths:
+        note_path.unlink()
+
+    interrupted_repository = InterruptingDeleteRepository(service.db_path)
+    interrupted = semantic_service(
+        tmp_path,
+        index_batch_size=2,
+        repository=interrupted_repository,
+    )
+    with pytest.raises(RuntimeError, match="simulated stale deletion interruption"):
+        interrupted.sync()
+
+    with interrupted_repository.transaction() as session:
+        remaining_notes = set(session.load_notes())
+    remaining_chunks = interrupted_repository.load_chunks()
+    assert interrupted.state is IndexState.ERROR
+    assert interrupted_repository.delete_calls == 4
+    assert len(remaining_notes) == 3
+    assert {chunk.path for chunk in remaining_chunks} == remaining_notes
+
+    restarted = semantic_service(tmp_path, index_batch_size=2)
+    assert restarted.sync() == {"indexed": 0, "unchanged": 0, "removed": 3}
+    with restarted.repository.transaction() as session:
+        assert session.load_notes() == {}
+    assert restarted.state is IndexState.READY
+    assert restarted.repository.load_chunks() == []
 
 
 def test_search_preserves_hybrid_ranking_scores_and_order(tmp_path):

@@ -17,6 +17,7 @@ def test_configuration_defaults_match_existing_behavior():
     assert settings.semantic_model == DEFAULT_SEMANTIC_MODEL
     assert settings.semantic_chunk_chars == 600
     assert settings.semantic_chunk_overlap == 100
+    assert settings.semantic_index_batch_size == 25
 
 
 def test_configuration_environment_overrides(tmp_path):
@@ -29,6 +30,7 @@ def test_configuration_environment_overrides(tmp_path):
             "SEMANTIC_MODEL": "example/model",
             "SEMANTIC_CHUNK_CHARS": "800",
             "SEMANTIC_CHUNK_OVERLAP": "200",
+            "SEMANTIC_INDEX_BATCH_SIZE": "10",
         }
     )
 
@@ -39,6 +41,7 @@ def test_configuration_environment_overrides(tmp_path):
     assert settings.semantic_model == "example/model"
     assert settings.semantic_chunk_chars == 800
     assert settings.semantic_chunk_overlap == 200
+    assert settings.semantic_index_batch_size == 10
 
 
 def test_semantic_search_service_uses_typed_configuration(tmp_path):
@@ -49,6 +52,7 @@ def test_semantic_search_service_uses_typed_configuration(tmp_path):
         semantic_model="example/model",
         semantic_chunk_chars=800,
         semantic_chunk_overlap=200,
+        semantic_index_batch_size=10,
     )
 
     service = semantic_search_service_from_settings(settings)
@@ -60,6 +64,7 @@ def test_semantic_search_service_uses_typed_configuration(tmp_path):
     assert service.max_note_bytes == 4096
     assert service.chunk_chars == 800
     assert service.chunk_overlap == 200
+    assert service.index_batch_size == 10
 
 
 @pytest.mark.parametrize(
@@ -70,6 +75,8 @@ def test_semantic_search_service_uses_typed_configuration(tmp_path):
         ({"SEMANTIC_CHUNK_CHARS": "249"}, "SEMANTIC_CHUNK_CHARS"),
         ({"SEMANTIC_CHUNK_OVERLAP": "-1"}, "SEMANTIC_CHUNK_OVERLAP"),
         ({"SEMANTIC_CHUNK_OVERLAP": "301"}, "SEMANTIC_CHUNK_OVERLAP"),
+        ({"SEMANTIC_INDEX_BATCH_SIZE": "0"}, "SEMANTIC_INDEX_BATCH_SIZE"),
+        ({"SEMANTIC_INDEX_BATCH_SIZE": "not-an-integer"}, "SEMANTIC_INDEX_BATCH_SIZE"),
     ],
 )
 def test_invalid_numeric_configuration_fails_with_environment_name(environment, expected_error):

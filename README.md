@@ -117,6 +117,7 @@ VaultBridge reads and validates its application settings once at startup. Invali
 | `SEMANTIC_MODEL` | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` | Non-empty name |
 | `SEMANTIC_CHUNK_CHARS` | `600` | Integer, at least `250` |
 | `SEMANTIC_CHUNK_OVERLAP` | `100` | Non-negative integer, at most half of chunk size |
+| `SEMANTIC_INDEX_BATCH_SIZE` | `25` | Positive integer; maximum notes committed per indexing transaction |
 
 `OBSIDIAN_VAULT_PATH`, `API_PORT`, `PUID`, and `PGID` remain Docker Compose inputs and are not read by the Python application.
 

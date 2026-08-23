@@ -16,10 +16,11 @@ Completed:
 - VB-003 — FastAPI routers
 - VB-005 — Semantic service/repository split
 - VB-010 — Semantic index state model
+- VB-011 — Batch index commits
 
 Next recommended task:
 
-- **VB-011 — Batch index commits**
+- **VB-012 — Background startup indexing**
 
 Current milestone:
 
@@ -38,6 +39,7 @@ Current milestone:
 - semantic search uses cosine similarity plus lexical/title/path reranking
 - semantic index lifecycle state is persisted separately from schema availability
 - semantic index states: `uninitialized`, `indexing`, `ready`, `error`
+- semantic index mutations commit in configurable note-count batches (default `25`)
 - `SemanticSearchService` owns state transitions
 - `SemanticRepository` persists semantic data and lifecycle state
 - TrueNAS container commonly runs as UID/GID 568
@@ -60,7 +62,7 @@ app/services/vault.py
     safe vault-relative path resolution and Markdown operations
 
 app/services/semantic_search.py
-    embedding, synchronization orchestration, ranking and lifecycle transitions
+    embedding, batched synchronization orchestration, ranking and lifecycle transitions
 
 app/repositories/semantic.py
     SQLite semantic persistence and lifecycle-state storage
@@ -91,6 +93,8 @@ Deterministic behavior:
 - compatible legacy index without chunks → `uninitialized`
 - signature mismatch → existing invalidation, then `uninitialized`
 - persisted `indexing` after restart → converted to `error`
+- each completed synchronization batch is durable; interruption rolls back at most the active batch
+- retry reuses already committed batches through incremental change detection
 
 `semantic_index_ready` is currently derived from `state == ready`.
 
@@ -99,20 +103,19 @@ Deterministic behavior:
 1. First semantic indexing can take a long time and appears to block the request.
 2. Indexing progress is not visible through the health endpoint.
 3. Search currently calls synchronization inline.
-4. A large/full synchronization is not yet committed in durable batches.
-5. Background startup indexing does not yet exist.
-6. Note writes do not yet enqueue targeted background reindex work.
-7. Current chunking is still primarily character-based rather than fully Markdown-aware.
-8. Default ranking thresholds require evaluation rather than ad-hoc tuning.
-9. Multiple application processes sharing one index are not coordinated.
-10. GPT/AI clients can invent wikilinks unless client instructions require verified existing notes.
+4. Background startup indexing does not yet exist.
+5. Note writes do not yet enqueue targeted background reindex work.
+6. Current chunking is still primarily character-based rather than fully Markdown-aware.
+7. Default ranking thresholds require evaluation rather than ad-hoc tuning.
+8. Multiple application processes sharing one index are not coordinated.
+9. GPT/AI clients can invent wikilinks unless client instructions require verified existing notes.
 
-## Verified baseline after VB-010
+## Verified baseline after VB-011
 
-Linux deployment target:
+Linux compatibility run (WSL):
 
 ```text
-48 passed
+52 passed
 ```
 
 Additional checks:
@@ -124,13 +127,16 @@ git diff --check: passed
 all 7 endpoint paths and operation IDs: unchanged
 ```
 
-Focused semantic/config/API tests at VB-010 completion:
+Focused semantic/config/API tests at VB-011 completion:
 
 ```text
-37 passed
+41 passed
 ```
 
-Native Windows still has the known pre-existing path-separator assertion around VaultService paths. The Linux/Docker deployment target is green.
+Native Windows: `50 passed, 1 failed, 1 skipped`; the failure remains the known pre-existing
+path-separator assertion around VaultService paths, and the skip is the privilege-dependent symlink
+test. The Linux compatibility run is green. Docker checks were unavailable because the Docker CLI
+was not installed in the verification environment.
 
 ## Compatibility contract
 
