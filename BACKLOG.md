@@ -70,9 +70,9 @@ States:
 - interrupted persisted `indexing` after restart → `error`
 - signature mismatch invalidation → `uninitialized`
 
-### VB-011 — Batch index commits — P0 ▶
+### VB-011 — Batch index commits — P0 ✅
 
-**Status:** Next recommended task.
+**Status:** Completed.
 
 **Goal:** make large initial/full synchronization durable in bounded batches instead of one large transaction.
 
@@ -89,6 +89,14 @@ States:
 - no background worker is introduced in this task,
 - tests cover successful batches and interruption/retry behavior.
 
+**Implemented behavior**
+
+- `SEMANTIC_INDEX_BATCH_SIZE` configures the maximum number of notes mutated per transaction (default `25`).
+- changed/new notes and stale-note removals commit in bounded batches.
+- completed batches remain durable after a later batch fails; the active batch rolls back.
+- retry reuses completed batches through the existing incremental synchronization logic.
+- synchronization remains synchronous and preserves existing lifecycle, ranking, embedding, chunking, and API behavior.
+
 **Out of scope**
 
 - background startup tasks,
@@ -97,7 +105,9 @@ States:
 - rich health progress,
 - ranking/chunking changes.
 
-### VB-012 — Background startup indexing — P0
+### VB-012 — Background startup indexing — P0 ▶
+
+**Status:** Next recommended task.
 
 **Depends on:** VB-010, VB-011
 
@@ -258,8 +268,8 @@ VB-001 ✓
 → VB-003 ✓
 → VB-005 ✓
 → VB-010 ✓
-→ VB-011  NEXT
-→ VB-012
+→ VB-011 ✓
+→ VB-012  NEXT
 → VB-013
 → VB-015
 → VB-020

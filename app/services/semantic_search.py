@@ -7,6 +7,7 @@ import unicodedata
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
+from itertools import batched
 from pathlib import Path
 from typing import Protocol, Sequence
 
@@ -99,6 +100,7 @@ class SemanticSearchService:
         max_note_bytes: int = 1_000_000,
         chunk_chars: int = 600,
         chunk_overlap: int = 100,
+        index_batch_size: int = 25,
         embedder: Embedder | None = None,
     ) -> None:
         self.vault_root = vault_root
@@ -108,6 +110,9 @@ class SemanticSearchService:
         self.max_note_bytes = max_note_bytes
         self.chunk_chars = max(250, chunk_chars)
         self.chunk_overlap = max(0, min(chunk_overlap, self.chunk_chars // 2))
+        if index_batch_size <= 0:
+            raise ValueError("index_batch_size must be positive")
+        self.index_batch_size = index_batch_size
         self.embedder = embedder or FastEmbedder(model_name, self.cache_dir)
         self._lock = threading.RLock()
         self._state_init_lock = threading.Lock()
@@ -365,72 +370,81 @@ class SemanticSearchService:
                 indexed = unchanged = removed = 0
 
                 with self.repository.transaction() as session:
-                    known, removed = session.load_notes_and_remove_stale(seen)
+                    known = session.load_notes()
 
-                    for path in files:
-                        relative_path = str(path.relative_to(self.vault_root)).replace("\\", "/")
-                        stat = path.stat()
-                        previous = known.get(relative_path)
-                        if (
-                            previous
-                            and previous.mtime_ns == stat.st_mtime_ns
-                            and previous.size == stat.st_size
-                        ):
-                            unchanged += 1
-                            continue
+                stale_paths = set(known) - seen
+                for stale_batch in batched(stale_paths, self.index_batch_size):
+                    with self.repository.transaction() as session:
+                        for stale_path in stale_batch:
+                            session.delete_note(stale_path)
+                    removed += len(stale_batch)
 
-                        digest = self._sha256(path)
-                        if previous and previous.sha256 == digest:
-                            session.update_note_metadata(
-                                path=relative_path,
-                                mtime_ns=stat.st_mtime_ns,
-                                size=stat.st_size,
-                            )
-                            unchanged += 1
-                            continue
+                for file_batch in batched(files, self.index_batch_size):
+                    with self.repository.transaction() as session:
+                        for path in file_batch:
+                            relative_path = str(path.relative_to(self.vault_root)).replace("\\", "/")
+                            stat = path.stat()
+                            previous = known.get(relative_path)
+                            if (
+                                previous
+                                and previous.mtime_ns == stat.st_mtime_ns
+                                and previous.size == stat.st_size
+                            ):
+                                unchanged += 1
+                                continue
 
-                        try:
-                            note_text = path.read_text(encoding="utf-8")
-                        except (UnicodeDecodeError, OSError):
-                            continue
-
-                        chunks = self._chunk_markdown(path.stem, note_text)
-                        vectors = self.embedder.embed(
-                            [f"{path.stem}\n{content}" for _, content in chunks]
-                        )
-                        if len(vectors) != len(chunks):
-                            raise RuntimeError(
-                                "Embedding model returned an unexpected number of vectors"
-                            )
-
-                        stored_chunks: list[StoredChunk] = []
-                        for index, ((heading, content), vector) in enumerate(
-                            zip(chunks, vectors, strict=True)
-                        ):
-                            normalized = self._normalize(vector)
-                            stored_chunks.append(
-                                StoredChunk(
+                            digest = self._sha256(path)
+                            if previous and previous.sha256 == digest:
+                                session.update_note_metadata(
                                     path=relative_path,
-                                    chunk_index=index,
-                                    heading=heading,
-                                    content=content,
-                                    embedding=normalized.astype(np.float32).tobytes(),
-                                    dimensions=int(normalized.size),
+                                    mtime_ns=stat.st_mtime_ns,
+                                    size=stat.st_size,
                                 )
+                                unchanged += 1
+                                continue
+
+                            try:
+                                note_text = path.read_text(encoding="utf-8")
+                            except (UnicodeDecodeError, OSError):
+                                continue
+
+                            chunks = self._chunk_markdown(path.stem, note_text)
+                            vectors = self.embedder.embed(
+                                [f"{path.stem}\n{content}" for _, content in chunks]
                             )
-                        session.replace_note(
-                            StoredNote(
-                                path=relative_path,
-                                mtime_ns=stat.st_mtime_ns,
-                                size=stat.st_size,
-                                sha256=digest,
-                                indexed_at=datetime.now(timezone.utc).isoformat(
-                                    timespec="seconds"
+                            if len(vectors) != len(chunks):
+                                raise RuntimeError(
+                                    "Embedding model returned an unexpected number of vectors"
+                                )
+
+                            stored_chunks: list[StoredChunk] = []
+                            for index, ((heading, content), vector) in enumerate(
+                                zip(chunks, vectors, strict=True)
+                            ):
+                                normalized = self._normalize(vector)
+                                stored_chunks.append(
+                                    StoredChunk(
+                                        path=relative_path,
+                                        chunk_index=index,
+                                        heading=heading,
+                                        content=content,
+                                        embedding=normalized.astype(np.float32).tobytes(),
+                                        dimensions=int(normalized.size),
+                                    )
+                                )
+                            session.replace_note(
+                                StoredNote(
+                                    path=relative_path,
+                                    mtime_ns=stat.st_mtime_ns,
+                                    size=stat.st_size,
+                                    sha256=digest,
+                                    indexed_at=datetime.now(timezone.utc).isoformat(
+                                        timespec="seconds"
+                                    ),
                                 ),
-                            ),
-                            stored_chunks,
-                        )
-                        indexed += 1
+                                stored_chunks,
+                            )
+                            indexed += 1
             except Exception:
                 self._persist_state(IndexState.ERROR)
                 raise
@@ -519,5 +533,6 @@ def semantic_search_service_from_settings(
         max_note_bytes=settings.max_note_bytes,
         chunk_chars=settings.semantic_chunk_chars,
         chunk_overlap=settings.semantic_chunk_overlap,
+        index_batch_size=settings.semantic_index_batch_size,
         embedder=embedder,
     )

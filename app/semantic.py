@@ -33,6 +33,7 @@ class SemanticIndex(SemanticSearchService):
         max_note_bytes: int = 1_000_000,
         chunk_chars: int = 600,
         chunk_overlap: int = 100,
+        index_batch_size: int = 25,
         embedder: Embedder | None = None,
     ) -> None:
         super().__init__(
@@ -43,6 +44,7 @@ class SemanticIndex(SemanticSearchService):
             max_note_bytes=max_note_bytes,
             chunk_chars=chunk_chars,
             chunk_overlap=chunk_overlap,
+            index_batch_size=index_batch_size,
             embedder=embedder,
         )
 
@@ -57,6 +59,7 @@ def semantic_index_from_settings(settings: Settings) -> SemanticIndex:
         max_note_bytes=settings.max_note_bytes,
         chunk_chars=settings.semantic_chunk_chars,
         chunk_overlap=settings.semantic_chunk_overlap,
+        index_batch_size=settings.semantic_index_batch_size,
     )
 
 

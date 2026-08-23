@@ -66,13 +66,14 @@ app/semantic.py                 legacy compatibility facade
 - [x] **VB-003 — FastAPI routers**
 - [x] **VB-005 — Semantic service/repository split**
 - [x] **VB-010 — Semantic index state model**
+- [x] **VB-011 — Batch index commits**
 
 ## Current verified baseline
 
-At completion of VB-010:
+At completion of VB-011:
 
 ```text
-48 tests passed on the Linux deployment target
+latest verified test baseline is recorded in PROJECT_STATE.md
 Ruff passed
 compileall passed
 git diff --check passed
@@ -83,15 +84,14 @@ all existing endpoint paths and operationIds verified unchanged
 
 1. Initial/full semantic synchronization still runs synchronously.
 2. A long first index can make a request appear frozen.
-3. One large synchronization can still cover too much work before durable progress is committed.
-4. Index progress counters are not yet exposed.
-5. Search still performs synchronization inline.
-6. Background startup synchronization does not yet exist.
-7. File changes are not automatically queued outside request-driven synchronization.
-8. Chunking is still primarily character-based rather than Markdown-structure-aware.
-9. Retrieval thresholds/ranking weights need repeatable evaluation.
-10. Multiple VaultBridge processes sharing one semantic index are not coordinated.
-11. AI clients can invent wikilinks unless they use verified note results.
+3. Index progress counters are not yet exposed.
+4. Search still performs synchronization inline.
+5. Background startup synchronization does not yet exist.
+6. File changes are not automatically queued outside request-driven synchronization.
+7. Chunking is still primarily character-based rather than Markdown-structure-aware.
+8. Retrieval thresholds/ranking weights need repeatable evaluation.
+9. Multiple VaultBridge processes sharing one semantic index are not coordinated.
+10. AI clients can invent wikilinks unless they use verified note results.
 
 ---
 
@@ -153,22 +153,18 @@ Key behavior:
 - interrupted `indexing` is recovered as `error`,
 - successful retry transitions to `ready`.
 
+### VB-011 — Batch index commits ✅
+
+Key behavior:
+
+- synchronization mutations commit in configurable note-count batches,
+- completed batches remain durable after interruption,
+- retry reuses completed work through incremental synchronization,
+- synchronization is still synchronous.
+
 ## Next
 
-### VB-011 — Batch index commits — P0 ← NEXT
-
-**Goal:** avoid one large transaction covering the entire initial/full synchronization.
-
-Requirements:
-
-- configurable batch size,
-- durable progress after each batch,
-- preserve incremental indexing behavior,
-- preserve ranking/chunking/model behavior,
-- interruption loses at most the active batch,
-- no background worker yet.
-
-### VB-012 — Background startup indexing — P0
+### VB-012 — Background startup indexing — P0 ← NEXT
 
 **Depends on:** VB-010, VB-011
 
@@ -228,9 +224,9 @@ Potential approach:
 
 ## Milestone 2 exit criteria
 
-- [ ] synchronization commits durable progress in batches
+- [x] synchronization commits durable progress in batches
 - [ ] full vault rebuild no longer runs inline in normal search requests
-- [ ] restart does not discard already committed batches
+- [x] restart does not discard already committed batches
 - [ ] lifecycle and progress are observable
 - [ ] note writes can trigger targeted semantic refresh
 - [ ] no external queue/service is required
@@ -421,9 +417,9 @@ VB-005 ✓
 INDEX LIFECYCLE
 VB-010 ✓
    ↓
-VB-011  ← NEXT
+VB-011 ✓
    ↓
-VB-012
+VB-012  ← NEXT
    ↓
 VB-013
    ↓

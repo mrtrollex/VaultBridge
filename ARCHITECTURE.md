@@ -39,7 +39,9 @@ app/repositories/semantic.py SQLite schema and semantic index persistence
 app/semantic.py      compatibility facade for the pre-VB-005 internal API
 ```
 
-The semantic service remains synchronous; background index lifecycle work is planned separately.
+The semantic service remains synchronous. Index mutations are committed in configurable note-count
+batches so completed batches remain durable if synchronization is interrupted; background index
+lifecycle work is planned separately.
 
 Semantic index lifecycle state is persisted in the SQLite `meta` table as
 `uninitialized`, `indexing`, `ready`, or `error`. `SemanticSearchService` owns
