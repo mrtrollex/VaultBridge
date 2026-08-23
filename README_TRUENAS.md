@@ -135,7 +135,10 @@ An `indexing` or `error` lifecycle state can still have `semantic_search_availab
 previous compatible completed index remains usable. `full_sync_required: true` reports process-local
 full-sync work or recovery debt; it is not a claim that the whole application is recovering.
 
-Later application startups synchronize only Markdown files whose timestamp/content changed. The current `0.1.0` public baseline includes hybrid reranking (semantic similarity + title/path/content overlap) and remains compatible with the existing semantic index.
+Later application startups synchronize only Markdown files whose timestamp/content changed. The
+heading-aware chunker changes the semantic index signature, so the first startup after this upgrade
+automatically discards old derived chunks and schedules a full rebuild from Markdown. No manual
+SQLite migration is required. The ranking model and hybrid ranking weights are unchanged.
 
 ## 7. Update the GPT Action
 

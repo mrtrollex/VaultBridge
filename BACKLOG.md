@@ -196,9 +196,9 @@ per-sync counters such as current note, percentage complete, current batch or ET
 
 ## Retrieval quality
 
-### VB-020 — Markdown heading-aware chunker — P0 ▶
+### VB-020 — Markdown heading-aware chunker — P0 ✅
 
-**Status:** Next recommended task.
+**Status:** Completed on 2026-08-23.
 
 **Acceptance criteria**
 
@@ -206,7 +206,26 @@ per-sync counters such as current note, percentage complete, current batch or ET
 - fenced code is not arbitrarily split when avoidable,
 - tests cover headings, lists, code fences and long sections.
 
-### VB-021 — Embed title + heading hierarchy + chunk — P0
+**Implemented behavior**
+
+- ATX headings outside fenced code divide notes into semantic sections,
+- chunk metadata retains the complete available heading hierarchy,
+- sections remain bounded by the configured character policy and oversized sections split
+  deterministically at source-preserving line/word/character boundaries,
+- adjacent undersized sections coalesce into bounded chunks with truthful first-to-last hierarchy
+  metadata rather than producing one tiny embedding per heading,
+- hierarchy metadata is bounded leaf-first so the current heading cannot be hidden by long ancestors,
+- overlap reuses exact source slices and is limited to split oversized prose rather than crossing
+  section, list or code boundaries,
+- fenced code remains intact whenever the complete fence fits in one configured chunk,
+- notes without headings, nested/heading-only sections, Unicode text, lists and empty notes have
+  deterministic fallback behavior,
+- the `v2-heading-aware` index signature invalidates old chunk data and triggers an automatic rebuild
+  from Markdown without changing the SQLite schema.
+
+### VB-021 — Embed title + heading hierarchy + chunk — P0 ▶
+
+**Status:** Next recommended task.
 
 **Depends on:** VB-020
 
@@ -319,8 +338,8 @@ VB-001 ✓
 → VB-012 ✓
 → VB-013 ✓
 → VB-015 ✓
-→ VB-020  NEXT
-→ VB-021
+→ VB-020  ✓
+→ VB-021  NEXT
 → VB-022
 → VB-024
 ```

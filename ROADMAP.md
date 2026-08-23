@@ -236,14 +236,16 @@ Potential approach:
 
 **Goal:** improve relevance using measured changes before considering a larger model or vector database.
 
-### VB-020 — Markdown heading-aware chunker — P0 ← NEXT
+### VB-020 — Markdown heading-aware chunker — P0 ✅
 
-- preserve heading hierarchy
-- avoid arbitrary fenced-code splitting where practical
-- handle lists and long sections predictably
-- add focused Markdown tests
+- heading hierarchy is preserved in chunk metadata
+- ATX section boundaries are preferred over arbitrary character boundaries
+- bounded oversized sections split through exact source slices; prose-only overlap does not cross sections
+- adjacent tiny sections coalesce with bounded first-to-last hierarchy metadata
+- lists, fenced code, nested headings, Unicode and sparse/empty notes have focused tests
+- the chunker signature automatically invalidates and rebuilds old derived chunks
 
-### VB-021 — Embed title + heading hierarchy + chunk — P0
+### VB-021 — Embed title + heading hierarchy + chunk — P0 ← NEXT
 
 Embedding context should intentionally include note/section identity.
 
@@ -284,7 +286,7 @@ Candidate metrics:
 ## Milestone 3 exit criteria
 
 - [ ] retrieval quality is repeatably measurable
-- [ ] Markdown structure contributes context
+- [x] Markdown structure contributes context
 - [ ] ranking regressions are detectable
 - [ ] default-model changes require evidence
 
@@ -425,9 +427,9 @@ VB-013 ✓
 VB-015 ✓
    ↓
 RETRIEVAL QUALITY
-VB-020  ← NEXT
+VB-020 ✓
    ↓
-VB-021
+VB-021  ← NEXT
    ↓
 VB-022
    ↓
