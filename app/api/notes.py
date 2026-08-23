@@ -5,10 +5,22 @@ from typing import Literal
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field, field_validator
 
-from app.api.dependencies import get_vault_service, require_auth
+from app.api.dependencies import get_semantic_indexer, get_vault_service, require_auth
+from app.services.indexer import BackgroundSemanticIndexer
 from app.services.vault import VaultService
 
 router = APIRouter()
+
+
+def _enqueue_after_committed_write(
+    semantic_indexer: BackgroundSemanticIndexer,
+    path: str,
+) -> None:
+    try:
+        semantic_indexer.enqueue(path)
+    except Exception:
+        # Markdown is authoritative and the next startup full sync can recover the write.
+        return
 
 
 class CreateNoteRequest(BaseModel):
@@ -63,6 +75,7 @@ class NoteResult(BaseModel):
 def create_note(
     note: CreateNoteRequest,
     vault_service: VaultService = Depends(get_vault_service),
+    semantic_indexer: BackgroundSemanticIndexer = Depends(get_semantic_indexer),
 ) -> NoteResult:
     result = vault_service.create_note(
         title=note.title,
@@ -70,6 +83,8 @@ def create_note(
         content=note.content,
         tags=note.tags,
     )
+    if result.status == "created":
+        _enqueue_after_committed_write(semantic_indexer, result.path)
     return NoteResult(success=True, path=result.path, status=result.status)
 
 
@@ -84,8 +99,11 @@ def create_note(
 def append_note(
     req: AppendNoteRequest,
     vault_service: VaultService = Depends(get_vault_service),
+    semantic_indexer: BackgroundSemanticIndexer = Depends(get_semantic_indexer),
 ) -> NoteResult:
     result = vault_service.append_note(path=req.path, content=req.content, dedupe_key=req.dedupe_key)
+    if result.status == "appended":
+        _enqueue_after_committed_write(semantic_indexer, result.path)
     return NoteResult(success=True, path=result.path, status=result.status)
 
 

@@ -70,7 +70,10 @@ def create_app(
     app_semantic_indexer = (
         semantic_indexer
         if semantic_indexer is not None
-        else BackgroundSemanticIndexer(app_semantic_search_service.sync)
+        else BackgroundSemanticIndexer(
+            app_semantic_search_service.sync,
+            app_semantic_search_service.sync_paths,
+        )
     )
 
     application = FastAPI(

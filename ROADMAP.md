@@ -69,10 +69,11 @@ app/semantic.py                 legacy compatibility facade
 - [x] **VB-010 — Semantic index state model**
 - [x] **VB-011 — Batch index commits**
 - [x] **VB-012 — Background startup indexing**
+- [x] **VB-013 — Enqueue reindex after note writes**
 
 ## Current verified baseline
 
-At completion of VB-012:
+At completion of VB-013:
 
 ```text
 latest verified test baseline is recorded in PROJECT_STATE.md
@@ -85,7 +86,7 @@ all existing endpoint paths and operationIds verified unchanged
 ## Current known limitations
 
 1. Index progress counters are not yet exposed.
-2. File changes are not automatically queued after note writes or external changes.
+2. External filesystem changes are not automatically queued.
 3. Chunking is still primarily character-based rather than Markdown-structure-aware.
 4. Retrieval thresholds/ranking weights need repeatable evaluation.
 5. Multiple VaultBridge processes sharing one semantic index are not coordinated.
@@ -170,13 +171,21 @@ Key behavior:
 - a previously ready committed index remains searchable during refresh,
 - shutdown requests cancellation and stops safely between batches; active uninterruptible calls can delay exit.
 
+### VB-013 — Enqueue reindex after note writes ✅
+
+Key behavior:
+
+- successful API note mutations enqueue their vault-relative note path,
+- duplicate pending paths coalesce in one in-process queue,
+- full and targeted synchronization remain serialized by the VB-012 worker,
+- writes during active work receive a follow-up refresh, and failed full jobs retain full-retry debt,
+- strict targeted failures keep the previous committed index and retain paths for retry,
+- committed writes stay successful if enqueue/submission fails,
+- shutdown leaves Markdown authoritative; the next startup full synchronization recovers discarded in-memory work.
+
 ## Next
 
-### VB-013 — Enqueue reindex after note writes — P0 ← NEXT
-
-Writes should enqueue only affected notes for semantic refresh.
-
-### VB-015 — Rich health/readiness output — P0
+### VB-015 — Rich health/readiness output — P0 ← NEXT
 
 Expose useful lifecycle/progress information without requiring Docker-log inspection.
 
@@ -217,7 +226,7 @@ Potential approach:
 - [x] full vault rebuild no longer runs inline in normal search requests
 - [x] restart does not discard already committed batches
 - [ ] lifecycle and progress are observable
-- [ ] note writes can trigger targeted semantic refresh
+- [x] note writes can trigger targeted semantic refresh
 - [x] no external queue/service is required
 
 ---
@@ -410,9 +419,9 @@ VB-011 ✓
    ↓
 VB-012 ✓
    ↓
-VB-013  ← NEXT
+VB-013 ✓
    ↓
-VB-015
+VB-015  ← NEXT
    ↓
 RETRIEVAL QUALITY
 VB-020

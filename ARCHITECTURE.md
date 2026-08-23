@@ -35,7 +35,7 @@ app/api/             health, note and search routers plus HTTP dependencies
 app/core/config.py   typed environment configuration
 app/services/vault.py safe path resolution and Markdown note operations
 app/services/semantic_search.py embedding, incremental indexing, hybrid ranking
-app/services/indexer.py one in-process background synchronization worker
+app/services/indexer.py one in-process full/targeted synchronization worker and deduplicating path queue
 app/repositories/semantic.py SQLite schema and semantic index persistence
 app/semantic.py      compatibility facade for the pre-VB-005 internal API
 ```
@@ -47,6 +47,36 @@ interruption. Lifespan shutdown signals cooperative cancellation, lets the activ
 roll back normally, and skips remaining batches. Shutdown must still wait for an already-running
 model download, ONNX inference call, or filesystem operation because those calls are not forcibly
 interruptible.
+
+Successful API create/append mutations enqueue their vault-relative path in the same worker. Pending
+paths are stored in a process-local set, so repeated writes before processing coalesce. A full
+synchronization takes priority and absorbs paths already queued when it starts; writes arriving while
+that scan is running remain queued for one follow-up evaluation after either success or failure. New
+work arriving during any active job records one follow-up request; the request is consumed when that
+attempt starts, so another failure without newer work retains the paths/debt without hot-looping. The
+single worker and service sync lock prevent full and targeted jobs from running concurrently. The
+set has no configured capacity;
+it holds at most one entry per distinct outstanding path and drains as work is claimed. An executor
+submission failure leaves already-added paths pending for a later enqueue or startup recovery.
+
+The worker records process-local full-synchronization recovery debt from the moment a full job is
+claimed until that job succeeds. A failed full job keeps that debt, and the next write-triggered job
+runs a full retry before any targeted refresh can transition lifecycle state back to `ready`. This
+includes a write that arrived while the failed full job was still running.
+
+Targeted refresh uses the same per-note indexing logic, lifecycle transitions, embedder lock and
+configurable VB-011 batch transactions as full synchronization, but it does not scan or remove
+unrelated notes. A failed targeted batch rolls back without replacing that batch's prior valid note
+index. Missing, inaccessible, path-escaping, oversized, and non-UTF-8 targeted notes fail strictly;
+failed paths remain queued until a later enqueue or explicit/full retry. Full-vault synchronization
+retains its existing tolerant file-discovery/read behavior, but resolves every discovered candidate
+and rejects paths outside the resolved vault root before reading or indexing them. Shutdown discards
+unprocessed in-memory paths after requesting cooperative cancellation. Markdown remains durable, so
+the next startup full synchronization recovers any work not processed before exit.
+
+Enqueueing happens only after the Markdown mutation commits. Enqueue/submission failure cannot turn
+that durable mutation into an HTTP failure or repeat it; Markdown remains authoritative and startup
+full synchronization provides the recovery boundary.
 
 Before the first successful synchronization, semantic searches return no results rather than
 waiting for indexing. During a later refresh, the previously ready committed SQLite index remains
@@ -116,13 +146,13 @@ Bearer token verification and future key rotation logic.
 ### `services/indexer.py`
 
 - one in-process background synchronization worker
-- duplicate-job prevention within one application process
+- duplicate full-job prevention and coalesced vault-relative targeted paths within one application process
 - background failure capture and explicit retry entry point
 - cooperative cancellation at synchronization batch boundaries
 - shutdown waiting for any already-running uninterruptible third-party call
 
 Batching, lifecycle-state transitions and index contents remain owned by
-`SemanticSearchService` and `SemanticRepository`. Targeted file-change queues are planned work.
+`SemanticSearchService` and `SemanticRepository`. Filesystem watching remains planned work.
 
 ### `services/semantic_search.py`
 
@@ -130,6 +160,7 @@ Batching, lifecycle-state transitions and index contents remain owned by
 - candidate scoring
 - hybrid reranking
 - result aggregation
+- full-vault and targeted-path synchronization orchestration
 
 ### `repositories/semantic.py`
 

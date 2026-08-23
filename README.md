@@ -39,6 +39,7 @@ The vault is never replaced by the index and there is no general filesystem endp
 - Bearer API-key authentication
 - path traversal protection
 - incremental semantic indexing
+- targeted background semantic refresh after successful API note writes
 - Docker deployment
 - TrueNAS deployment example
 - Custom GPT Action example
@@ -102,7 +103,9 @@ docker compose up -d --build
 curl http://127.0.0.1:8765/health
 ```
 
-Application startup begins downloading the embedding model, when needed, and synchronizing the index in the background. Semantic requests return no results while the first index is still building; if that initial build fails, semantic requests return HTTP `503`. Later startups keep the previous compatible committed index searchable while changed notes are synchronized.
+Application startup begins downloading the embedding model, when needed, and synchronizing the index in the background. Semantic requests return no results while the first index is still building; if that initial build fails, semantic requests return HTTP `503`. A compatible committed index remains searchable during an in-process refresh. After restart from a persisted `error`, VaultBridge conservatively waits for a successful startup full synchronization before exposing that index again.
+
+Successful `createNote` and `appendNote` mutations queue only the affected note for background semantic refresh. Repeated pending writes to the same note are coalesced, and note-write responses do not wait for embedding or fail after a durable write if scheduling is temporarily unavailable. Failed targeted refreshes keep their paths for a later write-triggered retry; shutdown may discard the process-local queue, with the next startup full synchronization recovering from Markdown. External edits are still discovered by startup/full synchronization; no filesystem watcher is enabled.
 
 ## Application configuration
 
