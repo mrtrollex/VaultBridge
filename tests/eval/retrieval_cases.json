@@ -1,0 +1,150 @@
+[
+  {
+    "id": "postgres-backup-en",
+    "language": "en",
+    "category": "topic-confusion",
+    "query": "How do I restore a PostgreSQL database backup from WAL archives?",
+    "expected": {
+      "path": "Database/PostgreSQL.md",
+      "heading": "PostgreSQL Operations > Backups and Restore",
+      "within_top_k": 1
+    },
+    "not_top_1": ["Storage/TrueNAS.md", "Media/Jellyfin.md"]
+  },
+  {
+    "id": "postgres-replication-en",
+    "language": "en",
+    "category": "body-context",
+    "query": "Which runbook explains primary standby streaming replication lag?",
+    "expected": {
+      "path": "Database/PostgreSQL.md",
+      "heading": "PostgreSQL Operations > Streaming Replication",
+      "within_top_k": 3
+    }
+  },
+  {
+    "id": "truenas-storage-en",
+    "language": "en",
+    "category": "body-context",
+    "query": "Where are ZFS datasets and mirrored storage pools configured?",
+    "expected": {
+      "path": "Storage/TrueNAS.md",
+      "heading": "TrueNAS Operations > Storage Pools",
+      "within_top_k": 1
+    }
+  },
+  {
+    "id": "docker-deployment-en",
+    "language": "en",
+    "category": "body-context",
+    "query": "How is the container deployed with Docker Compose?",
+    "expected": {
+      "path": "Deployment/Docker.md",
+      "heading": "Container Deployment > Compose Deployment",
+      "within_top_k": 1
+    }
+  },
+  {
+    "id": "fastapi-auth-en",
+    "language": "en",
+    "category": "body-context",
+    "query": "How does the FastAPI endpoint validate a Bearer token?",
+    "expected": {
+      "path": "Web/FastAPI.md",
+      "heading": "FastAPI Service > Bearer Authentication",
+      "within_top_k": 1
+    }
+  },
+  {
+    "id": "oracle-apex-rest-en",
+    "language": "en",
+    "category": "body-context",
+    "query": "Where is the Oracle APEX REST API exposed through ORDS?",
+    "expected": {
+      "path": "Oracle/APEX.md",
+      "heading": "Oracle APEX Integration > REST APIs",
+      "within_top_k": 1
+    }
+  },
+  {
+    "id": "hierarchy-database-recovery",
+    "language": "en",
+    "category": "heading-context",
+    "query": "Which relational database recovery procedure verifies restored items before reopening?",
+    "expected": {
+      "path": "Runbooks/Recovery Alpha.md",
+      "heading": "PostgreSQL > Recovery Procedure",
+      "within_top_k": 1
+    },
+    "not_top_1": ["Runbooks/Recovery Beta.md"]
+  },
+  {
+    "id": "hierarchy-storage-recovery",
+    "language": "en",
+    "category": "heading-context",
+    "query": "Which network storage recovery procedure verifies restored items before reopening?",
+    "expected": {
+      "path": "Runbooks/Recovery Beta.md",
+      "heading": "TrueNAS > Recovery Procedure",
+      "within_top_k": 1
+    },
+    "not_top_1": ["Runbooks/Recovery Alpha.md"]
+  },
+  {
+    "id": "postgres-obnova-sk",
+    "language": "sk",
+    "category": "multilingual",
+    "query": "Ako obnovím PostgreSQL databázu zo zálohy?",
+    "expected": {
+      "path": "Database/PostgreSQL.md",
+      "heading": "PostgreSQL Operations > Backups and Restore",
+      "within_top_k": 3
+    }
+  },
+  {
+    "id": "nas-obnova-sk",
+    "language": "sk",
+    "category": "multilingual",
+    "query": "Ako obnovím dáta zo snapshotu na NAS úložisku?",
+    "expected": {
+      "path": "Storage/TrueNAS.md",
+      "heading": "TrueNAS Operations > Obnova po zlyhaní disku",
+      "within_top_k": 3
+    },
+    "not_top_1": ["Database/PostgreSQL.md"]
+  },
+  {
+    "id": "oracle-rest-sk",
+    "language": "sk",
+    "category": "multilingual",
+    "query": "Ako vystaviť Oracle APEX REST API cez ORDS?",
+    "expected": {
+      "path": "Oracle/APEX.md",
+      "heading": "Oracle APEX Integration > REST APIs",
+      "within_top_k": 1
+    }
+  },
+  {
+    "id": "fastapi-token-sk",
+    "language": "sk",
+    "category": "multilingual",
+    "query": "Ako overiť Bearer token vo FastAPI?",
+    "expected": {
+      "path": "Web/FastAPI.md",
+      "heading": "FastAPI Service > Bearer Authentication",
+      "within_top_k": 1
+    }
+  },
+  {
+    "id": "english-query-slovak-storage",
+    "language": "cross-language",
+    "category": "multilingual",
+    "query": "How do I recover files from network storage after a drive failure?",
+    "expected": {
+      "path": "Storage/TrueNAS.md",
+      "heading": "TrueNAS Operations > Obnova po zlyhaní disku",
+      "within_top_k": 1
+    },
+    "not_top_1": ["Runbooks/Recovery Beta.md", "Deployment/Docker.md"]
+  }
+]

@@ -119,6 +119,15 @@ Search and synchronization share one embedder instance. A narrow execution lock 
 calls into that embedder; vault scanning, SQLite access, ranking, and response construction remain
 concurrent.
 
+Retrieval quality is guarded by a test-only deterministic evaluation under `tests/eval/`. It builds
+a temporary vault from sanitized Markdown, injects a local concept-vector embedder, and otherwise
+uses the production chunking, embedding-input, repository, scoring, filtering, aggregation and
+ordering pipeline. Structured cases record path/heading relevance and accepted top-k ranks; Hit@1,
+Hit@3 and mean reciprocal rank provide a repeatable before/after baseline. A checked JSON baseline,
+subgroup calculations, reversed-repository-order run, material-tie diagnostics and controlled
+heading/multilingual ablations validate the fixture itself. This adds no runtime service, schema or
+production dependency.
+
 Semantic index lifecycle state is persisted in the SQLite `meta` table as
 `uninitialized`, `indexing`, `ready`, or `error`. `SemanticSearchService` owns
 the transitions; `SemanticRepository` only stores the value and index data.

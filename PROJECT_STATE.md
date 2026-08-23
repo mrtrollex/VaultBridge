@@ -22,10 +22,11 @@ Completed:
 - VB-015 — Rich health/readiness output
 - VB-020 — Markdown heading-aware chunker
 - VB-021 — Embed title + heading hierarchy + chunk
+- VB-022 — Retrieval evaluation fixture
 
 Next recommended task:
 
-- **VB-022 — Retrieval evaluation fixture**
+- **VB-024 — Tune hybrid ranking from evaluation data**
 
 Current milestone:
 
@@ -160,25 +161,51 @@ reparsing Markdown. Full synchronization and targeted refresh share the builder.
 still embedded unchanged, and semantic/lexical scoring, boosts, weights, filtering and ordering are
 unchanged.
 
+## Deterministic retrieval evaluation
+
+`tests/eval/` contains nine sanitized Markdown notes and thirteen structured EN/SK/cross-language
+cases. Its deterministic concept embedder replaces only FastEmbed; evaluation still uses production
+chunking, VB-021 embedding input, SQLite persistence, semantic and lexical scoring, filtering,
+per-note aggregation and result ordering.
+
+The checked baseline covers all, English, Slovak, cross-language and heading-context groups. Tests
+reject material score ties, verify unchanged ranks under reversed repository iteration, and use
+controlled ablations to prove sensitivity to VB-021 hierarchy context and EN/SK concept equivalence.
+
+Measured VB-020 + VB-021 baseline:
+
+```text
+All:              13 cases, Hit@1 100%, Hit@3 100%, MRR 100%
+English:           8 cases, Hit@1 100%, Hit@3 100%, MRR 100%
+Slovak:            4 cases, Hit@1 100%,   Hit@3 100%, MRR 100%
+Cross-language:    1 case,  Hit@1 100%,   Hit@3 100%, MRR 100%
+Heading context:   2 cases, Hit@1 100%,   Hit@3 100%, MRR 100%
+```
+
+No production ranking behavior was changed. Equal production final scores can still preserve
+unspecified repository iteration order; deterministic production tie-breaking is recorded for future
+retrieval work rather than changed by VB-022.
+
 ## Known limitations observed during real use
 
 1. External filesystem changes are not watched; they are picked up by startup/full synchronization.
-2. Default ranking thresholds require evaluation rather than ad-hoc tuning.
-3. Multiple application processes sharing one index are not coordinated.
-4. GPT/AI clients can invent wikilinks unless client instructions require verified existing notes.
-5. Graceful shutdown cannot interrupt a model download, ONNX inference call, or filesystem operation already in progress.
+2. The deterministic fixture does not measure real-model quality or latency on a production vault.
+3. Equal final retrieval scores have no explicit secondary ordering and chunk loading is unordered.
+4. Multiple application processes sharing one index are not coordinated.
+5. GPT/AI clients can invent wikilinks unless client instructions require verified existing notes.
+6. Graceful shutdown cannot interrupt a model download, ONNX inference call, or filesystem operation already in progress.
 
-## Verified baseline after VB-021
+## Verified baseline after VB-022
 
 Native Windows:
 
 ```text
-152 passed, 1 failed, 4 skipped
+159 passed, 1 failed, 4 skipped
 ```
 
 The one failure remains the known pre-existing Windows path-separator assertion around
 `VaultService` response paths. The four skips are privilege-dependent symlink tests. WSL test
-collection was attempted for VB-021, but that environment's Python 3.14 installation lacks project
+collection was attempted for VB-022, but that environment's Python 3.14 installation lacks project
 dependencies including FastAPI and Pydantic; no current Linux result is claimed.
 
 Additional checks:
@@ -194,6 +221,12 @@ Focused semantic/repository/indexer/health/API run:
 
 ```text
 128 passed, 2 skipped, 1 known baseline test deselected
+```
+
+Deterministic retrieval evaluation:
+
+```text
+7 passed
 ```
 
 Docker checks were not required because no Docker-related files changed.
