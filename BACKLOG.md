@@ -134,13 +134,27 @@ States:
 - shutdown requests cooperative cancellation, finishes the active batch normally, and skips remaining batches,
 - shutdown can still wait for an active uninterruptible model or filesystem call to return.
 
-### VB-013 — Enqueue reindex after note writes — P0
+### VB-013 — Enqueue reindex after note writes — P0 ✅
 
-**Status:** Next recommended task.
+**Status:** Completed on 2026-08-23.
 
 **Depends on:** VB-012
 
 **Goal:** successful note writes enqueue only affected notes for semantic refresh.
+
+**Implemented behavior**
+
+- successful `createNote` and `appendNote` mutations enqueue their vault-relative note path,
+- unchanged creates, already-applied appends, and failed writes do not enqueue work,
+- enqueue/submission failure after a committed write does not fail or repeat the HTTP mutation,
+- one process-local, uncapped path set coalesces duplicate pending notes to one entry per path,
+- the VB-012 worker serializes full and targeted synchronization; no request embeds inline,
+- writes arriving during active targeted work or a full synchronization remain queued for a targeted follow-up,
+- a failed/cancelled full synchronization retains recovery debt, so later queued writes trigger a full retry before targeted work can restore `ready`,
+- targeted refresh uses VB-011 note-count batches and preserves the previous committed note index if its active transaction fails,
+- unavailable, unreadable, non-UTF-8, oversized, excluded, and escaping targeted paths fail and remain retryable rather than being silently skipped,
+- failed targeted paths remain pending for a later write-triggered retry or full synchronization,
+- shutdown discards the in-memory queue after requesting cancellation; the next startup full synchronization recovers from Markdown source files.
 
 ### VB-014 — Optional filesystem watcher — P1
 
@@ -148,7 +162,9 @@ States:
 
 Add debounced `watchdog`/inotify only after background indexing exists.
 
-### VB-015 — Rich health/readiness output — P0
+### VB-015 — Rich health/readiness output — P0 ▶
+
+**Status:** Next recommended task.
 
 **Depends on:** VB-010; progress fields also depend on VB-011/VB-012 as applicable.
 
@@ -285,8 +301,8 @@ VB-001 ✓
 → VB-010 ✓
 → VB-011 ✓
 → VB-012 ✓
-→ VB-013  NEXT
-→ VB-015
+→ VB-013 ✓
+→ VB-015  NEXT
 → VB-020
 → VB-021
 → VB-022

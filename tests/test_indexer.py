@@ -98,6 +98,245 @@ def test_background_indexer_prevents_duplicate_jobs(tmp_path):
         indexer.shutdown()
 
 
+def test_repeated_writes_are_coalesced_behind_one_active_full_sync():
+    blocking_sync = BlockingSync()
+    targeted_calls = []
+    targeted_started = threading.Event()
+
+    def sync_paths(paths, _cancel_event):
+        targeted_calls.append(tuple(paths))
+        targeted_started.set()
+        return {"indexed": len(paths), "unchanged": 0, "removed": 0}
+
+    indexer = BackgroundSemanticIndexer(blocking_sync, sync_paths)
+    try:
+        assert indexer.start() is True
+        assert blocking_sync.started.wait(timeout=2)
+
+        assert indexer.enqueue("Folder/Note.md") is True
+        assert indexer.enqueue("Folder\\Note.md") is False
+        assert indexer.enqueue("Folder/./Note.md") is False
+        with pytest.raises(ValueError, match="vault-relative"):
+            indexer.enqueue("/Folder/Note.md")
+        with pytest.raises(ValueError, match="vault-relative"):
+            indexer.enqueue("../Folder/Note.md")
+        assert indexer.queued_paths == ("Folder/Note.md",)
+        assert targeted_started.wait(timeout=0.1) is False
+        assert blocking_sync.calls == 1
+
+        blocking_sync.release.set()
+        assert indexer.wait(timeout=2) == {"indexed": 1, "unchanged": 0, "removed": 0}
+        assert targeted_calls == [("Folder/Note.md",)]
+        assert blocking_sync.calls == 1
+    finally:
+        blocking_sync.release.set()
+        indexer.shutdown()
+
+
+def test_enqueue_submission_failure_retains_path_for_later_retry(monkeypatch):
+    targeted_calls = []
+
+    def sync(_cancel_event):
+        return {"indexed": 0, "unchanged": 0, "removed": 0}
+
+    def sync_paths(paths, _cancel_event):
+        targeted_calls.append(tuple(paths))
+        return {"indexed": len(paths), "unchanged": 0, "removed": 0}
+
+    indexer = BackgroundSemanticIndexer(sync, sync_paths)
+    original_submit = indexer._executor.submit
+
+    def fail_submit(*_args, **_kwargs):
+        raise RuntimeError("executor submission failed")
+
+    monkeypatch.setattr(indexer._executor, "submit", fail_submit)
+    try:
+        assert indexer.enqueue("Folder/Note.md") is True
+        assert indexer.queued_paths == ("Folder/Note.md",)
+        assert isinstance(indexer.last_error, RuntimeError)
+
+        monkeypatch.setattr(indexer._executor, "submit", original_submit)
+        assert indexer.enqueue("Folder/Note.md") is False
+        assert indexer.wait(timeout=2) == {"indexed": 1, "unchanged": 0, "removed": 0}
+        assert targeted_calls == [("Folder/Note.md",)]
+    finally:
+        indexer.shutdown()
+
+
+def test_write_during_failing_full_sync_schedules_one_full_retry():
+    first_started = threading.Event()
+    release_first = threading.Event()
+    retry_started = threading.Event()
+    release_retry = threading.Event()
+    full_calls = 0
+    targeted_calls = []
+
+    def sync(_cancel_event):
+        nonlocal full_calls
+        full_calls += 1
+        if full_calls == 1:
+            first_started.set()
+            if not release_first.wait(timeout=5):
+                raise RuntimeError("first full synchronization was not released")
+            raise RuntimeError("first full synchronization failed")
+        retry_started.set()
+        if not release_retry.wait(timeout=5):
+            raise RuntimeError("full retry was not released")
+        return {"indexed": 1, "unchanged": 0, "removed": 0}
+
+    def sync_paths(paths, _cancel_event):
+        targeted_calls.append(tuple(paths))
+
+    indexer = BackgroundSemanticIndexer(sync, sync_paths)
+    try:
+        assert indexer.start() is True
+        assert first_started.wait(timeout=2)
+        assert indexer.enqueue("Folder/Note.md") is True
+
+        release_first.set()
+        assert retry_started.wait(timeout=2)
+        assert full_calls == 2
+        assert targeted_calls == []
+        assert indexer.requires_full_sync is True
+
+        release_retry.set()
+        assert indexer.wait(timeout=2) == {"indexed": 1, "unchanged": 0, "removed": 0}
+        assert indexer.requires_full_sync is False
+        assert indexer.queued_paths == ()
+    finally:
+        release_first.set()
+        release_retry.set()
+        indexer.shutdown()
+
+
+def test_failed_follow_up_does_not_create_an_immediate_retry_loop():
+    first_started = threading.Event()
+    release_first = threading.Event()
+    retry_started = threading.Event()
+    release_retry = threading.Event()
+    unexpected_third_started = threading.Event()
+    retry_completed = threading.Event()
+    full_calls = 0
+
+    def sync(_cancel_event):
+        nonlocal full_calls
+        full_calls += 1
+        if full_calls == 1:
+            first_started.set()
+            if not release_first.wait(timeout=5):
+                raise RuntimeError("first full synchronization was not released")
+        elif full_calls == 2:
+            retry_started.set()
+            if not release_retry.wait(timeout=5):
+                raise RuntimeError("full retry was not released")
+        else:
+            unexpected_third_started.set()
+        raise RuntimeError(f"full synchronization attempt {full_calls} failed")
+
+    indexer = BackgroundSemanticIndexer(sync, lambda _paths, _cancel_event: None)
+    original_record_completion = indexer._record_completion
+    completed_jobs = 0
+
+    def record_completion(future):
+        nonlocal completed_jobs
+        original_record_completion(future)
+        completed_jobs += 1
+        if completed_jobs == 2:
+            retry_completed.set()
+
+    indexer._record_completion = record_completion
+    try:
+        assert indexer.start() is True
+        assert first_started.wait(timeout=2)
+        assert indexer.enqueue("Folder/Note.md") is True
+
+        release_first.set()
+        assert retry_started.wait(timeout=2)
+        with indexer._lock:
+            retry_future = indexer._future
+        assert retry_future is not None
+
+        release_retry.set()
+        assert retry_completed.wait(timeout=2)
+        with pytest.raises(RuntimeError, match="attempt 2 failed"):
+            retry_future.result()
+        assert unexpected_third_started.wait(timeout=0.1) is False
+        assert full_calls == 2
+        assert indexer.is_running is False
+        assert indexer.requires_full_sync is True
+        assert indexer.queued_paths == ("Folder/Note.md",)
+    finally:
+        release_first.set()
+        release_retry.set()
+        indexer.shutdown()
+
+
+def test_shutdown_discards_queued_work_after_active_sync_returns():
+    blocking_sync = BlockingSync()
+    targeted_calls = []
+
+    def sync_paths(paths, _cancel_event):
+        targeted_calls.append(tuple(paths))
+
+    indexer = BackgroundSemanticIndexer(blocking_sync, sync_paths)
+    assert indexer.start() is True
+    assert blocking_sync.started.wait(timeout=2)
+    assert indexer.enqueue("Folder/Note.md") is True
+
+    shutdown_thread = threading.Thread(target=indexer.shutdown)
+    shutdown_thread.start()
+    try:
+        assert shutdown_thread.is_alive() is True
+        blocking_sync.release.set()
+        shutdown_thread.join(timeout=2)
+        assert shutdown_thread.is_alive() is False
+        assert targeted_calls == []
+        assert indexer.queued_paths == ()
+        with pytest.raises(RuntimeError, match="shut down"):
+            indexer.start()
+    finally:
+        blocking_sync.release.set()
+        shutdown_thread.join(timeout=2)
+
+
+def test_next_application_startup_recovers_markdown_dropped_from_shutdown_queue(tmp_path):
+    blocking_sync = BlockingSync()
+    targeted_calls = []
+
+    def sync_paths(paths, _cancel_event):
+        targeted_calls.append(tuple(paths))
+
+    first_indexer = BackgroundSemanticIndexer(blocking_sync, sync_paths)
+    first_indexer.start()
+    assert blocking_sync.started.wait(timeout=2)
+    note = tmp_path / "Recovered.md"
+    note.write_text("Durable semantic content.", encoding="utf-8")
+    assert first_indexer.enqueue("Recovered.md") is True
+
+    shutdown_thread = threading.Thread(target=first_indexer.shutdown)
+    shutdown_thread.start()
+    blocking_sync.release.set()
+    shutdown_thread.join(timeout=2)
+    assert shutdown_thread.is_alive() is False
+    assert targeted_calls == []
+
+    settings = Settings(api_key="test-secret", vault_path=tmp_path)
+    service = SemanticSearchService(
+        vault_root=tmp_path,
+        repository=SemanticRepository(tmp_path / "data" / "semantic-index.sqlite3"),
+        embedder=ConstantEmbedder(),
+    )
+    application = main.create_app(settings=settings, semantic_search_service=service)
+
+    with TestClient(application):
+        assert application.state.semantic_indexer.wait(timeout=2) == {
+            "indexed": 1,
+            "unchanged": 0,
+            "removed": 0,
+        }
+        assert service.repository.load_chunks()[0].path == "Recovered.md"
+
+
 def test_background_sync_failure_sets_error_and_can_be_retried(tmp_path):
     class FailingEmbedder:
         def embed(self, texts):

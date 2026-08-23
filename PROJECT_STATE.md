@@ -18,10 +18,11 @@ Completed:
 - VB-010 — Semantic index state model
 - VB-011 — Batch index commits
 - VB-012 — Background startup indexing
+- VB-013 — Enqueue reindex after note writes
 
 Next recommended task:
 
-- **VB-013 — Enqueue reindex after note writes**
+- **VB-015 — Rich health/readiness output**
 
 Current milestone:
 
@@ -101,6 +102,17 @@ Deterministic behavior:
 - retry reuses already committed batches through incremental change detection
 - application startup schedules synchronization in the background without waiting for completion
 - one application process runs at most one synchronization job at a time
+- successful API note creates/appends enqueue their affected vault-relative path for targeted refresh
+- unchanged/idempotent/failed writes do not enqueue semantic work
+- enqueue/submission failure after a committed write does not fail or repeat the Markdown mutation
+- duplicate pending paths are coalesced; a write during active processing requests one follow-up evaluation after success or failure
+- full synchronization and targeted refresh share the VB-012 worker and never run concurrently
+- paths queued before a full synchronization are covered by that scan; writes during it run as a targeted follow-up
+- failed/cancelled full synchronization retains process-local recovery debt; a write queued before or during that failure schedules one prioritized full retry before `ready` can be restored
+- a failed follow-up with no newer work retains paths/debt for later recovery without an immediate retry loop
+- targeted refresh commits in the same configurable note-count batches as full synchronization
+- failed targeted batches, including unavailable/unreadable/non-UTF-8 paths, keep the previous committed index, persist `error`, and retain their paths for retry
+- full synchronization resolves discovered Markdown candidates and never indexes a symlink target outside the resolved vault root
 - first-time semantic search returns no results until the index reaches `ready`
 - failed initial indexing with no valid index makes semantic search unavailable with HTTP `503`
 - a previously ready committed index remains searchable while a background refresh is `indexing`
@@ -108,6 +120,7 @@ Deterministic behavior:
 - synchronization failure persists `error`; the next startup or an explicit manager retry can try again
 - calls into one embedder instance are serialized while the surrounding pipelines remain concurrent
 - shutdown requests cooperative cancellation and stops between batches after the active transaction finishes
+- shutdown drops unprocessed in-memory paths; durable Markdown is recovered by the next startup full synchronization
 - shutdown still waits if execution is blocked inside model download/inference or filesystem I/O
 
 `semantic_index_ready` is currently derived from `state == ready`.
@@ -115,19 +128,19 @@ Deterministic behavior:
 ## Known limitations observed during real use
 
 1. Indexing progress is not visible through the health endpoint.
-2. Note writes do not yet enqueue targeted background reindex work.
+2. External filesystem changes are not watched; they are picked up by startup/full synchronization.
 3. Current chunking is still primarily character-based rather than fully Markdown-aware.
 4. Default ranking thresholds require evaluation rather than ad-hoc tuning.
 5. Multiple application processes sharing one index are not coordinated.
 6. GPT/AI clients can invent wikilinks unless client instructions require verified existing notes.
 7. Graceful shutdown cannot interrupt a model download, ONNX inference call, or filesystem operation already in progress.
 
-## Verified baseline after VB-012
+## Verified baseline after VB-013
 
 Linux compatibility run (WSL):
 
 ```text
-64 passed
+89 passed
 ```
 
 Additional checks:
@@ -139,16 +152,16 @@ git diff --check: passed
 all 7 endpoint paths and operation IDs: unchanged
 ```
 
-Focused semantic/config/API tests at VB-012 completion:
+Focused indexer/semantic/vault/API/config tests at VB-013 completion:
 
 ```text
-53 passed
+89 passed
 ```
 
-Native Windows: `62 passed, 1 failed, 1 skipped`; the failure remains the known pre-existing
-path-separator assertion around VaultService paths, and the skip is the privilege-dependent symlink
-test. The Linux compatibility run is green. Docker checks were unavailable because the Docker CLI
-was not installed in the verification environment.
+Native Windows: `85 passed, 1 failed, 3 skipped`; the failure remains the known pre-existing
+path-separator assertion around VaultService paths, and the skips are privilege-dependent symlink
+tests. The Linux compatibility run is green. Docker checks were not required because no Docker-related
+files changed.
 
 ## Compatibility contract
 

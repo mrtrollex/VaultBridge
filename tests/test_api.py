@@ -1,3 +1,4 @@
+import threading
 from pathlib import Path
 
 import numpy as np
@@ -36,6 +37,7 @@ def client_for(
     api_key: str = "test-secret",
     max_note_bytes: int = 1_000_000,
     embedder=None,
+    semantic_indexer=None,
 ) -> TestClient:
     settings = Settings(api_key=api_key, vault_path=tmp_path, max_note_bytes=max_note_bytes)
     vault_service = VaultService(
@@ -54,12 +56,28 @@ def client_for(
         settings=settings,
         vault_service=vault_service,
         semantic_search_service=semantic_search_service,
+        semantic_indexer=semantic_indexer,
     )
     return TestClient(app)
 
 
 def auth():
     return {"Authorization": "Bearer test-secret"}
+
+
+class RecordingIndexer:
+    def __init__(self):
+        self.paths = []
+
+    def enqueue(self, path):
+        self.paths.append(path)
+        return True
+
+
+class RaisingIndexer(RecordingIndexer):
+    def enqueue(self, path):
+        self.paths.append(path)
+        raise RuntimeError("semantic submission failed")
 
 
 def test_application_metadata():
@@ -133,6 +151,96 @@ def test_vault_errors_keep_existing_http_contract(tmp_path):
     assert response.json() == {"detail": "Generated note is too large"}
 
 
+def test_create_note_enqueues_only_a_created_note(tmp_path):
+    indexer = RecordingIndexer()
+    client = client_for(tmp_path, semantic_indexer=indexer)
+    payload = {"title": "Queued", "folder": "Inbox", "content": "Body", "tags": []}
+
+    response = client.post("/notes", headers=auth(), json=payload)
+    duplicate = client.post("/notes", headers=auth(), json=payload)
+
+    assert response.status_code == 200
+    assert duplicate.status_code == 200
+    assert duplicate.json()["status"] == "unchanged"
+    assert indexer.paths == [response.json()["path"]]
+
+
+def test_append_note_enqueues_only_a_modified_note(tmp_path):
+    indexer = RecordingIndexer()
+    client = client_for(tmp_path, semantic_indexer=indexer)
+    created = client.post(
+        "/notes",
+        headers=auth(),
+        json={"title": "Append queue", "folder": "Inbox", "content": "Body", "tags": []},
+    )
+    path = created.json()["path"]
+    indexer.paths.clear()
+    payload = {"path": path, "content": "Addition", "dedupe_key": "same-write"}
+
+    appended = client.post("/notes/append", headers=auth(), json=payload)
+    duplicate = client.post("/notes/append", headers=auth(), json=payload)
+
+    assert appended.status_code == 200
+    assert duplicate.status_code == 200
+    assert duplicate.json()["status"] == "already_applied"
+    assert indexer.paths == [path]
+
+
+def test_failed_note_writes_do_not_enqueue_semantic_work(tmp_path):
+    indexer = RecordingIndexer()
+    client = client_for(tmp_path, max_note_bytes=100, semantic_indexer=indexer)
+
+    missing = client.post(
+        "/notes/append",
+        headers=auth(),
+        json={"path": "Missing.md", "content": "Addition"},
+    )
+    oversized = client.post(
+        "/notes",
+        headers=auth(),
+        json={"title": "Large", "folder": "Inbox", "content": "x" * 100, "tags": []},
+    )
+
+    assert missing.status_code == 404
+    assert oversized.status_code == 413
+    assert indexer.paths == []
+
+
+def test_create_note_remains_successful_when_enqueue_raises(tmp_path):
+    indexer = RaisingIndexer()
+    client = client_for(tmp_path, semantic_indexer=indexer)
+
+    response = client.post(
+        "/notes",
+        headers=auth(),
+        json={"title": "Durable create", "folder": "Inbox", "content": "Unique body", "tags": []},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "created"
+    note = tmp_path / "Inbox" / "Durable create.md"
+    assert note.read_text(encoding="utf-8").count("Unique body") == 1
+    assert indexer.paths == [response.json()["path"]]
+
+
+def test_append_note_remains_successful_when_enqueue_raises(tmp_path):
+    note = tmp_path / "Append target.md"
+    note.write_text("Start", encoding="utf-8")
+    indexer = RaisingIndexer()
+    client = client_for(tmp_path, semantic_indexer=indexer)
+
+    response = client.post(
+        "/notes/append",
+        headers=auth(),
+        json={"path": "Append target.md", "content": "One committed addition."},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "appended"
+    assert note.read_text(encoding="utf-8").count("One committed addition.") == 1
+    assert indexer.paths == [response.json()["path"]]
+
+
 def test_create_read_search_append(tmp_path):
     client = client_for(tmp_path)
 
@@ -168,7 +276,7 @@ def test_create_read_search_append(tmp_path):
     assert response.json()["status"] == "already_applied"
 
 
-def test_find_related_notes_uses_startup_index_without_inline_write_refresh(tmp_path):
+def test_targeted_reindex_updates_semantic_results_after_append(tmp_path):
     home_server = tmp_path / "Infrastructure Notes"
     oracle_apex = tmp_path / "Oracle APEX"
     home_server.mkdir()
@@ -204,6 +312,11 @@ def test_find_related_notes_uses_startup_index_without_inline_write_refresh(tmp_
             json={"path": "Technical Notes/Oracle APEX REST API.md", "content": "Navidrome audio music note."},
         )
         assert response.status_code == 200
+        assert client.app.state.semantic_indexer.wait(timeout=2) == {
+            "indexed": 1,
+            "unchanged": 0,
+            "removed": 0,
+        }
 
         response = client.post(
             "/notes/related",
@@ -211,7 +324,43 @@ def test_find_related_notes_uses_startup_index_without_inline_write_refresh(tmp_
             json={"text": "music audio library", "limit": 1, "min_score": 0.5},
         )
         assert response.status_code == 200
-        assert response.json()["results"] == []
+        assert response.json()["results"][0]["path"] == "Technical Notes/Oracle APEX REST API.md"
+
+
+def test_note_write_response_does_not_wait_for_targeted_embedding(tmp_path):
+    class BlockingWriteEmbedder(FakeEmbedder):
+        def __init__(self):
+            self.started = threading.Event()
+            self.release = threading.Event()
+
+        def embed(self, texts):
+            if any("blocking semantic marker" in text for text in texts):
+                self.started.set()
+                if not self.release.wait(timeout=5):
+                    raise RuntimeError("test targeted embedding was not released")
+            return super().embed(texts)
+
+    embedder = BlockingWriteEmbedder()
+    client = client_for(tmp_path, embedder=embedder)
+    with client:
+        client.app.state.semantic_indexer.wait(timeout=2)
+        response = client.post(
+            "/notes",
+            headers=auth(),
+            json={
+                "title": "Non blocking",
+                "folder": "Inbox",
+                "content": "blocking semantic marker",
+                "tags": [],
+            },
+        )
+        try:
+            assert response.status_code == 200
+            assert embedder.started.wait(timeout=2)
+            assert client.app.state.semantic_indexer.is_running is True
+        finally:
+            embedder.release.set()
+        client.app.state.semantic_indexer.wait(timeout=2)
 
 
 def test_related_notes_folder_filter(tmp_path):

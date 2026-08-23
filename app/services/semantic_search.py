@@ -4,12 +4,13 @@ import hashlib
 import re
 import threading
 import unicodedata
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from itertools import batched
-from pathlib import Path
-from typing import Protocol, Sequence
+from pathlib import Path, PurePosixPath, PureWindowsPath
+from typing import Protocol
 
 import numpy as np
 
@@ -33,6 +34,10 @@ class SemanticSearchUnavailableError(RuntimeError):
 
 class SynchronizationCancelledError(RuntimeError):
     """Semantic synchronization stopped cooperatively at a safe boundary."""
+
+
+class TargetedSynchronizationError(RuntimeError):
+    """A requested note could not be authoritatively refreshed."""
 
 
 class Embedder(Protocol):
@@ -383,122 +388,256 @@ class SemanticSearchService:
         if not vault_root.exists():
             return []
         excluded = {".obsidian", ".trash", ".git", ".obsidian-chatgpt-data"}
-        files: list[Path] = []
-        for path in vault_root.rglob("*.md"):
+        resolved_root = vault_root.resolve()
+        files: dict[Path, None] = {}
+        for discovered_path in vault_root.rglob("*.md"):
             try:
-                relative_path = path.relative_to(vault_root)
+                path = discovered_path.resolve()
+                relative_path = path.relative_to(resolved_root)
                 if any(part in excluded for part in relative_path.parts):
                     continue
                 if path.is_file() and path.stat().st_size <= max_note_bytes:
-                    files.append(path)
+                    files[path] = None
             except (OSError, ValueError):
                 continue
+        return list(files)
+
+    @staticmethod
+    def _target_files(
+        vault_root: Path,
+        max_note_bytes: int,
+        relative_paths: Sequence[str],
+    ) -> list[Path]:
+        excluded = {".obsidian", ".trash", ".git", ".obsidian-chatgpt-data"}
+        resolved_root = vault_root.resolve()
+        files: list[Path] = []
+        for raw_path in sorted(set(relative_paths)):
+            normalized = raw_path.strip().replace("\\", "/")
+            posix_path = PurePosixPath(normalized)
+            if (
+                not normalized
+                or posix_path.is_absolute()
+                or PureWindowsPath(normalized).is_absolute()
+                or ".." in posix_path.parts
+                or posix_path.suffix.lower() != ".md"
+            ):
+                raise TargetedSynchronizationError(
+                    f"Invalid targeted note path: {raw_path!r}"
+                )
+            normalized = posix_path.as_posix()
+            relative_path = Path(normalized)
+            try:
+                path = (resolved_root / relative_path).resolve()
+                resolved_relative = path.relative_to(resolved_root)
+                if any(part in excluded for part in resolved_relative.parts):
+                    raise TargetedSynchronizationError(
+                        f"Targeted note path is excluded: {normalized}"
+                    )
+                if not path.is_file():
+                    raise TargetedSynchronizationError(
+                        f"Targeted note is unavailable: {normalized}"
+                    )
+                if path.stat().st_size > max_note_bytes:
+                    raise TargetedSynchronizationError(
+                        f"Targeted note is too large: {normalized}"
+                    )
+                files.append(path)
+            except TargetedSynchronizationError:
+                raise
+            except (OSError, ValueError) as exc:
+                raise TargetedSynchronizationError(
+                    f"Targeted note is inaccessible: {normalized}"
+                ) from exc
         return files
+
+    def _index_files(
+        self,
+        *,
+        files: Sequence[Path],
+        vault_root: Path,
+        known: dict[str, StoredNote],
+        cancel_event: threading.Event | None,
+        strict_reads: bool = False,
+    ) -> tuple[int, int]:
+        indexed = unchanged = 0
+        for file_batch in batched(files, self.index_batch_size):
+            self._raise_if_cancelled(cancel_event)
+            with self.repository.transaction() as session:
+                for path in file_batch:
+                    relative_path = str(path.relative_to(vault_root)).replace("\\", "/")
+                    try:
+                        stat = path.stat()
+                    except OSError as exc:
+                        if strict_reads:
+                            raise TargetedSynchronizationError(
+                                f"Targeted note could not be inspected: {relative_path}"
+                            ) from exc
+                        raise
+                    previous = known.get(relative_path)
+                    if (
+                        previous
+                        and previous.mtime_ns == stat.st_mtime_ns
+                        and previous.size == stat.st_size
+                    ):
+                        unchanged += 1
+                        continue
+
+                    try:
+                        digest = self._sha256(path)
+                    except OSError as exc:
+                        if strict_reads:
+                            raise TargetedSynchronizationError(
+                                f"Targeted note could not be read: {relative_path}"
+                            ) from exc
+                        raise
+                    if previous and previous.sha256 == digest:
+                        session.update_note_metadata(
+                            path=relative_path,
+                            mtime_ns=stat.st_mtime_ns,
+                            size=stat.st_size,
+                        )
+                        unchanged += 1
+                        continue
+
+                    try:
+                        note_text = path.read_text(encoding="utf-8")
+                    except (UnicodeDecodeError, OSError) as exc:
+                        if strict_reads:
+                            raise TargetedSynchronizationError(
+                                f"Targeted note could not be read: {relative_path}"
+                            ) from exc
+                        continue
+
+                    chunks = self._chunk_markdown(path.stem, note_text)
+                    vectors = self._embed([f"{path.stem}\n{content}" for _, content in chunks])
+                    if len(vectors) != len(chunks):
+                        raise RuntimeError("Embedding model returned an unexpected number of vectors")
+
+                    stored_chunks: list[StoredChunk] = []
+                    for index, ((heading, content), vector) in enumerate(
+                        zip(chunks, vectors, strict=True)
+                    ):
+                        normalized = self._normalize(vector)
+                        stored_chunks.append(
+                            StoredChunk(
+                                path=relative_path,
+                                chunk_index=index,
+                                heading=heading,
+                                content=content,
+                                embedding=normalized.astype(np.float32).tobytes(),
+                                dimensions=int(normalized.size),
+                            )
+                        )
+                    session.replace_note(
+                        StoredNote(
+                            path=relative_path,
+                            mtime_ns=stat.st_mtime_ns,
+                            size=stat.st_size,
+                            sha256=digest,
+                            indexed_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                        ),
+                        stored_chunks,
+                    )
+                    indexed += 1
+        return indexed, unchanged
+
+    def _sync_all_locked(
+        self,
+        cancel_event: threading.Event | None,
+    ) -> dict[str, int]:
+        with self._configuration_lock:
+            vault_root = self.vault_root
+            max_note_bytes = self.max_note_bytes
+        files = self._eligible_files(vault_root, max_note_bytes)
+        seen = {str(path.relative_to(vault_root)).replace("\\", "/") for path in files}
+
+        with self.repository.transaction() as session:
+            known = session.load_notes()
+
+        removed = 0
+        stale_paths = set(known) - seen
+        for stale_batch in batched(stale_paths, self.index_batch_size):
+            self._raise_if_cancelled(cancel_event)
+            with self.repository.transaction() as session:
+                for stale_path in stale_batch:
+                    session.delete_note(stale_path)
+            removed += len(stale_batch)
+
+        indexed, unchanged = self._index_files(
+            files=files,
+            vault_root=vault_root,
+            known=known,
+            cancel_event=cancel_event,
+        )
+        return {"indexed": indexed, "unchanged": unchanged, "removed": removed}
+
+    def _sync_targets_locked(
+        self,
+        relative_paths: Sequence[str],
+        cancel_event: threading.Event | None,
+    ) -> dict[str, int]:
+        with self._configuration_lock:
+            vault_root = self.vault_root
+            max_note_bytes = self.max_note_bytes
+        files = self._target_files(vault_root, max_note_bytes, relative_paths)
+        with self.repository.transaction() as session:
+            known = session.load_notes()
+        indexed, unchanged = self._index_files(
+            files=files,
+            vault_root=vault_root,
+            known=known,
+            cancel_event=cancel_event,
+            strict_reads=True,
+        )
+        return {"indexed": indexed, "unchanged": unchanged, "removed": 0}
+
+    def _run_synchronization_locked(
+        self,
+        operation: Callable[[], dict[str, int]],
+    ) -> dict[str, int]:
+        initial_state = self._initialize_state(create_storage=True)
+        with self._availability_lock:
+            search_available = self._search_available
+        self._set_search_available(search_available or initial_state is IndexState.READY)
+        self._persist_state(IndexState.INDEXING)
+        try:
+            result = operation()
+        except Exception:
+            self._persist_state(IndexState.ERROR)
+            raise
+
+        self._persist_state(IndexState.READY)
+        self._set_search_available(True)
+        return result
 
     def sync(self, cancel_event: threading.Event | None = None) -> dict[str, int]:
         """Index only new/changed notes and remove deleted notes."""
         with self._sync_lock:
+            return self._run_synchronization_locked(
+                lambda: self._sync_all_locked(cancel_event)
+            )
+
+    def sync_paths(
+        self,
+        relative_paths: Sequence[str],
+        cancel_event: threading.Event | None = None,
+    ) -> dict[str, int]:
+        """Refresh only the supplied vault-relative Markdown paths."""
+        paths = tuple(sorted(set(relative_paths)))
+        if not paths:
+            return {"indexed": 0, "unchanged": 0, "removed": 0}
+
+        with self._sync_lock:
             initial_state = self._initialize_state(create_storage=True)
             with self._availability_lock:
                 search_available = self._search_available
-            self._set_search_available(search_available or initial_state is IndexState.READY)
-            self._persist_state(IndexState.INDEXING)
-            try:
-                self._raise_if_cancelled(cancel_event)
-                with self._configuration_lock:
-                    vault_root = self.vault_root
-                    max_note_bytes = self.max_note_bytes
-                files = self._eligible_files(vault_root, max_note_bytes)
-                seen = {
-                    str(path.relative_to(vault_root)).replace("\\", "/") for path in files
-                }
-                indexed = unchanged = removed = 0
-
-                with self.repository.transaction() as session:
-                    known = session.load_notes()
-
-                stale_paths = set(known) - seen
-                for stale_batch in batched(stale_paths, self.index_batch_size):
-                    self._raise_if_cancelled(cancel_event)
-                    with self.repository.transaction() as session:
-                        for stale_path in stale_batch:
-                            session.delete_note(stale_path)
-                    removed += len(stale_batch)
-
-                for file_batch in batched(files, self.index_batch_size):
-                    self._raise_if_cancelled(cancel_event)
-                    with self.repository.transaction() as session:
-                        for path in file_batch:
-                            relative_path = str(path.relative_to(vault_root)).replace("\\", "/")
-                            stat = path.stat()
-                            previous = known.get(relative_path)
-                            if (
-                                previous
-                                and previous.mtime_ns == stat.st_mtime_ns
-                                and previous.size == stat.st_size
-                            ):
-                                unchanged += 1
-                                continue
-
-                            digest = self._sha256(path)
-                            if previous and previous.sha256 == digest:
-                                session.update_note_metadata(
-                                    path=relative_path,
-                                    mtime_ns=stat.st_mtime_ns,
-                                    size=stat.st_size,
-                                )
-                                unchanged += 1
-                                continue
-
-                            try:
-                                note_text = path.read_text(encoding="utf-8")
-                            except (UnicodeDecodeError, OSError):
-                                continue
-
-                            chunks = self._chunk_markdown(path.stem, note_text)
-                            vectors = self._embed(
-                                [f"{path.stem}\n{content}" for _, content in chunks]
-                            )
-                            if len(vectors) != len(chunks):
-                                raise RuntimeError(
-                                    "Embedding model returned an unexpected number of vectors"
-                                )
-
-                            stored_chunks: list[StoredChunk] = []
-                            for index, ((heading, content), vector) in enumerate(
-                                zip(chunks, vectors, strict=True)
-                            ):
-                                normalized = self._normalize(vector)
-                                stored_chunks.append(
-                                    StoredChunk(
-                                        path=relative_path,
-                                        chunk_index=index,
-                                        heading=heading,
-                                        content=content,
-                                        embedding=normalized.astype(np.float32).tobytes(),
-                                        dimensions=int(normalized.size),
-                                    )
-                                )
-                            session.replace_note(
-                                StoredNote(
-                                    path=relative_path,
-                                    mtime_ns=stat.st_mtime_ns,
-                                    size=stat.st_size,
-                                    sha256=digest,
-                                    indexed_at=datetime.now(timezone.utc).isoformat(
-                                        timespec="seconds"
-                                    ),
-                                ),
-                                stored_chunks,
-                            )
-                            indexed += 1
-            except Exception:
-                self._persist_state(IndexState.ERROR)
-                raise
-
-            self._persist_state(IndexState.READY)
-            self._set_search_available(True)
-            return {"indexed": indexed, "unchanged": unchanged, "removed": removed}
+            if not search_available and initial_state is not IndexState.READY:
+                return self._run_synchronization_locked(
+                    lambda: self._sync_all_locked(cancel_event)
+                )
+            return self._run_synchronization_locked(
+                lambda: self._sync_targets_locked(paths, cancel_event)
+            )
 
     def search(
         self,
