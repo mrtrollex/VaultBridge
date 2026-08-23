@@ -78,7 +78,7 @@ Do not implement the recommended next task.
 At the current project state, the next recommended task is:
 
 ```text
-VB-022 — Retrieval evaluation fixture
+VB-024 — Tune hybrid ranking from evaluation data
 ```
 
 Always verify this against `PROJECT_STATE.md` and `BACKLOG.md` before starting.
@@ -159,9 +159,13 @@ Before adding one, explain:
 Before changing the default embedding model, chunk representation, ranking weights or thresholds:
 
 - ensure repeatable evaluation cases exist,
+- run `python -m pytest -q tests/eval`,
 - record baseline results,
 - compare before/after quality and latency,
 - avoid accepting changes solely because the model is larger or newer.
+
+The deterministic VB-022 baseline is checked in `tests/eval/baseline.json`; its generated table and
+known limitations are documented in `tests/eval/README.md`.
 
 ## Branch hygiene
 

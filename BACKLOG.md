@@ -242,9 +242,25 @@ per-sync counters such as current note, percentage complete, current batch or ET
 - targeted refresh against an older signature falls back to that safe full rebuild rather than
   mixing embedding generations.
 
-### VB-022 — Retrieval evaluation fixture — P0
+### VB-022 — Retrieval evaluation fixture — P0 ✅
 
-Create sanitized English, Slovak and cross-language query cases.
+**Status:** Completed on 2026-08-23.
+
+**Implemented behavior**
+
+- nine sanitized Markdown notes exercise ambiguous backup, replication, storage, deployment,
+  authentication, Oracle/APEX REST and unrelated-media/garden vocabulary,
+- thirteen structured English, Slovak and cross-language cases define expected path, optional
+  heading, accepted top-k rank and selected top-1 confusion exclusions,
+- a deterministic concept-vector embedder replaces only FastEmbed while production chunking,
+  embedding input, SQLite indexing, scoring, filtering, aggregation and ordering remain active,
+- the runner reports per-case ranks with useful failure diagnostics and calculates Hit@1, Hit@3
+  and mean reciprocal rank for all, English, Slovak, cross-language and heading-context groups,
+- a checked `baseline.json`, documentation-table verification, material-tie guard and reversed-order
+  run keep ranks and metrics reproducible,
+- controlled test variants prove that structural cases depend on VB-021 hierarchy context and that
+  the English-to-Slovak case depends on multilingual concept equivalence,
+- the measured baseline is Hit@1 `13/13` (100%), Hit@3 `13/13` (100%) and MRR `13/13` (100%).
 
 ### VB-023 — Retrieval benchmark command — P1
 
@@ -255,6 +271,10 @@ Output latency, returned paths and scores as JSON and/or Markdown.
 **Depends on:** VB-022
 
 No arbitrary weight changes without before/after evaluation results.
+
+Future evaluation should separately consider deterministic production tie-breaking: final scores can
+clamp equal, score-only ordering preserves repository iteration order, and chunk loading currently has
+no explicit order. VB-022 only prevents its deterministic fixture from relying on such ties.
 
 ---
 
@@ -351,8 +371,8 @@ VB-001 ✓
 → VB-015 ✓
 → VB-020  ✓
 → VB-021  ✓
-→ VB-022  NEXT
-→ VB-024
+→ VB-022  ✓
+→ VB-024  NEXT
 ```
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

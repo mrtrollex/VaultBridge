@@ -263,21 +263,29 @@ chunk content remains unchanged; canonical heading metadata is added only to emb
 not redundantly prepended when already present at the chunk start. The `v3-heading-context`
 signature automatically invalidates and rebuilds VB-020 embeddings without a schema migration.
 
-### VB-022 — Retrieval evaluation fixture — P0 ← NEXT
+### VB-022 — Retrieval evaluation fixture — P0 ✅
 
-Create sanitized EN/SK/cross-language query cases under:
+Implemented with sanitized EN/SK/cross-language query cases under:
 
 ```text
-tests/eval/retrieval_cases.yaml
+tests/eval/retrieval_cases.json
 ```
+
+The deterministic fixture runs through the production retrieval pipeline with only FastEmbed
+replaced. Its checked 13-case baseline is Hit@1 100%, Hit@3 100% and MRR 100%. Reversed-order and
+material-tie guards keep the fixture deterministic, while controlled ablations prove heading-context
+and cross-language sensitivity. No production retrieval tuning was performed.
 
 ### VB-023 — Retrieval benchmark command — P1
 
 Record latency, paths, semantic score, lexical score, final score, and rank.
 
-### VB-024 — Tune hybrid ranking from evaluation data — P1
+### VB-024 — Tune hybrid ranking from evaluation data — P1 ← NEXT
 
 No weight/threshold changes without before/after evaluation.
+
+Also evaluate an explicit production secondary ordering for equal clamped scores; VB-022 records but
+does not change the current score-only, repository-order-dependent behavior.
 
 Candidate metrics:
 
@@ -288,9 +296,9 @@ Candidate metrics:
 
 ## Milestone 3 exit criteria
 
-- [ ] retrieval quality is repeatably measurable
+- [x] retrieval quality is repeatably measurable
 - [x] Markdown structure contributes context
-- [ ] ranking regressions are detectable
+- [x] ranking regressions are detectable
 - [ ] default-model changes require evidence
 
 ---
@@ -434,9 +442,9 @@ VB-020 ✓
    ↓
 VB-021 ✓
    ↓
-VB-022  ← NEXT
+VB-022 ✓
    ↓
-VB-024
+VB-024  ← NEXT
    ↓
 OPERATIONS / KNOWLEDGE / DX
 ...
