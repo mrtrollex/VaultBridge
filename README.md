@@ -104,6 +104,22 @@ curl http://127.0.0.1:8765/health
 
 The first semantic request downloads the embedding model and builds the initial index. Subsequent requests reuse the index and only changed notes need to be re-embedded.
 
+## Application configuration
+
+VaultBridge reads and validates its application settings once at startup. Invalid numeric values or empty paths/model names stop startup with a configuration error; the API key is treated as a secret and is not included in the settings representation.
+
+| Environment variable | Default | Constraint |
+|---|---|---|
+| `API_KEY` | empty | Required for authenticated endpoints, as before |
+| `VAULT_PATH` | `/vault` | Non-empty path |
+| `MAX_NOTE_BYTES` | `1000000` | Positive integer |
+| `SEMANTIC_DATA_PATH` | `/vault/.obsidian-chatgpt-data` | Non-empty path |
+| `SEMANTIC_MODEL` | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` | Non-empty name |
+| `SEMANTIC_CHUNK_CHARS` | `600` | Integer, at least `250` |
+| `SEMANTIC_CHUNK_OVERLAP` | `100` | Non-negative integer, at most half of chunk size |
+
+`OBSIDIAN_VAULT_PATH`, `API_PORT`, `PUID`, and `PGID` remain Docker Compose inputs and are not read by the Python application.
+
 ## TrueNAS
 
 The existing TrueNAS-specific deployment files are kept for compatibility with the working prototype. See [`README_TRUENAS.md`](README_TRUENAS.md).

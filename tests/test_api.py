@@ -4,6 +4,7 @@ import numpy as np
 from fastapi.testclient import TestClient
 
 import app.main as main
+from app.core.config import Settings
 from app.semantic import SemanticIndex
 
 
@@ -26,16 +27,12 @@ class FakeEmbedder:
         return vectors
 
 
-def setup_module():
-    main.API_KEY = "test-secret"
-
-
-def client_for(tmp_path: Path) -> TestClient:
-    main.VAULT_ROOT = tmp_path.resolve()
+def client_for(tmp_path: Path, *, api_key: str = "test-secret") -> TestClient:
+    main.settings = Settings(api_key=api_key, vault_path=tmp_path)
     main.SEMANTIC_INDEX = SemanticIndex(
-        vault_root=main.VAULT_ROOT,
+        vault_root=main.settings.vault_path,
         db_path=tmp_path / ".test-semantic" / "index.sqlite3",
-        max_note_bytes=main.MAX_NOTE_BYTES,
+        max_note_bytes=main.settings.max_note_bytes,
         chunk_chars=300,
         chunk_overlap=50,
         embedder=FakeEmbedder(),
@@ -57,6 +54,13 @@ def test_auth_required(tmp_path):
     client = client_for(tmp_path)
     response = client.get("/notes/list")
     assert response.status_code == 401
+
+
+def test_missing_api_key_is_rejected(tmp_path):
+    client = client_for(tmp_path, api_key="")
+    response = client.get("/notes/list")
+    assert response.status_code == 500
+    assert response.json() == {"detail": "Server API_KEY is not configured"}
 
 
 def test_create_read_search_append(tmp_path):
