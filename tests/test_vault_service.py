@@ -132,6 +132,21 @@ def test_symlink_escape_is_rejected(tmp_path):
         service.read_note("linked/Secret.md")
 
 
+def test_note_count_ignores_symlink_escape_without_reading_contents(tmp_path):
+    service = service_for(tmp_path / "vault")
+    service.vault_root.mkdir()
+    (service.vault_root / "inside.md").write_text("Inside.", encoding="utf-8")
+    outside = tmp_path / "outside.md"
+    outside.write_text("Outside.", encoding="utf-8")
+    link = service.vault_root / "outside.md"
+    try:
+        link.symlink_to(outside)
+    except OSError as exc:
+        pytest.skip(f"Symlink creation is unavailable: {exc}")
+
+    assert service.count_notes() == 1
+
+
 def test_missing_and_oversized_note_reads_are_rejected(tmp_path):
     service = service_for(tmp_path, max_note_bytes=10)
 

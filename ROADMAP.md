@@ -124,7 +124,7 @@ Exit criteria:
 
 ---
 
-# Milestone 2 — Index lifecycle and non-blocking synchronization ← CURRENT
+# Milestone 2 — Index lifecycle and non-blocking synchronization ✅
 
 **Goal:** make semantic indexing observable, resumable, and eventually independent of normal search requests.
 
@@ -183,31 +183,32 @@ Key behavior:
 - committed writes stay successful if enqueue/submission fails,
 - shutdown leaves Markdown authoritative; the next startup full synchronization recovers discarded in-memory work.
 
-## Next
-
-### VB-015 — Rich health/readiness output — P0 ← NEXT
+### VB-015 — Rich health/readiness output ✅
 
 Expose useful lifecycle/progress information without requiring Docker-log inspection.
 
-Target direction:
+Implemented flat compatibility-preserving response:
 
 ```json
 {
-  "status": "ok",
-  "vault": {
-    "available": true,
-    "notes": 842
-  },
-  "semantic_index": {
-    "state": "indexing",
-    "ready_for_search": true,
-    "indexed_notes": 734,
-    "total_notes": 842,
-    "chunks": 4610,
-    "last_successful_sync": "2026-08-23T10:00:00Z"
-  }
+  "ok": true,
+  "vault_exists": true,
+  "semantic_index_ready": false,
+  "semantic_index_state": "indexing",
+  "semantic_search_available": true,
+  "semantic_indexer_running": true,
+  "full_sync_required": false,
+  "indexed_notes": 734,
+  "semantic_chunks": 4610,
+  "vault_notes": 842,
+  "last_successful_sync": "2026-08-23T10:00:00+00:00"
 }
 ```
+
+The counts expose useful operator context and inferred completeness. VB-015 does not introduce
+explicit per-sync current-note, percentage, current-batch or ETA counters; those remain future work.
+
+## Optional follow-up
 
 ### VB-014 — Optional filesystem watcher — P1
 
@@ -225,17 +226,17 @@ Potential approach:
 - [x] synchronization commits durable progress in batches
 - [x] full vault rebuild no longer runs inline in normal search requests
 - [x] restart does not discard already committed batches
-- [ ] lifecycle and progress are observable
+- [x] lifecycle and inferred completeness are observable
 - [x] note writes can trigger targeted semantic refresh
 - [x] no external queue/service is required
 
 ---
 
-# Milestone 3 — Retrieval quality and evaluation
+# Milestone 3 — Retrieval quality and evaluation ← CURRENT
 
 **Goal:** improve relevance using measured changes before considering a larger model or vector database.
 
-### VB-020 — Markdown heading-aware chunker — P0
+### VB-020 — Markdown heading-aware chunker — P0 ← NEXT
 
 - preserve heading hierarchy
 - avoid arbitrary fenced-code splitting where practical
@@ -421,10 +422,10 @@ VB-012 ✓
    ↓
 VB-013 ✓
    ↓
-VB-015  ← NEXT
+VB-015 ✓
    ↓
 RETRIEVAL QUALITY
-VB-020
+VB-020  ← NEXT
    ↓
 VB-021
    ↓

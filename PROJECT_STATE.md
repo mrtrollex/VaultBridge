@@ -19,14 +19,15 @@ Completed:
 - VB-011 — Batch index commits
 - VB-012 — Background startup indexing
 - VB-013 — Enqueue reindex after note writes
+- VB-015 — Rich health/readiness output
 
 Next recommended task:
 
-- **VB-015 — Rich health/readiness output**
+- **VB-020 — Markdown heading-aware chunker**
 
 Current milestone:
 
-- **Milestone 2 — Index lifecycle and non-blocking synchronization**
+- **Milestone 3 — Retrieval quality and evaluation**
 
 ## Working production characteristics
 
@@ -44,6 +45,8 @@ Current milestone:
 - semantic index mutations commit in configurable note-count batches (default `25`)
 - `SemanticSearchService` owns state transitions
 - `SemanticRepository` persists semantic data and lifecycle state
+- `/health` reports semantic lifecycle and search availability separately without starting semantic work
+- successful full synchronization persists `last_successful_sync`; targeted refresh does not change it
 - TrueNAS container commonly runs as UID/GID 568
 - existing production deployment uses port 8765 → 8000
 - separate `/vault` and `/data` mounts are used by the TrueNAS compose file
@@ -61,16 +64,16 @@ app/core/config.py
     typed runtime configuration
 
 app/services/vault.py
-    safe vault-relative path resolution and Markdown operations
+    safe vault-relative path resolution, Markdown operations and contained note counting
 
 app/services/semantic_search.py
-    embedding, batched synchronization orchestration, ranking and lifecycle transitions
+    embedding, batched synchronization orchestration, ranking, lifecycle transitions and health state
 
 app/services/indexer.py
     single-process background synchronization ownership and cooperative shutdown
 
 app/repositories/semantic.py
-    SQLite semantic persistence and lifecycle-state storage
+    SQLite semantic persistence, lifecycle-state storage and read-only status statistics
 
 app/semantic.py
     compatibility facade retained for pre-VB-005 internal API compatibility
@@ -123,25 +126,39 @@ Deterministic behavior:
 - shutdown drops unprocessed in-memory paths; durable Markdown is recovered by the next startup full synchronization
 - shutdown still waits if execution is blocked inside model download/inference or filesystem I/O
 
-`semantic_index_ready` is currently derived from `state == ready`.
+`semantic_index_ready` remains derived from `state == ready`. `/health` also reports
+`semantic_search_available` separately, so refresh-time `indexing`/`error` can remain searchable
+when a compatible completed index exists. It exposes process-local indexer activity and full-sync
+required/recovery debt, SQLite indexed-note/chunk counts, a semantic-eligible vault-note count,
+and the time of the last successful full synchronization. Health reads do not initialize the
+embedder, trigger synchronization/search, or mutate lifecycle state.
+
+`vault_notes` means Markdown notes eligible for full semantic synchronization under the same
+containment, internal-directory exclusion and maximum-size policy. Health metadata and SQLite counts
+come from one short read snapshot. These fields provide inferred completeness, not explicit per-sync
+current-note, percentage, batch or ETA counters.
 
 ## Known limitations observed during real use
 
-1. Indexing progress is not visible through the health endpoint.
-2. External filesystem changes are not watched; they are picked up by startup/full synchronization.
-3. Current chunking is still primarily character-based rather than fully Markdown-aware.
-4. Default ranking thresholds require evaluation rather than ad-hoc tuning.
-5. Multiple application processes sharing one index are not coordinated.
-6. GPT/AI clients can invent wikilinks unless client instructions require verified existing notes.
-7. Graceful shutdown cannot interrupt a model download, ONNX inference call, or filesystem operation already in progress.
+1. External filesystem changes are not watched; they are picked up by startup/full synchronization.
+2. Current chunking is still primarily character-based rather than fully Markdown-aware.
+3. Default ranking thresholds require evaluation rather than ad-hoc tuning.
+4. Multiple application processes sharing one index are not coordinated.
+5. GPT/AI clients can invent wikilinks unless client instructions require verified existing notes.
+6. Graceful shutdown cannot interrupt a model download, ONNX inference call, or filesystem operation already in progress.
 
-## Verified baseline after VB-013
+## Verified baseline after VB-015
 
-Linux compatibility run (WSL):
+Native Windows:
 
 ```text
-89 passed
+105 passed, 1 failed, 4 skipped
 ```
+
+The one failure remains the known pre-existing Windows path-separator assertion around
+`VaultService` response paths. The four skips are privilege-dependent symlink tests. The latest
+previous Linux compatibility baseline remains `89 passed` after VB-013; the current WSL environment
+does not have the project dependencies installed, so VB-015 was not re-run there.
 
 Additional checks:
 
@@ -152,16 +169,13 @@ git diff --check: passed
 all 7 endpoint paths and operation IDs: unchanged
 ```
 
-Focused indexer/semantic/vault/API/config tests at VB-013 completion:
+Focused health/indexer/semantic/repository/vault/API/config run:
 
 ```text
-89 passed
+105 passed, 4 skipped, 1 known baseline test deselected
 ```
 
-Native Windows: `85 passed, 1 failed, 3 skipped`; the failure remains the known pre-existing
-path-separator assertion around VaultService paths, and the skips are privilege-dependent symlink
-tests. The Linux compatibility run is green. Docker checks were not required because no Docker-related
-files changed.
+Docker checks were not required because no Docker-related files changed.
 
 ## Compatibility contract
 

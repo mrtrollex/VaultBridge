@@ -11,6 +11,7 @@ The project intends to follow Semantic Versioning after the public repository ba
 - project roadmap and Codex development playbook
 - initial repository governance/security documentation
 - CI preparation
+- compatibility-preserving rich `/health` output for vault, semantic lifecycle, search availability, background activity, recovery debt, coherent eligible-note/index counts, and last successful full synchronization
 
 ### Changed
 

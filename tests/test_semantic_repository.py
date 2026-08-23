@@ -1,4 +1,5 @@
 import sqlite3
+import threading
 
 import numpy as np
 
@@ -49,6 +50,130 @@ def test_repository_persists_existing_schema_and_index_metadata(tmp_path):
     assert reopened.storage_initialized() is True
 
 
+def test_repository_status_is_read_only_and_reports_cheap_counts(tmp_path):
+    db_path = tmp_path / "semantic-index.sqlite3"
+    repository = SemanticRepository(db_path)
+
+    missing = repository.read_status()
+    assert missing.storage_initialized is False
+    assert missing.storage_error is False
+    assert missing.indexed_notes == 0
+    assert missing.semantic_chunks == 0
+    assert db_path.exists() is False
+
+    repository.prepare_index(INDEX_SIGNATURE)
+    repository.set_metadata("index_state", "ready")
+    repository.set_metadata("last_successful_sync", "2026-08-23T12:00:00+00:00")
+    with repository.transaction() as session:
+        session.replace_note(stored_note(), [stored_chunk()])
+
+    status = repository.read_status()
+    assert status.storage_initialized is True
+    assert status.storage_error is False
+    assert status.index_signature == INDEX_SIGNATURE
+    assert status.index_state == "ready"
+    assert status.indexed_notes == 1
+    assert status.semantic_chunks == 1
+    assert status.last_successful_sync == "2026-08-23T12:00:00+00:00"
+
+
+def test_repository_status_uses_one_snapshot_when_writer_commits(tmp_path, monkeypatch):
+    db_path = tmp_path / "semantic-index.sqlite3"
+    repository = SemanticRepository(db_path)
+    repository.prepare_index(INDEX_SIGNATURE)
+    repository.set_metadata("index_state", "ready")
+    with repository.transaction() as session:
+        session.replace_note(stored_note("first.md"), [stored_chunk("first.md")])
+
+    original_connect = sqlite3.connect
+    writer = original_connect(db_path, timeout=30)
+    writer.execute("PRAGMA foreign_keys=ON")
+    writer.execute("BEGIN IMMEDIATE")
+    writer.execute("UPDATE meta SET value='indexing' WHERE key='index_state'")
+    second_note = stored_note("second.md")
+    second_chunk = stored_chunk("second.md")
+    writer.execute(
+        "INSERT INTO notes(path, mtime_ns, size, sha256, indexed_at) VALUES(?, ?, ?, ?, ?)",
+        (
+            second_note.path,
+            second_note.mtime_ns,
+            second_note.size,
+            second_note.sha256,
+            second_note.indexed_at,
+        ),
+    )
+    writer.execute(
+        "INSERT INTO chunks(path, chunk_index, heading, content, embedding, dimensions) "
+        "VALUES(?, ?, ?, ?, ?, ?)",
+        (
+            second_chunk.path,
+            second_chunk.chunk_index,
+            second_chunk.heading,
+            second_chunk.content,
+            second_chunk.embedding,
+            second_chunk.dimensions,
+        ),
+    )
+
+    metadata_read = threading.Event()
+    allow_counts = threading.Event()
+
+    class CoordinatedConnection:
+        def __init__(self, connection):
+            object.__setattr__(self, "_connection", connection)
+
+        def __getattr__(self, name):
+            return getattr(self._connection, name)
+
+        def __setattr__(self, name, value):
+            setattr(self._connection, name, value)
+
+        def execute(self, sql, *args, **kwargs):
+            if sql == "SELECT COUNT(*) FROM notes":
+                metadata_read.set()
+                if not allow_counts.wait(timeout=5):
+                    raise RuntimeError("status count query was not released")
+            return self._connection.execute(sql, *args, **kwargs)
+
+    def coordinated_connect(*args, **kwargs):
+        return CoordinatedConnection(original_connect(*args, **kwargs))
+
+    monkeypatch.setattr("app.repositories.semantic.sqlite3.connect", coordinated_connect)
+    statuses = []
+    errors = []
+
+    def read_status():
+        try:
+            statuses.append(repository.read_status())
+        except BaseException as exc:
+            errors.append(exc)
+
+    reader = threading.Thread(target=read_status)
+    reader.start()
+    try:
+        assert metadata_read.wait(timeout=2)
+        writer.commit()
+        allow_counts.set()
+        reader.join(timeout=2)
+    finally:
+        allow_counts.set()
+        writer.rollback()
+        writer.close()
+        reader.join(timeout=2)
+
+    assert reader.is_alive() is False
+    assert errors == []
+    assert len(statuses) == 1
+    assert statuses[0].index_state == "ready"
+    assert statuses[0].indexed_notes == 1
+    assert statuses[0].semantic_chunks == 1
+
+    committed = repository.read_status()
+    assert committed.index_state == "indexing"
+    assert committed.indexed_notes == 2
+    assert committed.semantic_chunks == 2
+
+
 def test_repository_deletes_stale_note_and_cascades_chunks(tmp_path):
     repository = SemanticRepository(tmp_path / "semantic-index.sqlite3")
     note = stored_note()
@@ -68,6 +193,7 @@ def test_repository_invalidates_data_when_index_signature_changes(tmp_path):
     repository = SemanticRepository(tmp_path / "semantic-index.sqlite3")
 
     repository.prepare_index(INDEX_SIGNATURE)
+    repository.set_metadata("last_successful_sync", "2026-08-23T12:00:00+00:00")
     with repository.transaction() as session:
         session.replace_note(stored_note(), [stored_chunk()])
 
@@ -76,6 +202,7 @@ def test_repository_invalidates_data_when_index_signature_changes(tmp_path):
     assert repository.load_chunks() == []
     with repository.transaction() as session:
         assert session.load_notes() == {}
+    assert repository.get_metadata("last_successful_sync") is None
 
 
 def test_repository_reads_pre_extraction_sqlite_index_without_rebuild(tmp_path):

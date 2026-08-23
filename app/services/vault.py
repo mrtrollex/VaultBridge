@@ -7,6 +7,38 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 
+SEMANTIC_EXCLUDED_DIRECTORIES = frozenset(
+    {".obsidian", ".trash", ".git", ".obsidian-chatgpt-data"}
+)
+
+
+def eligible_markdown_files(vault_root: Path, max_note_bytes: int) -> list[Path]:
+    """Return contained Markdown files accepted by full semantic synchronization."""
+    vault_root = Path(vault_root)
+    if not vault_root.exists():
+        return []
+
+    try:
+        resolved_root = vault_root.resolve()
+    except OSError:
+        return []
+
+    files: dict[Path, None] = {}
+    try:
+        for discovered_path in vault_root.rglob("*.md"):
+            try:
+                path = discovered_path.resolve()
+                relative_path = path.relative_to(resolved_root)
+                if any(part in SEMANTIC_EXCLUDED_DIRECTORIES for part in relative_path.parts):
+                    continue
+                if path.is_file() and path.stat().st_size <= max_note_bytes:
+                    files[path] = None
+            except (OSError, ValueError):
+                continue
+    except OSError:
+        pass
+    return list(files)
+
 
 class VaultServiceError(Exception):
     """Base class for expected vault-operation failures."""
@@ -65,6 +97,10 @@ class VaultService:
 
     def vault_exists(self) -> bool:
         return self.vault_root.exists()
+
+    def count_notes(self) -> int:
+        """Count Markdown files eligible for full semantic synchronization."""
+        return len(eligible_markdown_files(self.vault_root, self.max_note_bytes))
 
     def resolve_path(self, raw: str) -> Path:
         normalized = raw.strip().replace("\\", "/")

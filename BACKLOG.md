@@ -162,9 +162,9 @@ States:
 
 Add debounced `watchdog`/inotify only after background indexing exists.
 
-### VB-015 — Rich health/readiness output — P0 ▶
+### VB-015 — Rich health/readiness output — P0 ✅
 
-**Status:** Next recommended task.
+**Status:** Completed on 2026-08-23.
 
 **Depends on:** VB-010; progress fields also depend on VB-011/VB-012 as applicable.
 
@@ -178,11 +178,27 @@ Expose:
 
 Preserve existing compatibility unless an explicit API-shape decision is made.
 
+**Implemented behavior**
+
+- `/health` preserves `ok`, `vault_exists`, `semantic_index_ready`, and operation ID `healthCheck`,
+- lifecycle state and semantic-search availability are reported separately,
+- process-local indexer activity and full-sync-required/recovery-debt state are exposed,
+- indexed-note/chunk counts use one coherent read-only SQLite snapshot,
+- vault-note count uses the same containment, exclusion and size policy as full synchronization
+  without reading note contents,
+- `last_successful_sync` is persisted in existing metadata only after a successful full synchronization,
+- health does not initialize the model, synchronize, search, embed, or mutate lifecycle state.
+
+The counts provide inferred completeness and operator context. VB-015 does not add explicit
+per-sync counters such as current note, percentage complete, current batch or ETA.
+
 ---
 
 ## Retrieval quality
 
-### VB-020 — Markdown heading-aware chunker — P0
+### VB-020 — Markdown heading-aware chunker — P0 ▶
+
+**Status:** Next recommended task.
 
 **Acceptance criteria**
 
@@ -302,8 +318,8 @@ VB-001 ✓
 → VB-011 ✓
 → VB-012 ✓
 → VB-013 ✓
-→ VB-015  NEXT
-→ VB-020
+→ VB-015 ✓
+→ VB-020  NEXT
 → VB-021
 → VB-022
 → VB-024

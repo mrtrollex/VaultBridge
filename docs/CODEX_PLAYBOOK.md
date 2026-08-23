@@ -78,7 +78,7 @@ Do not implement the recommended next task.
 At the current project state, the next recommended task is:
 
 ```text
-VB-013 — Enqueue reindex after note writes
+VB-020 — Markdown heading-aware chunker
 ```
 
 Always verify this against `PROJECT_STATE.md` and `BACKLOG.md` before starting.
