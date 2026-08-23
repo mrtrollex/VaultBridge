@@ -1,9 +1,11 @@
 import os
+import sqlite3
 
 import numpy as np
+import pytest
 
 from app.repositories.semantic import SemanticRepository
-from app.services.semantic_search import SemanticSearchService
+from app.services.semantic_search import IndexState, SemanticSearchService
 
 
 class FakeEmbedder:
@@ -31,18 +33,122 @@ class FakeEmbedder:
         return vectors
 
 
-def semantic_service(tmp_path) -> SemanticSearchService:
+def semantic_service(
+    tmp_path,
+    *,
+    embedder=None,
+    model_name: str = "example/model",
+) -> SemanticSearchService:
     vault_root = tmp_path / "vault"
-    vault_root.mkdir()
+    vault_root.mkdir(exist_ok=True)
     return SemanticSearchService(
         vault_root=vault_root,
         repository=SemanticRepository(tmp_path / "data" / "semantic-index.sqlite3"),
-        model_name="example/model",
+        model_name=model_name,
         max_note_bytes=1_000_000,
         chunk_chars=300,
         chunk_overlap=50,
-        embedder=FakeEmbedder(),
+        embedder=embedder or FakeEmbedder(),
     )
+
+
+def test_state_distinguishes_missing_storage_from_ready_empty_index(tmp_path):
+    service = semantic_service(tmp_path)
+
+    assert service.state is IndexState.UNINITIALIZED
+    assert service.is_storage_initialized() is False
+    assert service.is_ready() is False
+
+    assert service.sync() == {"indexed": 0, "unchanged": 0, "removed": 0}
+    assert service.is_storage_initialized() is True
+    assert service.state is IndexState.READY
+    assert service.is_ready() is True
+
+    restarted = semantic_service(tmp_path)
+    assert restarted.state is IndexState.READY
+
+
+def test_sync_exposes_indexing_state_and_persists_ready(tmp_path):
+    observed_states = []
+    service = semantic_service(tmp_path)
+
+    class ObservingEmbedder(FakeEmbedder):
+        def embed(self, texts):
+            observed_states.append(service.state)
+            return super().embed(texts)
+
+    service.embedder = ObservingEmbedder()
+    (service.vault_root / "note.md").write_text("TrueNAS backup storage.", encoding="utf-8")
+
+    service.sync()
+
+    assert observed_states == [IndexState.INDEXING]
+    assert service.state is IndexState.READY
+    assert service.repository.get_metadata("index_state") == "ready"
+
+
+def test_sync_failure_persists_error_and_a_later_sync_can_recover(tmp_path):
+    class FailingEmbedder:
+        def embed(self, texts):
+            raise RuntimeError("deterministic embedding failure")
+
+    service = semantic_service(tmp_path, embedder=FailingEmbedder())
+    (service.vault_root / "note.md").write_text("TrueNAS backup storage.", encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="deterministic embedding failure"):
+        service.sync()
+
+    assert service.state is IndexState.ERROR
+    assert service.repository.get_metadata("index_state") == "error"
+
+    restarted = semantic_service(tmp_path)
+    assert restarted.state is IndexState.ERROR
+    restarted.sync()
+    assert restarted.state is IndexState.READY
+
+
+def test_restart_converts_interrupted_indexing_state_to_error(tmp_path):
+    service = semantic_service(tmp_path)
+    service.repository.prepare_index(service.index_signature)
+    service.repository.set_metadata("index_state", "indexing")
+
+    restarted = semantic_service(tmp_path)
+
+    assert restarted.state is IndexState.ERROR
+    assert restarted.repository.get_metadata("index_state") == "error"
+
+
+def test_signature_mismatch_invalidates_index_and_resets_state(tmp_path):
+    service = semantic_service(tmp_path)
+    (service.vault_root / "note.md").write_text("TrueNAS backup storage.", encoding="utf-8")
+    service.sync()
+    assert service.state is IndexState.READY
+
+    changed = semantic_service(tmp_path, model_name="different/model")
+
+    assert changed.state is IndexState.UNINITIALIZED
+    assert changed.is_storage_initialized() is True
+    assert changed.repository.load_chunks() == []
+
+    changed.sync()
+    assert changed.state is IndexState.READY
+
+
+def test_legacy_compatible_index_without_state_is_inferred_ready_once(tmp_path):
+    service = semantic_service(tmp_path)
+    (service.vault_root / "note.md").write_text("TrueNAS backup storage.", encoding="utf-8")
+    service.sync()
+    connection = sqlite3.connect(service.db_path)
+    try:
+        connection.execute("DELETE FROM meta WHERE key='index_state'")
+        connection.commit()
+    finally:
+        connection.close()
+
+    restarted = semantic_service(tmp_path)
+
+    assert restarted.state is IndexState.READY
+    assert restarted.repository.get_metadata("index_state") == "ready"
 
 
 def test_sync_indexes_incrementally_without_loading_real_model(tmp_path):
@@ -70,7 +176,7 @@ def test_sync_removes_stale_notes_and_repository_chunks(tmp_path):
     note.unlink()
 
     assert service.sync() == {"indexed": 0, "unchanged": 0, "removed": 1}
-    assert service.repository.load_chunks(service.index_signature) == []
+    assert service.repository.load_chunks() == []
 
 
 def test_search_preserves_hybrid_ranking_scores_and_order(tmp_path):

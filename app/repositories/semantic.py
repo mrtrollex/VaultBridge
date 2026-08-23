@@ -26,6 +26,13 @@ class StoredChunk:
     dimensions: int
 
 
+@dataclass(frozen=True)
+class IndexStorageInfo:
+    signature_changed: bool
+    has_chunks: bool
+    index_state: str | None
+
+
 class SemanticRepositorySession:
     """Semantic index operations sharing one SQLite transaction."""
 
@@ -97,7 +104,7 @@ class SemanticRepository:
     def __init__(self, db_path: Path) -> None:
         self.db_path = db_path
 
-    def _connect(self, index_signature: str | None = None) -> sqlite3.Connection:
+    def _connect(self) -> sqlite3.Connection:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         connection = sqlite3.connect(self.db_path, timeout=30)
         connection.row_factory = sqlite3.Row
@@ -130,24 +137,48 @@ class SemanticRepository:
             CREATE INDEX IF NOT EXISTS idx_chunks_path ON chunks(path);
             """
         )
-        if index_signature is not None:
-            current = connection.execute(
-                "SELECT value FROM meta WHERE key='index_signature'"
-            ).fetchone()
-            if current and current["value"] != index_signature:
-                connection.execute("DELETE FROM chunks")
-                connection.execute("DELETE FROM notes")
-            connection.execute(
-                "INSERT INTO meta(key, value) VALUES('index_signature', ?) "
-                "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
-                (index_signature,),
-            )
-            connection.commit()
         return connection
 
+    @staticmethod
+    def _prepare_connection(
+        connection: sqlite3.Connection,
+        index_signature: str,
+    ) -> IndexStorageInfo:
+        current = connection.execute(
+            "SELECT value FROM meta WHERE key='index_signature'"
+        ).fetchone()
+        signature_changed = bool(current and current["value"] != index_signature)
+        if signature_changed:
+            connection.execute("DELETE FROM chunks")
+            connection.execute("DELETE FROM notes")
+            connection.execute("DELETE FROM meta WHERE key='index_state'")
+        connection.execute(
+            "INSERT INTO meta(key, value) VALUES('index_signature', ?) "
+            "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+            (index_signature,),
+        )
+        chunks = connection.execute("SELECT COUNT(*) FROM chunks").fetchone()
+        state = connection.execute(
+            "SELECT value FROM meta WHERE key='index_state'"
+        ).fetchone()
+        return IndexStorageInfo(
+            signature_changed=signature_changed,
+            has_chunks=bool(chunks and chunks[0] > 0),
+            index_state=state["value"] if state else None,
+        )
+
+    def prepare_index(self, index_signature: str) -> IndexStorageInfo:
+        connection = self._connect()
+        try:
+            info = self._prepare_connection(connection, index_signature)
+            connection.commit()
+            return info
+        finally:
+            connection.close()
+
     @contextmanager
-    def transaction(self, index_signature: str) -> Iterator[SemanticRepositorySession]:
-        connection = self._connect(index_signature)
+    def transaction(self) -> Iterator[SemanticRepositorySession]:
+        connection = self._connect()
         try:
             yield SemanticRepositorySession(connection)
             connection.commit()
@@ -157,8 +188,8 @@ class SemanticRepository:
         finally:
             connection.close()
 
-    def load_chunks(self, index_signature: str) -> list[StoredChunk]:
-        connection = self._connect(index_signature)
+    def load_chunks(self) -> list[StoredChunk]:
+        connection = self._connect()
         try:
             rows = connection.execute(
                 "SELECT path, chunk_index, heading, content, embedding, dimensions FROM chunks"
@@ -185,14 +216,29 @@ class SemanticRepository:
         finally:
             connection.close()
 
-    def is_initialized(self) -> bool:
+    def set_metadata(self, key: str, value: str) -> None:
+        connection = self._connect()
+        try:
+            connection.execute(
+                "INSERT INTO meta(key, value) VALUES(?, ?) "
+                "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                (key, value),
+            )
+            connection.commit()
+        finally:
+            connection.close()
+
+    def storage_initialized(self) -> bool:
         try:
             if not self.db_path.exists():
                 return False
             connection = sqlite3.connect(self.db_path, timeout=3)
             try:
-                row = connection.execute("SELECT COUNT(*) FROM chunks").fetchone()
-                return bool(row and row[0] > 0)
+                rows = connection.execute(
+                    "SELECT name FROM sqlite_master "
+                    "WHERE type='table' AND name IN ('meta', 'notes', 'chunks')"
+                ).fetchall()
+                return {row[0] for row in rows} == {"meta", "notes", "chunks"}
             finally:
                 connection.close()
         except sqlite3.Error:

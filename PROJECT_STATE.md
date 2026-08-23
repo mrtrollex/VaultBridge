@@ -16,6 +16,7 @@ This document is a snapshot for future Codex sessions so the agent does not have
 - SQLite semantic index using WAL
 - chunk configuration currently defaults to 600 chars / 100 overlap
 - semantic search uses cosine similarity plus lexical/title/path reranking
+- semantic index lifecycle state is persisted separately from SQLite schema availability
 - TrueNAS container commonly runs as UID/GID 568
 - existing production deployment uses port 8765 → 8000
 - separate `/vault` and `/data` mounts are used by the TrueNAS compose file

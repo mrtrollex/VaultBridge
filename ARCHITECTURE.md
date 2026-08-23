@@ -41,6 +41,11 @@ app/semantic.py      compatibility facade for the pre-VB-005 internal API
 
 The semantic service remains synchronous; background index lifecycle work is planned separately.
 
+Semantic index lifecycle state is persisted in the SQLite `meta` table as
+`uninitialized`, `indexing`, `ready`, or `error`. `SemanticSearchService` owns
+the transitions; `SemanticRepository` only stores the value and index data.
+Schema availability and search readiness are separate conditions.
+
 ---
 
 ## Target architecture
@@ -140,7 +145,8 @@ The semantic store currently needs these concepts:
 - schema/index version
 - embedding model
 - chunking configuration
-- state/progress
+- persisted lifecycle state (`uninitialized`, `indexing`, `ready`, `error`)
+- progress (planned)
 - last completed synchronization
 
 The index is **derived data**. Migrations should be used when cheap; otherwise a safe automatic rebuild is acceptable.

@@ -35,39 +35,46 @@ def test_repository_persists_existing_schema_and_index_metadata(tmp_path):
     note = stored_note()
     chunk = stored_chunk()
 
-    with repository.transaction(INDEX_SIGNATURE) as session:
+    assert repository.storage_initialized() is False
+    repository.prepare_index(INDEX_SIGNATURE)
+    with repository.transaction() as session:
         session.replace_note(note, [chunk])
 
     reopened = SemanticRepository(db_path)
-    with reopened.transaction(INDEX_SIGNATURE) as session:
+    reopened.prepare_index(INDEX_SIGNATURE)
+    with reopened.transaction() as session:
         assert session.load_notes() == {note.path: note}
-    assert reopened.load_chunks(INDEX_SIGNATURE) == [chunk]
+    assert reopened.load_chunks() == [chunk]
     assert reopened.get_metadata("index_signature") == INDEX_SIGNATURE
-    assert reopened.is_initialized() is True
+    assert reopened.storage_initialized() is True
 
 
 def test_repository_deletes_stale_note_and_cascades_chunks(tmp_path):
     repository = SemanticRepository(tmp_path / "semantic-index.sqlite3")
     note = stored_note()
 
-    with repository.transaction(INDEX_SIGNATURE) as session:
+    repository.prepare_index(INDEX_SIGNATURE)
+    with repository.transaction() as session:
         session.replace_note(note, [stored_chunk()])
-    with repository.transaction(INDEX_SIGNATURE) as session:
+    with repository.transaction() as session:
         _, removed = session.load_notes_and_remove_stale(set())
         assert removed == 1
 
-    assert repository.load_chunks(INDEX_SIGNATURE) == []
-    assert repository.is_initialized() is False
+    assert repository.load_chunks() == []
+    assert repository.storage_initialized() is True
 
 
 def test_repository_invalidates_data_when_index_signature_changes(tmp_path):
     repository = SemanticRepository(tmp_path / "semantic-index.sqlite3")
 
-    with repository.transaction(INDEX_SIGNATURE) as session:
+    repository.prepare_index(INDEX_SIGNATURE)
+    with repository.transaction() as session:
         session.replace_note(stored_note(), [stored_chunk()])
 
-    assert repository.load_chunks("v1|different/model|300|50") == []
-    with repository.transaction("v1|different/model|300|50") as session:
+    status = repository.prepare_index("v1|different/model|300|50")
+    assert status.signature_changed is True
+    assert repository.load_chunks() == []
+    with repository.transaction() as session:
         assert session.load_notes() == {}
 
 
@@ -126,5 +133,6 @@ def test_repository_reads_pre_extraction_sqlite_index_without_rebuild(tmp_path):
 
     repository = SemanticRepository(db_path)
 
-    assert repository.load_chunks(INDEX_SIGNATURE) == [chunk]
+    assert repository.prepare_index(INDEX_SIGNATURE).signature_changed is False
+    assert repository.load_chunks() == [chunk]
     assert repository.get_metadata("index_signature") == INDEX_SIGNATURE

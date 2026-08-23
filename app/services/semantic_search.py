@@ -6,6 +6,7 @@ import threading
 import unicodedata
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from enum import Enum
 from pathlib import Path
 from typing import Protocol, Sequence
 
@@ -15,6 +16,14 @@ from app.core.config import DEFAULT_SEMANTIC_MODEL, Settings
 from app.repositories.semantic import SemanticRepository, StoredChunk, StoredNote
 
 DEFAULT_MODEL = DEFAULT_SEMANTIC_MODEL
+INDEX_STATE_METADATA_KEY = "index_state"
+
+
+class IndexState(str, Enum):
+    UNINITIALIZED = "uninitialized"
+    INDEXING = "indexing"
+    READY = "ready"
+    ERROR = "error"
 
 
 class Embedder(Protocol):
@@ -101,6 +110,8 @@ class SemanticSearchService:
         self.chunk_overlap = max(0, min(chunk_overlap, self.chunk_chars // 2))
         self.embedder = embedder or FastEmbedder(model_name, self.cache_dir)
         self._lock = threading.RLock()
+        self._state_init_lock = threading.Lock()
+        self._state_initialized = False
 
     @property
     def db_path(self) -> Path:
@@ -109,6 +120,54 @@ class SemanticSearchService:
     @property
     def index_signature(self) -> str:
         return f"v1|{self.model_name}|{self.chunk_chars}|{self.chunk_overlap}"
+
+    def _persist_state(self, state: IndexState) -> IndexState:
+        self.repository.set_metadata(INDEX_STATE_METADATA_KEY, state.value)
+        return state
+
+    def _read_persisted_state(self) -> IndexState:
+        value = self.repository.get_metadata(INDEX_STATE_METADATA_KEY)
+        try:
+            return IndexState(value)
+        except (TypeError, ValueError):
+            return self._persist_state(IndexState.ERROR if value else IndexState.UNINITIALIZED)
+
+    def _initialize_state(self, *, create_storage: bool) -> IndexState:
+        if self._state_initialized:
+            return self._read_persisted_state()
+
+        with self._state_init_lock:
+            if self._state_initialized:
+                return self._read_persisted_state()
+            if not create_storage and not self.repository.storage_initialized():
+                return IndexState.UNINITIALIZED
+
+            storage = self.repository.prepare_index(self.index_signature)
+            if storage.signature_changed:
+                state = IndexState.UNINITIALIZED
+            elif storage.index_state is None:
+                state = IndexState.READY if storage.has_chunks else IndexState.UNINITIALIZED
+            else:
+                try:
+                    state = IndexState(storage.index_state)
+                except ValueError:
+                    state = IndexState.ERROR
+                if state is IndexState.INDEXING:
+                    state = IndexState.ERROR
+
+            self._persist_state(state)
+            self._state_initialized = True
+            return state
+
+    @property
+    def state(self) -> IndexState:
+        return self._initialize_state(create_storage=False)
+
+    def is_storage_initialized(self) -> bool:
+        return self.repository.storage_initialized()
+
+    def is_ready(self) -> bool:
+        return self.state is IndexState.READY
 
     def reconfigure(self, *, vault_root: Path | None = None, max_note_bytes: int | None = None) -> None:
         with self._lock:
@@ -296,76 +355,87 @@ class SemanticSearchService:
     def sync(self) -> dict[str, int]:
         """Index only new/changed notes and remove deleted notes."""
         with self._lock:
-            files = self._eligible_files()
-            seen = {str(path.relative_to(self.vault_root)).replace("\\", "/") for path in files}
-            indexed = unchanged = removed = 0
+            self._initialize_state(create_storage=True)
+            self._persist_state(IndexState.INDEXING)
+            try:
+                files = self._eligible_files()
+                seen = {
+                    str(path.relative_to(self.vault_root)).replace("\\", "/") for path in files
+                }
+                indexed = unchanged = removed = 0
 
-            with self.repository.transaction(self.index_signature) as session:
-                known, removed = session.load_notes_and_remove_stale(seen)
+                with self.repository.transaction() as session:
+                    known, removed = session.load_notes_and_remove_stale(seen)
 
-                for path in files:
-                    relative_path = str(path.relative_to(self.vault_root)).replace("\\", "/")
-                    stat = path.stat()
-                    previous = known.get(relative_path)
-                    if (
-                        previous
-                        and previous.mtime_ns == stat.st_mtime_ns
-                        and previous.size == stat.st_size
-                    ):
-                        unchanged += 1
-                        continue
+                    for path in files:
+                        relative_path = str(path.relative_to(self.vault_root)).replace("\\", "/")
+                        stat = path.stat()
+                        previous = known.get(relative_path)
+                        if (
+                            previous
+                            and previous.mtime_ns == stat.st_mtime_ns
+                            and previous.size == stat.st_size
+                        ):
+                            unchanged += 1
+                            continue
 
-                    digest = self._sha256(path)
-                    if previous and previous.sha256 == digest:
-                        session.update_note_metadata(
-                            path=relative_path,
-                            mtime_ns=stat.st_mtime_ns,
-                            size=stat.st_size,
-                        )
-                        unchanged += 1
-                        continue
-
-                    try:
-                        note_text = path.read_text(encoding="utf-8")
-                    except (UnicodeDecodeError, OSError):
-                        continue
-
-                    chunks = self._chunk_markdown(path.stem, note_text)
-                    vectors = self.embedder.embed(
-                        [f"{path.stem}\n{content}" for _, content in chunks]
-                    )
-                    if len(vectors) != len(chunks):
-                        raise RuntimeError(
-                            "Embedding model returned an unexpected number of vectors"
-                        )
-
-                    stored_chunks: list[StoredChunk] = []
-                    for index, ((heading, content), vector) in enumerate(
-                        zip(chunks, vectors, strict=True)
-                    ):
-                        normalized = self._normalize(vector)
-                        stored_chunks.append(
-                            StoredChunk(
+                        digest = self._sha256(path)
+                        if previous and previous.sha256 == digest:
+                            session.update_note_metadata(
                                 path=relative_path,
-                                chunk_index=index,
-                                heading=heading,
-                                content=content,
-                                embedding=normalized.astype(np.float32).tobytes(),
-                                dimensions=int(normalized.size),
+                                mtime_ns=stat.st_mtime_ns,
+                                size=stat.st_size,
                             )
-                        )
-                    session.replace_note(
-                        StoredNote(
-                            path=relative_path,
-                            mtime_ns=stat.st_mtime_ns,
-                            size=stat.st_size,
-                            sha256=digest,
-                            indexed_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                        ),
-                        stored_chunks,
-                    )
-                    indexed += 1
+                            unchanged += 1
+                            continue
 
+                        try:
+                            note_text = path.read_text(encoding="utf-8")
+                        except (UnicodeDecodeError, OSError):
+                            continue
+
+                        chunks = self._chunk_markdown(path.stem, note_text)
+                        vectors = self.embedder.embed(
+                            [f"{path.stem}\n{content}" for _, content in chunks]
+                        )
+                        if len(vectors) != len(chunks):
+                            raise RuntimeError(
+                                "Embedding model returned an unexpected number of vectors"
+                            )
+
+                        stored_chunks: list[StoredChunk] = []
+                        for index, ((heading, content), vector) in enumerate(
+                            zip(chunks, vectors, strict=True)
+                        ):
+                            normalized = self._normalize(vector)
+                            stored_chunks.append(
+                                StoredChunk(
+                                    path=relative_path,
+                                    chunk_index=index,
+                                    heading=heading,
+                                    content=content,
+                                    embedding=normalized.astype(np.float32).tobytes(),
+                                    dimensions=int(normalized.size),
+                                )
+                            )
+                        session.replace_note(
+                            StoredNote(
+                                path=relative_path,
+                                mtime_ns=stat.st_mtime_ns,
+                                size=stat.st_size,
+                                sha256=digest,
+                                indexed_at=datetime.now(timezone.utc).isoformat(
+                                    timespec="seconds"
+                                ),
+                            ),
+                            stored_chunks,
+                        )
+                        indexed += 1
+            except Exception:
+                self._persist_state(IndexState.ERROR)
+                raise
+
+            self._persist_state(IndexState.READY)
             return {"indexed": indexed, "unchanged": unchanged, "removed": removed}
 
     def search(
@@ -386,7 +456,7 @@ class SemanticSearchService:
             prefix = f"{folder}/" if folder else ""
             best: dict[str, tuple[float, float, float, StoredChunk]] = {}
 
-            for chunk in self.repository.load_chunks(self.index_signature):
+            for chunk in self.repository.load_chunks():
                 if prefix and not chunk.path.startswith(prefix):
                     continue
                 vector = np.frombuffer(
@@ -431,7 +501,8 @@ class SemanticSearchService:
             return results
 
     def is_initialized(self) -> bool:
-        return self.repository.is_initialized()
+        """Compatibility alias for callers that previously checked index readiness."""
+        return self.is_ready()
 
 
 def semantic_search_service_from_settings(
