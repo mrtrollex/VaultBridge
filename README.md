@@ -104,12 +104,15 @@ FastEmbed runs the ONNX model locally on CPU. Markdown is split on ATX heading b
 practical, and each chunk retains its heading hierarchy. Oversized sections remain bounded and are
 split through exact source slices while fitted fenced-code blocks stay intact. Adjacent tiny sections
 coalesce into useful bounded chunks whose metadata identifies the contained heading range. Markdown
-chunks and normalized embeddings are stored in SQLite. The semantic database is derived data and can
-always be rebuilt from the vault.
+chunks and normalized embeddings are stored in SQLite. Persisted chunk content remains unchanged;
+embedding input adds the canonical heading hierarchy between note title and content when that context
+is not already the chunk's first heading. The semantic database is derived data and can always be
+rebuilt from the vault.
 
-Upgrading from the earlier fixed-size chunker changes the semantic index signature. VaultBridge
-automatically discards incompatible derived chunks and rebuilds them from the Markdown vault; no
-manual SQLite migration is required.
+Upgrading from the earlier fixed-size chunker or the VB-020 heading-aware embedding representation
+changes the semantic index signature. VaultBridge automatically discards incompatible derived chunks
+and rebuilds them from the Markdown vault; no manual SQLite migration is required. If a targeted
+refresh encounters an older signature, it safely performs the required full rebuild.
 
 Example:
 

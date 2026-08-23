@@ -43,6 +43,15 @@ class FakeEmbedder:
         return vectors
 
 
+class RecordingEmbedder(FakeEmbedder):
+    def __init__(self):
+        self.calls = []
+
+    def embed(self, texts):
+        self.calls.append(list(texts))
+        return super().embed(texts)
+
+
 class TrackingSession:
     def __init__(self, session):
         self._session = session
@@ -1435,31 +1444,278 @@ def test_full_and_targeted_sync_use_heading_aware_chunker(tmp_path):
     ]
 
 
-def test_v1_chunker_signature_is_invalidated_without_schema_migration(tmp_path):
+def test_full_sync_records_exact_headingless_input_and_preserves_chunk(tmp_path):
+    embedder = RecordingEmbedder()
+    service = semantic_service(tmp_path, embedder=embedder)
+    note = service.vault_root / "Title.md"
+    note.write_bytes(b"body content")
+
+    assert service.sync() == {"indexed": 1, "unchanged": 0, "removed": 0}
+    assert embedder.calls == [["Title\nbody content"]]
+    assert [chunk.content for chunk in service.repository.load_chunks()] == ["body content"]
+
+
+@pytest.mark.parametrize(
+    ("content", "expected_input", "expected_heading"),
+    [
+        (
+            "## PostgreSQL Backups\nbody",
+            "Runbook\n## PostgreSQL Backups\nbody",
+            "PostgreSQL Backups",
+        ),
+        (
+            "##  PostgreSQL Backups\nbody",
+            "Runbook\n##  PostgreSQL Backups\nbody",
+            "PostgreSQL Backups",
+        ),
+        (
+            "##\tPostgreSQL Backups\nbody",
+            "Runbook\n##\tPostgreSQL Backups\nbody",
+            "PostgreSQL Backups",
+        ),
+        (
+            "## PostgreSQL Backups ##\nbody",
+            "Runbook\n## PostgreSQL Backups ##\nbody",
+            "PostgreSQL Backups",
+        ),
+        (
+            "## PostgreSQL Backups    ###\nbody",
+            "Runbook\n## PostgreSQL Backups    ###\nbody",
+            "PostgreSQL Backups",
+        ),
+        (
+            "## C# Backups\nbody",
+            "Runbook\n## C# Backups\nbody",
+            "C# Backups",
+        ),
+        (
+            "## PostgreSQL Backups\r\nbody\r\n",
+            "Runbook\n## PostgreSQL Backups\r\nbody\r\n",
+            "PostgreSQL Backups",
+        ),
+        (
+            "## Nočné zálohy\nobnova dát",
+            "Runbook\n## Nočné zálohy\nobnova dát",
+            "Nočné zálohy",
+        ),
+    ],
+    ids=[
+        "ordinary",
+        "multiple-spaces",
+        "tab",
+        "closing-hashes",
+        "spaced-closing-hashes",
+        "internal-hash",
+        "crlf",
+        "unicode",
+    ],
+)
+def test_full_sync_deduplicates_canonical_atx_heading_inputs(
+    tmp_path,
+    content,
+    expected_input,
+    expected_heading,
+):
+    embedder = RecordingEmbedder()
+    service = semantic_service(tmp_path, embedder=embedder)
+    (service.vault_root / "Runbook.md").write_bytes(content.encode("utf-8"))
+
+    assert service.sync() == {"indexed": 1, "unchanged": 0, "removed": 0}
+    assert embedder.calls == [[expected_input]]
+    stored_chunks = service.repository.load_chunks()
+    assert [(chunk.heading, chunk.content) for chunk in stored_chunks] == [
+        (expected_heading, content)
+    ]
+
+
+def test_embedding_text_builder_deduplicates_only_exact_unindented_plain_heading(tmp_path):
+    service = semantic_service(tmp_path)
+
+    assert service._build_embedding_text(
+        "Runbook",
+        "PostgreSQL Backups",
+        "PostgreSQL Backups\nbody",
+    ) == "Runbook\nPostgreSQL Backups\nbody"
+
+
+@pytest.mark.parametrize(
+    ("heading", "content", "expected_input"),
+    [
+        (
+            "PostgreSQL Backups",
+            "PostgreSQL Backup\nbody",
+            "Runbook\nPostgreSQL Backups\nPostgreSQL Backup\nbody",
+        ),
+        (
+            "PostgreSQL Backups",
+            "PostgreSQL Backups extended\nbody",
+            "Runbook\nPostgreSQL Backups\nPostgreSQL Backups extended\nbody",
+        ),
+        (
+            "PostgreSQL Backups",
+            "    PostgreSQL Backups\nbody",
+            "Runbook\nPostgreSQL Backups\n    PostgreSQL Backups\nbody",
+        ),
+        (
+            "PostgreSQL Backups",
+            "Guide to PostgreSQL Backups\nbody",
+            "Runbook\nPostgreSQL Backups\nGuide to PostgreSQL Backups\nbody",
+        ),
+        (
+            "Server > Storage > Backups",
+            "### Other Backups\nbody",
+            "Runbook\nServer > Storage > Backups\n### Other Backups\nbody",
+        ),
+    ],
+    ids=["singular", "extended", "indented-code", "contains", "different-heading"],
+)
+def test_embedding_text_builder_does_not_false_deduplicate(
+    tmp_path,
+    heading,
+    content,
+    expected_input,
+):
+    service = semantic_service(tmp_path)
+
+    assert service._build_embedding_text("Runbook", heading, content) == expected_input
+
+
+def test_full_sync_keeps_heading_context_for_indented_matching_continuation(tmp_path):
+    embedder = RecordingEmbedder()
+    service = semantic_service(
+        tmp_path,
+        embedder=embedder,
+        chunk_chars=250,
+        chunk_overlap=0,
+    )
+    first_chunk = "# PostgreSQL Backups\n\n" + ("a" * 220) + "\n\n"
+    second_chunk = "    PostgreSQL Backups\nbody"
+    (service.vault_root / "Runbook.md").write_bytes(
+        f"{first_chunk}{second_chunk}".encode("utf-8")
+    )
+
+    assert service.sync() == {"indexed": 1, "unchanged": 0, "removed": 0}
+    assert embedder.calls == [[
+        f"Runbook\n{first_chunk}",
+        "Runbook\nPostgreSQL Backups\n    PostgreSQL Backups\nbody",
+    ]]
+    assert [chunk.content for chunk in service.repository.load_chunks()] == [
+        first_chunk,
+        second_chunk,
+    ]
+
+
+def test_full_sync_records_exact_nested_hierarchy_input(tmp_path):
+    embedder = RecordingEmbedder()
+    service = semantic_service(tmp_path, embedder=embedder, chunk_chars=300, chunk_overlap=0)
+    root_section = "# Server\n\n" + ("Overview. " * 20) + "\n\n"
+    backup_section = "## Backups\n\n" + ("Restore. " * 20)
+    (service.vault_root / "runbook.md").write_bytes(
+        f"{root_section}{backup_section}".encode("utf-8")
+    )
+
+    assert service.sync() == {"indexed": 1, "unchanged": 0, "removed": 0}
+    assert embedder.calls == [[
+        f"runbook\n{root_section}",
+        f"runbook\nServer > Backups\n{backup_section}",
+    ]]
+    assert [chunk.heading for chunk in service.repository.load_chunks()] == [
+        "Server",
+        "Server > Backups",
+    ]
+
+
+def test_full_sync_records_exact_coalesced_heading_input(tmp_path):
+    embedder = RecordingEmbedder()
+    service = semantic_service(
+        tmp_path,
+        embedder=embedder,
+        chunk_chars=250,
+        chunk_overlap=0,
+    )
+    markdown = "## PostgreSQL Backups\nshared body\n\n## TrueNAS Backups\nshared body"
+    (service.vault_root / "Runbook.md").write_bytes(markdown.encode("utf-8"))
+
+    assert service.sync() == {"indexed": 1, "unchanged": 0, "removed": 0}
+    assert embedder.calls == [[
+        "Runbook\n"
+        "PostgreSQL Backups … TrueNAS Backups\n"
+        "## PostgreSQL Backups\nshared body\n\n"
+        "## TrueNAS Backups\nshared body"
+    ]]
+    stored_chunk = service.repository.load_chunks()[0]
+    assert stored_chunk.heading == "PostgreSQL Backups … TrueNAS Backups"
+    assert stored_chunk.content == markdown
+
+
+def test_targeted_sync_records_exact_input_and_preserves_chunk(tmp_path):
+    embedder = RecordingEmbedder()
+    service = semantic_service(tmp_path, embedder=embedder)
+    note = service.vault_root / "runbook.md"
+    note.write_bytes(b"initial body")
+
+    assert service.sync() == {"indexed": 1, "unchanged": 0, "removed": 0}
+    assert embedder.calls == [["runbook\ninitial body"]]
+
+    updated = "# Platform\n\n## Storage\n\n### Zálohy\n\nAktualizované telo."
+    note.write_bytes(updated.encode("utf-8"))
+    assert service.sync_paths(["runbook.md"]) == {
+        "indexed": 1,
+        "unchanged": 0,
+        "removed": 0,
+    }
+    assert embedder.calls[-1] == [
+        "runbook\n"
+        "Platform > Storage > Zálohy\n"
+        "# Platform\n\n## Storage\n\n### Zálohy\n\nAktualizované telo."
+    ]
+    stored_chunk = service.repository.load_chunks()[0]
+    assert stored_chunk.heading == "Platform > Storage > Zálohy"
+    assert stored_chunk.content == updated
+
+
+def test_search_embeds_exact_raw_query_text(tmp_path):
+    embedder = RecordingEmbedder()
+    service = semantic_service(tmp_path, embedder=embedder)
+    (service.vault_root / "note.md").write_bytes(b"body")
+    service.sync()
+    embedder.calls.clear()
+
+    service.search("Nočné zálohy?", min_score=0.0)
+
+    assert embedder.calls == [["Nočné zálohy?"]]
+
+
+def test_v2_heading_aware_signature_is_invalidated_without_schema_migration(tmp_path):
     service = semantic_service(tmp_path)
     (service.vault_root / "note.md").write_text("# Note\n\nBody.", encoding="utf-8")
     service.sync()
-    service.repository.set_metadata("index_signature", "v1|example/model|300|50")
+    service.repository.set_metadata(
+        "index_signature",
+        "v2-heading-aware|example/model|300|50",
+    )
 
     restarted = semantic_service(tmp_path)
 
-    assert restarted.index_signature == "v2-heading-aware|example/model|300|50"
+    assert restarted.index_signature == "v3-heading-context|example/model|300|50"
     assert restarted.state is IndexState.UNINITIALIZED
     assert restarted.repository.load_chunks() == []
 
 
-def test_compatible_v2_heading_aware_index_is_reused(tmp_path):
+def test_compatible_v3_heading_context_index_is_reused(tmp_path):
     service = semantic_service(tmp_path)
     note = service.vault_root / "note.md"
     note.write_text("# Note\n\nBody.", encoding="utf-8")
     service.sync()
     original_chunks = service.repository.load_chunks()
 
-    restarted = semantic_service(tmp_path)
+    embedder = RecordingEmbedder()
+    restarted = semantic_service(tmp_path, embedder=embedder)
 
     assert restarted.state is IndexState.READY
     assert restarted.repository.load_chunks() == original_chunks
     assert restarted.sync() == {"indexed": 0, "unchanged": 1, "removed": 0}
+    assert embedder.calls == []
 
 
 @pytest.mark.parametrize(
@@ -1471,7 +1727,7 @@ def test_compatible_v2_heading_aware_index_is_reused(tmp_path):
     ],
     ids=["model", "chunk-size", "overlap"],
 )
-def test_v2_index_configuration_changes_invalidate_all_chunks(
+def test_v3_index_configuration_changes_invalidate_all_chunks(
     tmp_path,
     changed_configuration,
 ):
@@ -1485,27 +1741,31 @@ def test_v2_index_configuration_changes_invalidate_all_chunks(
     assert changed.repository.load_chunks() == []
 
 
-def test_targeted_refresh_against_v1_index_runs_safe_full_v2_rebuild(tmp_path):
+def test_targeted_refresh_against_v2_index_runs_safe_full_v3_rebuild(tmp_path):
     service = semantic_service(tmp_path)
     first = service.vault_root / "first.md"
     second = service.vault_root / "second.md"
-    first.write_text("# First\n\nOriginal first.", encoding="utf-8")
-    second.write_text("# Second\n\nOriginal second.", encoding="utf-8")
+    first.write_bytes(b"# Server\n\n## Backups\n\nOriginal first.")
+    second.write_bytes(b"# Storage\n\n## Replication\n\nOriginal second.")
     service.sync()
 
     connection = sqlite3.connect(service.db_path)
     try:
         connection.execute(
             "UPDATE meta SET value=? WHERE key='index_signature'",
-            ("v1|example/model|300|50",),
+            ("v2-heading-aware|example/model|300|50",),
         )
-        connection.execute("UPDATE chunks SET content='legacy-v1-chunk'")
+        connection.execute(
+            "UPDATE chunks SET content='legacy-v2-chunk', embedding=?",
+            (b"legacy-v2-embedding",),
+        )
         connection.commit()
     finally:
         connection.close()
 
-    first.write_text("# First\n\nUpdated first.", encoding="utf-8")
-    restarted = semantic_service(tmp_path)
+    first.write_bytes(b"# Server\n\n## Backups\n\nUpdated first.")
+    embedder = RecordingEmbedder()
+    restarted = semantic_service(tmp_path, embedder=embedder)
 
     assert restarted.sync_paths(["first.md"]) == {
         "indexed": 2,
@@ -1514,5 +1774,18 @@ def test_targeted_refresh_against_v1_index_runs_safe_full_v2_rebuild(tmp_path):
     }
     chunks = restarted.repository.load_chunks()
     assert {chunk.path for chunk in chunks} == {"first.md", "second.md"}
-    assert all(chunk.content != "legacy-v1-chunk" for chunk in chunks)
+    assert all(chunk.content != "legacy-v2-chunk" for chunk in chunks)
+    assert all(chunk.embedding != b"legacy-v2-embedding" for chunk in chunks)
     assert restarted.repository.get_metadata("index_signature") == restarted.index_signature
+    assert embedder.calls == [
+        [
+            "first\n"
+            "Server > Backups\n"
+            "# Server\n\n## Backups\n\nUpdated first."
+        ],
+        [
+            "second\n"
+            "Storage > Replication\n"
+            "# Storage\n\n## Replication\n\nOriginal second."
+        ],
+    ]

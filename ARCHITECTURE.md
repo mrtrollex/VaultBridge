@@ -108,6 +108,13 @@ overlap is used only for split oversized prose; it does not bridge semantic sect
 code. A fence that fits within one chunk is kept intact. Oversized fenced code is split only when the
 configured bound makes that unavoidable.
 
+Chunk persistence and embedding representation are separate. SQLite stores the exact chunk content
+produced by the heading-aware chunker. The text sent to the embedder is built in linear time as
+`title\ncontent` for headingless chunks or `title\nheading hierarchy\ncontent` when canonical heading
+metadata adds context. If the same plain or ATX heading is already the chunk's first line, it is not
+prepended again. Full synchronization and targeted refresh both pass through this builder; query
+text continues to be embedded directly, and the ranking pipeline is unchanged.
+
 Search and synchronization share one embedder instance. A narrow execution lock serializes only
 calls into that embedder; vault scanning, SQLite access, ranking, and response construction remain
 concurrent.
@@ -221,14 +228,16 @@ The semantic store currently needs these concepts:
 - schema/index version
 - embedding model
 - chunking configuration
-- chunker format version (`v2-heading-aware`)
+- chunker/embedding-input format version (`v3-heading-context`)
 - persisted lifecycle state (`uninitialized`, `indexing`, `ready`, `error`)
 - explicit per-sync progress such as current note, percentage, batch and ETA (planned)
 - last successful full synchronization
 
 The index is **derived data**. Migrations should be used when cheap; otherwise a safe automatic
 rebuild is acceptable. A chunker-format signature change clears incompatible notes/chunks and
-rebuilds them from Markdown without a SQLite schema migration.
+rebuilds them from Markdown without a SQLite schema migration. A targeted refresh that discovers an
+older signature performs the required full rebuild before it can restore the index to `ready`, so
+embedding generations are not mixed.
 
 ---
 
