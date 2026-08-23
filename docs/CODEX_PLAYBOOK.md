@@ -1,82 +1,182 @@
 # Codex Playbook for VaultBridge
 
-Use this file when working on the project in Codex.
+Use this file when working on VaultBridge in Codex.
+
+## Source-of-truth order
+
+For every task, use repository context in this order:
+
+1. `AGENTS.md` — mandatory project rules and constraints
+2. `PROJECT_STATE.md` — factual current state
+3. `ARCHITECTURE.md` — current/target boundaries
+4. `ROADMAP.md` — milestone direction
+5. `BACKLOG.md` — authoritative scope and acceptance criteria for the exact task
+
+If these documents disagree, do not guess. Report the inconsistency before implementation.
 
 ## Recommended workflow
 
-Do not ask Codex to "implement the roadmap" in one request. Give it one backlog item at a time.
+Do **not** ask Codex to implement the roadmap as a whole.
 
-### Prompt template
+Use one backlog item per branch/PR.
+
+Typical flow:
 
 ```text
-Work on VaultBridge task <TASK-ID> from BACKLOG.md.
+main
+  |
+  +-- vb-011-batch-index-commits
+  |
+  +-- vb-012-background-indexing
+  |
+  +-- ...
+```
+
+## Standard implementation prompt
+
+```text
+Implement <TASK-ID> from BACKLOG.md.
 
 Before changing code:
-1. Read AGENTS.md, ROADMAP.md, ARCHITECTURE.md and the task definition.
-2. Inspect the existing implementation and tests.
-3. State a short implementation plan.
+
+1. Read AGENTS.md.
+2. Read PROJECT_STATE.md.
+3. Read ARCHITECTURE.md.
+4. Read ROADMAP.md.
+5. Read the exact <TASK-ID> section in BACKLOG.md.
+6. Inspect the current implementation and relevant tests.
+
+First provide a short implementation plan.
 
 Requirements:
-- keep the change limited to this task,
-- preserve existing API behaviour unless the task explicitly says otherwise,
-- add/update tests,
-- do not add infrastructure or dependencies unless necessary,
-- run the checks required by AGENTS.md.
+
+- keep the change strictly limited to this task,
+- preserve existing API behavior unless the task explicitly changes it,
+- preserve security and deployment compatibility,
+- add/update focused tests,
+- do not add infrastructure or dependencies unless required by the task,
+- run all checks required by AGENTS.md,
+- do not implement the next backlog task.
 
 At the end report:
-- files changed,
-- behaviour changed,
-- tests/checks run and results,
-- migration/reindex/security implications,
-- any follow-up task you recommend.
+
+1. Summary
+2. Files changed
+3. Behavior changed
+4. Compatibility/migration impact
+5. Security impact
+6. Tests/checks and results
+7. Remaining risks
+8. Confirmation that acceptance criteria are satisfied
+9. Recommended next backlog task
+
+Do not implement the recommended next task.
 ```
 
-## First five Codex prompts
+## Current next task
 
-### 1. VB-001 — project identity
+At the current project state, the next recommended task is:
 
 ```text
-Implement VB-001 from BACKLOG.md. Normalize the public project identity to VaultBridge in documentation and user-facing application metadata, but do not rename deployment paths/container names that would break the existing TrueNAS installation. Document remaining legacy names as migration work. Run the required checks.
+VB-011 — Batch index commits
 ```
 
-### 2. VB-002 — typed config
+Always verify this against `PROJECT_STATE.md` and `BACKLOG.md` before starting.
+
+## Review prompt
+
+After a significant task is implemented, run a separate review before merging:
 
 ```text
-Implement VB-002. Introduce a typed Settings object for all runtime configuration currently read from environment variables. Preserve every existing default. Add focused tests for valid overrides and invalid numeric configuration. Do not refactor routers/services in the same change.
+Review the changes made for <TASK-ID> as a senior Python/FastAPI maintainer.
+
+Read AGENTS.md, PROJECT_STATE.md, ARCHITECTURE.md, ROADMAP.md and the exact
+task in BACKLOG.md first.
+
+Do not modify files.
+
+Look specifically for:
+
+- acceptance-criteria gaps,
+- API regressions,
+- path/security issues,
+- authentication regressions,
+- unnecessary abstractions,
+- concurrency/lifecycle problems,
+- SQLite/index corruption risks,
+- backward-compatibility problems,
+- missing failure-case tests,
+- accidental scope creep.
+
+Report findings ordered by severity.
 ```
 
-### 3. VB-004 — VaultService
+If findings are confirmed:
 
 ```text
-Implement VB-004. Extract vault path resolution, Markdown I/O, filename sanitation, size checks and note enumeration from app/main.py into a VaultService. Preserve the current API contract and error behaviour. Add service-level tests including traversal failures.
+Fix only the confirmed findings from the previous review.
+Keep scope narrow and rerun all relevant checks.
+Do not implement unrelated cleanup or the next backlog task.
 ```
 
-### 4. VB-003 — routers
+## Documentation update rule
 
-```text
-Implement VB-003 after VB-002 and VB-004. Split FastAPI routes into routers while keeping paths, operationIds, request/response behaviour and authentication unchanged. Keep main.py as application wiring. Existing API tests should remain valid.
-```
+After a task is merged:
 
-### 5. VB-005 — semantic boundaries
+- `BACKLOG.md` — mark the task completed and identify the next task
+- `PROJECT_STATE.md` — update factual current state and test baseline
+- `ARCHITECTURE.md` — update only when architecture actually changed
+- `ROADMAP.md` — update only when milestone/current-position information changed
+- `CHANGELOG.md` — update when appropriate for the public project history
 
-```text
-Implement VB-005. Refactor semantic search so SQLite persistence is separated from embedding/ranking logic. Preserve current index format if practical; if not, bump the index signature and document automatic rebuild. Keep FakeEmbedder tests model-download-free.
-```
-
-## Review prompts
-
-After a significant task, ask Codex separately:
-
-```text
-Review the changes made for <TASK-ID> as a senior Python/FastAPI maintainer. Look specifically for API regressions, path/security issues, unnecessary abstractions, concurrency problems, index corruption risks, and missing tests. Do not modify files yet; report findings ordered by severity.
-```
-
-Then, if findings are valid:
-
-```text
-Fix only the confirmed findings from the previous review. Keep scope narrow and rerun all relevant checks.
-```
+Avoid mechanical documentation edits that do not reflect real behavior changes.
 
 ## Architecture-change rule
 
-For changes that introduce a service, storage engine, authentication scheme, API-breaking behaviour, or major dependency, have Codex create an ADR first and stop for review before implementation.
+For changes that introduce any of the following, create/review an ADR before implementation:
+
+- new external service,
+- new storage engine,
+- authentication scheme change,
+- API-breaking behavior,
+- major runtime dependency,
+- distributed coordination model.
+
+## Dependency rule
+
+Do not add a dependency because it is convenient.
+
+Before adding one, explain:
+
+- concrete problem solved,
+- why current stack/stdlib is insufficient,
+- runtime and image-size impact,
+- security/maintenance implications,
+- whether it introduces a network/service dependency.
+
+## Semantic-search rule
+
+Before changing the default embedding model, chunk representation, ranking weights or thresholds:
+
+- ensure repeatable evaluation cases exist,
+- record baseline results,
+- compare before/after quality and latency,
+- avoid accepting changes solely because the model is larger or newer.
+
+## Branch hygiene
+
+Prefer one task per branch:
+
+```text
+vb-<number>-short-name
+```
+
+Examples:
+
+```text
+vb-011-batch-index-commits
+vb-012-background-indexing
+vb-020-markdown-chunker
+```
+
+Keep refactors and behavior changes separate unless the task explicitly requires both.
