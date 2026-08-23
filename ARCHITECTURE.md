@@ -30,7 +30,8 @@ The `.md` files are authoritative. The SQLite semantic index is disposable deriv
 ### Current implementation modules
 
 ```text
-app/main.py          HTTP API, models, auth, route wiring
+app/main.py          application construction, dependency wiring, router registration
+app/api/             health, note and search routers plus HTTP dependencies
 app/core/config.py   typed environment configuration
 app/services/vault.py safe path resolution and Markdown note operations
 app/semantic.py      chunking, embeddings, SQLite index, hybrid ranking

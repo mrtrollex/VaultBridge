@@ -34,20 +34,25 @@ def client_for(
     api_key: str = "test-secret",
     max_note_bytes: int = 1_000_000,
 ) -> TestClient:
-    main.settings = Settings(api_key=api_key, vault_path=tmp_path, max_note_bytes=max_note_bytes)
-    main.VAULT_SERVICE = VaultService(
-        vault_root=main.settings.vault_path,
-        max_note_bytes=main.settings.max_note_bytes,
+    settings = Settings(api_key=api_key, vault_path=tmp_path, max_note_bytes=max_note_bytes)
+    vault_service = VaultService(
+        vault_root=settings.vault_path,
+        max_note_bytes=settings.max_note_bytes,
     )
-    main.SEMANTIC_INDEX = SemanticIndex(
-        vault_root=main.settings.vault_path,
+    semantic_index = SemanticIndex(
+        vault_root=settings.vault_path,
         db_path=tmp_path / ".test-semantic" / "index.sqlite3",
-        max_note_bytes=main.settings.max_note_bytes,
+        max_note_bytes=settings.max_note_bytes,
         chunk_chars=300,
         chunk_overlap=50,
         embedder=FakeEmbedder(),
     )
-    return TestClient(main.app)
+    app = main.create_app(
+        settings=settings,
+        vault_service=vault_service,
+        semantic_index=semantic_index,
+    )
+    return TestClient(app)
 
 
 def auth():
@@ -58,6 +63,29 @@ def test_application_metadata():
     assert main.app.title == "VaultBridge"
     assert main.app.version == "0.1.0"
     assert main.app.description == "Self-hosted REST and semantic search API for an Obsidian vault."
+    assert main.app.docs_url is None
+    assert main.app.redoc_url is None
+    assert main.app.openapi_url is None
+
+
+def test_router_registration_preserves_public_contract():
+    expected = {
+        ("GET", "/health", "healthCheck"),
+        ("POST", "/notes", "createNote"),
+        ("POST", "/notes/append", "appendNote"),
+        ("GET", "/notes/read", "readNote"),
+        ("POST", "/notes/search", "searchNotes"),
+        ("POST", "/notes/related", "findRelatedNotes"),
+        ("GET", "/notes/list", "listNotes"),
+    }
+    schema = main.app.openapi()
+    actual = {
+        (method.upper(), path, operation["operationId"])
+        for path, path_item in schema["paths"].items()
+        for method, operation in path_item.items()
+    }
+
+    assert actual == expected
 
 
 def test_auth_required(tmp_path):
