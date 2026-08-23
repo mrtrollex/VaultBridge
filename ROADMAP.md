@@ -1,320 +1,380 @@
 # VaultBridge Roadmap
 
-> **Project goal:** turn the current working Obsidian ↔ AI bridge into a small, reliable, client-agnostic, self-hosted application that can be shipped publicly on GitHub and deployed with Docker.
+> **Project goal:** turn VaultBridge into a small, reliable, client-agnostic, self-hosted application for safe Obsidian note operations and local semantic retrieval, suitable for public GitHub distribution and Docker deployment.
 
 ## Product principles
 
 1. **Markdown is the source of truth.** VaultBridge must never require importing the vault into a proprietary store.
-2. **Minimal API surface.** Expose only the operations that are actually needed.
+2. **Minimal API surface.** Expose only operations that are actually required.
 3. **Local-first semantic search.** Embeddings stay local by default; no external embedding API is required.
-4. **Safe by default.** No arbitrary filesystem access, no delete endpoint, no secret logging, no unauthenticated write operations.
+4. **Safe by default.** No arbitrary filesystem access, no delete endpoint, no secret logging, and no unauthenticated writes.
 5. **Simple operations.** Docker + SQLite should remain enough for a normal personal vault.
-6. **Client agnostic.** ChatGPT is one client, not the architecture. Claude, scripts, automations, and custom frontends should be able to use the same API.
-7. **No premature infrastructure.** Do not add Redis, Celery, Qdrant, Kubernetes, or a message broker until a measured requirement justifies them.
+6. **Client agnostic.** ChatGPT is one client, not the architecture.
+7. **No premature infrastructure.** Do not add Redis, Celery, Qdrant, Kubernetes, or a message broker without measured need and an ADR.
+8. **Measured retrieval changes.** Ranking/model/chunking changes must be evaluated, not tuned only by intuition.
+9. **Derived semantic data.** The semantic index must always be rebuildable from the Markdown vault.
 
 ---
 
-## Current baseline — `v0.1`
+# Current project state — `v0.1.x`
 
-The current implementation already provides:
+VaultBridge has moved beyond the original prototype and now has explicit API, service, repository, and configuration boundaries.
 
-- FastAPI service
-- Bearer API key authentication
-- create/read/append/list operations
-- literal text search
-- local semantic search using FastEmbed + ONNX Runtime
-- multilingual MiniLM embeddings
-- incremental SQLite semantic index
-- hybrid semantic + lexical reranking
-- path traversal protection
-- Docker and TrueNAS deployment files
-- 6 passing API tests
-- Custom GPT Action schema and instructions
-
-The goal of the roadmap is **not to rewrite this from scratch**. Each phase should preserve working behaviour while improving structure and operability.
-
----
-
-# Phase 0 — Repository baseline and project identity
-
-**Target:** make the existing codebase safe to evolve as `VaultBridge`.
-
-### Tasks
-
-- [ ] Rename user-facing project identity from `Obsidian ChatGPT Bridge` to `VaultBridge`.
-- [ ] Keep compatibility with the existing Docker/TrueNAS deployment until a documented migration step exists.
-- [ ] Adopt semantic versioning starting at `0.1.0` for the public project.
-- [ ] Add `pyproject.toml` for test/lint configuration.
-- [ ] Add CI for tests, compile checks, and Docker build.
-- [ ] Add `LICENSE`, `SECURITY.md`, `CONTRIBUTING.md`, and `CHANGELOG.md`.
-- [ ] Ensure `.env`, model cache, SQLite indexes, and vault content can never be committed accidentally.
-- [ ] Document the current API contract before refactoring.
-
-### Definition of done
-
-- `pytest` passes.
-- Docker image builds.
-- No runtime behaviour changes.
-- README clearly explains what VaultBridge is and what it is not.
-
----
-
-# Phase 1 — Application architecture refactor
-
-**Target:** turn the current small prototype into a maintainable application without changing the public API.
-
-### Target structure
+## Current architecture
 
 ```text
-app/
-├── main.py
-├── api/
-│   ├── dependencies.py
-│   ├── health.py
-│   ├── notes.py
-│   └── search.py
-├── core/
-│   ├── config.py
-│   ├── logging.py
-│   └── security.py
-├── schemas/
-│   ├── notes.py
-│   └── search.py
-├── services/
-│   ├── vault.py
-│   ├── semantic_search.py
-│   └── indexer.py
-└── storage/
-    └── semantic_repository.py
+Client
+(ChatGPT / curl / future CLI / integrations)
+                     |
+                     | HTTPS + Bearer token
+                     v
+                FastAPI app
+                     |
+                API routers
+          +----------+-----------+
+          |                      |
+          v                      v
+     VaultService       SemanticSearchService
+          |                      |
+          v                      v
+  Obsidian Markdown      SemanticRepository
+                                 |
+                                 v
+                         SQLite semantic index
+                                 |
+                                 v
+                    FastEmbed / ONNX Runtime
 ```
 
-### Tasks
+## Current implementation
 
-- [ ] Move environment parsing into a typed `Settings` object.
-- [ ] Move Bearer authentication into `core/security.py`.
-- [ ] Move path validation and Markdown I/O into a `VaultService`.
-- [ ] Split HTTP routes into FastAPI routers.
-- [ ] Move semantic index persistence behind a repository/service boundary.
-- [ ] Move Pydantic request/response models out of `main.py`.
-- [ ] Add unit tests for services in addition to API tests.
-- [ ] Preserve all current endpoint paths and operation IDs.
+```text
+app/main.py                     application construction and dependency wiring
+app/api/                        health, note and search routers
+app/core/config.py              typed runtime configuration
+app/services/vault.py           safe Markdown/vault operations
+app/services/semantic_search.py semantic orchestration, embeddings, ranking, indexing
+app/repositories/semantic.py    SQLite semantic persistence
+app/semantic.py                 legacy compatibility facade
+```
 
-### Definition of done
+## Completed foundation tasks
 
-- `main.py` is primarily application wiring.
-- No circular dependencies.
-- Existing API tests pass unchanged.
-- Semantic index can be tested without starting FastAPI.
+- [x] **VB-001 — Project identity**
+- [x] **VB-002 — Typed configuration**
+- [x] **VB-004 — VaultService**
+- [x] **VB-003 — FastAPI routers**
+- [x] **VB-005 — Semantic service/repository split**
+- [x] **VB-010 — Semantic index state model**
+
+## Current verified baseline
+
+At completion of VB-010:
+
+```text
+48 tests passed on the Linux deployment target
+Ruff passed
+compileall passed
+git diff --check passed
+all existing endpoint paths and operationIds verified unchanged
+```
+
+## Current known limitations
+
+1. Initial/full semantic synchronization still runs synchronously.
+2. A long first index can make a request appear frozen.
+3. One large synchronization can still cover too much work before durable progress is committed.
+4. Index progress counters are not yet exposed.
+5. Search still performs synchronization inline.
+6. Background startup synchronization does not yet exist.
+7. File changes are not automatically queued outside request-driven synchronization.
+8. Chunking is still primarily character-based rather than Markdown-structure-aware.
+9. Retrieval thresholds/ranking weights need repeatable evaluation.
+10. Multiple VaultBridge processes sharing one semantic index are not coordinated.
+11. AI clients can invent wikilinks unless they use verified note results.
 
 ---
 
-# Phase 2 — Background indexing and index lifecycle
+# Milestone 1 — Application foundation ✅ COMPLETE
 
-**Target:** semantic search should never feel like a request is frozen because the whole vault is being indexed synchronously.
+**Goal:** convert the original working prototype into a maintainable application without changing the public API.
 
-### Tasks
+Completed:
 
-- [ ] Add an application-managed background indexer.
-- [ ] On startup, compare vault state with the SQLite index.
-- [ ] Index notes in configurable batches.
-- [ ] Commit progress after each batch.
-- [ ] Persist enough state to resume after interruption.
-- [ ] Add index state: `idle`, `indexing`, `ready`, `error`.
-- [ ] Add progress counters: total notes, indexed notes, chunks, last update.
-- [ ] Make semantic search usable while a background refresh is running when a previous valid index exists.
-- [ ] Add an optional filesystem watcher for changed Markdown files.
-- [ ] Debounce bursts of file changes from Obsidian sync operations.
+```text
+VB-001
+   ↓
+VB-002
+   ↓
+VB-004
+   ↓
+VB-003
+   ↓
+VB-005
+```
 
-### Proposed health output
+Exit criteria:
+
+- [x] typed configuration
+- [x] thin `main.py`
+- [x] API routers separated from domain logic
+- [x] independently testable vault service
+- [x] semantic orchestration separated from persistence
+- [x] public API compatibility preserved
+- [x] semantic tests can run without downloading the real model
+
+---
+
+# Milestone 2 — Index lifecycle and non-blocking synchronization ← CURRENT
+
+**Goal:** make semantic indexing observable, resumable, and eventually independent of normal search requests.
+
+## Completed
+
+### VB-010 — Add index state model ✅
+
+Persisted lifecycle states:
+
+```text
+uninitialized
+     |
+     v
+ indexing
+   /   \
+  v     v
+ready  error
+```
+
+Key behavior:
+
+- state is persisted in SQLite metadata,
+- compatible existing indexes can become `ready`,
+- signature mismatch invalidates old semantic data and returns to `uninitialized`,
+- interrupted `indexing` is recovered as `error`,
+- successful retry transitions to `ready`.
+
+## Next
+
+### VB-011 — Batch index commits — P0 ← NEXT
+
+**Goal:** avoid one large transaction covering the entire initial/full synchronization.
+
+Requirements:
+
+- configurable batch size,
+- durable progress after each batch,
+- preserve incremental indexing behavior,
+- preserve ranking/chunking/model behavior,
+- interruption loses at most the active batch,
+- no background worker yet.
+
+### VB-012 — Background startup indexing — P0
+
+**Depends on:** VB-010, VB-011
+
+Goal:
+
+```text
+VaultBridge starts
+      |
+      +--> API becomes available
+      |
+      +--> background index synchronization
+                    |
+                    v
+                  ready
+```
+
+No Redis/Celery/task queue.
+
+### VB-013 — Enqueue reindex after note writes — P0
+
+Writes should enqueue only affected notes for semantic refresh.
+
+### VB-015 — Rich health/readiness output — P0
+
+Expose useful lifecycle/progress information without requiring Docker-log inspection.
+
+Target direction:
 
 ```json
 {
   "status": "ok",
-  "vault": {"available": true, "notes": 842},
+  "vault": {
+    "available": true,
+    "notes": 842
+  },
   "semantic_index": {
-    "state": "ready",
-    "indexed_notes": 842,
-    "chunks": 5317,
-    "last_updated_at": "2026-08-23T08:00:00Z"
+    "state": "indexing",
+    "ready_for_search": true,
+    "indexed_notes": 734,
+    "total_notes": 842,
+    "chunks": 4610,
+    "last_successful_sync": "2026-08-23T10:00:00Z"
   }
 }
 ```
 
-### Definition of done
+### VB-014 — Optional filesystem watcher — P1
 
-- First-time indexing reports progress.
-- Restarting during indexing does not require starting from zero.
-- A normal search request no longer performs a full vault synchronization inline.
+Only after the background indexer exists.
+
+Potential approach:
+
+- `watchdog`/inotify,
+- debounce Obsidian/Syncthing bursts,
+- enqueue changed Markdown paths,
+- watcher remains optional.
+
+## Milestone 2 exit criteria
+
+- [ ] synchronization commits durable progress in batches
+- [ ] full vault rebuild no longer runs inline in normal search requests
+- [ ] restart does not discard already committed batches
+- [ ] lifecycle and progress are observable
+- [ ] note writes can trigger targeted semantic refresh
+- [ ] no external queue/service is required
 
 ---
 
-# Phase 3 — Retrieval quality
+# Milestone 3 — Retrieval quality and evaluation
 
-**Target:** improve relevance before considering a larger embedding model or vector database.
+**Goal:** improve relevance using measured changes before considering a larger model or vector database.
 
-### Tasks
+### VB-020 — Markdown heading-aware chunker — P0
 
-- [ ] Replace character-first chunking with Markdown-aware section chunking.
-- [ ] Preserve heading hierarchy (`H1 > H2 > H3`) as chunk metadata.
-- [ ] Embed `title + heading path + content`.
-- [ ] Keep code fences and lists intact where practical.
-- [ ] Make chunk size configurable by approximate tokens or characters.
-- [ ] Separate `semantic_score`, `lexical_score`, and final `score` in the API contract.
-- [ ] Calibrate default thresholds using a small evaluation dataset.
-- [ ] Add title/path exact-match boosts only when justified by query terms.
-- [ ] Add retrieval tests for Slovak, English, and cross-language queries.
-- [ ] Add a benchmark script that records latency and top-k quality.
+- preserve heading hierarchy
+- avoid arbitrary fenced-code splitting where practical
+- handle lists and long sections predictably
+- add focused Markdown tests
 
-### Evaluation dataset
+### VB-021 — Embed title + heading hierarchy + chunk — P0
 
-Create `tests/eval/retrieval_cases.yaml` with real but sanitized query → expected-note pairs.
+Embedding context should intentionally include note/section identity.
 
 Example:
 
-```yaml
-- query: "professional courses and certifications"
-  expected_paths:
-    - "Vzdelavanie/Learning COURSES.md"
+```text
+Title: Infrastructure Notes
+Heading: Jellyfin > Transcoding
+
+<chunk content>
 ```
 
-### Definition of done
+Changing representation must invalidate the index signature.
 
-- Retrieval changes are measured against repeatable test cases.
-- Quality regressions can be detected in CI.
-- No model upgrade is accepted solely because it is larger.
+### VB-022 — Retrieval evaluation fixture — P0
 
----
-
-# Phase 4 — Knowledge operations
-
-**Target:** make VaultBridge useful for maintaining a knowledge base, not just searching it.
-
-### 4.1 Duplicate detection
-
-- [ ] Add `findPossibleDuplicates` or an internal duplicate-check service.
-- [ ] Compare title similarity + semantic similarity + folder context.
-- [ ] Return candidates; do not silently merge notes.
-
-### 4.2 Verified related notes
-
-- [ ] Add `suggestRelatedNotes` returning only notes that actually exist.
-- [ ] Include path, title, score, and best matching heading/snippet.
-- [ ] Never invent wikilink targets.
-
-### 4.3 Safe note update
-
-- [ ] Design `updateNoteSection` or `upsertNote` with explicit semantics.
-- [ ] Prefer section-level changes over arbitrary full-file replacement.
-- [ ] Add optimistic concurrency (`content_hash` or `updated_at`) before destructive rewrites.
-- [ ] Keep append idempotency.
-
-### 4.4 Backlinks
-
-- [ ] Support optional verified backlink suggestions.
-- [ ] Make automatic insertion opt-in.
-- [ ] Never create more than a small configurable number of links automatically.
-
-### Definition of done
-
-- AI clients can avoid duplicate notes without being allowed to arbitrarily rewrite the vault.
-- Every generated wikilink can be traced to an existing note returned by VaultBridge.
-
----
-
-# Phase 5 — Operational maturity
-
-**Target:** make the service predictable to run continuously on a NAS/server.
-
-### Tasks
-
-- [ ] Structured JSON request logs.
-- [ ] Request/correlation IDs.
-- [ ] Log latency, endpoint, status code, result count, and index state.
-- [ ] Never log API keys or full note content by default.
-- [ ] Add `/health/live` and `/health/ready`.
-- [ ] Add configurable lightweight rate limiting.
-- [ ] Support current + previous API key for zero-downtime key rotation.
-- [ ] Add graceful shutdown for index jobs.
-- [ ] Add database integrity check and rebuild command.
-- [ ] Add optional metrics endpoint later if there is a real consumer for it.
-
-### Definition of done
-
-- Common failures can be diagnosed without attaching a debugger.
-- API key rotation does not require downtime.
-- Index corruption can be repaired from the Markdown source of truth.
-
----
-
-# Phase 6 — Public API and developer experience
-
-**Target:** make the project pleasant for someone other than its original author.
-
-### Tasks
-
-- [ ] Introduce `/api/v1/...` routes.
-- [ ] Keep old routes temporarily or provide a migration note.
-- [ ] Serve OpenAPI docs optionally (`/docs` disabled by default for public deployment if desired).
-- [ ] Add a CLI:
+Create sanitized EN/SK/cross-language query cases under:
 
 ```text
-vaultbridge status
-vaultbridge index
-vaultbridge reindex
-vaultbridge search "Oracle APEX"
-vaultbridge related "professional education"
+tests/eval/retrieval_cases.yaml
 ```
 
-- [ ] Add Docker Compose quick start.
-- [ ] Add TrueNAS guide.
-- [ ] Add generic Linux Docker guide.
-- [ ] Add optional Unraid guide if tested.
-- [ ] Add ChatGPT Action as an integration example, not as the core product identity.
-- [ ] Add generic curl/API examples.
-- [ ] Publish architecture diagram.
+### VB-023 — Retrieval benchmark command — P1
 
-### Definition of done
+Record latency, paths, semantic score, lexical score, final score, and rank.
 
-A new user can clone the repository, create `.env`, mount a vault, run Docker Compose, and execute a semantic search without reading source code.
+### VB-024 — Tune hybrid ranking from evaluation data — P1
 
----
+No weight/threshold changes without before/after evaluation.
 
-# Phase 7 — Distribution and `v1.0.0`
+Candidate metrics:
 
-**Target:** ship VaultBridge as a real open-source project.
+- Top-1 accuracy
+- Recall@5
+- Mean Reciprocal Rank
+- latency
 
-### Tasks
+## Milestone 3 exit criteria
 
-- [ ] Build multi-architecture Docker images when feasible (`amd64`, `arm64`).
-- [ ] Publish images to GitHub Container Registry.
-- [ ] Add GitHub release workflow.
-- [ ] Pin/review critical dependency versions.
-- [ ] Generate SBOM/container provenance if practical.
-- [ ] Run dependency/security scanning in CI.
-- [ ] Complete threat model review.
-- [ ] Record a clean install from scratch.
-- [ ] Create screenshots/demo GIF or short video.
-- [ ] Finalize README and release notes.
-
-### `v1.0.0` acceptance criteria
-
-- clean install succeeds from public documentation
-- CI green
-- Docker image published
-- API versioned
-- index lifecycle does not block requests
-- retrieval evaluation suite exists
-- no known path traversal/auth bypass issue
-- secrets are not committed or logged
-- documented upgrade/rebuild procedure
+- [ ] retrieval quality is repeatably measurable
+- [ ] Markdown structure contributes context
+- [ ] ranking regressions are detectable
+- [ ] default-model changes require evidence
 
 ---
 
-# Post-1.0 ideas
+# Milestone 4 — Knowledge-maintenance operations
 
-These are intentionally **not** required for the first public release:
+**Goal:** let clients maintain a knowledge base safely, not merely search it.
 
-- pluggable embedding providers/models
+### VB-030 — Duplicate candidate service — P1
+
+Return candidates only; no automatic merging.
+
+### VB-031 — Verified related-note suggestions — P1
+
+Return only real vault paths with path/title/score/heading/snippet.
+
+### VB-032 — Section-level update design / ADR — P1
+
+Design concurrency and section identity before implementation.
+
+### VB-033 — `updateNoteSection` endpoint — P1
+
+Must include conflict detection.
+
+### VB-034 — Opt-in verified backlink insertion — P2
+
+No invented wikilink targets.
+
+---
+
+# Milestone 5 — Operational maturity and security
+
+**Goal:** make VaultBridge predictable to run continuously on NAS/server hardware.
+
+### VB-040 — Structured JSON logging — P0
+### VB-041 — Request IDs and latency logging — P0
+### VB-044 — Liveness and readiness endpoints — P0
+### VB-045 — Index integrity/rebuild CLI — P0
+### VB-042 — API key rotation — P1
+### VB-043 — Lightweight rate limiting — P1
+
+Do not add Redis.
+
+---
+
+# Milestone 6 — Public API and developer experience
+
+**Goal:** make VaultBridge easy to understand and deploy by someone other than the original author.
+
+### VB-050 — Introduce `/api/v1` — P0
+### VB-051 — VaultBridge CLI — P1
+### VB-052 — Generic Docker deployment docs — P0
+### VB-053 — TrueNAS deployment docs — P0
+
+ChatGPT Action remains an integration example, not the core product identity.
+
+---
+
+# Milestone 7 — Distribution and `v1.0.0`
+
+**Goal:** ship VaultBridge as a polished public open-source project.
+
+### VB-054 — Publish GHCR image workflow — P0
+### VB-055 — Multi-architecture image — P1
+### VB-056 — GitHub v1.0 release checklist — P0
+
+## `v1.0.0` acceptance criteria
+
+- [ ] clean install succeeds from public documentation
+- [ ] CI is green
+- [ ] container image is published
+- [ ] public API is versioned
+- [ ] full semantic rebuild does not block ordinary request handling
+- [ ] retrieval evaluation suite exists
+- [ ] no known authentication/path-traversal bypass
+- [ ] secrets are not committed or logged
+- [ ] upgrade/rebuild procedure is documented
+
+---
+
+# Post-1.0 candidates
+
+- pluggable embedding providers
+- alternative local embedding models
 - SQLite vector extension / HNSW acceleration
 - Qdrant adapter for very large vaults
 - read-only mode
@@ -323,14 +383,14 @@ These are intentionally **not** required for the first public release:
 - web dashboard
 - MCP server adapter
 - webhook/event integrations
-- note metadata/frontmatter query language
+- frontmatter query language
 - graph-aware ranking using Obsidian links
 
 ---
 
-# Explicit non-goals for now
+# Explicit non-goals
 
-Do **not** implement these unless requirements change:
+Do not implement these unless requirements explicitly change:
 
 - arbitrary filesystem API
 - remote shell execution
@@ -338,29 +398,77 @@ Do **not** implement these unless requirements change:
 - mandatory cloud services
 - mandatory external embedding APIs
 - Kubernetes deployment
-- full Obsidian sync replacement
-- a general-purpose vector database by default
+- full Obsidian synchronization replacement
+- general-purpose vector database by default
+- distributed/multi-process semantic-index coordination before there is a real need
 
 ---
 
-# Recommended implementation order
+# Recommended implementation path
 
 ```text
-Phase 0  Repository baseline
+FOUNDATION
+VB-001 ✓
    ↓
-Phase 1  Refactor without behaviour changes
+VB-002 ✓
    ↓
-Phase 2  Background indexing
+VB-004 ✓
    ↓
-Phase 3  Retrieval quality + evaluation
+VB-003 ✓
    ↓
-Phase 4  Duplicate/update/backlink operations
+VB-005 ✓
    ↓
-Phase 5  Logging, health, rate limiting, key rotation
+INDEX LIFECYCLE
+VB-010 ✓
    ↓
-Phase 6  Versioned API + CLI + docs
+VB-011  ← NEXT
    ↓
-Phase 7  GHCR + public v1.0 release
+VB-012
+   ↓
+VB-013
+   ↓
+VB-015
+   ↓
+RETRIEVAL QUALITY
+VB-020
+   ↓
+VB-021
+   ↓
+VB-022
+   ↓
+VB-024
+   ↓
+OPERATIONS / KNOWLEDGE / DX
+...
+   ↓
+v1.0.0
 ```
 
-Do not start multiple phases at once. Each Codex task should be a reviewable change with tests and a clear acceptance criterion.
+`VB-014`, `VB-023`, and other P1/P2 tasks may be scheduled when their prerequisites exist and their value is demonstrated.
+
+---
+
+# Codex execution rules
+
+The roadmap describes direction. **`BACKLOG.md` is authoritative for individual task scope and acceptance criteria.**
+
+For every implementation task Codex should:
+
+1. Read `AGENTS.md`.
+2. Read `PROJECT_STATE.md`.
+3. Read `ARCHITECTURE.md`.
+4. Read `ROADMAP.md`.
+5. Read the exact task in `BACKLOG.md`.
+6. Inspect current code/tests before proposing changes.
+7. Implement one backlog task only.
+8. Run the required checks.
+9. Update state/architecture docs only when the task changes those facts.
+10. Stop before implementing the next backlog item.
+
+After every merged task:
+
+- update task status in `BACKLOG.md`,
+- update `PROJECT_STATE.md`,
+- update `ARCHITECTURE.md` only if architecture changed,
+- update `ROADMAP.md` only when milestone/current-status information changed,
+- update `CHANGELOG.md` when appropriate.
