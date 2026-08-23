@@ -34,10 +34,12 @@ app/main.py          application construction, dependency wiring, router registr
 app/api/             health, note and search routers plus HTTP dependencies
 app/core/config.py   typed environment configuration
 app/services/vault.py safe path resolution and Markdown note operations
-app/semantic.py      chunking, embeddings, SQLite index, hybrid ranking
+app/services/semantic_search.py embedding, incremental indexing, hybrid ranking
+app/repositories/semantic.py SQLite schema and semantic index persistence
+app/semantic.py      compatibility facade for the pre-VB-005 internal API
 ```
 
-This is acceptable for a prototype but is the main maintainability limitation.
+The semantic service remains synchronous; background index lifecycle work is planned separately.
 
 ---
 
@@ -99,7 +101,7 @@ Bearer token verification and future key rotation logic.
 - hybrid reranking
 - result aggregation
 
-### `storage/semantic_repository.py`
+### `repositories/semantic.py`
 
 All SQLite persistence for semantic metadata/chunks/index state.
 

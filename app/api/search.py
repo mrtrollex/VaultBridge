@@ -3,9 +3,14 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from app.api.dependencies import get_semantic_index, get_settings, get_vault_service, require_auth
+from app.api.dependencies import (
+    get_semantic_search_service,
+    get_settings,
+    get_vault_service,
+    require_auth,
+)
 from app.core.config import Settings
-from app.semantic import SemanticIndex
+from app.services.semantic_search import SemanticSearchService
 from app.services.vault import VaultService
 
 router = APIRouter()
@@ -59,7 +64,7 @@ def search_notes(
 def find_related_notes(
     req: RelatedNotesRequest,
     settings: Settings = Depends(get_settings),
-    semantic_index: SemanticIndex = Depends(get_semantic_index),
+    semantic_search_service: SemanticSearchService = Depends(get_semantic_search_service),
     vault_service: VaultService = Depends(get_vault_service),
 ) -> dict:
     folder = ""
@@ -69,9 +74,12 @@ def find_related_notes(
             return {"text": req.text, "results": []}
         folder = existing_folder
 
-    semantic_index.reconfigure(vault_root=settings.vault_path, max_note_bytes=settings.max_note_bytes)
+    semantic_search_service.reconfigure(
+        vault_root=settings.vault_path,
+        max_note_bytes=settings.max_note_bytes,
+    )
     try:
-        results = semantic_index.search(
+        results = semantic_search_service.search(
             req.text,
             folder=folder,
             limit=req.limit,
