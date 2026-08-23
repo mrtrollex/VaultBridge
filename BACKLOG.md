@@ -223,13 +223,24 @@ per-sync counters such as current note, percentage complete, current batch or ET
 - the `v2-heading-aware` index signature invalidates old chunk data and triggers an automatic rebuild
   from Markdown without changing the SQLite schema.
 
-### VB-021 — Embed title + heading hierarchy + chunk — P0 ▶
+### VB-021 — Embed title + heading hierarchy + chunk — P0 ✅
 
-**Status:** Next recommended task.
+**Status:** Completed on 2026-08-23.
 
 **Depends on:** VB-020
 
-Requires automatic index-signature invalidation.
+**Implemented behavior**
+
+- headingless embedding input remains `title + chunk content`,
+- headed embedding input adds the canonical VB-020 heading metadata between title and content,
+- a matching plain or ATX heading already at the start of a chunk is not prepended again,
+- embedding input is built separately from the source-preserving chunk persisted in SQLite,
+- full synchronization and targeted refresh use the same deterministic embedding-input builder,
+- query embedding and hybrid ranking behavior remain unchanged,
+- the `v3-heading-context` signature invalidates VB-020 embeddings and triggers an automatic full
+  rebuild from Markdown without a SQLite schema migration,
+- targeted refresh against an older signature falls back to that safe full rebuild rather than
+  mixing embedding generations.
 
 ### VB-022 — Retrieval evaluation fixture — P0
 
@@ -339,8 +350,8 @@ VB-001 ✓
 → VB-013 ✓
 → VB-015 ✓
 → VB-020  ✓
-→ VB-021  NEXT
-→ VB-022
+→ VB-021  ✓
+→ VB-022  NEXT
 → VB-024
 ```
 

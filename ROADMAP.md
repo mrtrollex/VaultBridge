@@ -245,7 +245,7 @@ Potential approach:
 - lists, fenced code, nested headings, Unicode and sparse/empty notes have focused tests
 - the chunker signature automatically invalidates and rebuilds old derived chunks
 
-### VB-021 — Embed title + heading hierarchy + chunk — P0 ← NEXT
+### VB-021 — Embed title + heading hierarchy + chunk — P0 ✅
 
 Embedding context should intentionally include note/section identity.
 
@@ -258,9 +258,12 @@ Heading: Jellyfin > Transcoding
 <chunk content>
 ```
 
-Changing representation must invalidate the index signature.
+Implemented with one deterministic builder shared by full and targeted indexing. Persisted Markdown
+chunk content remains unchanged; canonical heading metadata is added only to embedding input and is
+not redundantly prepended when already present at the chunk start. The `v3-heading-context`
+signature automatically invalidates and rebuilds VB-020 embeddings without a schema migration.
 
-### VB-022 — Retrieval evaluation fixture — P0
+### VB-022 — Retrieval evaluation fixture — P0 ← NEXT
 
 Create sanitized EN/SK/cross-language query cases under:
 
@@ -429,9 +432,9 @@ VB-015 ✓
 RETRIEVAL QUALITY
 VB-020 ✓
    ↓
-VB-021  ← NEXT
+VB-021 ✓
    ↓
-VB-022
+VB-022  ← NEXT
    ↓
 VB-024
    ↓

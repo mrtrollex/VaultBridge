@@ -21,7 +21,7 @@ from app.services.vault import SEMANTIC_EXCLUDED_DIRECTORIES, eligible_markdown_
 DEFAULT_MODEL = DEFAULT_SEMANTIC_MODEL
 INDEX_STATE_METADATA_KEY = "index_state"
 LAST_SUCCESSFUL_SYNC_METADATA_KEY = "last_successful_sync"
-CHUNKER_VERSION = "v2-heading-aware"
+INDEX_FORMAT_VERSION = "v3-heading-context"
 HEADING_DIGEST_LENGTH = 12
 
 
@@ -166,7 +166,7 @@ class SemanticSearchService:
 
     @property
     def index_signature(self) -> str:
-        return f"{CHUNKER_VERSION}|{self.model_name}|{self.chunk_chars}|{self.chunk_overlap}"
+        return f"{INDEX_FORMAT_VERSION}|{self.model_name}|{self.chunk_chars}|{self.chunk_overlap}"
 
     def _persist_state(self, state: IndexState) -> IndexState:
         self.repository.set_metadata(INDEX_STATE_METADATA_KEY, state.value)
@@ -265,6 +265,46 @@ class SemanticSearchService:
         """Serialize only calls into one embedder instance; the surrounding pipelines stay concurrent."""
         with self._embed_lock:
             return self.embedder.embed(texts)
+
+    @staticmethod
+    def _parse_atx_heading_line(line: str) -> tuple[int, str] | None:
+        """Return the ATX level and canonical label used by chunking and embedding deduplication."""
+        line_without_ending = line.rstrip("\r\n")
+        match = re.match(
+            r"^[ \t]{0,3}(#{1,6})(?:[ \t]+(.*)|[ \t]*)$",
+            line_without_ending,
+        )
+        if not match:
+            return None
+        label = re.sub(r"[ \t]+#+[ \t]*$", "", match.group(2) or "").strip()
+        return len(match.group(1)), label
+
+    @staticmethod
+    def _build_embedding_text(title: str, heading: str | None, content: str) -> str:
+        """Build stable embedding input without changing the persisted chunk content."""
+        parts = [title]
+        if heading:
+            content_start = 0
+            while content_start < len(content) and content[content_start] in "\r\n":
+                content_start += 1
+            line_end_candidates = (
+                index
+                for index in (
+                    content.find("\r", content_start),
+                    content.find("\n", content_start),
+                )
+                if index >= 0
+            )
+            line_end = min(line_end_candidates, default=len(content))
+            first_line = content[content_start:line_end]
+            parsed_heading = SemanticSearchService._parse_atx_heading_line(first_line)
+            heading_is_at_start = first_line == heading or (
+                parsed_heading is not None and parsed_heading[1] == heading
+            )
+            if not heading_is_at_start:
+                parts.append(heading)
+        parts.append(content)
+        return "\n".join(parts)
 
     @staticmethod
     def _raise_if_cancelled(cancel_event: threading.Event | None) -> None:
@@ -546,8 +586,8 @@ class SemanticSearchService:
             blocks.append("".join(current))
         return blocks
 
-    @staticmethod
-    def _heading_sections(text: str) -> list[_MarkdownSection]:
+    @classmethod
+    def _heading_sections(cls, text: str) -> list[_MarkdownSection]:
         """Split Markdown on ATX headings outside fenced code blocks."""
         sections: list[_MarkdownSection] = []
         current_lines: list[str] = []
@@ -578,17 +618,16 @@ class SemanticSearchService:
                 current_lines.append(line)
                 continue
 
-            heading_match = None
-            if fence_character is None:
-                heading_match = re.match(
-                    r"^[ \t]{0,3}(#{1,6})(?:[ \t]+(.*)|[ \t]*)$",
-                    line_without_ending,
-                )
-            if not heading_match:
+            parsed_heading = (
+                cls._parse_atx_heading_line(line_without_ending)
+                if fence_character is None
+                else None
+            )
+            if parsed_heading is None:
                 current_lines.append(line)
                 continue
 
-            level = len(heading_match.group(1))
+            level, label = parsed_heading
             content = "".join(current_lines)
             heading_only_parent = bool(
                 content
@@ -596,17 +635,13 @@ class SemanticSearchService:
                 and level > current_level
                 and all(
                     not candidate.strip()
-                    or re.match(
-                        r"^[ \t]{0,3}#{1,6}(?:[ \t]+|$)",
-                        candidate.rstrip("\r\n"),
-                    )
+                    or cls._parse_atx_heading_line(candidate) is not None
                     for candidate in current_lines
                 )
             )
             if content and not heading_only_parent:
                 sections.append(_MarkdownSection(current_hierarchy, content))
 
-            label = re.sub(r"[ \t]+#+[ \t]*$", "", heading_match.group(2) or "").strip()
             hierarchy = {key: value for key, value in hierarchy.items() if key < level}
             if label:
                 hierarchy[level] = label
@@ -836,7 +871,11 @@ class SemanticSearchService:
                         continue
 
                     chunks = self._chunk_markdown(path.stem, note_text)
-                    vectors = self._embed([f"{path.stem}\n{content}" for _, content in chunks])
+                    embedding_texts = [
+                        self._build_embedding_text(path.stem, heading, content)
+                        for heading, content in chunks
+                    ]
+                    vectors = self._embed(embedding_texts)
                     if len(vectors) != len(chunks):
                         raise RuntimeError("Embedding model returned an unexpected number of vectors")
 

@@ -27,6 +27,10 @@ The project intends to follow Semantic Versioning after the public repository ba
   sections, and retain leaf headings when hierarchy metadata reaches its length limit
 - committed writes now remain successful across enqueue/submission errors; unresolved full-sync debt forces a full retry before targeted recovery
 - targeted missing, unreadable, invalid-UTF-8, excluded, oversized, and escaping paths now fail and remain retryable instead of being silently skipped
+- semantic chunk embeddings now include canonical heading hierarchy context when it is not already
+  present at the chunk start, while persisted Markdown content and query/ranking behavior stay unchanged
+- the `v3-heading-context` index signature automatically rebuilds VB-020 embeddings; targeted refresh
+  against an older signature performs a safe full rebuild without a SQLite schema migration
 
 ## [0.1.0] - TBD
 

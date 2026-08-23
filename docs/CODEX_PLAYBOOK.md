@@ -78,7 +78,7 @@ Do not implement the recommended next task.
 At the current project state, the next recommended task is:
 
 ```text
-VB-021 — Embed title + heading hierarchy + chunk
+VB-022 — Retrieval evaluation fixture
 ```
 
 Always verify this against `PROJECT_STATE.md` and `BACKLOG.md` before starting.
