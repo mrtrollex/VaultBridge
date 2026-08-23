@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 import app.main as main
 from app.core.config import Settings
 from app.semantic import SemanticIndex
+from app.services.vault import VaultService
 
 
 class FakeEmbedder:
@@ -27,8 +28,17 @@ class FakeEmbedder:
         return vectors
 
 
-def client_for(tmp_path: Path, *, api_key: str = "test-secret") -> TestClient:
-    main.settings = Settings(api_key=api_key, vault_path=tmp_path)
+def client_for(
+    tmp_path: Path,
+    *,
+    api_key: str = "test-secret",
+    max_note_bytes: int = 1_000_000,
+) -> TestClient:
+    main.settings = Settings(api_key=api_key, vault_path=tmp_path, max_note_bytes=max_note_bytes)
+    main.VAULT_SERVICE = VaultService(
+        vault_root=main.settings.vault_path,
+        max_note_bytes=main.settings.max_note_bytes,
+    )
     main.SEMANTIC_INDEX = SemanticIndex(
         vault_root=main.settings.vault_path,
         db_path=tmp_path / ".test-semantic" / "index.sqlite3",
@@ -61,6 +71,35 @@ def test_missing_api_key_is_rejected(tmp_path):
     response = client.get("/notes/list")
     assert response.status_code == 500
     assert response.json() == {"detail": "Server API_KEY is not configured"}
+
+
+def test_vault_errors_keep_existing_http_contract(tmp_path):
+    client = client_for(tmp_path)
+
+    response = client.get("/notes/read", headers=auth(), params={"path": "Missing.md"})
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Note not found"}
+
+    response = client.get("/notes/read", headers=auth(), params={"path": "Note.txt"})
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Only .md files are allowed"}
+
+    payload = {"title": "Conflict", "folder": "Inbox", "content": "First", "tags": []}
+    assert client.post("/notes", headers=auth(), json=payload).status_code == 200
+    response = client.post("/notes", headers=auth(), json={**payload, "content": "Second"})
+    assert response.status_code == 409
+    assert response.json() == {
+        "detail": "A note with this title already exists. Use appendNote or choose another title."
+    }
+
+    small_client = client_for(tmp_path / "small", max_note_bytes=60)
+    response = small_client.post(
+        "/notes",
+        headers=auth(),
+        json={"title": "Large", "folder": "Inbox", "content": "content", "tags": []},
+    )
+    assert response.status_code == 413
+    assert response.json() == {"detail": "Generated note is too large"}
 
 
 def test_create_read_search_append(tmp_path):

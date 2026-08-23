@@ -1,23 +1,28 @@
 from __future__ import annotations
 
-import json
-import re
-from datetime import datetime, timezone
-from pathlib import Path
 from typing import Literal
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, status
-from fastapi.responses import PlainTextResponse
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, status
+from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field, field_validator
 
 from app.core.config import Settings
 from app.semantic import semantic_index_from_settings
+from app.services.vault import (
+    NoteConflictError,
+    NoteNotFoundError,
+    NoteTooLargeError,
+    VaultService,
+    VaultServiceError,
+    VaultValidationError,
+)
 
 APP_TITLE = "VaultBridge"
 APP_VERSION = "0.1.0"
 APP_DESCRIPTION = "Self-hosted REST and semantic search API for an Obsidian vault."
 settings = Settings.from_env()
 SEMANTIC_INDEX = semantic_index_from_settings(settings)
+VAULT_SERVICE = VaultService(vault_root=settings.vault_path, max_note_bytes=settings.max_note_bytes)
 
 app = FastAPI(
     title=APP_TITLE,
@@ -27,6 +32,17 @@ app = FastAPI(
     redoc_url=None,
     openapi_url=None,
 )
+
+
+@app.exception_handler(VaultServiceError)
+async def handle_vault_service_error(_request: Request, exc: VaultServiceError) -> JSONResponse:
+    status_codes = {
+        VaultValidationError: status.HTTP_400_BAD_REQUEST,
+        NoteNotFoundError: status.HTTP_404_NOT_FOUND,
+        NoteConflictError: status.HTTP_409_CONFLICT,
+        NoteTooLargeError: 413,
+    }
+    return JSONResponse(status_code=status_codes[type(exc)], content={"detail": str(exc)})
 
 
 class CreateNoteRequest(BaseModel):
@@ -97,47 +113,12 @@ def require_auth(authorization: str | None = Header(default=None)) -> None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
 
 
-def _safe_relative(raw: str) -> Path:
-    raw = raw.strip().replace("\\", "/")
-    path = Path(raw)
-    if path.is_absolute():
-        raise HTTPException(status_code=400, detail="Path must be vault-relative")
-    candidate = (settings.vault_path / path).resolve()
-    try:
-        candidate.relative_to(settings.vault_path)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail="Path escapes the vault") from exc
-    return candidate
-
-
-def _safe_filename(title: str) -> str:
-    # Safe on Windows/Linux/macOS and avoids accidental nested paths.
-    value = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "-", title).strip().rstrip(". ")
-    value = re.sub(r"\s+", " ", value)
-    if not value:
-        raise HTTPException(status_code=400, detail="Title does not produce a valid filename")
-    return f"{value[:180]}.md"
-
-
-def _ensure_markdown(path: Path) -> None:
-    if path.suffix.lower() != ".md":
-        raise HTTPException(status_code=400, detail="Only .md files are allowed")
-
-
-def _read_text(path: Path) -> str:
-    if not path.exists() or not path.is_file():
-        raise HTTPException(status_code=404, detail="Note not found")
-    if path.stat().st_size > settings.max_note_bytes:
-        raise HTTPException(status_code=413, detail="Note is too large")
-    return path.read_text(encoding="utf-8")
-
-
 @app.get("/health", operation_id="healthCheck", tags=["system"])
 def health() -> dict:
     SEMANTIC_INDEX.reconfigure(vault_root=settings.vault_path, max_note_bytes=settings.max_note_bytes)
     return {
         "ok": True,
-        "vault_exists": settings.vault_path.exists(),
+        "vault_exists": VAULT_SERVICE.vault_exists(),
         "semantic_index_ready": SEMANTIC_INDEX.is_initialized(),
     }
 
@@ -151,39 +132,13 @@ def health() -> dict:
     summary="Create an Obsidian Markdown note",
 )
 def create_note(note: CreateNoteRequest) -> NoteResult:
-    folder_raw = (note.folder or "Inbox").strip().replace("\\", "/")
-    folder = _safe_relative(folder_raw)
-    folder.mkdir(parents=True, exist_ok=True)
-    path = _safe_relative(str(Path(folder_raw) / _safe_filename(note.title)))
-    _ensure_markdown(path)
-
-    created = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    tags_yaml = json.dumps(note.tags, ensure_ascii=False)
-    markdown = (
-        "---\n"
-        f"created: {created}\n"
-        f"tags: {tags_yaml}\n"
-        "source: chatgpt\n"
-        "---\n\n"
-        f"{note.content.rstrip()}\n"
+    result = VAULT_SERVICE.create_note(
+        title=note.title,
+        folder=note.folder,
+        content=note.content,
+        tags=note.tags,
     )
-
-    if len(markdown.encode("utf-8")) > settings.max_note_bytes:
-        raise HTTPException(status_code=413, detail="Generated note is too large")
-
-    if path.exists():
-        existing = _read_text(path)
-        # Make retries idempotent even though the generated `created` timestamp changes.
-        expected_tail = f"{note.content.rstrip()}\n"
-        if existing.endswith(expected_tail):
-            return NoteResult(success=True, path=str(path.relative_to(settings.vault_path)), status="unchanged")
-        raise HTTPException(
-            status_code=409,
-            detail="A note with this title already exists. Use appendNote or choose another title.",
-        )
-
-    path.write_text(markdown, encoding="utf-8")
-    return NoteResult(success=True, path=str(path.relative_to(settings.vault_path)), status="created")
+    return NoteResult(success=True, path=result.path, status=result.status)
 
 
 @app.post(
@@ -195,28 +150,8 @@ def create_note(note: CreateNoteRequest) -> NoteResult:
     summary="Append Markdown to an existing Obsidian note",
 )
 def append_note(req: AppendNoteRequest) -> NoteResult:
-    path = _safe_relative(req.path)
-    _ensure_markdown(path)
-    existing = _read_text(path)
-
-    marker = None
-    if req.dedupe_key:
-        safe_key = re.sub(r"[^A-Za-z0-9._:-]", "_", req.dedupe_key)
-        marker = f"<!-- chatgpt-append:{safe_key} -->"
-        if marker in existing:
-            return NoteResult(success=True, path=str(path.relative_to(settings.vault_path)), status="already_applied")
-
-    addition = "\n\n" + req.content.strip() + "\n"
-    if marker:
-        addition += marker + "\n"
-
-    if len((existing + addition).encode("utf-8")) > settings.max_note_bytes:
-        raise HTTPException(status_code=413, detail="Resulting note would be too large")
-
-    with path.open("a", encoding="utf-8") as file:
-        file.write(addition)
-
-    return NoteResult(success=True, path=str(path.relative_to(settings.vault_path)), status="appended")
+    result = VAULT_SERVICE.append_note(path=req.path, content=req.content, dedupe_key=req.dedupe_key)
+    return NoteResult(success=True, path=result.path, status=result.status)
 
 
 @app.get(
@@ -227,10 +162,8 @@ def append_note(req: AppendNoteRequest) -> NoteResult:
     summary="Read one Obsidian note",
 )
 def read_note(path: str = Query(description="Vault-relative .md path")) -> dict:
-    note_path = _safe_relative(path)
-    _ensure_markdown(note_path)
-    content = _read_text(note_path)
-    return {"path": str(note_path.relative_to(settings.vault_path)), "content": content}
+    result = VAULT_SERVICE.read_note(path)
+    return {"path": result.path, "content": result.content}
 
 
 @app.post(
@@ -241,41 +174,13 @@ def read_note(path: str = Query(description="Vault-relative .md path")) -> dict:
     summary="Search Markdown notes in the vault",
 )
 def search_notes(req: SearchRequest) -> dict:
-    root = _safe_relative(req.folder) if req.folder else settings.vault_path
-    if not root.exists():
-        return {"query": req.query, "results": []}
-
-    needle = req.query.casefold()
-    results = []
-    for path in root.rglob("*.md"):
-        if not path.is_file() or path.stat().st_size > settings.max_note_bytes:
-            continue
-        try:
-            text = path.read_text(encoding="utf-8")
-        except UnicodeDecodeError:
-            continue
-        title_match = needle in path.stem.casefold()
-        text_folded = text.casefold()
-        pos = text_folded.find(needle)
-        if pos < 0 and not title_match:
-            continue
-        if pos >= 0:
-            snippet_start = max(0, pos - 120)
-            snippet_end = min(len(text), pos + len(req.query) + 220)
-            snippet = text[snippet_start:snippet_end].replace("\n", " ").strip()
-        else:
-            snippet = text[:320].replace("\n", " ").strip()
-        results.append(
-            {
-                "path": str(path.relative_to(settings.vault_path)),
-                "title": path.stem,
-                "snippet": snippet[:400],
-            }
-        )
-        if len(results) >= req.limit:
-            break
-
-    return {"query": req.query, "results": results}
+    results = VAULT_SERVICE.search_notes(query=req.query, folder=req.folder, limit=req.limit)
+    return {
+        "query": req.query,
+        "results": [
+            {"path": result.path, "title": result.title, "snippet": result.snippet} for result in results
+        ],
+    }
 
 
 @app.post(
@@ -288,10 +193,10 @@ def search_notes(req: SearchRequest) -> dict:
 def find_related_notes(req: RelatedNotesRequest) -> dict:
     folder = ""
     if req.folder:
-        folder_path = _safe_relative(req.folder)
-        if not folder_path.exists():
+        existing_folder = VAULT_SERVICE.existing_relative_path(req.folder)
+        if existing_folder is None:
             return {"text": req.text, "results": []}
-        folder = str(folder_path.relative_to(settings.vault_path)).replace("\\", "/")
+        folder = existing_folder
 
     SEMANTIC_INDEX.reconfigure(vault_root=settings.vault_path, max_note_bytes=settings.max_note_bytes)
     try:
@@ -332,21 +237,13 @@ def list_notes(
     folder: str = Query(default="", description="Vault-relative folder; empty means whole vault"),
     limit: int = Query(default=50, ge=1, le=200),
 ) -> dict:
-    root = _safe_relative(folder) if folder else settings.vault_path
-    if not root.exists():
-        return {"folder": folder, "notes": []}
-    notes = []
-    for path in sorted(root.rglob("*.md"), key=lambda p: p.stat().st_mtime, reverse=True):
-        notes.append(
-            {
-                "path": str(path.relative_to(settings.vault_path)),
-                "title": path.stem,
-                "modified": datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc).isoformat(timespec="seconds"),
-            }
-        )
-        if len(notes) >= limit:
-            break
-    return {"folder": folder, "notes": notes}
+    notes = VAULT_SERVICE.list_notes(folder=folder, limit=limit)
+    return {
+        "folder": folder,
+        "notes": [
+            {"path": note.path, "title": note.title, "modified": note.modified} for note in notes
+        ],
+    }
 
 
 @app.get("/privacy", response_class=PlainTextResponse, include_in_schema=False)
