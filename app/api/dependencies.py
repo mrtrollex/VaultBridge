@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import Depends, Header, HTTPException, Request, status
 
 from app.core.config import Settings
-from app.semantic import SemanticIndex
+from app.services.semantic_search import SemanticSearchService
 from app.services.vault import VaultService
 
 
@@ -15,8 +15,8 @@ def get_vault_service(request: Request) -> VaultService:
     return request.app.state.vault_service
 
 
-def get_semantic_index(request: Request) -> SemanticIndex:
-    return request.app.state.semantic_index
+def get_semantic_search_service(request: Request) -> SemanticSearchService:
+    return request.app.state.semantic_search_service
 
 
 def require_auth(

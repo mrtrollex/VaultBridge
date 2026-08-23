@@ -4,7 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.core.config import DEFAULT_SEMANTIC_MODEL, Settings
-from app.semantic import semantic_index_from_settings
+from app.services.semantic_search import semantic_search_service_from_settings
 
 
 def test_configuration_defaults_match_existing_behavior():
@@ -41,7 +41,7 @@ def test_configuration_environment_overrides(tmp_path):
     assert settings.semantic_chunk_overlap == 200
 
 
-def test_semantic_index_uses_typed_configuration(tmp_path):
+def test_semantic_search_service_uses_typed_configuration(tmp_path):
     settings = Settings(
         vault_path=tmp_path / "vault",
         max_note_bytes=4096,
@@ -51,15 +51,15 @@ def test_semantic_index_uses_typed_configuration(tmp_path):
         semantic_chunk_overlap=200,
     )
 
-    index = semantic_index_from_settings(settings)
+    service = semantic_search_service_from_settings(settings)
 
-    assert index.vault_root == (tmp_path / "vault").resolve()
-    assert index.db_path == tmp_path / "semantic-data" / "semantic-index.sqlite3"
-    assert index.cache_dir == tmp_path / "semantic-data" / "models"
-    assert index.model_name == "example/model"
-    assert index.max_note_bytes == 4096
-    assert index.chunk_chars == 800
-    assert index.chunk_overlap == 200
+    assert service.vault_root == (tmp_path / "vault").resolve()
+    assert service.repository.db_path == tmp_path / "semantic-data" / "semantic-index.sqlite3"
+    assert service.cache_dir == tmp_path / "semantic-data" / "models"
+    assert service.model_name == "example/model"
+    assert service.max_note_bytes == 4096
+    assert service.chunk_chars == 800
+    assert service.chunk_overlap == 200
 
 
 @pytest.mark.parametrize(

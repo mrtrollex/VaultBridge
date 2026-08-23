@@ -7,7 +7,10 @@ from app.api.health import router as health_router
 from app.api.notes import router as notes_router
 from app.api.search import router as search_router
 from app.core.config import Settings
-from app.semantic import SemanticIndex, semantic_index_from_settings
+from app.services.semantic_search import (
+    SemanticSearchService,
+    semantic_search_service_from_settings,
+)
 from app.services.vault import (
     NoteConflictError,
     NoteNotFoundError,
@@ -35,12 +38,14 @@ async def handle_vault_service_error(_request: Request, exc: VaultServiceError) 
 def create_app(
     *,
     settings: Settings | None = None,
-    semantic_index: SemanticIndex | None = None,
+    semantic_search_service: SemanticSearchService | None = None,
     vault_service: VaultService | None = None,
 ) -> FastAPI:
     app_settings = settings if settings is not None else Settings.from_env()
-    app_semantic_index = (
-        semantic_index if semantic_index is not None else semantic_index_from_settings(app_settings)
+    app_semantic_search_service = (
+        semantic_search_service
+        if semantic_search_service is not None
+        else semantic_search_service_from_settings(app_settings)
     )
     app_vault_service = (
         vault_service
@@ -57,7 +62,7 @@ def create_app(
         openapi_url=None,
     )
     application.state.settings = app_settings
-    application.state.semantic_index = app_semantic_index
+    application.state.semantic_search_service = app_semantic_search_service
     application.state.vault_service = app_vault_service
     application.add_exception_handler(VaultServiceError, handle_vault_service_error)
     application.include_router(health_router)

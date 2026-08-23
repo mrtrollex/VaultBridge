@@ -10,7 +10,7 @@ This document is a snapshot for future Codex sessions so the agent does not have
 
 - FastAPI application
 - Python 3.12 container
-- current code concentrated in `app/main.py` and `app/semantic.py`
+- FastAPI routes, vault operations, semantic orchestration and SQLite persistence have separate modules
 - local semantic model through FastEmbed/ONNX Runtime
 - default model: `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`
 - SQLite semantic index using WAL
@@ -26,7 +26,7 @@ This document is a snapshot for future Codex sessions so the agent does not have
 2. Indexing progress is not visible through the health endpoint.
 3. Search currently calls sync inline.
 4. Current chunking is only partially Markdown-aware.
-5. Application architecture is still prototype-sized and concentrated in two modules.
+5. Semantic indexing still runs synchronously even though orchestration and persistence are separated.
 6. Default ranking thresholds require evaluation rather than ad-hoc tuning.
 7. GPT clients can invent wikilinks unless client instructions explicitly require verified existing notes.
 

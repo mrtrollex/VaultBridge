@@ -5,7 +5,8 @@ from fastapi.testclient import TestClient
 
 import app.main as main
 from app.core.config import Settings
-from app.semantic import SemanticIndex
+from app.repositories.semantic import SemanticRepository
+from app.services.semantic_search import SemanticSearchService
 from app.services.vault import VaultService
 
 
@@ -39,9 +40,9 @@ def client_for(
         vault_root=settings.vault_path,
         max_note_bytes=settings.max_note_bytes,
     )
-    semantic_index = SemanticIndex(
+    semantic_search_service = SemanticSearchService(
         vault_root=settings.vault_path,
-        db_path=tmp_path / ".test-semantic" / "index.sqlite3",
+        repository=SemanticRepository(tmp_path / ".test-semantic" / "index.sqlite3"),
         max_note_bytes=settings.max_note_bytes,
         chunk_chars=300,
         chunk_overlap=50,
@@ -50,7 +51,7 @@ def client_for(
     app = main.create_app(
         settings=settings,
         vault_service=vault_service,
-        semantic_index=semantic_index,
+        semantic_search_service=semantic_search_service,
     )
     return TestClient(app)
 
