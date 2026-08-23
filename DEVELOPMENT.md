@@ -45,7 +45,12 @@ docker compose up -d --build
 curl http://127.0.0.1:8765/health
 ```
 
-## Local semantic warm-up
+## Verify semantic search after startup
+
+Startup synchronizes the semantic index in the background. Wait for `/health` to report `semantic_index_ready: true`, then run:
+
+Before the first index is ready, semantic search returns no results while indexing and HTTP `503`
+after a failed initial synchronization. Restarting the application retries synchronization.
 
 ```bash
 curl -X POST http://127.0.0.1:8765/notes/related \

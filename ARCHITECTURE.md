@@ -35,13 +35,32 @@ app/api/             health, note and search routers plus HTTP dependencies
 app/core/config.py   typed environment configuration
 app/services/vault.py safe path resolution and Markdown note operations
 app/services/semantic_search.py embedding, incremental indexing, hybrid ranking
+app/services/indexer.py one in-process background synchronization worker
 app/repositories/semantic.py SQLite schema and semantic index persistence
 app/semantic.py      compatibility facade for the pre-VB-005 internal API
 ```
 
-The semantic service remains synchronous. Index mutations are committed in configurable note-count
-batches so completed batches remain durable if synchronization is interrupted; background index
-lifecycle work is planned separately.
+FastAPI lifespan submits semantic synchronization to one in-process background worker, so startup
+does not wait for a complete vault scan. The synchronization operation remains synchronous inside
+that worker and commits configurable note-count batches, preserving durable completed batches after
+interruption. Lifespan shutdown signals cooperative cancellation, lets the active batch commit or
+roll back normally, and skips remaining batches. Shutdown must still wait for an already-running
+model download, ONNX inference call, or filesystem operation because those calls are not forcibly
+interruptible.
+
+Before the first successful synchronization, semantic searches return no results rather than
+waiting for indexing. During a later refresh, the previously ready committed SQLite index remains
+searchable. SQLite WAL mode permits those reads while synchronization commits replacement batches;
+uncommitted batch data is never exposed.
+
+Lifecycle state and search availability are separate: `indexing` can coexist with an older valid
+searchable index, and `error` remains searchable only when the process already established that a
+compatible completed index existed. Failed initial builds, including their durable partial batches,
+are not searchable and semantic requests return HTTP `503`.
+
+Search and synchronization share one embedder instance. A narrow execution lock serializes only
+calls into that embedder; vault scanning, SQLite access, ranking, and response construction remain
+concurrent.
 
 Semantic index lifecycle state is persisted in the SQLite `meta` table as
 `uninitialized`, `indexing`, `ready`, or `error`. `SemanticSearchService` owns
@@ -96,10 +115,14 @@ Bearer token verification and future key rotation logic.
 
 ### `services/indexer.py`
 
-- background synchronization lifecycle
-- batching and progress
-- file-change queue
-- index state
+- one in-process background synchronization worker
+- duplicate-job prevention within one application process
+- background failure capture and explicit retry entry point
+- cooperative cancellation at synchronization batch boundaries
+- shutdown waiting for any already-running uninterruptible third-party call
+
+Batching, lifecycle-state transitions and index contents remain owned by
+`SemanticSearchService` and `SemanticRepository`. Targeted file-change queues are planned work.
 
 ### `services/semantic_search.py`
 
