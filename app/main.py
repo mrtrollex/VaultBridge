@@ -13,7 +13,9 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.semantic import semantic_index_from_env
 
-APP_TITLE = "Obsidian ChatGPT Bridge"
+APP_TITLE = "VaultBridge"
+APP_VERSION = "0.1.0"
+APP_DESCRIPTION = "Self-hosted REST and semantic search API for an Obsidian vault."
 API_KEY = os.getenv("API_KEY", "")
 VAULT_ROOT = Path(os.getenv("VAULT_PATH", "/vault")).expanduser().resolve()
 MAX_NOTE_BYTES = int(os.getenv("MAX_NOTE_BYTES", "1000000"))
@@ -21,8 +23,8 @@ SEMANTIC_INDEX = semantic_index_from_env(VAULT_ROOT, MAX_NOTE_BYTES)
 
 app = FastAPI(
     title=APP_TITLE,
-    version="1.1.1",
-    description="Obsidian REST bridge with local hybrid semantic search",
+    version=APP_VERSION,
+    description=APP_DESCRIPTION,
     docs_url=None,
     redoc_url=None,
     openapi_url=None,
@@ -351,6 +353,6 @@ def list_notes(
 @app.get("/privacy", response_class=PlainTextResponse, include_in_schema=False)
 def privacy() -> str:
     return (
-        "This private Obsidian bridge stores request content only as Markdown files in the configured vault. "
+        "VaultBridge stores request content only as Markdown files in the configured vault. "
         "It does not intentionally send vault data to third parties. Access is protected by an API key."
     )

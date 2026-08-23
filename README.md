@@ -1,6 +1,6 @@
 # VaultBridge
 
-**VaultBridge is a self-hosted REST and semantic-search bridge for Obsidian Markdown vaults.**
+**VaultBridge is a self-hosted REST and semantic search API for an Obsidian vault.**
 
 It exposes a deliberately small API for reading, searching and safely writing notes while keeping Markdown files as the source of truth. Semantic search runs locally with an ONNX embedding model and a disposable SQLite index.
 
@@ -107,6 +107,8 @@ The first semantic request downloads the embedding model and builds the initial 
 ## TrueNAS
 
 The existing TrueNAS-specific deployment files are kept for compatibility with the working prototype. See [`README_TRUENAS.md`](README_TRUENAS.md).
+
+The service/container names, data-directory name, and `ObsidianChatGPT*` TrueNAS paths in those files are legacy compatibility identifiers. They remain unchanged so an existing deployment can be rebuilt without an implicit migration.
 
 ## Development
 
