@@ -20,10 +20,11 @@ Completed:
 - VB-012 — Background startup indexing
 - VB-013 — Enqueue reindex after note writes
 - VB-015 — Rich health/readiness output
+- VB-020 — Markdown heading-aware chunker
 
 Next recommended task:
 
-- **VB-020 — Markdown heading-aware chunker**
+- **VB-021 — Embed title + heading hierarchy + chunk**
 
 Current milestone:
 
@@ -38,7 +39,7 @@ Current milestone:
 - local semantic model through FastEmbed / ONNX Runtime
 - default model: `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`
 - SQLite semantic index using WAL
-- chunk configuration currently defaults to 600 chars / 100 overlap
+- heading-aware chunk configuration defaults to 600 chars / 100 prose-only overlap
 - semantic search uses cosine similarity plus lexical/title/path reranking
 - semantic index lifecycle state is persisted separately from schema availability
 - semantic index states: `uninitialized`, `indexing`, `ready`, `error`
@@ -100,6 +101,8 @@ Deterministic behavior:
 - compatible legacy index with chunks → inferred/persisted `ready`
 - compatible legacy index without chunks → `uninitialized`
 - signature mismatch → existing invalidation, then `uninitialized`
+- the `v2-heading-aware` signature invalidates chunks from the previous fixed-size chunker and
+  automatically rebuilds them from Markdown without a schema migration
 - persisted `indexing` after restart → converted to `error`
 - each completed synchronization batch is durable; interruption rolls back at most the active batch
 - retry reuses already committed batches through incremental change detection
@@ -138,27 +141,36 @@ containment, internal-directory exclusion and maximum-size policy. Health metada
 come from one short read snapshot. These fields provide inferred completeness, not explicit per-sync
 current-note, percentage, batch or ETA counters.
 
+Chunk generation prefers ATX heading boundaries outside fenced code and stores the available heading
+hierarchy on every resulting chunk. Sections remain within the configured character bound. Long
+sections split by monotonic source indexes at line/word/character boundaries without normalizing
+Markdown characters, with exact source overlap only for oversized prose. Adjacent undersized
+sections coalesce until bounded useful chunks are formed; their metadata identifies the first and
+last contained hierarchies. Single-section hierarchy metadata prioritizes the leaf and nearest
+ancestors within 200 characters. Lists and fenced code are not overlapped; a complete fence remains
+intact whenever it fits in one chunk. Full synchronization and targeted refresh use the same chunker.
+
 ## Known limitations observed during real use
 
 1. External filesystem changes are not watched; they are picked up by startup/full synchronization.
-2. Current chunking is still primarily character-based rather than fully Markdown-aware.
+2. The embedding text does not yet explicitly prepend the stored heading hierarchy; that is VB-021.
 3. Default ranking thresholds require evaluation rather than ad-hoc tuning.
 4. Multiple application processes sharing one index are not coordinated.
 5. GPT/AI clients can invent wikilinks unless client instructions require verified existing notes.
 6. Graceful shutdown cannot interrupt a model download, ONNX inference call, or filesystem operation already in progress.
 
-## Verified baseline after VB-015
+## Verified baseline after VB-020
 
 Native Windows:
 
 ```text
-105 passed, 1 failed, 4 skipped
+130 passed, 1 failed, 4 skipped
 ```
 
 The one failure remains the known pre-existing Windows path-separator assertion around
 `VaultService` response paths. The four skips are privilege-dependent symlink tests. The latest
 previous Linux compatibility baseline remains `89 passed` after VB-013; the current WSL environment
-does not have the project dependencies installed, so VB-015 was not re-run there.
+does not have the project dependencies installed, so VB-020 was not re-run there.
 
 Additional checks:
 
@@ -172,7 +184,7 @@ all 7 endpoint paths and operation IDs: unchanged
 Focused health/indexer/semantic/repository/vault/API/config run:
 
 ```text
-105 passed, 4 skipped, 1 known baseline test deselected
+130 passed, 4 skipped, 1 known baseline test deselected
 ```
 
 Docker checks were not required because no Docker-related files changed.

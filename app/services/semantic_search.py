@@ -21,6 +21,8 @@ from app.services.vault import SEMANTIC_EXCLUDED_DIRECTORIES, eligible_markdown_
 DEFAULT_MODEL = DEFAULT_SEMANTIC_MODEL
 INDEX_STATE_METADATA_KEY = "index_state"
 LAST_SUCCESSFUL_SYNC_METADATA_KEY = "last_successful_sync"
+CHUNKER_VERSION = "v2-heading-aware"
+HEADING_DIGEST_LENGTH = 12
 
 
 class IndexState(str, Enum):
@@ -99,6 +101,18 @@ class SemanticHealthStatus:
     last_successful_sync: str | None
 
 
+@dataclass(frozen=True)
+class _MarkdownSection:
+    hierarchy: tuple[str, ...]
+    content: str
+
+
+@dataclass(frozen=True)
+class _MarkdownSectionGroup:
+    hierarchies: tuple[tuple[str, ...], ...]
+    content: str
+
+
 class SemanticSearchService:
     """Orchestrate incremental indexing and hybrid semantic search."""
 
@@ -152,7 +166,7 @@ class SemanticSearchService:
 
     @property
     def index_signature(self) -> str:
-        return f"v1|{self.model_name}|{self.chunk_chars}|{self.chunk_overlap}"
+        return f"{CHUNKER_VERSION}|{self.model_name}|{self.chunk_chars}|{self.chunk_overlap}"
 
     def _persist_state(self, state: IndexState) -> IndexState:
         self.repository.set_metadata(INDEX_STATE_METADATA_KEY, state.value)
@@ -345,84 +359,369 @@ class SemanticSearchService:
         return min(1.0, score)
 
     @staticmethod
-    def _split_long_piece(piece: str, max_chars: int) -> list[str]:
-        if len(piece) <= max_chars:
-            return [piece]
-        parts: list[str] = []
-        cursor = 0
-        while cursor < len(piece):
-            end = min(len(piece), cursor + max_chars)
-            if end < len(piece):
-                newline = piece.rfind("\n", cursor, end)
-                space = piece.rfind(" ", cursor, end)
-                split = max(newline, space)
-                if split > cursor + max_chars // 2:
-                    end = split
-            chunk = piece[cursor:end].strip()
-            if chunk:
-                parts.append(chunk)
-            cursor = max(end, cursor + 1)
-        return parts
+    def _readable_label(label: str, limit: int) -> str:
+        if len(label) <= limit:
+            return label
+        if limit <= 1:
+            return label[:limit]
+        if limit == 2:
+            return f"{label[0]}…"
+        prefix_length = (limit - 1) // 2
+        suffix_length = limit - 1 - prefix_length
+        return f"{label[:prefix_length]}…{label[-suffix_length:]}"
+
+    @classmethod
+    def _digest_marker(cls, value: str) -> str:
+        digest = hashlib.sha256(value.encode("utf-8")).hexdigest()[:HEADING_DIGEST_LENGTH]
+        return f" [{digest}]"
+
+    @staticmethod
+    def _attach_digest(readable: str, marker: str) -> str:
+        if " > " in readable:
+            ancestors, leaf = readable.rsplit(" > ", 1)
+            return f"{ancestors}{marker} > {leaf}"
+        if "…" in readable:
+            prefix, suffix = readable.rsplit("…", 1)
+            return f"{prefix}…{marker}{suffix}"
+        return f"{marker} {readable}".strip()
+
+    @classmethod
+    def _bounded_label(cls, label: str, limit: int) -> str:
+        if len(label) <= limit:
+            return label
+        marker = cls._digest_marker(label)
+        readable_limit = max(0, limit - len(marker))
+        readable = cls._readable_label(label, readable_limit)
+        return cls._attach_digest(readable, marker)[-limit:]
+
+    @classmethod
+    def _readable_hierarchy(cls, hierarchy: tuple[str, ...], limit: int) -> str | None:
+        if not hierarchy or limit <= 0:
+            return None
+
+        result = cls._readable_label(hierarchy[-1], limit)
+        for ancestor in reversed(hierarchy[:-1]):
+            available = limit - len(result) - len(" > ")
+            if available <= 0:
+                break
+            readable_ancestor = cls._readable_label(ancestor, available)
+            result = f"{readable_ancestor} > {result}"
+            if len(ancestor) > available:
+                break
+        return result
+
+    @classmethod
+    def _format_hierarchy(cls, hierarchy: tuple[str, ...], limit: int = 200) -> str | None:
+        """Bound hierarchy metadata while always retaining the leaf heading."""
+        if not hierarchy or limit <= 0:
+            return None
+
+        full_hierarchy = " > ".join(hierarchy)
+        if len(full_hierarchy) <= limit:
+            return full_hierarchy
+
+        marker = cls._digest_marker(full_hierarchy)
+        readable_limit = max(0, limit - len(marker))
+        readable = cls._readable_hierarchy(hierarchy, readable_limit) or ""
+        return cls._attach_digest(readable, marker)[-limit:]
+
+    @classmethod
+    def _format_group_heading(
+        cls,
+        hierarchies: tuple[tuple[str, ...], ...],
+        limit: int = 200,
+    ) -> str | None:
+        if not hierarchies or limit <= 0:
+            return None
+        if len(hierarchies) == 1:
+            return cls._format_hierarchy(hierarchies[0], limit)
+
+        first_hierarchy = hierarchies[0] or ("Preamble",)
+        last_hierarchy = hierarchies[-1] or ("Preamble",)
+        separator = " … "
+        full_group = (
+            f"{' > '.join(first_hierarchy)}{separator}{' > '.join(last_hierarchy)}"
+        )
+        if len(full_group) <= limit:
+            return full_group
+
+        marker = cls._digest_marker(full_group)
+        available = limit - len(separator) - len(marker)
+        if available < 2:
+            return cls._bounded_label(full_group, limit)
+
+        first_budget = available // 2
+        last_budget = available - first_budget
+        first = cls._readable_hierarchy(first_hierarchy, first_budget) or "Preamble"
+        last = cls._readable_hierarchy(last_hierarchy, last_budget) or "Preamble"
+        return cls._attach_digest(f"{first}{separator}{last}", marker)
+
+    @staticmethod
+    def _choose_split_boundary(text: str, start: int, limit: int) -> int:
+        """Choose a source index without normalizing either resulting slice."""
+        hard_end = min(len(text), start + limit)
+        if hard_end == len(text):
+            return hard_end
+
+        minimum_tail = min(80, max(20, limit // 4))
+        target = hard_end
+        if len(text) - hard_end < minimum_tail:
+            target = max(start + limit // 2, start + (len(text) - start) // 2)
+
+        lower_bound = max(start + 1, start + (target - start) // 2)
+        newline = text.rfind("\n", lower_bound, target)
+        carriage_return = text.rfind("\r", lower_bound, target)
+        line_break = max(newline, carriage_return)
+        if line_break >= lower_bound:
+            if text[line_break : line_break + 2] == "\r\n":
+                return line_break + 2
+            return line_break + 1
+
+        whitespace = max(
+            text.rfind(" ", lower_bound, target),
+            text.rfind("\t", lower_bound, target),
+        )
+        if whitespace >= lower_bound:
+            return whitespace + 1
+        return target
+
+    def _split_oversized_block(
+        self,
+        block: str,
+        *,
+        first_limit: int | None = None,
+        use_overlap: bool,
+    ) -> list[str]:
+        """Split one source block using monotonic indexes and exact source slices."""
+        chunks: list[str] = []
+        start = 0
+        limit = first_limit or self.chunk_chars
+        while len(block) - start > limit:
+            boundary = self._choose_split_boundary(block, start, limit)
+            if boundary <= start:
+                boundary = min(len(block), start + limit)
+            chunks.append(block[start:boundary])
+
+            next_start = boundary
+            if use_overlap and self.chunk_overlap:
+                next_start = max(start + 1, boundary - self.chunk_overlap)
+            start = next_start
+            limit = self.chunk_chars
+        if start < len(block):
+            chunks.append(block[start:])
+        return chunks
 
     def _markdown_blocks(self, text: str) -> list[str]:
         blocks: list[str] = []
         current: list[str] = []
-        in_fence = False
-        for line in text.splitlines():
-            stripped = line.strip()
-            if stripped.startswith("```") or stripped.startswith("~~~"):
-                in_fence = not in_fence
+        fence_character: str | None = None
+        fence_length = 0
+        for line in text.splitlines(keepends=True):
+            line_without_ending = line.rstrip("\r\n")
+            stripped = line_without_ending.strip()
+            fence_match = re.match(r"^(`{3,}|~{3,})(.*)$", stripped)
+            if fence_match and fence_character is None:
+                marker = fence_match.group(1)
+                fence_character = marker[0]
+                fence_length = len(marker)
                 current.append(line)
                 continue
-            if not in_fence and not stripped:
-                if current:
-                    blocks.append("\n".join(current).strip())
-                    current = []
+            if (
+                fence_match
+                and fence_match.group(1)[0] == fence_character
+                and len(fence_match.group(1)) >= fence_length
+                and not fence_match.group(2).strip()
+            ):
+                fence_character = None
+                fence_length = 0
+                current.append(line)
+                continue
+            if fence_character is None and not stripped:
+                current.append(line)
+                blocks.append("".join(current))
+                current = []
                 continue
             current.append(line)
         if current:
-            blocks.append("\n".join(current).strip())
-        return [block for block in blocks if block]
+            blocks.append("".join(current))
+        return blocks
 
-    def _chunk_markdown(self, title: str, text: str) -> list[tuple[str | None, str]]:
-        body = self._strip_frontmatter(text).strip()
-        if not body:
-            return [(None, title)]
+    @staticmethod
+    def _heading_sections(text: str) -> list[_MarkdownSection]:
+        """Split Markdown on ATX headings outside fenced code blocks."""
+        sections: list[_MarkdownSection] = []
+        current_lines: list[str] = []
+        current_hierarchy: tuple[str, ...] = ()
+        current_level: int | None = None
+        hierarchy: dict[int, str] = {}
+        fence_character: str | None = None
+        fence_length = 0
 
-        blocks: list[str] = []
-        for block in self._markdown_blocks(body):
-            blocks.extend(self._split_long_piece(block, self.chunk_chars))
-
-        raw_chunks: list[str] = []
-        current = ""
-        for block in blocks:
-            candidate = block if not current else f"{current}\n\n{block}"
-            if len(candidate) <= self.chunk_chars:
-                current = candidate
+        for line in text.splitlines(keepends=True):
+            line_without_ending = line.rstrip("\r\n")
+            fence_match = re.match(
+                r"^[ \t]{0,3}(`{3,}|~{3,})(.*)$",
+                line_without_ending,
+            )
+            if fence_match:
+                marker = fence_match.group(1)
+                if fence_character is None:
+                    fence_character = marker[0]
+                    fence_length = len(marker)
+                elif (
+                    marker[0] == fence_character
+                    and len(marker) >= fence_length
+                    and not fence_match.group(2).strip()
+                ):
+                    fence_character = None
+                    fence_length = 0
+                current_lines.append(line)
                 continue
 
-            previous = current.strip()
-            if previous:
-                raw_chunks.append(previous)
-            overlap = previous[-self.chunk_overlap :].strip() if previous and self.chunk_overlap else ""
-            current = f"{overlap}\n\n{block}" if overlap else block
-            if len(current) > self.chunk_chars:
-                parts = self._split_long_piece(current, self.chunk_chars)
-                raw_chunks.extend(parts[:-1])
-                current = parts[-1]
+            heading_match = None
+            if fence_character is None:
+                heading_match = re.match(
+                    r"^[ \t]{0,3}(#{1,6})(?:[ \t]+(.*)|[ \t]*)$",
+                    line_without_ending,
+                )
+            if not heading_match:
+                current_lines.append(line)
+                continue
 
-        if current.strip():
-            raw_chunks.append(current.strip())
+            level = len(heading_match.group(1))
+            content = "".join(current_lines)
+            heading_only_parent = bool(
+                content
+                and current_level is not None
+                and level > current_level
+                and all(
+                    not candidate.strip()
+                    or re.match(
+                        r"^[ \t]{0,3}#{1,6}(?:[ \t]+|$)",
+                        candidate.rstrip("\r\n"),
+                    )
+                    for candidate in current_lines
+                )
+            )
+            if content and not heading_only_parent:
+                sections.append(_MarkdownSection(current_hierarchy, content))
 
-        def nearest_heading(chunk: str) -> str | None:
-            headings = [
-                line.lstrip("# ").strip()
-                for line in chunk.splitlines()
-                if line.lstrip().startswith("#")
-            ]
-            return headings[-1][:200] if headings and headings[-1] else None
+            label = re.sub(r"[ \t]+#+[ \t]*$", "", heading_match.group(2) or "").strip()
+            hierarchy = {key: value for key, value in hierarchy.items() if key < level}
+            if label:
+                hierarchy[level] = label
+            current_hierarchy = tuple(hierarchy[key] for key in sorted(hierarchy))
+            current_lines = [*current_lines, line] if heading_only_parent else [line]
+            current_level = level
 
-        return [(nearest_heading(chunk), chunk) for chunk in raw_chunks] or [(None, title)]
+        content = "".join(current_lines)
+        if content:
+            sections.append(_MarkdownSection(current_hierarchy, content))
+        return sections
+
+    def _coalesce_sections(
+        self,
+        sections: Sequence[_MarkdownSection],
+    ) -> list[_MarkdownSectionGroup]:
+        target = max(80, self.chunk_chars // 3)
+        groups: list[_MarkdownSectionGroup] = []
+        current: list[_MarkdownSection] = []
+        current_length = 0
+
+        def flush() -> None:
+            nonlocal current, current_length
+            if current:
+                groups.append(
+                    _MarkdownSectionGroup(
+                        hierarchies=tuple(section.hierarchy for section in current),
+                        content="".join(section.content for section in current),
+                    )
+                )
+                current = []
+                current_length = 0
+
+        for section in sections:
+            section_length = len(section.content)
+            if section_length > self.chunk_chars:
+                flush()
+                groups.append(_MarkdownSectionGroup((section.hierarchy,), section.content))
+                continue
+
+            combined_length = current_length + section_length
+            can_combine = (
+                current
+                and combined_length <= self.chunk_chars
+                and (current_length < target or section_length < target)
+            )
+            if current and not can_combine:
+                flush()
+            current.append(section)
+            current_length += section_length
+        flush()
+        return groups
+
+    @staticmethod
+    def _block_uses_overlap(block: str) -> bool:
+        """Use overlap only for an oversized prose paragraph, not lists or code."""
+        meaningful = block.rstrip("\r\n")
+        if "\n" in meaningful or "\r" in meaningful:
+            return False
+        stripped = meaningful.lstrip()
+        return not re.match(r"(?:[-+*]|\d+[.)])\s+", stripped)
+
+    def _chunk_section(self, content: str) -> list[str]:
+        blocks = self._markdown_blocks(content)
+        if not blocks:
+            return []
+
+        chunks: list[str] = []
+        current = ""
+        for block in blocks:
+            if len(block) <= self.chunk_chars:
+                if len(current) + len(block) <= self.chunk_chars:
+                    current += block
+                else:
+                    if current:
+                        chunks.append(current)
+                    current = block
+                continue
+
+            available = self.chunk_chars - len(current)
+            first_limit = None
+            if current and available > self.chunk_overlap + max(20, self.chunk_chars // 5):
+                first_limit = available
+            elif current:
+                chunks.append(current)
+                current = ""
+
+            pieces = self._split_oversized_block(
+                block,
+                first_limit=first_limit,
+                use_overlap=self._block_uses_overlap(block),
+            )
+            if current and pieces:
+                chunks.append(current + pieces.pop(0))
+                current = ""
+            if pieces:
+                chunks.extend(pieces[:-1])
+                current = pieces[-1]
+
+        if current:
+            chunks.append(current)
+        return chunks
+
+    def _chunk_markdown(self, title: str, text: str) -> list[tuple[str | None, str]]:
+        body = self._strip_frontmatter(text)
+        if not body.strip():
+            title_chunks = self._chunk_section(title)
+            return [(None, chunk) for chunk in title_chunks] or [(None, title)]
+
+        chunks: list[tuple[str | None, str]] = []
+        sections = self._coalesce_sections(self._heading_sections(body))
+        for section in sections:
+            heading = self._format_group_heading(section.hierarchies)
+            chunks.extend((heading, chunk) for chunk in self._chunk_section(section.content))
+        return chunks or [(None, title)]
 
     @staticmethod
     def _eligible_files(vault_root: Path, max_note_bytes: int) -> list[Path]:
@@ -527,7 +826,8 @@ class SemanticSearchService:
                         continue
 
                     try:
-                        note_text = path.read_text(encoding="utf-8")
+                        with path.open("r", encoding="utf-8", newline="") as note_file:
+                            note_text = note_file.read()
                     except (UnicodeDecodeError, OSError) as exc:
                         if strict_reads:
                             raise TargetedSynchronizationError(

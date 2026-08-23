@@ -98,6 +98,16 @@ metadata and counts come from one committed WAL snapshot. `last_successful_sync`
 existing metadata table only after a successful full synchronization; targeted refresh does not
 update it.
 
+Semantic chunking uses ATX Markdown headings outside fenced code as preferred section boundaries.
+Each stored chunk carries the available heading hierarchy, while its content remains bounded by the
+configured character limit. Oversized sections split through monotonic source indexes at useful line,
+word or character boundaries, preserving every source character outside explicit overlap. Adjacent
+undersized sections coalesce into useful bounded chunks; range metadata names their first and last
+heading contexts. Hierarchy bounds retain the leaf before adding nearest ancestors. Configured
+overlap is used only for split oversized prose; it does not bridge semantic sections, lists or fenced
+code. A fence that fits within one chunk is kept intact. Oversized fenced code is split only when the
+configured bound makes that unavoidable.
+
 Search and synchronization share one embedder instance. A narrow execution lock serializes only
 calls into that embedder; vault scanning, SQLite access, ranking, and response construction remain
 concurrent.
@@ -211,11 +221,14 @@ The semantic store currently needs these concepts:
 - schema/index version
 - embedding model
 - chunking configuration
+- chunker format version (`v2-heading-aware`)
 - persisted lifecycle state (`uninitialized`, `indexing`, `ready`, `error`)
 - explicit per-sync progress such as current note, percentage, batch and ETA (planned)
 - last successful full synchronization
 
-The index is **derived data**. Migrations should be used when cheap; otherwise a safe automatic rebuild is acceptable.
+The index is **derived data**. Migrations should be used when cheap; otherwise a safe automatic
+rebuild is acceptable. A chunker-format signature change clears incompatible notes/chunks and
+rebuilds them from Markdown without a SQLite schema migration.
 
 ---
 

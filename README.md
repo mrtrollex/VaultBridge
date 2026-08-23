@@ -100,7 +100,16 @@ Default embedding model:
 sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
 ```
 
-FastEmbed runs the ONNX model locally on CPU. Markdown chunks and normalized embeddings are stored in SQLite. The semantic database is derived data and can always be rebuilt from the vault.
+FastEmbed runs the ONNX model locally on CPU. Markdown is split on ATX heading boundaries where
+practical, and each chunk retains its heading hierarchy. Oversized sections remain bounded and are
+split through exact source slices while fitted fenced-code blocks stay intact. Adjacent tiny sections
+coalesce into useful bounded chunks whose metadata identifies the contained heading range. Markdown
+chunks and normalized embeddings are stored in SQLite. The semantic database is derived data and can
+always be rebuilt from the vault.
+
+Upgrading from the earlier fixed-size chunker changes the semantic index signature. VaultBridge
+automatically discards incompatible derived chunks and rebuilds them from the Markdown vault; no
+manual SQLite migration is required.
 
 Example:
 
