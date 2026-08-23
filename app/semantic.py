@@ -14,6 +14,7 @@ from app.services.semantic_search import (
     DEFAULT_MODEL,
     Embedder,
     FastEmbedder,
+    IndexState,
     SemanticResult,
     SemanticSearchService,
 )
@@ -63,6 +64,7 @@ __all__ = [
     "DEFAULT_MODEL",
     "Embedder",
     "FastEmbedder",
+    "IndexState",
     "SemanticIndex",
     "SemanticResult",
     "semantic_index_from_settings",

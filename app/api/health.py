@@ -24,7 +24,7 @@ def health(
     return {
         "ok": True,
         "vault_exists": vault_service.vault_exists(),
-        "semantic_index_ready": semantic_search_service.is_initialized(),
+        "semantic_index_ready": semantic_search_service.is_ready(),
     }
 
 

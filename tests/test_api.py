@@ -234,6 +234,20 @@ def test_health_reports_semantic_state(tmp_path):
     assert response.json() == {"ok": True, "vault_exists": True, "semantic_index_ready": False}
 
 
+def test_health_reports_ready_after_successful_empty_vault_index(tmp_path):
+    client = client_for(tmp_path)
+
+    response = client.post(
+        "/notes/related",
+        headers=auth(),
+        json={"text": "nothing indexed yet"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"text": "nothing indexed yet", "results": []}
+    assert client.get("/health").json()["semantic_index_ready"] is True
+
+
 def test_path_traversal_is_blocked(tmp_path):
     client = client_for(tmp_path)
     response = client.get("/notes/read", headers=auth(), params={"path": "../secret.md"})
