@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from collections.abc import Callable, Sequence
 from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import PurePosixPath, PureWindowsPath
 from typing import Any
+
+from app.core.logging import log_event
+
+logger = logging.getLogger("vaultbridge.indexer")
 
 
 class BackgroundSemanticIndexer:
@@ -39,6 +44,17 @@ class BackgroundSemanticIndexer:
                 return False
             self._full_sync_requested = True
             future = self._submit_locked()
+            if future is not None:
+                log_event(
+                    logger,
+                    logging.INFO,
+                    "semantic_full_sync_scheduled",
+                    "Full semantic synchronization was scheduled",
+                    operation="full",
+                    full_sync_required=(
+                        self._full_sync_required or self._full_sync_requested
+                    ),
+                )
         if future is not None:
             future.add_done_callback(self._record_completion)
             return True
@@ -58,15 +74,30 @@ class BackgroundSemanticIndexer:
         normalized = posix_path.as_posix()
 
         future = None
+        queued_notes = 0
+        log_queued = False
         with self._lock:
             if self._closed:
                 return False
             added = normalized not in self._pending_paths
             self._pending_paths.add(normalized)
+            queued_notes = len(self._pending_paths)
             if self._future is not None and not self._future.done():
                 self._follow_up_requested = True
+                log_queued = added
             else:
                 future = self._submit_locked()
+                log_queued = future is not None
+            if log_queued:
+                log_event(
+                    logger,
+                    logging.INFO,
+                    "targeted_reindex_queued",
+                    "Targeted semantic reindex was queued",
+                    operation="targeted",
+                    note_path=normalized,
+                    queued_notes=queued_notes,
+                )
         if future is not None:
             future.add_done_callback(self._record_completion)
         return added
@@ -79,6 +110,14 @@ class BackgroundSemanticIndexer:
             self._last_error = exc
             if self._future is not None and self._future.done():
                 self._future = None
+            log_event(
+                logger,
+                logging.ERROR,
+                "semantic_worker_submission_failed",
+                "Semantic worker submission failed",
+                exc_info=(type(exc), exc, exc.__traceback__),
+                error_type=type(exc).__name__,
+            )
             return None
         self._last_error = None
         self._future = future
@@ -200,4 +239,16 @@ class BackgroundSemanticIndexer:
             self._full_sync_requested = False
             self._follow_up_requested = False
             self._pending_paths.clear()
+        log_event(
+            logger,
+            logging.INFO,
+            "semantic_indexer_shutdown_requested",
+            "Semantic indexer shutdown was requested",
+        )
         self._executor.shutdown(wait=True, cancel_futures=True)
+        log_event(
+            logger,
+            logging.INFO,
+            "semantic_indexer_stopped",
+            "Semantic indexer stopped",
+        )

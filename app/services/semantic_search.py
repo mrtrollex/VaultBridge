@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import re
 import threading
+import time
 import unicodedata
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
@@ -15,6 +17,7 @@ from typing import Protocol
 import numpy as np
 
 from app.core.config import DEFAULT_SEMANTIC_MODEL, Settings
+from app.core.logging import log_event
 from app.repositories.semantic import SemanticRepository, StoredChunk, StoredNote
 from app.services.vault import SEMANTIC_EXCLUDED_DIRECTORIES, eligible_markdown_files
 
@@ -27,6 +30,8 @@ SEMANTIC_RANK_WEIGHT = 1.0
 LEXICAL_RANK_WEIGHT = 0.70
 HYBRID_RANK_WEIGHT_TOTAL = SEMANTIC_RANK_WEIGHT + LEXICAL_RANK_WEIGHT
 RELATIVE_RESULT_FLOOR = 0.78
+
+logger = logging.getLogger("vaultbridge.semantic")
 
 
 class IndexState(str, Enum):
@@ -1020,6 +1025,7 @@ class SemanticSearchService:
         self,
         operation: Callable[[], dict[str, int]],
         *,
+        operation_name: str,
         record_full_sync: bool = False,
     ) -> dict[str, int]:
         initial_state = self._initialize_state(create_storage=True)
@@ -1027,6 +1033,16 @@ class SemanticSearchService:
             search_available = self._search_available
         self._set_search_available(search_available or initial_state is IndexState.READY)
         self._persist_state(IndexState.INDEXING)
+        started_at = time.perf_counter()
+        event_prefix = "semantic_sync" if operation_name == "full" else "targeted_reindex"
+        log_event(
+            logger,
+            logging.INFO,
+            f"{event_prefix}_started",
+            "Semantic synchronization started",
+            operation=operation_name,
+            index_state=IndexState.INDEXING,
+        )
         try:
             result = operation()
             if record_full_sync:
@@ -1034,12 +1050,48 @@ class SemanticSearchService:
                     LAST_SUCCESSFUL_SYNC_METADATA_KEY,
                     datetime.now(timezone.utc).isoformat(timespec="seconds"),
                 )
-        except Exception:
+        except SynchronizationCancelledError as exc:
             self._persist_state(IndexState.ERROR)
+            log_event(
+                logger,
+                logging.INFO,
+                f"{event_prefix}_cancelled",
+                "Semantic synchronization was cancelled",
+                operation=operation_name,
+                duration_ms=round((time.perf_counter() - started_at) * 1000, 3),
+                index_state=IndexState.ERROR,
+                error_type=type(exc).__name__,
+            )
+            raise
+        except Exception as exc:
+            self._persist_state(IndexState.ERROR)
+            log_event(
+                logger,
+                logging.ERROR,
+                f"{event_prefix}_failed",
+                "Semantic synchronization failed",
+                exc_info=(type(exc), exc, exc.__traceback__),
+                operation=operation_name,
+                duration_ms=round((time.perf_counter() - started_at) * 1000, 3),
+                index_state=IndexState.ERROR,
+                error_type=type(exc).__name__,
+            )
             raise
 
         self._persist_state(IndexState.READY)
         self._set_search_available(True)
+        log_event(
+            logger,
+            logging.INFO,
+            f"{event_prefix}_completed",
+            "Semantic synchronization completed",
+            operation=operation_name,
+            indexed_notes=result["indexed"],
+            unchanged_notes=result["unchanged"],
+            removed_notes=result["removed"],
+            duration_ms=round((time.perf_counter() - started_at) * 1000, 3),
+            index_state=IndexState.READY,
+        )
         return result
 
     def sync(self, cancel_event: threading.Event | None = None) -> dict[str, int]:
@@ -1047,6 +1099,7 @@ class SemanticSearchService:
         with self._sync_lock:
             return self._run_synchronization_locked(
                 lambda: self._sync_all_locked(cancel_event),
+                operation_name="full",
                 record_full_sync=True,
             )
 
@@ -1067,10 +1120,12 @@ class SemanticSearchService:
             if not search_available and initial_state is not IndexState.READY:
                 return self._run_synchronization_locked(
                     lambda: self._sync_all_locked(cancel_event),
+                    operation_name="full",
                     record_full_sync=True,
                 )
             return self._run_synchronization_locked(
-                lambda: self._sync_targets_locked(paths, cancel_event)
+                lambda: self._sync_targets_locked(paths, cancel_event),
+                operation_name="targeted",
             )
 
     def search(

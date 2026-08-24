@@ -33,12 +33,26 @@ The `.md` files are authoritative. The SQLite semantic index is disposable deriv
 app/main.py          application construction, dependency wiring, router registration
 app/api/             health, note and search routers plus HTTP dependencies
 app/core/config.py   typed environment configuration
+app/core/logging.py  structured VaultBridge application logging
 app/services/vault.py safe path resolution, Markdown note operations and contained note counting
 app/services/semantic_search.py embedding, incremental indexing, hybrid ranking and semantic health state
 app/services/indexer.py one in-process full/targeted synchronization worker and deduplicating path queue
 app/repositories/semantic.py SQLite schema, semantic index persistence and read-only status statistics
 app/semantic.py      compatibility facade for the pre-VB-005 internal API
 ```
+
+VaultBridge-owned operational events use the standard Python logging pipeline and an idempotent
+handler on the `vaultbridge` logger namespace. The handler writes one compact UTF-8 JSON object per
+line to stderr for Docker/TrueNAS collection. Core fields are stable; contextual fields are
+allowlisted and emitted only when relevant. Full and targeted synchronization share service-level
+start/completion/failure instrumentation, while the background indexer reports scheduling and
+shutdown ownership. Committed create/append operations log only their vault-relative paths.
+
+Exception records keep the exception type and basename-only stack frames, omitting exception text to
+avoid leaking note content, queries, credentials, or absolute host paths. Application logging calls
+are isolated so formatter/handler failures cannot alter lifecycle transitions, indexing, committed
+writes, or HTTP behavior. Uvicorn/FastAPI server and access logs remain separately managed by
+Uvicorn. Request correlation and latency are outside this boundary until VB-041.
 
 FastAPI lifespan submits semantic synchronization to one in-process background worker, so startup
 does not wait for a complete vault scan. The synchronization operation remains synchronous inside

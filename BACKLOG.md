@@ -316,7 +316,16 @@ Must include conflict detection/content hash.
 
 ## Operations and security
 
-### VB-040 — Structured JSON logging — P0
+### VB-040 — Structured JSON logging — P0 ✅
+
+Completed:
+
+- VaultBridge application records use standard-library logging with one UTF-8 JSON object per line;
+- the stable core fields are `timestamp`, `level`, `logger`, `event`, and `message`;
+- startup/shutdown, full synchronization, targeted refresh, and committed note writes expose stable events with safe operation context;
+- exception records retain type and basename-only stack frames without exception text, vault content, query text, credentials, or absolute host paths;
+- configuration is idempotent, emits to stderr for container collection, and deliberately leaves Uvicorn/FastAPI logging unchanged;
+- logging failures cannot change note-write, indexing, lifecycle, or API behavior.
 
 ### VB-041 — Request IDs and latency logging — P0
 
@@ -383,7 +392,8 @@ VB-001 ✓
 → VB-021  ✓
 → VB-022  ✓
 → VB-024  ✓
-→ VB-040  NEXT
+→ VB-040  ✓
+→ VB-041  NEXT
 ```
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.
