@@ -129,6 +129,17 @@ metadata and counts come from one committed WAL snapshot. `last_successful_sync`
 existing metadata table only after a successful full synchronization; targeted refresh does not
 update it.
 
+`/health/live` is a dependency-free process liveness probe. `/health/ready` combines a non-iterating
+check that the vault is an inspectable directory with authoritative semantic search availability. Its
+semantic predicate uses a separate read-only SQLite snapshot limited to schema, index signature/state
+and chunk existence, so orchestration polling does not scan the vault or count index rows. The same
+predicate recognizes compatible legacy indexes with chunks and no persisted lifecycle state, without
+mutating them. Runtime availability remains authoritative during an active or failed compatible
+refresh, but the storage snapshot prevents a stale process-local flag from masking removed, corrupt or
+incompatible storage. Expected filesystem/SQLite availability errors yield not-ready; programmer errors
+retain the normal server-error boundary. Neither probe initializes state, starts the indexer, loads the
+model, embeds content, performs search, or emits probe-specific log events.
+
 Semantic chunking uses ATX Markdown headings outside fenced code as preferred section boundaries.
 Each stored chunk carries the available heading hierarchy, while its content remains bounded by the
 configured character limit. Oversized sections split through monotonic source indexes at useful line,

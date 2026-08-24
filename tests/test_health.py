@@ -1,3 +1,4 @@
+import sqlite3
 import threading
 from pathlib import Path
 
@@ -161,6 +162,10 @@ def test_health_reports_initial_indexing_as_unavailable(tmp_path):
             assert payload["semantic_search_available"] is False
             assert payload["semantic_indexer_running"] is True
             assert payload["full_sync_required"] is True
+            readiness = client.get("/health/ready")
+            assert readiness.status_code == 503
+            assert readiness.json() == {"ready": False}
+            assert client.get("/health/live").json() == {"ok": True}
         finally:
             embedder.release.set()
         client.app.state.semantic_indexer.wait(timeout=2)
@@ -177,6 +182,8 @@ def test_health_reports_ready_index_counts_and_last_successful_full_sync(tmp_pat
     with client:
         client.app.state.semantic_indexer.wait(timeout=2)
         payload = client.get("/health").json()
+        readiness = client.get("/health/ready")
+        liveness = client.get("/health/live")
 
     assert_legacy_fields(payload, vault_exists=True, ready=True)
     assert payload["semantic_index_state"] == "ready"
@@ -188,6 +195,10 @@ def test_health_reports_ready_index_counts_and_last_successful_full_sync(tmp_pat
     assert payload["semantic_chunks"] > 0
     assert payload["vault_notes"] == 2
     assert payload["last_successful_sync"].endswith("+00:00")
+    assert readiness.status_code == 200
+    assert readiness.json() == {"ready": True}
+    assert liveness.status_code == 200
+    assert liveness.json() == {"ok": True}
 
 
 def test_vault_notes_matches_full_sync_eligibility_without_reading_contents(tmp_path):
@@ -224,6 +235,8 @@ def test_health_reports_initial_index_failure_and_full_sync_debt(tmp_path):
         with pytest.raises(RuntimeError, match="health test embedding failure"):
             client.app.state.semantic_indexer.wait(timeout=2)
         payload = client.get("/health").json()
+        readiness = client.get("/health/ready")
+        liveness = client.get("/health/live")
 
     assert_legacy_fields(payload, vault_exists=True, ready=False)
     assert payload["semantic_index_state"] == "error"
@@ -231,6 +244,10 @@ def test_health_reports_initial_index_failure_and_full_sync_debt(tmp_path):
     assert payload["semantic_indexer_running"] is False
     assert payload["full_sync_required"] is True
     assert payload["last_successful_sync"] is None
+    assert readiness.status_code == 503
+    assert readiness.json() == {"ready": False}
+    assert liveness.status_code == 200
+    assert liveness.json() == {"ok": True}
 
 
 def test_health_reports_failed_full_refresh_as_searchable_with_recovery_debt(tmp_path):
@@ -249,6 +266,7 @@ def test_health_reports_failed_full_refresh_as_searchable_with_recovery_debt(tmp
         with pytest.raises(RuntimeError, match="health test embedding failure"):
             client.app.state.semantic_indexer.wait(timeout=2)
         payload = client.get("/health").json()
+        readiness = client.get("/health/ready")
 
     assert payload["semantic_index_state"] == "error"
     assert payload["semantic_index_ready"] is False
@@ -258,6 +276,8 @@ def test_health_reports_failed_full_refresh_as_searchable_with_recovery_debt(tmp
     assert payload["indexed_notes"] == 1
     assert payload["semantic_chunks"] == 1
     assert payload["last_successful_sync"] == successful_sync
+    assert readiness.status_code == 200
+    assert readiness.json() == {"ready": True}
 
 
 def test_health_reports_active_full_refresh_with_previous_index_available(tmp_path):
@@ -280,6 +300,9 @@ def test_health_reports_active_full_refresh_with_previous_index_available(tmp_pa
             assert payload["semantic_search_available"] is True
             assert payload["semantic_indexer_running"] is True
             assert payload["full_sync_required"] is True
+            readiness = client.get("/health/ready")
+            assert readiness.status_code == 200
+            assert readiness.json() == {"ready": True}
         finally:
             embedder.release.set()
         client.app.state.semantic_indexer.wait(timeout=2)
@@ -305,6 +328,9 @@ def test_health_reports_targeted_indexing_without_full_sync_debt(tmp_path):
             assert payload["semantic_search_available"] is True
             assert payload["semantic_indexer_running"] is True
             assert payload["full_sync_required"] is False
+            readiness = client.get("/health/ready")
+            assert readiness.status_code == 200
+            assert readiness.json() == {"ready": True}
         finally:
             embedder.release.set()
         client.app.state.semantic_indexer.wait(timeout=2)
@@ -376,20 +402,37 @@ def test_health_reports_unavailable_vault_without_changing_application_health(tm
     )
 
     payload = client.get("/health").json()
+    readiness = client.get("/health/ready")
+    liveness = client.get("/health/live")
 
     assert_legacy_fields(payload, vault_exists=False, ready=False)
     assert payload["vault_notes"] == 0
     assert payload["semantic_index_state"] == "uninitialized"
+    assert readiness.status_code == 503
+    assert readiness.json() == {"ready": False}
+    assert liveness.status_code == 200
+    assert liveness.json() == {"ok": True}
 
 
-def test_health_does_not_mutate_persisted_or_in_memory_lifecycle_state(tmp_path):
+def test_health_and_readiness_do_not_mutate_persisted_or_in_memory_lifecycle_state(tmp_path):
     client, service = health_client(tmp_path, semantic_indexer=StatusOnlyIndexer())
     service.repository.prepare_index(service.index_signature)
     service.repository.set_metadata(INDEX_STATE_METADATA_KEY, "uninitialized")
+    service.repository.set_metadata(
+        LAST_SUCCESSFUL_SYNC_METADATA_KEY,
+        "2026-08-23T12:00:00+00:00",
+    )
 
     assert service._state_initialized is False
     assert client.get("/health").json()["semantic_index_state"] == "uninitialized"
+    readiness = client.get("/health/ready")
+
+    assert readiness.status_code == 503
+    assert readiness.json() == {"ready": False}
     assert service.repository.get_metadata(INDEX_STATE_METADATA_KEY) == "uninitialized"
+    assert service.repository.get_metadata(LAST_SUCCESSFUL_SYNC_METADATA_KEY) == (
+        "2026-08-23T12:00:00+00:00"
+    )
     assert service._state_initialized is False
 
 
@@ -439,10 +482,13 @@ def test_ready_health_becomes_unavailable_when_semantic_database_is_removed(tmp_
         service.repository.db_path.unlink()
 
         payload = client.get("/health").json()
+        readiness = client.get("/health/ready")
 
     assert payload["semantic_index_state"] == "uninitialized"
     assert payload["semantic_search_available"] is False
     assert payload["semantic_index_ready"] is False
+    assert readiness.status_code == 503
+    assert readiness.json() == {"ready": False}
 
 
 def test_ready_health_becomes_unavailable_when_semantic_database_is_corrupt(tmp_path):
@@ -454,12 +500,16 @@ def test_ready_health_becomes_unavailable_when_semantic_database_is_corrupt(tmp_
         service.repository.db_path.write_bytes(b"not a sqlite database")
 
         response = client.get("/health")
+        readiness = client.get("/health/ready")
 
     assert response.status_code == 200
     assert response.json()["semantic_index_state"] == "error"
     assert response.json()["semantic_search_available"] is False
     assert response.json()["semantic_index_ready"] is False
     assert "not a database" not in response.text
+    assert readiness.status_code == 503
+    assert readiness.json() == {"ready": False}
+    assert "not a database" not in readiness.text
 
 
 def test_ready_health_becomes_unavailable_when_index_signature_is_incompatible(tmp_path):
@@ -471,6 +521,7 @@ def test_ready_health_becomes_unavailable_when_index_signature_is_incompatible(t
         service.repository.set_metadata("index_signature", "v1|different/model|300|50")
 
         payload = client.get("/health").json()
+        readiness = client.get("/health/ready")
 
     assert payload["semantic_index_state"] == "uninitialized"
     assert payload["semantic_search_available"] is False
@@ -478,6 +529,8 @@ def test_ready_health_becomes_unavailable_when_index_signature_is_incompatible(t
     assert payload["indexed_notes"] == 0
     assert payload["semantic_chunks"] == 0
     assert payload["last_successful_sync"] is None
+    assert readiness.status_code == 503
+    assert readiness.json() == {"ready": False}
 
 
 def test_health_handles_unreadable_uninitialized_storage_without_exposing_errors(tmp_path):
@@ -497,3 +550,214 @@ def test_health_operation_id_and_path_remain_compatible():
     operation = main.app.openapi()["paths"]["/health"]["get"]
 
     assert operation["operationId"] == "healthCheck"
+
+
+def test_liveness_is_public_minimal_and_does_not_touch_runtime_dependencies(tmp_path, monkeypatch):
+    client, service = health_client(tmp_path, semantic_indexer=StatusOnlyIndexer())
+
+    def unexpected_call():
+        raise AssertionError("liveness touched a runtime dependency")
+
+    monkeypatch.setattr(service, "health_status", unexpected_call)
+    monkeypatch.setattr(service, "probe_search_availability", unexpected_call)
+    monkeypatch.setattr(client.app.state.vault_service, "vault_exists", unexpected_call)
+    monkeypatch.setattr(client.app.state.vault_service, "vault_available", unexpected_call)
+    monkeypatch.setattr(client.app.state.vault_service, "count_notes", unexpected_call)
+
+    response = client.get("/health/live")
+
+    assert response.status_code == 200
+    assert response.json() == {"ok": True}
+    assert service.repository.db_path.exists() is False
+    assert service._state_initialized is False
+
+
+def test_readiness_is_public_minimal_and_side_effect_free_when_uninitialized(tmp_path, monkeypatch):
+    embedder = FailingEmbedder()
+    indexer = StatusOnlyIndexer()
+    client, service = health_client(tmp_path, embedder=embedder, semantic_indexer=indexer)
+    vault_service = client.app.state.vault_service
+
+    def unexpected_call():
+        raise AssertionError("readiness used an expensive status path")
+
+    monkeypatch.setattr(service.repository, "read_status", unexpected_call)
+    monkeypatch.setattr(vault_service, "count_notes", unexpected_call)
+    monkeypatch.setattr(service, "sync", unexpected_call)
+    monkeypatch.setattr(service, "sync_paths", unexpected_call)
+    monkeypatch.setattr(service, "search", unexpected_call)
+    monkeypatch.setattr(Path, "rglob", unexpected_call)
+    monkeypatch.setattr(Path, "read_text", unexpected_call)
+
+    response = client.get("/health/ready")
+
+    assert response.status_code == 503
+    assert response.json() == {"ready": False}
+    assert embedder.calls == 0
+    assert indexer.start_calls == 0
+    assert service.repository.db_path.exists() is False
+    assert service._state_initialized is False
+
+
+def test_readiness_short_circuits_semantic_storage_when_vault_is_missing(tmp_path, monkeypatch):
+    missing_vault = tmp_path / "missing-vault"
+    client, service = health_client(
+        tmp_path,
+        vault_root=missing_vault,
+        semantic_indexer=StatusOnlyIndexer(),
+    )
+
+    def unexpected_call():
+        raise AssertionError("readiness checked semantic storage for a missing vault")
+
+    monkeypatch.setattr(service, "probe_search_availability", unexpected_call)
+
+    response = client.get("/health/ready")
+
+    assert response.status_code == 503
+    assert response.json() == {"ready": False}
+
+
+def test_readiness_accepts_compatible_legacy_index_without_persisted_state(tmp_path):
+    source_client, service = health_client(tmp_path, semantic_indexer=StatusOnlyIndexer())
+    (service.vault_root / "note.md").write_text("TrueNAS backup storage.", encoding="utf-8")
+    service.sync()
+    with sqlite3.connect(service.repository.db_path) as connection:
+        connection.execute("DELETE FROM meta WHERE key=?", (INDEX_STATE_METADATA_KEY,))
+        connection.commit()
+
+    restarted = SemanticSearchService(
+        vault_root=service.vault_root,
+        repository=SemanticRepository(service.repository.db_path),
+        model_name=service.model_name,
+        max_note_bytes=service.max_note_bytes,
+        chunk_chars=service.chunk_chars,
+        chunk_overlap=service.chunk_overlap,
+        index_batch_size=service.index_batch_size,
+        embedder=ConstantEmbedder(),
+    )
+    application = main.create_app(
+        settings=source_client.app.state.settings,
+        semantic_search_service=restarted,
+        semantic_indexer=StatusOnlyIndexer(),
+        vault_service=source_client.app.state.vault_service,
+    )
+    client = TestClient(application)
+
+    health = client.get("/health")
+    readiness = client.get("/health/ready")
+
+    assert health.status_code == 200
+    assert health.json()["semantic_search_available"] is True
+    assert readiness.status_code == 200
+    assert readiness.json() == {"ready": True}
+    assert restarted.repository.get_metadata(INDEX_STATE_METADATA_KEY) is None
+    assert restarted._state_initialized is False
+
+
+def test_readiness_rejects_regular_file_vault_without_changing_rich_health(tmp_path):
+    vault_file = tmp_path / "vault-file"
+    vault_file.write_text("not a directory", encoding="utf-8")
+    client, service = health_client(
+        tmp_path,
+        vault_root=vault_file,
+        semantic_indexer=StatusOnlyIndexer(),
+    )
+    service.repository.prepare_index(service.index_signature)
+    service.repository.set_metadata(INDEX_STATE_METADATA_KEY, "ready")
+
+    health = client.get("/health")
+    readiness = client.get("/health/ready")
+    liveness = client.get("/health/live")
+
+    assert health.status_code == 200
+    assert health.json()["vault_exists"] is True
+    assert readiness.status_code == 503
+    assert readiness.json() == {"ready": False}
+    assert liveness.status_code == 200
+    assert liveness.json() == {"ok": True}
+
+
+@pytest.mark.parametrize(
+    "error",
+    [PermissionError("vault denied"), OSError("vault metadata unavailable")],
+)
+def test_readiness_returns_503_for_vault_availability_errors(tmp_path, monkeypatch, error):
+    client, _service = health_client(tmp_path, semantic_indexer=StatusOnlyIndexer())
+    vault_root = client.app.state.vault_service.vault_root
+    original_is_dir = type(vault_root).is_dir
+
+    def unavailable(path):
+        if path == vault_root:
+            raise error
+        return original_is_dir(path)
+
+    monkeypatch.setattr(type(vault_root), "is_dir", unavailable)
+
+    readiness = client.get("/health/ready")
+    liveness = client.get("/health/live")
+
+    assert readiness.status_code == 503
+    assert readiness.json() == {"ready": False}
+    assert liveness.status_code == 200
+    assert liveness.json() == {"ok": True}
+
+
+@pytest.mark.parametrize(
+    "error",
+    [PermissionError("semantic path denied"), OSError("semantic path unavailable")],
+)
+def test_readiness_returns_503_for_semantic_path_errors(tmp_path, monkeypatch, error):
+    client, service = health_client(tmp_path, semantic_indexer=StatusOnlyIndexer())
+    service.repository.prepare_index(service.index_signature)
+    service.repository.set_metadata(INDEX_STATE_METADATA_KEY, "ready")
+    db_path = service.repository.db_path
+    original_exists = type(db_path).exists
+
+    def unavailable(path):
+        if path == db_path:
+            raise error
+        return original_exists(path)
+
+    monkeypatch.setattr(type(db_path), "exists", unavailable)
+
+    response = client.get("/health/ready")
+
+    assert response.status_code == 503
+    assert response.json() == {"ready": False}
+
+
+def test_readiness_returns_503_for_sqlite_operational_error(tmp_path, monkeypatch):
+    client, service = health_client(tmp_path, semantic_indexer=StatusOnlyIndexer())
+    service.repository.prepare_index(service.index_signature)
+
+    def unavailable(*_args, **_kwargs):
+        raise sqlite3.OperationalError("semantic database unavailable")
+
+    monkeypatch.setattr("app.repositories.semantic.sqlite3.connect", unavailable)
+
+    response = client.get("/health/ready")
+
+    assert response.status_code == 503
+    assert response.json() == {"ready": False}
+
+
+def test_readiness_preserves_unexpected_sqlite_programming_error_boundary(tmp_path, monkeypatch):
+    client, service = health_client(tmp_path, semantic_indexer=StatusOnlyIndexer())
+    service.repository.prepare_index(service.index_signature)
+
+    def fail(*_args, **_kwargs):
+        raise sqlite3.ProgrammingError("invalid readiness implementation")
+
+    monkeypatch.setattr("app.repositories.semantic.sqlite3.connect", fail)
+
+    with pytest.raises(sqlite3.ProgrammingError, match="invalid readiness implementation"):
+        client.get("/health/ready")
+
+
+def test_probe_operation_ids_and_response_contracts_are_stable():
+    schema = main.app.openapi()
+
+    assert schema["paths"]["/health/live"]["get"]["operationId"] == "livenessCheck"
+    assert schema["paths"]["/health/ready"]["get"]["operationId"] == "readinessCheck"
+    assert set(schema["paths"]["/health/ready"]["get"]["responses"]) == {"200", "503"}

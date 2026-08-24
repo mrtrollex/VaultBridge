@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -97,6 +98,16 @@ class VaultService:
 
     def vault_exists(self) -> bool:
         return self.vault_root.exists()
+
+    def vault_available(self) -> bool:
+        """Return whether the configured vault is an inspectable directory."""
+        try:
+            if not self.vault_root.is_dir():
+                return False
+            with os.scandir(self.vault_root):
+                return True
+        except OSError:
+            return False
 
     def count_notes(self) -> int:
         """Count Markdown files eligible for full semantic synchronization."""

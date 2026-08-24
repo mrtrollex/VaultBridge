@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response, status
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
@@ -26,6 +26,42 @@ class HealthResponse(BaseModel):
     semantic_chunks: int
     vault_notes: int
     last_successful_sync: str | None
+
+
+class LivenessResponse(BaseModel):
+    ok: Literal[True] = True
+
+
+class ReadinessResponse(BaseModel):
+    ready: bool
+
+
+@router.get(
+    "/health/live",
+    operation_id="livenessCheck",
+    tags=["system"],
+    response_model=LivenessResponse,
+)
+def liveness() -> LivenessResponse:
+    return LivenessResponse()
+
+
+@router.get(
+    "/health/ready",
+    operation_id="readinessCheck",
+    tags=["system"],
+    response_model=ReadinessResponse,
+    responses={status.HTTP_503_SERVICE_UNAVAILABLE: {"model": ReadinessResponse}},
+)
+def readiness(
+    response: Response,
+    semantic_search_service: SemanticSearchService = Depends(get_semantic_search_service),
+    vault_service: VaultService = Depends(get_vault_service),
+) -> ReadinessResponse:
+    ready = vault_service.vault_available() and semantic_search_service.probe_search_availability()
+    if not ready:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    return ReadinessResponse(ready=ready)
 
 
 @router.get(

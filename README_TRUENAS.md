@@ -66,7 +66,29 @@ The Docker image now also installs `libgomp1`, which ONNX Runtime needs for CPU/
 
 ## 5. Health check
 
-From another machine:
+Use the public liveness probe for a process/container check:
+
+```powershell
+curl.exe -fsS http://127.0.0.1:8765/health/live
+```
+
+It always returns HTTP `200` with `{"ok":true}` while the API process can serve requests. It does
+not inspect the vault, model, semantic database, or background indexer.
+
+Use the public readiness probe for load balancers and orchestration:
+
+```powershell
+curl.exe -fsS http://127.0.0.1:8765/health/ready
+```
+
+It returns HTTP `200` with `{"ready":true}` when the vault is an inspectable directory and semantic
+search is available. It returns HTTP `503` with `{"ready":false}` during the first index build or when
+the vault/index is unavailable, including expected permission, filesystem, or SQLite access failures.
+An older compatible index remains ready while a refresh is running or after that refresh fails;
+compatible legacy indexes with chunks also remain usable without probe-side mutation. Readiness does
+not scan/count the vault, load the model, search, embed, or start indexing.
+
+Use the richer operator endpoint for lifecycle details and counts:
 
 ```powershell
 curl.exe http://TRUENAS_IP:8765/health

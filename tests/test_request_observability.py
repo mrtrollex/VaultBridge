@@ -111,6 +111,33 @@ def test_request_id_header_lifecycle_application_context_latency_and_privacy(tmp
 
 
 @pytest.mark.parametrize(
+    ("path", "expected_status"),
+    [("/health/live", 200), ("/health/ready", 503)],
+)
+def test_health_probes_use_standard_request_observability(tmp_path, path, expected_status):
+    client = client_for(tmp_path, semantic_indexer=RecordingIndexer())
+
+    with capture_application_logs() as stream:
+        response = client.get(path)
+
+    records = parsed_records(stream)
+    lifecycle = lifecycle_records(records)
+    request_id = response.headers["x-request-id"]
+
+    assert response.status_code == expected_status
+    assert re.fullmatch(r"[0-9a-f]{32}", request_id)
+    assert records == lifecycle
+    assert [record["event"] for record in lifecycle] == [
+        "request_started",
+        "request_completed",
+    ]
+    assert {record["request_id"] for record in lifecycle} == {request_id}
+    assert lifecycle[0]["method"] == "GET"
+    assert lifecycle[1]["route"] == path
+    assert lifecycle[1]["status_code"] == expected_status
+
+
+@pytest.mark.parametrize(
     "caller_request_id",
     [
         b"hostile\nrequest-id",

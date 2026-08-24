@@ -78,10 +78,21 @@ Do not implement the recommended next task.
 At the current project state, the next recommended task is:
 
 ```text
-VB-044 — Liveness and readiness endpoints
+VB-045 — Index integrity/rebuild CLI
 ```
 
 Always verify this against `PROJECT_STATE.md` and `BACKLOG.md` before starting.
+
+## Health probe convention
+
+Preserve the distinct endpoint roles: `/health/live` is dependency-free process liveness,
+`/health/ready` is minimal usable-vault plus semantic-search workload readiness, and `/health` is rich
+operator diagnostics. Probe checks must remain public, side-effect free, cheap, and covered by the
+normal request observability middleware without additional per-probe application events. Do not
+derive readiness only from `semantic_index_state == ready`; a compatible previous index can remain
+searchable during or after a failed refresh, and a compatible legacy index with chunks can be
+searchable without persisted lifecycle state. Expected filesystem/SQLite availability failures are
+not-ready states; unexpected programming errors retain the normal server-error boundary.
 
 ## Structured logging convention
 

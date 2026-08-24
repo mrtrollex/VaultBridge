@@ -355,7 +355,27 @@ Allow current + previous key during a rotation window.
 
 In-process by default; do not add Redis.
 
-### VB-044 — Liveness and readiness endpoints — P0
+### VB-044 — Liveness and readiness endpoints — P0 ✅
+
+**Status:** Completed on 2026-08-24.
+
+Added public, minimal orchestration probes while preserving the richer compatibility endpoint:
+
+- `GET /health/live` (`livenessCheck`) returns HTTP `200` with `{"ok": true}` and does not
+  consult the vault, semantic model, index, storage, or background indexer,
+- `GET /health/ready` (`readinessCheck`) returns `{"ready": true}` with HTTP `200` only when
+  the vault is an inspectable directory and semantic search is available; otherwise it returns the
+  same minimal shape with HTTP `503`,
+- readiness uses a read-only SQLite schema/signature/state plus chunk-existence snapshot without
+  vault scans or note/chunk counts and does not initialize storage or lifecycle state,
+- compatible legacy indexes with chunks but no persisted state are available without mutation, and
+  a compatible previously searchable index remains ready during an active or failed refresh,
+  while missing, corrupt, incompatible, uninitialized, initially indexing, or initially failed
+  storage remains unavailable,
+- expected vault/semantic filesystem and SQLite availability failures return not-ready rather than
+  an application error, while unexpected programming errors retain normal HTTP `500` behavior,
+- both probes use the existing request-ID header and standard request lifecycle events without
+  feature-specific logging.
 
 ### VB-045 — Index integrity/rebuild CLI — P0
 
@@ -410,7 +430,8 @@ VB-001 ✓
 → VB-024  ✓
 → VB-040  ✓
 → VB-041  ✓
-→ VB-044  NEXT
+→ VB-044  ✓
+→ VB-045  NEXT
 ```
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

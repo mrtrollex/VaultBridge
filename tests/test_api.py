@@ -92,6 +92,8 @@ def test_application_metadata():
 def test_router_registration_preserves_public_contract():
     expected = {
         ("GET", "/health", "healthCheck"),
+        ("GET", "/health/live", "livenessCheck"),
+        ("GET", "/health/ready", "readinessCheck"),
         ("POST", "/notes", "createNote"),
         ("POST", "/notes/append", "appendNote"),
         ("GET", "/notes/read", "readNote"),

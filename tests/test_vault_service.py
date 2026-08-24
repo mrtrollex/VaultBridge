@@ -18,6 +18,56 @@ def service_for(tmp_path: Path, *, max_note_bytes: int = 1_000_000) -> VaultServ
     return VaultService(vault_root=tmp_path, max_note_bytes=max_note_bytes)
 
 
+def test_vault_availability_requires_an_existing_directory(tmp_path):
+    directory = tmp_path / "vault"
+    directory.mkdir()
+    missing = tmp_path / "missing"
+    regular_file = tmp_path / "vault-file"
+    regular_file.write_text("not a directory", encoding="utf-8")
+
+    assert service_for(directory).vault_available() is True
+    assert service_for(missing).vault_available() is False
+    assert service_for(regular_file).vault_available() is False
+
+
+@pytest.mark.parametrize(
+    "error",
+    [PermissionError("vault metadata denied"), OSError("vault metadata unavailable")],
+)
+def test_vault_availability_handles_expected_directory_metadata_errors(tmp_path, monkeypatch, error):
+    service = service_for(tmp_path)
+
+    def unavailable(_path):
+        raise error
+
+    monkeypatch.setattr(Path, "is_dir", unavailable)
+
+    assert service.vault_available() is False
+
+
+def test_vault_availability_handles_directory_open_errors(tmp_path, monkeypatch):
+    service = service_for(tmp_path)
+
+    def unavailable(_path):
+        raise PermissionError("vault directory cannot be inspected")
+
+    monkeypatch.setattr("app.services.vault.os.scandir", unavailable)
+
+    assert service.vault_available() is False
+
+
+def test_vault_availability_does_not_scan_or_read_notes(tmp_path, monkeypatch):
+    service = service_for(tmp_path)
+
+    def unexpected_call(*_args, **_kwargs):
+        raise AssertionError("vault availability scanned or read notes")
+
+    monkeypatch.setattr(Path, "rglob", unexpected_call)
+    monkeypatch.setattr(Path, "read_text", unexpected_call)
+
+    assert service.vault_available() is True
+
+
 def test_create_and_read_note_preserves_markdown_format(tmp_path):
     service = service_for(tmp_path)
 
