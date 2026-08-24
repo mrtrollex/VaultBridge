@@ -26,10 +26,11 @@ Completed:
 - VB-024 — Tune hybrid ranking from evaluation data
 - VB-040 — Structured JSON logging
 - VB-041 — Request IDs and latency logging
+- VB-044 — Liveness and readiness endpoints
 
 Next recommended task:
 
-- **VB-044 — Liveness and readiness endpoints**
+- **VB-045 — Index integrity/rebuild CLI**
 
 Current milestone:
 
@@ -55,6 +56,7 @@ Current milestone:
 - `SemanticSearchService` owns state transitions
 - `SemanticRepository` persists semantic data and lifecycle state
 - `/health` reports semantic lifecycle and search availability separately without starting semantic work
+- `/health/live` provides dependency-free liveness and `/health/ready` reports usable-vault plus semantic-search availability
 - successful full synchronization persists `last_successful_sync`; targeted refresh does not change it
 - TrueNAS container commonly runs as UID/GID 568
 - existing production deployment uses port 8765 → 8000
@@ -191,6 +193,18 @@ containment, internal-directory exclusion and maximum-size policy. Health metada
 come from one short read snapshot. These fields provide inferred completeness, not explicit per-sync
 current-note, percentage, batch or ETA counters.
 
+`GET /health/live` is a constant, public liveness check. It returns HTTP `200` and `{"ok": true}`
+without consulting runtime dependencies. `GET /health/ready` is a public orchestration readiness
+check: it returns HTTP `200` with `{"ready": true}` only when the vault is an inspectable directory
+and semantic search is available, otherwise HTTP `503` with `{"ready": false}`. Vault readiness does
+not scan directory contents. The semantic snapshot reads only SQLite schema, index
+signature/state metadata, and whether any chunk exists; it does not count index rows,
+initialize storage, load/embed/search, trigger synchronization, or mutate lifecycle state. A compatible
+legacy index with chunks is available without persisting missing state. Previous indexes remain ready
+through active or failed refreshes. Expected vault/storage filesystem and SQLite availability failures
+return HTTP `503`; missing, corrupt, incompatible, uninitialized, initial-indexing, and initial-error
+states remain unavailable.
+
 Chunk generation prefers ATX heading boundaries outside fenced code and stores the available heading
 hierarchy on every resulting chunk. Sections remain within the configured character bound. Long
 sections split by monotonic source indexes at line/word/character boundaries without normalizing
@@ -251,12 +265,12 @@ ties now have focused production regressions.
 4. GPT/AI clients can invent wikilinks unless client instructions require verified existing notes.
 5. Graceful shutdown cannot interrupt a model download, ONNX inference call, or filesystem operation already in progress.
 
-## Verified baseline after VB-041
+## Verified baseline after VB-044
 
 Native Windows:
 
 ```text
-210 passed, 1 failed, 4 skipped
+232 passed, 1 failed, 4 skipped
 ```
 
 The one failure remains the known pre-existing Windows path-separator assertion around
@@ -269,31 +283,32 @@ Additional checks:
 Ruff: passed
 Python compileall: passed
 git diff --check: passed
-all 7 endpoint paths and operation IDs: unchanged
+all existing 7 endpoint paths and operation IDs: unchanged
+2 public probe paths and operation IDs: added
 ```
 
-Focused structured logging run:
+Focused health/probe and vault-availability runs:
 
 ```text
-26 passed
+45 passed, 2 skipped
 ```
 
-Focused request observability run:
+Focused structured logging/request observability run:
 
 ```text
-15 passed
+43 passed
 ```
 
 Focused semantic/repository/indexer/ranking run:
 
 ```text
-101 passed, 2 skipped
+104 passed, 2 skipped
 ```
 
 Protected API/health run:
 
 ```text
-35 passed, 1 known baseline failure
+47 passed, 1 known baseline failure
 ```
 
 Deterministic retrieval evaluation:

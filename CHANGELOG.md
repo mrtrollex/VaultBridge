@@ -18,6 +18,8 @@ The project intends to follow Semantic Versioning after the public repository ba
   targeted reindexing, and committed note-write events
 - context-local request correlation, `X-Request-ID` response headers, and monotonic HTTP lifecycle
   latency events without request-body, query-string, header, or credential logging
+- public, minimal `/health/live` and `/health/ready` orchestration probes with dependency-free
+  liveness and side-effect-free vault plus semantic-search readiness
 
 ### Changed
 

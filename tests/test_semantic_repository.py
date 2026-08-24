@@ -2,6 +2,7 @@ import sqlite3
 import threading
 
 import numpy as np
+import pytest
 
 from app.repositories.semantic import SemanticRepository, StoredChunk, StoredNote
 
@@ -75,6 +76,45 @@ def test_repository_status_is_read_only_and_reports_cheap_counts(tmp_path):
     assert status.indexed_notes == 1
     assert status.semantic_chunks == 1
     assert status.last_successful_sync == "2026-08-23T12:00:00+00:00"
+
+    availability = repository.read_availability_status()
+    assert availability.storage_initialized is True
+    assert availability.storage_error is False
+    assert availability.index_signature == INDEX_SIGNATURE
+    assert availability.index_state == "ready"
+    assert availability.has_chunks is True
+
+
+@pytest.mark.parametrize(
+    "error",
+    [PermissionError("semantic path denied"), OSError("semantic path unavailable")],
+)
+def test_repository_availability_handles_expected_path_errors(tmp_path, monkeypatch, error):
+    repository = SemanticRepository(tmp_path / "semantic-index.sqlite3")
+
+    def unavailable(_path):
+        raise error
+
+    monkeypatch.setattr(type(repository.db_path), "exists", unavailable)
+
+    status = repository.read_availability_status()
+
+    assert status.storage_initialized is False
+    assert status.storage_error is True
+    assert status.has_chunks is False
+
+
+def test_repository_availability_does_not_hide_sqlite_programming_errors(tmp_path, monkeypatch):
+    repository = SemanticRepository(tmp_path / "semantic-index.sqlite3")
+    repository.db_path.touch()
+
+    def fail_to_connect(*_args, **_kwargs):
+        raise sqlite3.ProgrammingError("invalid readiness query")
+
+    monkeypatch.setattr(sqlite3, "connect", fail_to_connect)
+
+    with pytest.raises(sqlite3.ProgrammingError, match="invalid readiness query"):
+        repository.read_availability_status()
 
 
 def test_repository_status_uses_one_snapshot_when_writer_commits(tmp_path, monkeypatch):

@@ -267,6 +267,30 @@ class SemanticSearchService:
             return True
         return False
 
+    def _search_available_from_storage(
+        self,
+        *,
+        storage_initialized: bool,
+        storage_error: bool,
+        index_signature: str | None,
+        index_state: str | None,
+        has_chunks: bool,
+    ) -> bool:
+        compatible_storage = (
+            storage_initialized
+            and not storage_error
+            and index_signature == self.index_signature
+        )
+        if not compatible_storage:
+            return False
+
+        stored_index_available = index_state == IndexState.READY.value or (
+            index_state is None and has_chunks
+        )
+        with self._availability_lock:
+            search_available = self._search_available
+        return search_available or stored_index_available
+
     def health_status(self) -> SemanticHealthStatus:
         """Return a read-only lifecycle and storage snapshot for operator health reporting."""
         storage = self.repository.read_status()
@@ -287,14 +311,29 @@ class SemanticSearchService:
             if state is IndexState.INDEXING and not self._state_initialized:
                 state = IndexState.ERROR
 
-        with self._availability_lock:
-            search_available = self._search_available
         return SemanticHealthStatus(
             state=state,
-            search_available=compatible_storage and (search_available or state is IndexState.READY),
+            search_available=self._search_available_from_storage(
+                storage_initialized=storage.storage_initialized,
+                storage_error=storage.storage_error,
+                index_signature=storage.index_signature,
+                index_state=storage.index_state,
+                has_chunks=bool(storage.semantic_chunks),
+            ),
             indexed_notes=storage.indexed_notes if compatible_storage else 0,
             semantic_chunks=storage.semantic_chunks if compatible_storage else 0,
             last_successful_sync=storage.last_successful_sync if compatible_storage else None,
+        )
+
+    def probe_search_availability(self) -> bool:
+        """Return search availability from a minimal, read-only storage snapshot."""
+        storage = self.repository.read_availability_status()
+        return self._search_available_from_storage(
+            storage_initialized=storage.storage_initialized,
+            storage_error=storage.storage_error,
+            index_signature=storage.index_signature,
+            index_state=storage.index_state,
+            has_chunks=storage.has_chunks,
         )
 
     def _set_search_available(self, available: bool) -> None:

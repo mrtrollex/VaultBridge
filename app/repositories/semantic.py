@@ -44,6 +44,15 @@ class SemanticIndexStatus:
     last_successful_sync: str | None
 
 
+@dataclass(frozen=True)
+class SemanticAvailabilityStatus:
+    storage_initialized: bool
+    storage_error: bool
+    index_signature: str | None
+    index_state: str | None
+    has_chunks: bool
+
+
 class SemanticRepositorySession:
     """Semantic index operations sharing one SQLite transaction."""
 
@@ -322,4 +331,66 @@ class SemanticRepository:
                 indexed_notes=0,
                 semantic_chunks=0,
                 last_successful_sync=None,
+            )
+
+    def read_availability_status(self) -> SemanticAvailabilityStatus:
+        """Read only the storage metadata needed to decide search availability."""
+        try:
+            if not self.db_path.exists():
+                return SemanticAvailabilityStatus(
+                    storage_initialized=False,
+                    storage_error=False,
+                    index_signature=None,
+                    index_state=None,
+                    has_chunks=False,
+                )
+
+            database_uri = f"{self.db_path.resolve().as_uri()}?mode=ro"
+            connection = sqlite3.connect(database_uri, uri=True, timeout=1)
+            connection.row_factory = sqlite3.Row
+            try:
+                connection.execute("BEGIN")
+                rows = connection.execute(
+                    "SELECT name FROM sqlite_master "
+                    "WHERE type='table' AND name IN ('meta', 'notes', 'chunks')"
+                ).fetchall()
+                if {row["name"] for row in rows} != {"meta", "notes", "chunks"}:
+                    return SemanticAvailabilityStatus(
+                        storage_initialized=False,
+                        storage_error=False,
+                        index_signature=None,
+                        index_state=None,
+                        has_chunks=False,
+                    )
+
+                metadata = {
+                    row["key"]: row["value"]
+                    for row in connection.execute(
+                        "SELECT key, value FROM meta "
+                        "WHERE key IN ('index_signature', 'index_state')"
+                    ).fetchall()
+                }
+                has_chunks = bool(
+                    connection.execute("SELECT EXISTS(SELECT 1 FROM chunks)").fetchone()[0]
+                )
+                return SemanticAvailabilityStatus(
+                    storage_initialized=True,
+                    storage_error=False,
+                    index_signature=metadata.get("index_signature"),
+                    index_state=metadata.get("index_state"),
+                    has_chunks=has_chunks,
+                )
+            finally:
+                if connection.in_transaction:
+                    connection.rollback()
+                connection.close()
+        except sqlite3.ProgrammingError:
+            raise
+        except (OSError, sqlite3.DatabaseError):
+            return SemanticAvailabilityStatus(
+                storage_initialized=False,
+                storage_error=True,
+                index_signature=None,
+                index_state=None,
+                has_chunks=False,
             )
