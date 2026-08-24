@@ -33,6 +33,9 @@ The project intends to follow Semantic Versioning after the public repository ba
   present at the chunk start, while persisted Markdown content and query/ranking behavior stay unchanged
 - the `v3-heading-context` index signature automatically rebuilds VB-020 embeddings; targeted refresh
   against an older signature performs a safe full rebuild without a SQLite schema migration
+- hybrid retrieval now normalizes the existing `1.0:0.70` semantic/lexical combination instead of
+  clamping distinct high scores, and resolves exact ties through semantic score, lexical score,
+  canonical path and source chunk order without depending on SQLite iteration order
 
 ## [0.1.0] - TBD
 

@@ -4,7 +4,7 @@ This document is the current factual snapshot for future Codex sessions. It shou
 
 ## Baseline date
 
-2026-08-23
+2026-08-24
 
 ## Current development position
 
@@ -23,14 +23,15 @@ Completed:
 - VB-020 — Markdown heading-aware chunker
 - VB-021 — Embed title + heading hierarchy + chunk
 - VB-022 — Retrieval evaluation fixture
+- VB-024 — Tune hybrid ranking from evaluation data
 
 Next recommended task:
 
-- **VB-024 — Tune hybrid ranking from evaluation data**
+- **VB-040 — Structured JSON logging**
 
 Current milestone:
 
-- **Milestone 3 — Retrieval quality and evaluation**
+- **Milestone 3 — Retrieval quality and evaluation (complete)**
 
 ## Working production characteristics
 
@@ -43,7 +44,7 @@ Current milestone:
 - SQLite semantic index using WAL
 - heading-aware chunk configuration defaults to 600 chars / 100 prose-only overlap
 - chunk embedding input deterministically carries note title and canonical heading context where needed
-- semantic search uses cosine similarity plus lexical/title/path reranking
+- semantic search uses normalized cosine-plus-lexical reranking with deterministic tie-breaking
 - semantic index lifecycle state is persisted separately from schema availability
 - semantic index states: `uninitialized`, `indexing`, `ready`, `error`
 - semantic index mutations commit in configurable note-count batches (default `25`)
@@ -158,8 +159,15 @@ Embedding input remains separate from persisted chunk content. Headingless chunk
 already the chunk's first plain/ATX heading line, the representation is
 `title\nheading hierarchy\ncontent`. This preserves Unicode and coalesced range metadata without
 reparsing Markdown. Full synchronization and targeted refresh share the builder. User query text is
-still embedded unchanged, and semantic/lexical scoring, boosts, weights, filtering and ordering are
-unchanged.
+still embedded unchanged.
+
+Production retrieval first filters chunks by semantic cosine similarity. Lexical coverage remains
+weighted as title `0.40`, path `0.25`, heading `0.10`, content `0.20`, plus the existing exact-title
+`0.10` or exact-content `0.05` bonus. The hybrid score is now
+`(semantic_score + 0.70 * lexical_score) / 1.70`; this retains the previous signal ratio without the
+old `1.0` saturation. Each note contributes its strongest chunk. Exact within-note relevance ties
+select the lower source chunk index. Notes sort by hybrid score, semantic score, lexical score, then
+canonical path. The semantic minimum threshold and `78%` relative result floor are unchanged.
 
 ## Deterministic retrieval evaluation
 
@@ -169,10 +177,11 @@ chunking, VB-021 embedding input, SQLite persistence, semantic and lexical scori
 per-note aggregation and result ordering.
 
 The checked baseline covers all, English, Slovak, cross-language and heading-context groups. Tests
-reject material score ties, verify unchanged ranks under reversed repository iteration, and use
-controlled ablations to prove sensitivity to VB-021 hierarchy context and EN/SK concept equivalence.
+reject material score ties, verify unchanged paths and chunks under reversed repository iteration,
+and use controlled ablations to prove semantic, lexical, VB-021 hierarchy-context and EN/SK concept
+equivalence sensitivity.
 
-Measured VB-020 + VB-021 baseline:
+Measured baseline before and after VB-024:
 
 ```text
 All:              13 cases, Hit@1 100%, Hit@3 100%, MRR 100%
@@ -182,31 +191,31 @@ Cross-language:    1 case,  Hit@1 100%,   Hit@3 100%, MRR 100%
 Heading context:   2 cases, Hit@1 100%,   Hit@3 100%, MRR 100%
 ```
 
-No production ranking behavior was changed. Equal production final scores can still preserve
-unspecified repository iteration order; deterministic production tie-breaking is recorded for future
-retrieval work rather than changed by VB-022.
+All thirteen expected path/heading pairs remain rank 1. Normalization changes the public final-score
+scale but preserves every fixture rank and every non-saturated production ordering. The smallest
+fixture top-1 margin remains the Slovak NAS recovery case; it changes only by the constant `1/1.70`
+normalization, from `0.0240` to `0.0141`. High-score saturation and repository-order-dependent exact
+ties now have focused production regressions.
 
 ## Known limitations observed during real use
 
 1. External filesystem changes are not watched; they are picked up by startup/full synchronization.
 2. The deterministic fixture does not measure real-model quality or latency on a production vault.
-3. Equal final retrieval scores have no explicit secondary ordering and chunk loading is unordered.
-4. Multiple application processes sharing one index are not coordinated.
-5. GPT/AI clients can invent wikilinks unless client instructions require verified existing notes.
-6. Graceful shutdown cannot interrupt a model download, ONNX inference call, or filesystem operation already in progress.
+3. Multiple application processes sharing one index are not coordinated.
+4. GPT/AI clients can invent wikilinks unless client instructions require verified existing notes.
+5. Graceful shutdown cannot interrupt a model download, ONNX inference call, or filesystem operation already in progress.
 
-## Verified baseline after VB-022
+## Verified baseline after VB-024
 
 Native Windows:
 
 ```text
-159 passed, 1 failed, 4 skipped
+169 passed, 1 failed, 4 skipped
 ```
 
 The one failure remains the known pre-existing Windows path-separator assertion around
-`VaultService` response paths. The four skips are privilege-dependent symlink tests. WSL test
-collection was attempted for VB-022, but that environment's Python 3.14 installation lacks project
-dependencies including FastAPI and Pydantic; no current Linux result is claimed.
+`VaultService` response paths. The four skips are privilege-dependent symlink tests. Linux/CI was
+not available with project dependencies in the current environment, so no new Linux result is claimed.
 
 Additional checks:
 
@@ -220,13 +229,13 @@ all 7 endpoint paths and operation IDs: unchanged
 Focused semantic/repository/indexer/health/API run:
 
 ```text
-128 passed, 2 skipped, 1 known baseline test deselected
+145 passed, 2 skipped, 1 known baseline test deselected
 ```
 
 Deterministic retrieval evaluation:
 
 ```text
-7 passed
+9 passed
 ```
 
 Docker checks were not required because no Docker-related files changed.

@@ -17,9 +17,9 @@ the current runner, compares it with that file, and verifies that the table belo
 the same formatter. It also repeats evaluation with reversed repository chunk order and rejects
 material equal-score ties that could change rank-based metrics.
 
-## VB-020 + VB-021 baseline
+## VB-024 accepted baseline
 
-Measured on 2026-08-23:
+Measured before and after VB-024 on 2026-08-24:
 
 | Case group | Cases | Hit@1 | Hit@3 | MRR |
 |---|---:|---:|---:|---:|
@@ -29,14 +29,22 @@ Measured on 2026-08-23:
 | Cross-language | 1 | 100.00% | 100.00% | 100.00% |
 | Heading context | 2 | 100.00% | 100.00% | 100.00% |
 
-The two heading-context cases use neutral note paths, identical leaf headings and identical recovery
+All thirteen expected path/heading pairs remain rank 1; `baseline.json` is unchanged because its
+measured metrics are unchanged. The two heading-context cases use neutral note paths, identical leaf headings and identical recovery
 bodies. Their distinguishing database/storage concepts exist in canonical parent hierarchy metadata;
 a controlled test suppressing VB-021 document context makes both cases lose rank 1. The cross-language
 case uses an English query against Slovak recovery content and fails when the test embedder's generic
-EN/SK concept equivalence is disabled.
+EN/SK concept equivalence is disabled. Separate controlled ablations also prove that semantic and
+lexical contributions each affect accepted rankings.
+
+VB-024 retains the `1.0:0.70` semantic-to-lexical ratio and all lexical boosts. Final scores are now
+normalized as `(semantic_score + 0.70 * lexical_score) / 1.70` instead of clamped at `1.0`. This
+changes the final-score scale but not the fixture ranks or relative margins: every non-saturated
+margin is multiplied by `1/1.70`. The smallest top-1 margin remains `nas-obnova-sk`, moving from
+`0.0240` to `0.0141` only because of that normalization.
 
 These numbers describe the deterministic fixture, not real-model accuracy or latency on a private
 vault. Future retrieval changes should run the fixture before and after the change and report both
-the per-case ranks and aggregate metrics. The fixture avoids material score ties, but it does not
-change the production behavior of equal final scores; deterministic production tie-breaking remains
-a separate future ranking concern.
+the per-case ranks and aggregate metrics. Production exact ties now resolve by final score, semantic
+score, lexical score and canonical path; equal chunks within one note finally use source chunk index.
+Focused tests reverse repository/chunk iteration and assert identical output.
