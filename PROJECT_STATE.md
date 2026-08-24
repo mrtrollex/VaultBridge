@@ -25,10 +25,11 @@ Completed:
 - VB-022 — Retrieval evaluation fixture
 - VB-024 — Tune hybrid ranking from evaluation data
 - VB-040 — Structured JSON logging
+- VB-041 — Request IDs and latency logging
 
 Next recommended task:
 
-- **VB-041 — Request IDs and latency logging**
+- **VB-044 — Liveness and readiness endpoints**
 
 Current milestone:
 
@@ -41,6 +42,7 @@ Current milestone:
 - FastAPI routes, vault operations, semantic orchestration and SQLite persistence have separate modules
 - typed runtime settings via `app/core/config.py`
 - standard-library JSON application logging via `app/core/logging.py`
+- context-local HTTP request correlation and latency events via `app/core/observability.py`
 - local semantic model through FastEmbed / ONNX Runtime
 - default model: `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`
 - SQLite semantic index using WAL
@@ -73,6 +75,9 @@ app/core/config.py
 app/core/logging.py
     safe JSON formatter and idempotent VaultBridge logger configuration
 
+app/core/observability.py
+    outer ASGI request-ID propagation, response correlation and monotonic lifecycle timing
+
 app/services/vault.py
     safe vault-relative path resolution, Markdown operations and contained note counting
 
@@ -104,8 +109,26 @@ Logging call sites pass only safe metadata. Vault-relative note paths are normal
 and traversal paths are omitted. Exception details contain the exception type and basename-only stack
 frames, not exception messages. Note content, embedding/query text, credentials, headers, environment
 secrets, and absolute host paths are not logged. Logging infrastructure failures are isolated from
-application behavior. Uvicorn access/server logs retain their existing framework format; VB-040 does
-not add request middleware, request-body logging, request IDs, or latency logging.
+application behavior.
+
+Every HTTP request receives an internally generated UUID represented as 32 lowercase hexadecimal
+characters. The same value is returned in `X-Request-ID` and automatically enriches VaultBridge logs
+emitted while FastAPI handles that request, including synchronous endpoint work run in a worker
+thread. Incoming `X-Request-ID` values are ignored and replaced, so caller data is neither trusted
+nor reflected.
+
+`request_started` is followed by exactly one terminal `request_completed` for handled responses,
+including authentication, validation, and application HTTP errors, or `request_failed` when an
+exception escapes FastAPI. Terminal records contain only the HTTP method, matched route template,
+an ASGI-observed response status when one exists, and non-negative `duration_ms` measured with
+`time.perf_counter()`. Cancellation or another abort before `http.response.start` omits
+`status_code`. Raw request paths, query strings, headers, bodies and responses are not logged.
+
+The request `ContextVar` is restored at ASGI exit, isolating concurrent and later requests.
+Synchronous note-write and targeted-queue events inherit the request ID. Later semantic execution on
+the indexer's executor does not inherit it; VB-041 does not redesign queue payloads for causal
+tracing. Uvicorn access/server logs retain their existing framework format and remain outside the
+VaultBridge JSON event contract.
 
 ## Semantic index lifecycle
 
@@ -228,12 +251,12 @@ ties now have focused production regressions.
 4. GPT/AI clients can invent wikilinks unless client instructions require verified existing notes.
 5. Graceful shutdown cannot interrupt a model download, ONNX inference call, or filesystem operation already in progress.
 
-## Verified baseline after VB-040
+## Verified baseline after VB-041
 
 Native Windows:
 
 ```text
-195 passed, 1 failed, 4 skipped
+210 passed, 1 failed, 4 skipped
 ```
 
 The one failure remains the known pre-existing Windows path-separator assertion around
@@ -253,6 +276,12 @@ Focused structured logging run:
 
 ```text
 26 passed
+```
+
+Focused request observability run:
+
+```text
+15 passed
 ```
 
 Focused semantic/repository/indexer/ranking run:

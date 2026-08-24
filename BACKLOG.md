@@ -327,9 +327,25 @@ Completed:
 - configuration is idempotent, emits to stderr for container collection, and deliberately leaves Uvicorn/FastAPI logging unchanged;
 - logging failures cannot change note-write, indexing, lifecycle, or API behavior.
 
-### VB-041 — Request IDs and latency logging — P0
+### VB-041 — Request IDs and latency logging — P0 ✅
 
 **Depends on:** VB-040
+
+Completed:
+
+- every HTTP request receives one internally generated 32-character UUID hex request ID;
+- the same ID is returned in `X-Request-ID` and added automatically to VaultBridge application logs
+  emitted in the request context;
+- `request_started`, `request_completed`, and `request_failed` expose safe method, route-template,
+  observed response status when available, and monotonic `duration_ms` metadata without bodies, raw
+  query strings, credentials, or exception messages;
+- caller-provided request IDs are not accepted; incoming `X-Request-ID` values are ignored and
+  replaced with the server-generated ID;
+- context-local propagation isolates concurrent requests and is restored after completion;
+- synchronous targeted-reindex scheduling retains request correlation, while later executor worker
+  execution does not inherit stale HTTP context;
+- logging failures remain isolated from response and exception behavior, and Uvicorn logging remains
+  separately managed.
 
 ### VB-042 — API key rotation — P1
 
@@ -393,7 +409,8 @@ VB-001 ✓
 → VB-022  ✓
 → VB-024  ✓
 → VB-040  ✓
-→ VB-041  NEXT
+→ VB-041  ✓
+→ VB-044  NEXT
 ```
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

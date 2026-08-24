@@ -156,6 +156,22 @@ A completed synchronization resembles:
 {"timestamp":"2026-08-24T05:52:00.123Z","level":"INFO","logger":"vaultbridge.semantic","event":"semantic_sync_completed","message":"Semantic synchronization completed","operation":"full","indexed_notes":12,"unchanged_notes":830,"removed_notes":0,"duration_ms":421.7,"index_state":"ready"}
 ```
 
+Every HTTP response includes an internally generated `X-Request-ID`. The same value appears on
+VaultBridge events emitted while that request is handled, for example:
+
+```text
+X-Request-ID: 9f48b4f6d3b24b02a6a82db8a415ce70
+```
+
+```json
+{"timestamp":"2026-08-24T06:02:00.123Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"9f48b4f6d3b24b02a6a82db8a415ce70","method":"POST","route":"/notes","status_code":200,"duration_ms":5.271}
+```
+
+VaultBridge does not accept caller-selected request IDs: an incoming `X-Request-ID` is replaced.
+Synchronous note-write and queue-scheduling events share the request ID, while later background
+indexer execution does not inherit it. Durations use a monotonic clock and cover VaultBridge request
+handling. Uvicorn access/server logs remain separate and may use their own format.
+
 VaultBridge JSON records intentionally exclude API keys, Authorization headers, note content,
 embedding/query text, exception messages, and absolute host paths. Vault-relative note paths may be
 present. Uvicorn's server/access records retain their framework-managed format, so a container log

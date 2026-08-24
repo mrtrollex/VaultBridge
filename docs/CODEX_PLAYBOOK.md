@@ -78,7 +78,7 @@ Do not implement the recommended next task.
 At the current project state, the next recommended task is:
 
 ```text
-VB-041 — Request IDs and latency logging
+VB-044 — Liveness and readiness endpoints
 ```
 
 Always verify this against `PROJECT_STATE.md` and `BACKLOG.md` before starting.
@@ -89,7 +89,15 @@ Future runtime features should emit VaultBridge-owned events through `app/core/l
 stable machine-readable event name, a static safe message, and only the existing allowlisted context
 needed by operators. Never pass API keys, Authorization headers, note content, embedding/query text,
 exception messages, or absolute host paths. Add a context field only when the feature has a concrete
-operational need; request IDs and request latency belong to VB-041 rather than ad hoc middleware.
+operational need.
+
+HTTP request IDs are generated internally at ASGI entry and are available automatically through the
+logging context. Do not manually copy `X-Request-ID`, Authorization, raw paths/query strings, or body
+fields into events. Use matched route templates and the middleware's monotonic duration for request
+lifecycle records. Synchronous application events may inherit the active request ID; do not assume
+executor/background work carries it, and do not extend queue payloads with request context without a
+separate backlog decision. Uvicorn access/server logging remains outside VaultBridge's JSON event
+contract.
 
 ## Review prompt
 
