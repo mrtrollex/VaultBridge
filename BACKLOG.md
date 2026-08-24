@@ -266,15 +266,25 @@ per-sync counters such as current note, percentage complete, current batch or ET
 
 Output latency, returned paths and scores as JSON and/or Markdown.
 
-### VB-024 — Tune hybrid ranking from evaluation data — P1
+### VB-024 — Tune hybrid ranking from evaluation data — P1 ✅
+
+**Status:** Completed on 2026-08-24.
 
 **Depends on:** VB-022
 
 No arbitrary weight changes without before/after evaluation results.
 
-Future evaluation should separately consider deterministic production tie-breaking: final scores can
-clamp equal, score-only ordering preserves repository iteration order, and chunk loading currently has
-no explicit order. VB-022 only prevents its deterministic fixture from relying on such ties.
+**Implemented behavior**
+
+- the VB-022 baseline remains 13/13 Hit@1, 13/13 Hit@3 and 100% MRR before and after,
+- the existing semantic-to-lexical ratio remains `1.0:0.70`; no boost or threshold changed,
+- hybrid scores are normalized by the `1.70` total weight instead of clamped, preserving existing
+  non-saturated ordering while preventing distinct high-scoring candidates from collapsing to `1.0`,
+- equal note scores sort by semantic score, lexical score and canonical path, in that order,
+- equal chunks within one note use the same relevance signals and then lower source chunk index,
+- reversed repository/chunk iteration produces identical paths and selected chunks,
+- controlled ablations prove semantic, lexical, heading-context and multilingual sensitivity,
+- no API, schema, embedding, chunking, index-signature or dependency change was introduced.
 
 ---
 
@@ -372,7 +382,8 @@ VB-001 ✓
 → VB-020  ✓
 → VB-021  ✓
 → VB-022  ✓
-→ VB-024  NEXT
+→ VB-024  ✓
+→ VB-040  NEXT
 ```
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

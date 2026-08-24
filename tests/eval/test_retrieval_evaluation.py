@@ -125,7 +125,10 @@ def test_heading_context_cases_depend_on_vb021_embedding_input(tmp_path, monkeyp
         "Runbooks/Recovery Alpha.md",
         "Runbooks/Recovery Beta.md",
     }
-    assert all(chunk.content.startswith("## Recovery Procedure\n") for chunk in recovery_chunks.values())
+    assert all(
+        chunk.content.splitlines()[0] == "## Recovery Procedure"
+        for chunk in recovery_chunks.values()
+    )
     assert "PostgreSQL" not in recovery_chunks["Runbooks/Recovery Alpha.md"].content
     assert "TrueNAS" not in recovery_chunks["Runbooks/Recovery Beta.md"].content
 
@@ -149,6 +152,35 @@ def test_heading_context_cases_depend_on_vb021_embedding_input(tmp_path, monkeyp
     assert suppressed["hierarchy-storage-recovery"].rank != 1, suppressed[
         "hierarchy-storage-recovery"
     ].diagnostic()
+
+
+def test_retrieval_cases_depend_on_semantic_scoring(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        SemanticSearchService,
+        "_hybrid_score",
+        staticmethod(lambda semantic_score, lexical_score: lexical_score),
+    )
+    service, _ = build_service(tmp_path)
+    outcomes = {outcome.case.case_id: outcome for outcome in run_evaluation(service, load_cases())}
+
+    assert outcomes["nas-obnova-sk"].rank != 1, outcomes["nas-obnova-sk"].diagnostic()
+    assert outcomes["english-query-slovak-storage"].rank != 1, outcomes[
+        "english-query-slovak-storage"
+    ].diagnostic()
+
+
+def test_retrieval_cases_depend_on_lexical_scoring(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        SemanticSearchService,
+        "_hybrid_score",
+        staticmethod(lambda semantic_score, lexical_score: semantic_score),
+    )
+    service, _ = build_service(tmp_path)
+    case = next(case for case in load_cases() if case.case_id == "nas-obnova-sk")
+    outcome = run_evaluation(service, (case,))[0]
+
+    assert outcome.rank == 2, outcome.diagnostic()
+    assert outcome.results[0].path == "Runbooks/Recovery Beta.md"
 
 
 def test_cross_language_case_depends_on_multilingual_concept_equivalence(tmp_path):

@@ -853,7 +853,7 @@ def test_search_preserves_hybrid_ranking_scores_and_order(tmp_path):
     results = service.search("TrueNAS backup", limit=5, min_score=0.0)
 
     assert [result.path for result in results] == ["Infrastructure Notes/TrueNAS backup strategy.md"]
-    assert results[0].score == 1.0
+    assert results[0].score == 0.897
     assert results[0].semantic_score == 1.0
     assert results[0].lexical_score == 0.75
     assert results[0].heading is None

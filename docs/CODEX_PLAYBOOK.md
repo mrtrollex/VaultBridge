@@ -78,7 +78,7 @@ Do not implement the recommended next task.
 At the current project state, the next recommended task is:
 
 ```text
-VB-024 — Tune hybrid ranking from evaluation data
+VB-040 — Structured JSON logging
 ```
 
 Always verify this against `PROJECT_STATE.md` and `BACKLOG.md` before starting.
@@ -165,7 +165,9 @@ Before changing the default embedding model, chunk representation, ranking weigh
 - avoid accepting changes solely because the model is larger or newer.
 
 The deterministic VB-022 baseline is checked in `tests/eval/baseline.json`; its generated table and
-known limitations are documented in `tests/eval/README.md`.
+known limitations are documented in `tests/eval/README.md`. Future retrieval changes must compare
+against the accepted VB-024 normalized-ranking baseline and report per-case ranks even when aggregate
+metrics remain 100%.
 
 ## Branch hygiene
 

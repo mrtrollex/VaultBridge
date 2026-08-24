@@ -23,6 +23,10 @@ INDEX_STATE_METADATA_KEY = "index_state"
 LAST_SUCCESSFUL_SYNC_METADATA_KEY = "last_successful_sync"
 INDEX_FORMAT_VERSION = "v3-heading-context"
 HEADING_DIGEST_LENGTH = 12
+SEMANTIC_RANK_WEIGHT = 1.0
+LEXICAL_RANK_WEIGHT = 0.70
+HYBRID_RANK_WEIGHT_TOTAL = SEMANTIC_RANK_WEIGHT + LEXICAL_RANK_WEIGHT
+RELATIVE_RESULT_FLOOR = 0.78
 
 
 class IndexState(str, Enum):
@@ -90,6 +94,37 @@ class SemanticResult:
     lexical_score: float
     snippet: str
     heading: str | None
+
+
+@dataclass(frozen=True)
+class _LexicalScoreComponents:
+    title: float
+    path: float
+    heading: float
+    content: float
+    exact_match: float
+
+    @property
+    def score(self) -> float:
+        return min(1.0, self.title + self.path + self.heading + self.content + self.exact_match)
+
+
+@dataclass(frozen=True)
+class _RankedChunk:
+    score: float
+    semantic_score: float
+    lexical_score: float
+    chunk: StoredChunk
+
+    @property
+    def note_selection_key(self) -> tuple[float, float, float, int]:
+        """Prefer relevance signals, then the earliest source chunk for an exact tie."""
+        return (
+            self.score,
+            self.semantic_score,
+            self.lexical_score,
+            -self.chunk.chunk_index,
+        )
 
 
 @dataclass(frozen=True)
@@ -357,17 +392,17 @@ class SemanticSearchService:
         }
 
     @classmethod
-    def _lexical_score(
+    def _lexical_score_components(
         cls,
         query_text: str,
         *,
         path: str,
         heading: str | None,
         content: str,
-    ) -> float:
+    ) -> _LexicalScoreComponents:
         query_terms = cls._terms(query_text)
         if not query_terms:
-            return 0.0
+            return _LexicalScoreComponents(0.0, 0.0, 0.0, 0.0, 0.0)
 
         def coverage(value: str) -> float:
             terms = cls._terms(value)
@@ -389,14 +424,38 @@ class SemanticSearchService:
             elif folded_query in folded_content:
                 exact_bonus = 0.05
 
-        score = (
-            0.40 * title_cov
-            + 0.25 * path_cov
-            + 0.10 * heading_cov
-            + 0.20 * content_cov
-            + exact_bonus
+        return _LexicalScoreComponents(
+            title=0.40 * title_cov,
+            path=0.25 * path_cov,
+            heading=0.10 * heading_cov,
+            content=0.20 * content_cov,
+            exact_match=exact_bonus,
         )
-        return min(1.0, score)
+
+    @classmethod
+    def _lexical_score(
+        cls,
+        query_text: str,
+        *,
+        path: str,
+        heading: str | None,
+        content: str,
+    ) -> float:
+        return cls._lexical_score_components(
+            query_text,
+            path=path,
+            heading=heading,
+            content=content,
+        ).score
+
+    @staticmethod
+    def _hybrid_score(semantic_score: float, lexical_score: float) -> float:
+        """Combine bounded signals without saturating distinct candidates at 1.0."""
+        normalized_score = (
+            SEMANTIC_RANK_WEIGHT * semantic_score
+            + LEXICAL_RANK_WEIGHT * lexical_score
+        ) / HYBRID_RANK_WEIGHT_TOTAL
+        return max(-1.0, min(1.0, normalized_score))
 
     @staticmethod
     def _readable_label(label: str, limit: int) -> str:
@@ -1032,7 +1091,7 @@ class SemanticSearchService:
         query = self._normalize(embedded_query[0])
         folder = folder.strip().replace("\\", "/").strip("/")
         prefix = f"{folder}/" if folder else ""
-        best: dict[str, tuple[float, float, float, StoredChunk]] = {}
+        best: dict[str, _RankedChunk] = {}
 
         for chunk in self.repository.load_chunks():
             if prefix and not chunk.path.startswith(prefix):
@@ -1053,25 +1112,40 @@ class SemanticSearchService:
                 heading=chunk.heading,
                 content=chunk.content,
             )
-            rank_score = min(1.0, semantic_score + 0.70 * lexical_score)
-            if chunk.path not in best or rank_score > best[chunk.path][0]:
-                best[chunk.path] = (rank_score, semantic_score, lexical_score, chunk)
+            candidate = _RankedChunk(
+                score=self._hybrid_score(semantic_score, lexical_score),
+                semantic_score=semantic_score,
+                lexical_score=lexical_score,
+                chunk=chunk,
+            )
+            current = best.get(chunk.path)
+            if current is None or candidate.note_selection_key > current.note_selection_key:
+                best[chunk.path] = candidate
 
         results: list[SemanticResult] = []
-        ordered = sorted(best.items(), key=lambda item: item[1][0], reverse=True)
-        relative_floor = ordered[0][1][0] * 0.78 if ordered else 0.0
-        for path, (rank_score, semantic_score, lexical_score, chunk) in ordered:
-            if rank_score < relative_floor:
+        ordered = sorted(
+            best.items(),
+            key=lambda item: (
+                -item[1].score,
+                -item[1].semantic_score,
+                -item[1].lexical_score,
+                item[0].casefold(),
+                item[0],
+            ),
+        )
+        relative_floor = ordered[0][1].score * RELATIVE_RESULT_FLOOR if ordered else 0.0
+        for path, ranked in ordered:
+            if ranked.score < relative_floor:
                 continue
             results.append(
                 SemanticResult(
                     path=path,
                     title=Path(path).stem,
-                    score=round(rank_score, 4),
-                    semantic_score=round(semantic_score, 4),
-                    lexical_score=round(lexical_score, 4),
-                    snippet=" ".join(chunk.content.split())[:500],
-                    heading=chunk.heading,
+                    score=round(ranked.score, 4),
+                    semantic_score=round(ranked.semantic_score, 4),
+                    lexical_score=round(ranked.lexical_score, 4),
+                    snippet=" ".join(ranked.chunk.content.split())[:500],
+                    heading=ranked.chunk.heading,
                 )
             )
             if len(results) >= limit:

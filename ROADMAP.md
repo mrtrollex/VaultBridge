@@ -70,10 +70,15 @@ app/semantic.py                 legacy compatibility facade
 - [x] **VB-011 — Batch index commits**
 - [x] **VB-012 — Background startup indexing**
 - [x] **VB-013 — Enqueue reindex after note writes**
+- [x] **VB-015 — Rich health/readiness output**
+- [x] **VB-020 — Markdown heading-aware chunker**
+- [x] **VB-021 — Embed title + heading hierarchy + chunk**
+- [x] **VB-022 — Retrieval evaluation fixture**
+- [x] **VB-024 — Tune hybrid ranking from evaluation data**
 
 ## Current verified baseline
 
-At completion of VB-013:
+At completion of VB-024:
 
 ```text
 latest verified test baseline is recorded in PROJECT_STATE.md
@@ -85,12 +90,10 @@ all existing endpoint paths and operationIds verified unchanged
 
 ## Current known limitations
 
-1. Index progress counters are not yet exposed.
-2. External filesystem changes are not automatically queued.
-3. Chunking is still primarily character-based rather than Markdown-structure-aware.
-4. Retrieval thresholds/ranking weights need repeatable evaluation.
-5. Multiple VaultBridge processes sharing one semantic index are not coordinated.
-6. AI clients can invent wikilinks unless they use verified note results.
+1. External filesystem changes are not automatically queued.
+2. The deterministic retrieval fixture does not measure real-model quality or latency.
+3. Multiple VaultBridge processes sharing one semantic index are not coordinated.
+4. AI clients can invent wikilinks unless they use verified note results.
 
 ---
 
@@ -232,7 +235,7 @@ Potential approach:
 
 ---
 
-# Milestone 3 — Retrieval quality and evaluation ← CURRENT
+# Milestone 3 — Retrieval quality and evaluation ✅ COMPLETE
 
 **Goal:** improve relevance using measured changes before considering a larger model or vector database.
 
@@ -273,19 +276,20 @@ tests/eval/retrieval_cases.json
 
 The deterministic fixture runs through the production retrieval pipeline with only FastEmbed
 replaced. Its checked 13-case baseline is Hit@1 100%, Hit@3 100% and MRR 100%. Reversed-order and
-material-tie guards keep the fixture deterministic, while controlled ablations prove heading-context
-and cross-language sensitivity. No production retrieval tuning was performed.
+material-tie guards keep the fixture deterministic, while controlled ablations prove semantic,
+lexical, heading-context and cross-language sensitivity.
 
 ### VB-023 — Retrieval benchmark command — P1
 
 Record latency, paths, semantic score, lexical score, final score, and rank.
 
-### VB-024 — Tune hybrid ranking from evaluation data — P1 ← NEXT
+### VB-024 — Tune hybrid ranking from evaluation data — P1 ✅
 
-No weight/threshold changes without before/after evaluation.
-
-Also evaluate an explicit production secondary ordering for equal clamped scores; VB-022 records but
-does not change the current score-only, repository-order-dependent behavior.
+Completed without changing the established semantic-to-lexical ratio, boosts or thresholds. The
+hybrid combination is normalized by total signal weight instead of clamped, so high-relevance
+candidates retain separation. Equal candidates use explicit semantic, lexical and canonical-path
+ordering; equal chunks within a note fall back to source chunk index. Before and after metrics remain
+Hit@1 100%, Hit@3 100% and MRR 100%, with all per-case ranks unchanged.
 
 Candidate metrics:
 
@@ -299,7 +303,7 @@ Candidate metrics:
 - [x] retrieval quality is repeatably measurable
 - [x] Markdown structure contributes context
 - [x] ranking regressions are detectable
-- [ ] default-model changes require evidence
+- [x] default-model changes require evidence
 
 ---
 
@@ -444,7 +448,7 @@ VB-021 ✓
    ↓
 VB-022 ✓
    ↓
-VB-024  ← NEXT
+VB-024  ✓
    ↓
 OPERATIONS / KNOWLEDGE / DX
 ...

@@ -125,8 +125,19 @@ uses the production chunking, embedding-input, repository, scoring, filtering, a
 ordering pipeline. Structured cases record path/heading relevance and accepted top-k ranks; Hit@1,
 Hit@3 and mean reciprocal rank provide a repeatable before/after baseline. A checked JSON baseline,
 subgroup calculations, reversed-repository-order run, material-tie diagnostics and controlled
-heading/multilingual ablations validate the fixture itself. This adds no runtime service, schema or
-production dependency.
+semantic/lexical/heading/multilingual ablations validate the fixture itself. This adds no runtime
+service, schema or production dependency.
+
+Hybrid retrieval filters each chunk by the requested semantic cosine threshold, then calculates a
+bounded lexical score from title (`0.40`), path (`0.25`), heading (`0.10`) and content (`0.20`)
+query-term coverage plus the existing exact-title (`0.10`) or exact-content (`0.05`) bonus. The final
+score is `(semantic_score + 0.70 * lexical_score) / 1.70`. Dividing by the total weight preserves the
+established semantic-to-lexical ratio and non-saturated ordering while keeping distinct high-score
+candidates distinct. The highest-ranked chunk represents each note; relevance ties within a note
+prefer semantic score, lexical score and then lower chunk index. Notes sort by final score, semantic
+score, lexical score and canonical path. The existing `78%` relative floor is applied after note
+aggregation. Ranking remains linear apart from the final `O(n log n)` candidate sort and does not
+require rebuilding embeddings.
 
 Semantic index lifecycle state is persisted in the SQLite `meta` table as
 `uninitialized`, `indexing`, `ready`, or `error`. `SemanticSearchService` owns
