@@ -31,6 +31,7 @@ The `.md` files are authoritative. The SQLite semantic index is disposable deriv
 
 ```text
 app/main.py          application construction, dependency wiring, router registration
+app/cli.py           read-only semantic integrity check and explicit offline rebuild entry point
 app/api/             health, note and search routers plus HTTP dependencies
 app/core/config.py   typed environment configuration
 app/core/logging.py  structured VaultBridge application logging
@@ -185,6 +186,31 @@ Semantic index lifecycle state is persisted in the SQLite `meta` table as
 `uninitialized`, `indexing`, `ready`, or `error`. `SemanticSearchService` owns
 the transitions; `SemanticRepository` only stores the value and index data.
 Schema availability and search readiness are separate conditions.
+
+### Operational index maintenance
+
+`python -m app.cli index check` is a stopped-service, persisted-storage administrative view. It uses an
+immutable SQLite connection and refuses inspection when WAL/SHM sidecars exist, so the complete
+semantic storage remains filesystem-unchanged. It checks only vault inspectability, SQLite
+schema/metadata and inexpensive physical counts. A check neither constructs FastEmbed nor creates or
+changes semantic storage, and a compatible legacy index with chunks remains standalone-searchable
+without persisting a missing lifecycle state. It does not infer live process availability; `/health`
+and `/health/ready` remain authoritative for that purpose.
+
+`python -m app.cli index rebuild` is an explicit offline operation. The CLI validates the vault
+before the repository atomically removes derived notes, chunks, and prior signature/state
+metadata. `SemanticSearchService` then runs its normal full synchronization, preserving the current
+signature, heading-aware chunking, heading-context embedding input, note-count batching and lifecycle
+transitions. The new successful-sync timestamp and `ready` state commit in one transaction. Markdown
+is never changed. A failed rebuild leaves the state at `error`; already committed new batches remain
+durable, and the previous `last_successful_sync` is preserved unless finalization succeeds.
+If SQLite explicitly reports the derived database as corrupt or not a database, the repository closes
+it, removes only the configured database and its SQLite sidecars, and recreates current storage before
+full synchronization. Other database errors are not treated as corruption.
+
+VaultBridge has no cross-process synchronization lock, so the server must be stopped before check or
+rebuild; the CLI does not
+claim or introduce multi-process coordination.
 
 ---
 

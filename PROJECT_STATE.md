@@ -27,10 +27,11 @@ Completed:
 - VB-040 — Structured JSON logging
 - VB-041 — Request IDs and latency logging
 - VB-044 — Liveness and readiness endpoints
+- VB-045 — Index integrity/rebuild CLI
 
 Next recommended task:
 
-- **VB-045 — Index integrity/rebuild CLI**
+- **VB-042 — API key rotation**
 
 Current milestone:
 
@@ -57,6 +58,7 @@ Current milestone:
 - `SemanticRepository` persists semantic data and lifecycle state
 - `/health` reports semantic lifecycle and search availability separately without starting semantic work
 - `/health/live` provides dependency-free liveness and `/health/ready` reports usable-vault plus semantic-search availability
+- standard-library `index check` and offline `index rebuild` administrative CLI commands
 - successful full synchronization persists `last_successful_sync`; targeted refresh does not change it
 - TrueNAS container commonly runs as UID/GID 568
 - existing production deployment uses port 8765 → 8000
@@ -67,6 +69,9 @@ Current milestone:
 ```text
 app/main.py
     application construction, dependency wiring, router registration and lifespan management
+
+app/cli.py
+    read-only semantic integrity inspection and explicit offline rebuild orchestration
 
 app/api/
     HTTP routers and API dependencies
@@ -142,6 +147,25 @@ indexing
 ready
 error
 ```
+
+Administrative behavior:
+
+- `python -m app.cli index check` reads vault availability plus a filesystem-immutable SQLite status
+  snapshot without constructing FastEmbed or mutating any semantic-storage file; it is a stopped-service
+  persisted view and refuses WAL/SHM sidecars;
+- it distinguishes missing storage, unreadable/corrupt storage, unusable schema, incompatible or
+  missing signature, uninitialized/indexing/error states, and compatible legacy ready indexes;
+- `python -m app.cli index rebuild` validates the vault, clears only derived semantic state in one
+  transaction, and runs the production full synchronization with current chunking, embedding input,
+  signature and batch durability;
+- full-sync success commits the new `last_successful_sync` and `ready` state atomically; failure leaves
+  Markdown untouched, persists `error` when storage permits, retains completed new batches, and
+  preserves the previous successful-sync timestamp;
+- exit `0` means healthy/success, `1` means an integrity/readiness or operational rebuild problem,
+  and `2` means CLI/configuration/programming failure;
+- check reports persisted standalone searchability and physical stored counts; `/health` and
+  `/health/ready` remain authoritative for live availability. Both CLI commands require the server to
+  be stopped because no cross-process index lock exists.
 
 Deterministic behavior:
 
@@ -265,12 +289,12 @@ ties now have focused production regressions.
 4. GPT/AI clients can invent wikilinks unless client instructions require verified existing notes.
 5. Graceful shutdown cannot interrupt a model download, ONNX inference call, or filesystem operation already in progress.
 
-## Verified baseline after VB-044
+## Verified baseline after VB-045
 
 Native Windows:
 
 ```text
-232 passed, 1 failed, 4 skipped
+265 passed, 1 failed, 4 skipped
 ```
 
 The one failure remains the known pre-existing Windows path-separator assertion around
@@ -283,14 +307,19 @@ Additional checks:
 Ruff: passed
 Python compileall: passed
 git diff --check: passed
-all existing 7 endpoint paths and operation IDs: unchanged
-2 public probe paths and operation IDs: added
+all 9 endpoint paths and operation IDs: unchanged
 ```
 
-Focused health/probe and vault-availability runs:
+Focused VB-045 CLI run:
 
 ```text
-45 passed, 2 skipped
+30 passed
+```
+
+Focused health/readiness run:
+
+```text
+30 passed
 ```
 
 Focused structured logging/request observability run:
@@ -302,7 +331,7 @@ Focused structured logging/request observability run:
 Focused semantic/repository/indexer/ranking run:
 
 ```text
-104 passed, 2 skipped
+107 passed, 2 skipped
 ```
 
 Protected API/health run:

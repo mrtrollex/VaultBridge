@@ -343,8 +343,8 @@ No invented wikilink targets.
 ### VB-040 — Structured JSON logging — P0 ✅
 ### VB-041 — Request IDs and latency logging — P0 ✅
 ### VB-044 — Liveness and readiness endpoints — P0 ✅
-### VB-045 — Index integrity/rebuild CLI — P0
-### VB-042 — API key rotation — P1
+### VB-045 — Index integrity/rebuild CLI — P0 ✅
+### VB-042 — API key rotation — P1 ← NEXT
 ### VB-043 — Lightweight rate limiting — P1
 
 Do not add Redis.

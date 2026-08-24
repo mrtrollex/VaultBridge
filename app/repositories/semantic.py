@@ -35,6 +35,7 @@ class IndexStorageInfo:
 
 @dataclass(frozen=True)
 class SemanticIndexStatus:
+    storage_exists: bool | None
     storage_initialized: bool
     storage_error: bool
     index_signature: str | None
@@ -51,6 +52,10 @@ class SemanticAvailabilityStatus:
     index_signature: str | None
     index_state: str | None
     has_chunks: bool
+
+
+class ImmutableIndexInspectionUnavailableError(RuntimeError):
+    """Persisted index cannot be inspected immutably while SQLite sidecars exist."""
 
 
 class SemanticRepositorySession:
@@ -127,37 +132,53 @@ class SemanticRepository:
     def _connect(self) -> sqlite3.Connection:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         connection = sqlite3.connect(self.db_path, timeout=30)
-        connection.row_factory = sqlite3.Row
-        connection.execute("PRAGMA journal_mode=WAL")
-        connection.execute("PRAGMA synchronous=NORMAL")
-        connection.execute("PRAGMA foreign_keys=ON")
-        connection.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS meta (
-                key TEXT PRIMARY KEY,
-                value TEXT NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS notes (
-                path TEXT PRIMARY KEY,
-                mtime_ns INTEGER NOT NULL,
-                size INTEGER NOT NULL,
-                sha256 TEXT NOT NULL,
-                indexed_at TEXT NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS chunks (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                path TEXT NOT NULL,
-                chunk_index INTEGER NOT NULL,
-                heading TEXT,
-                content TEXT NOT NULL,
-                embedding BLOB NOT NULL,
-                dimensions INTEGER NOT NULL,
-                FOREIGN KEY(path) REFERENCES notes(path) ON DELETE CASCADE
-            );
-            CREATE INDEX IF NOT EXISTS idx_chunks_path ON chunks(path);
-            """
-        )
+        try:
+            connection.row_factory = sqlite3.Row
+            connection.execute("PRAGMA journal_mode=WAL")
+            connection.execute("PRAGMA synchronous=NORMAL")
+            connection.execute("PRAGMA foreign_keys=ON")
+            connection.executescript(
+                """
+                CREATE TABLE IF NOT EXISTS meta (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS notes (
+                    path TEXT PRIMARY KEY,
+                    mtime_ns INTEGER NOT NULL,
+                    size INTEGER NOT NULL,
+                    sha256 TEXT NOT NULL,
+                    indexed_at TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS chunks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    path TEXT NOT NULL,
+                    chunk_index INTEGER NOT NULL,
+                    heading TEXT,
+                    content TEXT NOT NULL,
+                    embedding BLOB NOT NULL,
+                    dimensions INTEGER NOT NULL,
+                    FOREIGN KEY(path) REFERENCES notes(path) ON DELETE CASCADE
+                );
+                CREATE INDEX IF NOT EXISTS idx_chunks_path ON chunks(path);
+                """
+            )
+        except Exception:
+            connection.close()
+            raise
         return connection
+
+    @staticmethod
+    def _write_metadata(
+        connection: sqlite3.Connection,
+        key: str,
+        value: str,
+    ) -> None:
+        connection.execute(
+            "INSERT INTO meta(key, value) VALUES(?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+            (key, value),
+        )
 
     @staticmethod
     def _prepare_connection(
@@ -197,6 +218,49 @@ class SemanticRepository:
             return info
         finally:
             connection.close()
+
+    def _reset_index_storage(self, index_signature: str, index_state: str) -> None:
+        connection = self._connect()
+        try:
+            connection.execute("DELETE FROM chunks")
+            connection.execute("DELETE FROM notes")
+            connection.execute(
+                "DELETE FROM meta WHERE key IN ('index_signature', 'index_state')"
+            )
+            connection.executemany(
+                "INSERT INTO meta(key, value) VALUES(?, ?)",
+                (
+                    ("index_signature", index_signature),
+                    ("index_state", index_state),
+                ),
+            )
+            connection.commit()
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+
+    def reset_index(self, index_signature: str, index_state: str) -> None:
+        """Discard derived semantic data and reset lifecycle metadata atomically."""
+        try:
+            self._reset_index_storage(index_signature, index_state)
+        except sqlite3.ProgrammingError:
+            raise
+        except sqlite3.DatabaseError as exc:
+            corrupt_codes = {
+                getattr(sqlite3, "SQLITE_CORRUPT", 11),
+                getattr(sqlite3, "SQLITE_NOTADB", 26),
+            }
+            if getattr(exc, "sqlite_errorcode", None) not in corrupt_codes:
+                raise
+            for storage_path in (
+                self.db_path,
+                Path(f"{self.db_path}-wal"),
+                Path(f"{self.db_path}-shm"),
+            ):
+                storage_path.unlink(missing_ok=True)
+            self._reset_index_storage(index_signature, index_state)
 
     @contextmanager
     def transaction(self) -> Iterator[SemanticRepositorySession]:
@@ -241,12 +305,26 @@ class SemanticRepository:
     def set_metadata(self, key: str, value: str) -> None:
         connection = self._connect()
         try:
-            connection.execute(
-                "INSERT INTO meta(key, value) VALUES(?, ?) "
-                "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
-                (key, value),
-            )
+            self._write_metadata(connection, key, value)
             connection.commit()
+        finally:
+            connection.close()
+
+    def finalize_full_sync_success(
+        self,
+        *,
+        last_successful_sync: str,
+        ready_state: str,
+    ) -> None:
+        """Commit full-sync timestamp and ready lifecycle state atomically."""
+        connection = self._connect()
+        try:
+            self._write_metadata(connection, "last_successful_sync", last_successful_sync)
+            self._write_metadata(connection, "index_state", ready_state)
+            connection.commit()
+        except Exception:
+            connection.rollback()
+            raise
         finally:
             connection.close()
 
@@ -266,10 +344,43 @@ class SemanticRepository:
         except sqlite3.Error:
             return False
 
-    def read_status(self) -> SemanticIndexStatus:
-        """Read index metadata and counts without creating or changing storage."""
-        if not self.db_path.exists():
+    @staticmethod
+    def _missing_status() -> SemanticIndexStatus:
+        return SemanticIndexStatus(
+            storage_exists=False,
+            storage_initialized=False,
+            storage_error=False,
+            index_signature=None,
+            index_state=None,
+            indexed_notes=0,
+            semantic_chunks=0,
+            last_successful_sync=None,
+        )
+
+    @staticmethod
+    def _storage_error_status(*, storage_exists: bool | None) -> SemanticIndexStatus:
+        return SemanticIndexStatus(
+            storage_exists=storage_exists,
+            storage_initialized=False,
+            storage_error=True,
+            index_signature=None,
+            index_state=None,
+            indexed_notes=0,
+            semantic_chunks=0,
+            last_successful_sync=None,
+        )
+
+    @staticmethod
+    def _read_status_connection(connection: sqlite3.Connection) -> SemanticIndexStatus:
+        connection.row_factory = sqlite3.Row
+        connection.execute("BEGIN")
+        rows = connection.execute(
+            "SELECT name FROM sqlite_master "
+            "WHERE type='table' AND name IN ('meta', 'notes', 'chunks')"
+        ).fetchall()
+        if {row["name"] for row in rows} != {"meta", "notes", "chunks"}:
             return SemanticIndexStatus(
+                storage_exists=True,
                 storage_initialized=False,
                 storage_error=False,
                 index_signature=None,
@@ -279,59 +390,73 @@ class SemanticRepository:
                 last_successful_sync=None,
             )
 
-        try:
-            database_uri = f"{self.db_path.resolve().as_uri()}?mode=ro"
-            connection = sqlite3.connect(database_uri, uri=True, timeout=1)
-            connection.row_factory = sqlite3.Row
-            try:
-                connection.execute("BEGIN")
-                rows = connection.execute(
-                    "SELECT name FROM sqlite_master "
-                    "WHERE type='table' AND name IN ('meta', 'notes', 'chunks')"
-                ).fetchall()
-                if {row["name"] for row in rows} != {"meta", "notes", "chunks"}:
-                    return SemanticIndexStatus(
-                        storage_initialized=False,
-                        storage_error=False,
-                        index_signature=None,
-                        index_state=None,
-                        indexed_notes=0,
-                        semantic_chunks=0,
-                        last_successful_sync=None,
-                    )
+        metadata = {
+            row["key"]: row["value"]
+            for row in connection.execute(
+                "SELECT key, value FROM meta "
+                "WHERE key IN ('index_signature', 'index_state', 'last_successful_sync')"
+            ).fetchall()
+        }
+        indexed_notes = connection.execute("SELECT COUNT(*) FROM notes").fetchone()[0]
+        semantic_chunks = connection.execute("SELECT COUNT(*) FROM chunks").fetchone()[0]
+        return SemanticIndexStatus(
+            storage_exists=True,
+            storage_initialized=True,
+            storage_error=False,
+            index_signature=metadata.get("index_signature"),
+            index_state=metadata.get("index_state"),
+            indexed_notes=indexed_notes,
+            semantic_chunks=semantic_chunks,
+            last_successful_sync=metadata.get("last_successful_sync"),
+        )
 
-                metadata = {
-                    row["key"]: row["value"]
-                    for row in connection.execute(
-                        "SELECT key, value FROM meta "
-                        "WHERE key IN ('index_signature', 'index_state', 'last_successful_sync')"
-                    ).fetchall()
-                }
-                indexed_notes = connection.execute("SELECT COUNT(*) FROM notes").fetchone()[0]
-                semantic_chunks = connection.execute("SELECT COUNT(*) FROM chunks").fetchone()[0]
-                return SemanticIndexStatus(
-                    storage_initialized=True,
-                    storage_error=False,
-                    index_signature=metadata.get("index_signature"),
-                    index_state=metadata.get("index_state"),
-                    indexed_notes=indexed_notes,
-                    semantic_chunks=semantic_chunks,
-                    last_successful_sync=metadata.get("last_successful_sync"),
-                )
-            finally:
+    def _read_status_uri(self, database_uri: str) -> SemanticIndexStatus:
+        connection = sqlite3.connect(database_uri, uri=True, timeout=1)
+        try:
+            return self._read_status_connection(connection)
+        finally:
+            try:
                 if connection.in_transaction:
                     connection.rollback()
+            finally:
                 connection.close()
-        except (OSError, sqlite3.Error):
-            return SemanticIndexStatus(
-                storage_initialized=False,
-                storage_error=True,
-                index_signature=None,
-                index_state=None,
-                indexed_notes=0,
-                semantic_chunks=0,
-                last_successful_sync=None,
-            )
+
+    def read_status(self) -> SemanticIndexStatus:
+        """Read live-compatible index metadata and counts without changing lifecycle state."""
+        try:
+            storage_exists = self.db_path.exists()
+        except OSError:
+            return self._storage_error_status(storage_exists=None)
+        if not storage_exists:
+            return self._missing_status()
+
+        try:
+            database_uri = f"{self.db_path.resolve().as_uri()}?mode=ro"
+            return self._read_status_uri(database_uri)
+        except sqlite3.ProgrammingError:
+            raise
+        except (OSError, sqlite3.DatabaseError):
+            return self._storage_error_status(storage_exists=True)
+
+    def read_immutable_status(self) -> SemanticIndexStatus:
+        """Inspect stopped/offline SQLite storage without creating or changing sidecars."""
+        try:
+            if not self.db_path.exists():
+                return self._missing_status()
+            sidecars = (Path(f"{self.db_path}-wal"), Path(f"{self.db_path}-shm"))
+            if any(path.exists() for path in sidecars):
+                raise ImmutableIndexInspectionUnavailableError
+            database_uri = f"{self.db_path.resolve().as_uri()}?mode=ro&immutable=1"
+            status = self._read_status_uri(database_uri)
+            if any(path.exists() for path in sidecars):
+                raise ImmutableIndexInspectionUnavailableError
+            return status
+        except ImmutableIndexInspectionUnavailableError:
+            raise
+        except sqlite3.ProgrammingError:
+            raise
+        except (OSError, sqlite3.DatabaseError):
+            return self._storage_error_status(storage_exists=True)
 
     def read_availability_status(self) -> SemanticAvailabilityStatus:
         """Read only the storage metadata needed to decide search availability."""

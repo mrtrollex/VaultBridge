@@ -117,6 +117,19 @@ def test_repository_availability_does_not_hide_sqlite_programming_errors(tmp_pat
         repository.read_availability_status()
 
 
+def test_repository_rich_status_does_not_hide_sqlite_programming_errors(tmp_path, monkeypatch):
+    repository = SemanticRepository(tmp_path / "semantic-index.sqlite3")
+    repository.db_path.touch()
+
+    def fail_to_connect(*_args, **_kwargs):
+        raise sqlite3.ProgrammingError("invalid integrity query")
+
+    monkeypatch.setattr(sqlite3, "connect", fail_to_connect)
+
+    with pytest.raises(sqlite3.ProgrammingError, match="invalid integrity query"):
+        repository.read_status()
+
+
 def test_repository_status_uses_one_snapshot_when_writer_commits(tmp_path, monkeypatch):
     db_path = tmp_path / "semantic-index.sqlite3"
     repository = SemanticRepository(db_path)
@@ -243,6 +256,42 @@ def test_repository_invalidates_data_when_index_signature_changes(tmp_path):
     with repository.transaction() as session:
         assert session.load_notes() == {}
     assert repository.get_metadata("last_successful_sync") is None
+
+
+def test_repository_reset_preserves_previous_success_timestamp_until_finalization(tmp_path):
+    repository = SemanticRepository(tmp_path / "semantic-index.sqlite3")
+    repository.prepare_index(INDEX_SIGNATURE)
+    repository.set_metadata("index_state", "ready")
+    repository.set_metadata("last_successful_sync", "2026-08-23T12:00:00+00:00")
+    with repository.transaction() as session:
+        session.replace_note(stored_note(), [stored_chunk()])
+
+    repository.reset_index("v3|current/model|600|100", "uninitialized")
+
+    status = repository.read_status()
+    assert status.storage_exists is True
+    assert status.storage_initialized is True
+    assert status.index_signature == "v3|current/model|600|100"
+    assert status.index_state == "uninitialized"
+    assert status.indexed_notes == 0
+    assert status.semantic_chunks == 0
+    assert status.last_successful_sync == "2026-08-23T12:00:00+00:00"
+
+
+def test_repository_finalizes_timestamp_and_ready_state_in_one_successful_commit(tmp_path):
+    repository = SemanticRepository(tmp_path / "semantic-index.sqlite3")
+    repository.prepare_index(INDEX_SIGNATURE)
+    repository.set_metadata("index_state", "indexing")
+    repository.set_metadata("last_successful_sync", "2026-08-23T12:00:00+00:00")
+
+    repository.finalize_full_sync_success(
+        last_successful_sync="2026-08-24T12:00:00+00:00",
+        ready_state="ready",
+    )
+
+    status = repository.read_status()
+    assert status.index_state == "ready"
+    assert status.last_successful_sync == "2026-08-24T12:00:00+00:00"
 
 
 def test_repository_reads_pre_extraction_sqlite_index_without_rebuild(tmp_path):

@@ -20,6 +20,9 @@ The project intends to follow Semantic Versioning after the public repository ba
   latency events without request-body, query-string, header, or credential logging
 - public, minimal `/health/live` and `/health/ready` orchestration probes with dependency-free
   liveness and side-effect-free vault plus semantic-search readiness
+- a standard-library semantic-index administration CLI with filesystem-immutable stopped-service
+  persisted inspection, stable exit codes, and explicit offline rebuild through the production
+  batched synchronization pipeline with atomic successful-sync finalization
 
 ### Changed
 
