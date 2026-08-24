@@ -34,6 +34,7 @@ app/main.py          application construction, dependency wiring, router registr
 app/api/             health, note and search routers plus HTTP dependencies
 app/core/config.py   typed environment configuration
 app/core/logging.py  structured VaultBridge application logging
+app/core/observability.py request correlation and HTTP lifecycle timing
 app/services/vault.py safe path resolution, Markdown note operations and contained note counting
 app/services/semantic_search.py embedding, incremental indexing, hybrid ranking and semantic health state
 app/services/indexer.py one in-process full/targeted synchronization worker and deduplicating path queue
@@ -52,7 +53,23 @@ Exception records keep the exception type and basename-only stack frames, omitti
 avoid leaking note content, queries, credentials, or absolute host paths. Application logging calls
 are isolated so formatter/handler failures cannot alter lifecycle transitions, indexing, committed
 writes, or HTTP behavior. Uvicorn/FastAPI server and access logs remain separately managed by
-Uvicorn. Request correlation and latency are outside this boundary until VB-041.
+Uvicorn.
+
+An outer standard-library ASGI middleware gives every HTTP request one internally generated UUID hex
+identifier and returns it as `X-Request-ID`. A `ContextVar` makes that identifier available to
+VaultBridge log formatting across async request work and FastAPI's sync endpoint thread handoff.
+Lifecycle events are `request_started` plus exactly one `request_completed` for handled responses or
+`request_failed` for an exception escaping FastAPI. Terminal events use the matched route template,
+any status actually observed from ASGI `http.response.start`, and non-negative millisecond duration
+measured with `time.perf_counter()`; aborted requests without a response omit `status_code`. Raw
+URLs, query strings, headers, and bodies are never logged. Incoming `X-Request-ID` values are
+deliberately ignored and replaced rather than trusted or reflected.
+
+Context is restored when the ASGI call ends, which isolates concurrent/later requests. Synchronous
+application events, including targeted queue scheduling, inherit the active identifier. Work later
+executed by the indexer's `ThreadPoolExecutor` does not inherit request context; VB-041 does not add
+causal tracing fields to the queue. Uvicorn access/server records remain separate and are not
+rewritten by this application middleware.
 
 FastAPI lifespan submits semantic synchronization to one in-process background worker, so startup
 does not wait for a complete vault scan. The synchronization operation remains synchronous inside

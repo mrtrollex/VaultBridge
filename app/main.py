@@ -7,12 +7,14 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
+from starlette.types import ASGIApp
 
 from app.api.health import router as health_router
 from app.api.notes import router as notes_router
 from app.api.search import router as search_router
 from app.core.config import Settings
 from app.core.logging import configure_application_logging, log_event
+from app.core.observability import RequestObservabilityMiddleware
 from app.services.indexer import BackgroundSemanticIndexer
 from app.services.semantic_search import (
     SemanticSearchService,
@@ -33,6 +35,13 @@ APP_DESCRIPTION = "Self-hosted REST and semantic search API for an Obsidian vaul
 
 configure_application_logging()
 logger = logging.getLogger("vaultbridge.application")
+
+
+class VaultBridgeApplication(FastAPI):
+    """Keep request observability outside FastAPI's server-error boundary."""
+
+    def build_middleware_stack(self) -> ASGIApp:
+        return RequestObservabilityMiddleware(super().build_middleware_stack())
 
 
 @asynccontextmanager
@@ -133,7 +142,7 @@ def create_app(
         )
     )
 
-    application = FastAPI(
+    application = VaultBridgeApplication(
         title=APP_TITLE,
         version=APP_VERSION,
         description=APP_DESCRIPTION,

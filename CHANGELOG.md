@@ -16,6 +16,8 @@ The project intends to follow Semantic Versioning after the public repository ba
   relevance cases, Hit@1/Hit@3/MRR metrics, and production-pipeline failure diagnostics
 - safe standard-library JSON application logging for container lifecycle, semantic synchronization,
   targeted reindexing, and committed note-write events
+- context-local request correlation, `X-Request-ID` response headers, and monotonic HTTP lifecycle
+  latency events without request-body, query-string, header, or credential logging
 
 ### Changed
 

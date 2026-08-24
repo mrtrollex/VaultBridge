@@ -77,10 +77,11 @@ app/semantic.py                 legacy compatibility facade
 - [x] **VB-022 — Retrieval evaluation fixture**
 - [x] **VB-024 — Tune hybrid ranking from evaluation data**
 - [x] **VB-040 — Structured JSON logging**
+- [x] **VB-041 — Request IDs and latency logging**
 
 ## Current verified baseline
 
-At completion of VB-040:
+At completion of VB-041:
 
 ```text
 latest verified test baseline is recorded in PROJECT_STATE.md
@@ -340,7 +341,7 @@ No invented wikilink targets.
 **Goal:** make VaultBridge predictable to run continuously on NAS/server hardware.
 
 ### VB-040 — Structured JSON logging — P0 ✅
-### VB-041 — Request IDs and latency logging — P0
+### VB-041 — Request IDs and latency logging — P0 ✅
 ### VB-044 — Liveness and readiness endpoints — P0
 ### VB-045 — Index integrity/rebuild CLI — P0
 ### VB-042 — API key rotation — P1
