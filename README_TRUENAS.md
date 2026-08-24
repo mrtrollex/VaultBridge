@@ -157,6 +157,43 @@ An `indexing` or `error` lifecycle state can still have `semantic_search_availab
 previous compatible completed index remains usable. `full_sync_required: true` reports process-local
 full-sync work or recovery debt; it is not a claim that the whole application is recovering.
 
+### Check or rebuild from a TrueNAS SSH shell
+
+VaultBridge has no cross-process index lock. Stop the API container before either command, then run
+the check in an isolated Compose container with the same environment and mounts:
+
+```bash
+cd /mnt/Apps/AppsData/ObsidianChatGPT
+docker compose -f compose.truenas.yml stop obsidian-api
+docker compose -f compose.truenas.yml run --rm --no-deps obsidian-api python -m app.cli index check
+check_status=$?
+```
+
+It reports persisted vault/database/schema/signature/lifecycle/standalone-searchability/physical-count/
+last-sync status without loading the embedding model or changing SQLite, WAL, SHM, or other semantic
+storage files. It refuses inspection when WAL/SHM sidecars are present. `/health` and `/health/ready`
+remain authoritative for live process availability. Exit `0` means the stopped persisted index is
+healthy; exit `1` means an integrity/readiness problem; exit `2` means CLI, configuration or
+programming failure.
+
+Rebuild is destructive only to the disposable semantic index. VaultBridge does not have a
+cross-process index lock, so keep the API stopped and run one isolated Compose command with the same
+environment and mounts. If `check_status` is nonzero, review its output before choosing to rebuild:
+
+```bash
+cd /mnt/Apps/AppsData/ObsidianChatGPT
+docker compose -f compose.truenas.yml run --rm --no-deps obsidian-api python -m app.cli index rebuild
+rebuild_status=$?
+docker compose -f compose.truenas.yml up -d obsidian-api
+exit $rebuild_status
+```
+
+Rebuild uses the configured local model and may download it if the `/data` model cache is empty. It
+recreates chunks/embeddings through the production full-sync pipeline and never changes Markdown.
+SQLite storage explicitly reported as corrupt/not-a-database is recreated; other database errors fail.
+Do not run check or rebuild through `docker exec` against the running API container. If no rebuild is
+needed, start the service with `docker compose -f compose.truenas.yml up -d obsidian-api` after check.
+
 Later application startups synchronize only Markdown files whose timestamp/content changed. The
 heading-aware chunker changes the semantic index signature, so the first startup after this upgrade
 automatically discards old derived chunks and schedules a full rebuild from Markdown. No manual

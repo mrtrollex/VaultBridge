@@ -78,10 +78,21 @@ Do not implement the recommended next task.
 At the current project state, the next recommended task is:
 
 ```text
-VB-045 — Index integrity/rebuild CLI
+VB-042 — API key rotation
 ```
 
 Always verify this against `PROJECT_STATE.md` and `BACKLOG.md` before starting.
+
+## Index-maintenance CLI convention
+
+Future semantic lifecycle, schema, signature, chunking, embedding-input or synchronization changes
+must keep `python -m app.cli index check` a persisted, filesystem-immutable, stopped-service view and
+keep `python -m app.cli index rebuild` on the production full-sync path. Check must remain cheap,
+model-free, and distinct from authoritative live `/health` and `/health/ready` reporting. Rebuild must
+preserve Markdown, current signature semantics and durable batches. Do not claim cross-process
+locking; operators must stop the application before check or rebuild until a
+separate task explicitly introduces coordination. Preserve exit codes `0` healthy/success, `1`
+integrity/readiness or operational rebuild failure, and `2` CLI/configuration/programming failure.
 
 ## Health probe convention
 

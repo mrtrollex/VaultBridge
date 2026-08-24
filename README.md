@@ -176,6 +176,39 @@ VaultBridge reads and validates its application settings once at startup. Invali
 The application default for `SEMANTIC_DATA_PATH` remains inside `/vault` for backward compatibility;
 the production TrueNAS compose file explicitly overrides it to `/data`.
 
+## Semantic index administration
+
+After stopping VaultBridge, inspect the configured vault and persisted semantic index without loading
+the embedding model or changing any semantic-storage file:
+
+```bash
+python -m app.cli index check
+```
+
+The check reports vault, database, schema, signature, persisted lifecycle state, standalone persisted
+searchability, physical stored counts and the stored last successful full sync. It uses SQLite's
+immutable mode and refuses to inspect a database with WAL/SHM sidecars; stop VaultBridge first. It
+does not scan note contents, construct FastEmbed, or report live process availability. Use `/health`
+and `/health/ready` as the authoritative live-process views.
+
+Explicitly rebuild all derived semantic data from authoritative Markdown:
+
+```bash
+python -m app.cli index rebuild
+```
+
+Stop the VaultBridge application before check or rebuild. There is no cross-process index lock, and
+rebuild intentionally clears derived notes/chunks and current lifecycle state before using the normal full-sync,
+chunking, embedding and batching pipeline. Markdown files are not changed.
+SQLite files explicitly identified by SQLite as corrupt/not-a-database are recreated as derived data;
+lock, permission and other database failures remain failures rather than being mislabeled corruption.
+
+Exit codes are stable: `0` means healthy/success, `1` means an integrity/readiness problem or failed
+rebuild, and `2` means invalid CLI usage/configuration or an unexpected programming failure. A failed
+full-sync finalization atomically preserves the previous successful-sync timestamp and does not persist
+`ready`. Output is
+concise human-readable text; VB-045 does not add JSON mode because its backlog item does not require it.
+
 ## TrueNAS
 
 The existing TrueNAS-specific deployment files are kept for compatibility with the working prototype. See [`README_TRUENAS.md`](README_TRUENAS.md).

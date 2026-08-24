@@ -377,7 +377,20 @@ Added public, minimal orchestration probes while preserving the richer compatibi
 - both probes use the existing request-ID header and standard request lifecycle events without
   feature-specific logging.
 
-### VB-045 — Index integrity/rebuild CLI — P0
+### VB-045 — Index integrity/rebuild CLI — P0 ✓
+
+- `python -m app.cli index check` performs a cheap, filesystem-immutable stopped-service vault/index
+  integrity check without constructing FastEmbed, scanning note contents, changing semantic storage,
+  or exposing paths; it refuses inspection when SQLite WAL/SHM sidecars exist.
+- check output distinguishes missing/unreadable/schema/signature/lifecycle conditions and reuses the
+  persisted interpretation for compatible legacy indexes, standalone searchability, physical counts,
+  and stored last-success timestamp; `/health` remains authoritative for live-process availability.
+- `python -m app.cli index rebuild` validates the vault, atomically invalidates only derived semantic
+  rows/metadata, and runs the production batched full synchronization with the current signature.
+- exit codes are `0` for healthy/success, `1` for an integrity/readiness or operational rebuild
+  problem, and `2` for CLI/configuration/programming failure.
+- check and rebuild are offline administrative operations because VaultBridge has no cross-process
+  index lock; the application must be stopped first.
 
 ---
 
@@ -431,7 +444,8 @@ VB-001 ✓
 → VB-040  ✓
 → VB-041  ✓
 → VB-044  ✓
-→ VB-045  NEXT
+→ VB-045  ✓
+→ VB-042  NEXT
 ```
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

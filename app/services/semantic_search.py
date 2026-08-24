@@ -18,7 +18,7 @@ import numpy as np
 
 from app.core.config import DEFAULT_SEMANTIC_MODEL, Settings
 from app.core.logging import log_event
-from app.repositories.semantic import SemanticRepository, StoredChunk, StoredNote
+from app.repositories.semantic import SemanticIndexStatus, SemanticRepository, StoredChunk, StoredNote
 from app.services.vault import SEMANTIC_EXCLUDED_DIRECTORIES, eligible_markdown_files
 
 DEFAULT_MODEL = DEFAULT_SEMANTIC_MODEL
@@ -49,6 +49,10 @@ class SynchronizationCancelledError(RuntimeError):
     """Semantic synchronization stopped cooperatively at a safe boundary."""
 
 
+class SemanticIndexOperationError(RuntimeError):
+    """An expected semantic index I/O or embedding operation failed."""
+
+
 class TargetedSynchronizationError(RuntimeError):
     """A requested note could not be authoritatively refreshed."""
 
@@ -74,7 +78,7 @@ class FastEmbedder:
                 try:
                     from fastembed import TextEmbedding
                 except ImportError as exc:  # pragma: no cover
-                    raise RuntimeError("fastembed is not installed") from exc
+                    raise SemanticIndexOperationError("fastembed is not installed") from exc
                 self.cache_dir.mkdir(parents=True, exist_ok=True)
                 self._model = TextEmbedding(
                     model_name=self.model_name,
@@ -134,6 +138,21 @@ class _RankedChunk:
 
 @dataclass(frozen=True)
 class SemanticHealthStatus:
+    state: IndexState
+    search_available: bool
+    indexed_notes: int
+    semantic_chunks: int
+    last_successful_sync: str | None
+
+
+@dataclass(frozen=True)
+class SemanticIndexInspection:
+    storage_exists: bool | None
+    storage_initialized: bool
+    storage_error: bool
+    index_signature: str | None
+    signature_compatible: bool
+    persisted_state: str | None
     state: IndexState
     search_available: bool
     indexed_notes: int
@@ -267,7 +286,7 @@ class SemanticSearchService:
             return True
         return False
 
-    def _search_available_from_storage(
+    def _stored_index_available_from_storage(
         self,
         *,
         storage_initialized: bool,
@@ -284,16 +303,37 @@ class SemanticSearchService:
         if not compatible_storage:
             return False
 
-        stored_index_available = index_state == IndexState.READY.value or (
+        return index_state == IndexState.READY.value or (
             index_state is None and has_chunks
         )
+
+    def _search_available_from_storage(
+        self,
+        *,
+        storage_initialized: bool,
+        storage_error: bool,
+        index_signature: str | None,
+        index_state: str | None,
+        has_chunks: bool,
+    ) -> bool:
+        stored_index_available = self._stored_index_available_from_storage(
+            storage_initialized=storage_initialized,
+            storage_error=storage_error,
+            index_signature=index_signature,
+            index_state=index_state,
+            has_chunks=has_chunks,
+        )
+        if not (
+            storage_initialized
+            and not storage_error
+            and index_signature == self.index_signature
+        ):
+            return False
         with self._availability_lock:
             search_available = self._search_available
         return search_available or stored_index_available
 
-    def health_status(self) -> SemanticHealthStatus:
-        """Return a read-only lifecycle and storage snapshot for operator health reporting."""
-        storage = self.repository.read_status()
+    def _health_status_from_storage(self, storage: SemanticIndexStatus) -> SemanticHealthStatus:
         compatible_storage = (
             storage.storage_initialized and storage.index_signature == self.index_signature
         )
@@ -324,6 +364,59 @@ class SemanticSearchService:
             semantic_chunks=storage.semantic_chunks if compatible_storage else 0,
             last_successful_sync=storage.last_successful_sync if compatible_storage else None,
         )
+
+    def health_status(self) -> SemanticHealthStatus:
+        """Return a read-only lifecycle and storage snapshot for operator health reporting."""
+        return self._health_status_from_storage(self.repository.read_status())
+
+    def _inspection_from_storage(
+        self,
+        storage: SemanticIndexStatus,
+    ) -> SemanticIndexInspection:
+        compatible_storage = (
+            storage.storage_initialized
+            and not storage.storage_error
+            and storage.index_signature == self.index_signature
+        )
+        if storage.storage_error:
+            state = IndexState.ERROR
+        elif not compatible_storage:
+            state = IndexState.UNINITIALIZED
+        elif storage.index_state is None:
+            state = IndexState.READY if storage.semantic_chunks else IndexState.UNINITIALIZED
+        else:
+            try:
+                state = IndexState(storage.index_state)
+            except ValueError:
+                state = IndexState.ERROR
+
+        return SemanticIndexInspection(
+            storage_exists=storage.storage_exists,
+            storage_initialized=storage.storage_initialized,
+            storage_error=storage.storage_error,
+            index_signature=storage.index_signature,
+            signature_compatible=compatible_storage,
+            persisted_state=storage.index_state,
+            state=state,
+            search_available=self._stored_index_available_from_storage(
+                storage_initialized=storage.storage_initialized,
+                storage_error=storage.storage_error,
+                index_signature=storage.index_signature,
+                index_state=storage.index_state,
+                has_chunks=bool(storage.semantic_chunks),
+            ),
+            indexed_notes=storage.indexed_notes,
+            semantic_chunks=storage.semantic_chunks,
+            last_successful_sync=storage.last_successful_sync,
+        )
+
+    def inspect_index(self) -> SemanticIndexInspection:
+        """Return a persisted index snapshot suitable for in-process callers."""
+        return self._inspection_from_storage(self.repository.read_status())
+
+    def inspect_persisted_index(self) -> SemanticIndexInspection:
+        """Return a filesystem-immutable snapshot for stopped/offline administration."""
+        return self._inspection_from_storage(self.repository.read_immutable_status())
 
     def probe_search_availability(self) -> bool:
         """Return search availability from a minimal, read-only storage snapshot."""
@@ -417,7 +510,7 @@ class SemanticSearchService:
         vector = np.asarray(vector, dtype=np.float32).reshape(-1)
         norm = float(np.linalg.norm(vector))
         if norm == 0:
-            raise RuntimeError("Embedding model returned a zero vector")
+            raise SemanticIndexOperationError("Embedding model returned a zero vector")
         return vector / norm
 
     @staticmethod
@@ -980,7 +1073,9 @@ class SemanticSearchService:
                     ]
                     vectors = self._embed(embedding_texts)
                     if len(vectors) != len(chunks):
-                        raise RuntimeError("Embedding model returned an unexpected number of vectors")
+                        raise SemanticIndexOperationError(
+                            "Embedding model returned an unexpected number of vectors"
+                        )
 
                     stored_chunks: list[StoredChunk] = []
                     for index, ((heading, content), vector) in enumerate(
@@ -1085,12 +1180,19 @@ class SemanticSearchService:
         try:
             result = operation()
             if record_full_sync:
-                self.repository.set_metadata(
-                    LAST_SUCCESSFUL_SYNC_METADATA_KEY,
-                    datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                self.repository.finalize_full_sync_success(
+                    last_successful_sync=datetime.now(timezone.utc).isoformat(
+                        timespec="seconds"
+                    ),
+                    ready_state=IndexState.READY.value,
                 )
+            else:
+                self._persist_state(IndexState.READY)
         except SynchronizationCancelledError as exc:
-            self._persist_state(IndexState.ERROR)
+            try:
+                self._persist_state(IndexState.ERROR)
+            except Exception:
+                pass
             log_event(
                 logger,
                 logging.INFO,
@@ -1103,7 +1205,10 @@ class SemanticSearchService:
             )
             raise
         except Exception as exc:
-            self._persist_state(IndexState.ERROR)
+            try:
+                self._persist_state(IndexState.ERROR)
+            except Exception:
+                pass
             log_event(
                 logger,
                 logging.ERROR,
@@ -1117,7 +1222,6 @@ class SemanticSearchService:
             )
             raise
 
-        self._persist_state(IndexState.READY)
         self._set_search_available(True)
         log_event(
             logger,
@@ -1136,6 +1240,19 @@ class SemanticSearchService:
     def sync(self, cancel_event: threading.Event | None = None) -> dict[str, int]:
         """Index only new/changed notes and remove deleted notes."""
         with self._sync_lock:
+            return self._run_synchronization_locked(
+                lambda: self._sync_all_locked(cancel_event),
+                operation_name="full",
+                record_full_sync=True,
+            )
+
+    def rebuild(self, cancel_event: threading.Event | None = None) -> dict[str, int]:
+        """Discard derived semantic state and rebuild it from the Markdown vault."""
+        with self._sync_lock:
+            self._set_search_available(False)
+            self.repository.reset_index(self.index_signature, IndexState.UNINITIALIZED.value)
+            with self._state_init_lock:
+                self._state_initialized = True
             return self._run_synchronization_locked(
                 lambda: self._sync_all_locked(cancel_event),
                 operation_name="full",
