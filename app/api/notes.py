@@ -1,15 +1,18 @@
 from __future__ import annotations
 
+import logging
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field, field_validator
 
 from app.api.dependencies import get_semantic_indexer, get_vault_service, require_auth
+from app.core.logging import log_event
 from app.services.indexer import BackgroundSemanticIndexer
 from app.services.vault import VaultService
 
 router = APIRouter()
+logger = logging.getLogger("vaultbridge.api.notes")
 
 
 def _enqueue_after_committed_write(
@@ -18,8 +21,18 @@ def _enqueue_after_committed_write(
 ) -> None:
     try:
         semantic_indexer.enqueue(path)
-    except Exception:
+    except Exception as exc:
         # Markdown is authoritative and the next startup full sync can recover the write.
+        log_event(
+            logger,
+            logging.WARNING,
+            "targeted_reindex_queue_failed",
+            "Targeted semantic reindex could not be queued after a committed note write",
+            exc_info=(type(exc), exc, exc.__traceback__),
+            operation="targeted",
+            note_path=path,
+            error_type=type(exc).__name__,
+        )
         return
 
 
@@ -84,6 +97,14 @@ def create_note(
         tags=note.tags,
     )
     if result.status == "created":
+        log_event(
+            logger,
+            logging.INFO,
+            "note_created",
+            "Markdown note was created",
+            operation="create",
+            note_path=result.path,
+        )
         _enqueue_after_committed_write(semantic_indexer, result.path)
     return NoteResult(success=True, path=result.path, status=result.status)
 
@@ -103,6 +124,14 @@ def append_note(
 ) -> NoteResult:
     result = vault_service.append_note(path=req.path, content=req.content, dedupe_key=req.dedupe_key)
     if result.status == "appended":
+        log_event(
+            logger,
+            logging.INFO,
+            "note_appended",
+            "Markdown content was appended to a note",
+            operation="append",
+            note_path=result.path,
+        )
         _enqueue_after_committed_write(semantic_indexer, result.path)
     return NoteResult(success=True, path=result.path, status=result.status)
 

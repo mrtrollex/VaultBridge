@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import logging
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
@@ -10,6 +12,7 @@ from app.api.health import router as health_router
 from app.api.notes import router as notes_router
 from app.api.search import router as search_router
 from app.core.config import Settings
+from app.core.logging import configure_application_logging, log_event
 from app.services.indexer import BackgroundSemanticIndexer
 from app.services.semantic_search import (
     SemanticSearchService,
@@ -28,15 +31,69 @@ APP_TITLE = "VaultBridge"
 APP_VERSION = "0.1.0"
 APP_DESCRIPTION = "Self-hosted REST and semantic search API for an Obsidian vault."
 
+configure_application_logging()
+logger = logging.getLogger("vaultbridge.application")
+
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
     semantic_indexer: BackgroundSemanticIndexer = application.state.semantic_indexer
-    semantic_indexer.start()
+    started_at = time.perf_counter()
+    log_event(
+        logger,
+        logging.INFO,
+        "application_starting",
+        "VaultBridge application is starting",
+    )
+    try:
+        semantic_indexer.start()
+    except BaseException as exc:
+        log_event(
+            logger,
+            logging.ERROR,
+            "application_start_failed",
+            "VaultBridge application startup failed",
+            exc_info=(type(exc), exc, exc.__traceback__),
+            error_type=type(exc).__name__,
+        )
+        raise
+    log_event(
+        logger,
+        logging.INFO,
+        "application_started",
+        "VaultBridge application started",
+        duration_ms=round((time.perf_counter() - started_at) * 1000, 3),
+        full_sync_required=semantic_indexer.requires_full_sync,
+    )
     try:
         yield
     finally:
-        await asyncio.to_thread(semantic_indexer.shutdown)
+        shutdown_started_at = time.perf_counter()
+        log_event(
+            logger,
+            logging.INFO,
+            "application_stopping",
+            "VaultBridge application is stopping",
+        )
+        try:
+            await asyncio.to_thread(semantic_indexer.shutdown)
+        except BaseException as exc:
+            log_event(
+                logger,
+                logging.ERROR,
+                "application_shutdown_failed",
+                "VaultBridge application shutdown failed",
+                exc_info=(type(exc), exc, exc.__traceback__),
+                error_type=type(exc).__name__,
+            )
+            raise
+        log_event(
+            logger,
+            logging.INFO,
+            "application_stopped",
+            "VaultBridge application stopped",
+            duration_ms=round((time.perf_counter() - shutdown_started_at) * 1000, 3),
+        )
 
 
 async def handle_vault_service_error(_request: Request, exc: VaultServiceError) -> JSONResponse:

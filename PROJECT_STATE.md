@@ -24,14 +24,15 @@ Completed:
 - VB-021 — Embed title + heading hierarchy + chunk
 - VB-022 — Retrieval evaluation fixture
 - VB-024 — Tune hybrid ranking from evaluation data
+- VB-040 — Structured JSON logging
 
 Next recommended task:
 
-- **VB-040 — Structured JSON logging**
+- **VB-041 — Request IDs and latency logging**
 
 Current milestone:
 
-- **Milestone 3 — Retrieval quality and evaluation (complete)**
+- **Milestone 5 — Operational maturity and security (active)**
 
 ## Working production characteristics
 
@@ -39,6 +40,7 @@ Current milestone:
 - Python 3.12 container
 - FastAPI routes, vault operations, semantic orchestration and SQLite persistence have separate modules
 - typed runtime settings via `app/core/config.py`
+- standard-library JSON application logging via `app/core/logging.py`
 - local semantic model through FastEmbed / ONNX Runtime
 - default model: `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`
 - SQLite semantic index using WAL
@@ -68,6 +70,9 @@ app/api/
 app/core/config.py
     typed runtime configuration
 
+app/core/logging.py
+    safe JSON formatter and idempotent VaultBridge logger configuration
+
 app/services/vault.py
     safe vault-relative path resolution, Markdown operations and contained note counting
 
@@ -83,6 +88,24 @@ app/repositories/semantic.py
 app/semantic.py
     compatibility facade retained for pre-VB-005 internal API compatibility
 ```
+
+## Application logging
+
+VaultBridge-owned application logs are emitted to stderr as one UTF-8 JSON object per line. Every
+record has `timestamp`, `level`, `logger`, `event`, and `message`; optional allowlisted context is
+included only when meaningful. UTC timestamps use millisecond ISO-8601 `Z` notation. Stable events
+cover application startup/shutdown, full semantic synchronization, targeted reindex scheduling and
+outcomes, and committed note create/append operations.
+
+Successful full-sync scheduling and targeted queue events are emitted from their lock-protected
+state snapshot before the worker can enter the corresponding observable synchronization path.
+
+Logging call sites pass only safe metadata. Vault-relative note paths are normalized to `/`; absolute
+and traversal paths are omitted. Exception details contain the exception type and basename-only stack
+frames, not exception messages. Note content, embedding/query text, credentials, headers, environment
+secrets, and absolute host paths are not logged. Logging infrastructure failures are isolated from
+application behavior. Uvicorn access/server logs retain their existing framework format; VB-040 does
+not add request middleware, request-body logging, request IDs, or latency logging.
 
 ## Semantic index lifecycle
 
@@ -205,12 +228,12 @@ ties now have focused production regressions.
 4. GPT/AI clients can invent wikilinks unless client instructions require verified existing notes.
 5. Graceful shutdown cannot interrupt a model download, ONNX inference call, or filesystem operation already in progress.
 
-## Verified baseline after VB-024
+## Verified baseline after VB-040
 
 Native Windows:
 
 ```text
-169 passed, 1 failed, 4 skipped
+195 passed, 1 failed, 4 skipped
 ```
 
 The one failure remains the known pre-existing Windows path-separator assertion around
@@ -226,10 +249,22 @@ git diff --check: passed
 all 7 endpoint paths and operation IDs: unchanged
 ```
 
-Focused semantic/repository/indexer/health/API run:
+Focused structured logging run:
 
 ```text
-145 passed, 2 skipped, 1 known baseline test deselected
+26 passed
+```
+
+Focused semantic/repository/indexer/ranking run:
+
+```text
+101 passed, 2 skipped
+```
+
+Protected API/health run:
+
+```text
+35 passed, 1 known baseline failure
 ```
 
 Deterministic retrieval evaluation:

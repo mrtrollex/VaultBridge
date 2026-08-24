@@ -78,10 +78,18 @@ Do not implement the recommended next task.
 At the current project state, the next recommended task is:
 
 ```text
-VB-040 — Structured JSON logging
+VB-041 — Request IDs and latency logging
 ```
 
 Always verify this against `PROJECT_STATE.md` and `BACKLOG.md` before starting.
+
+## Structured logging convention
+
+Future runtime features should emit VaultBridge-owned events through `app/core/logging.py`. Use a
+stable machine-readable event name, a static safe message, and only the existing allowlisted context
+needed by operators. Never pass API keys, Authorization headers, note content, embedding/query text,
+exception messages, or absolute host paths. Add a context field only when the feature has a concrete
+operational need; request IDs and request latency belong to VB-041 rather than ad hoc middleware.
 
 ## Review prompt
 

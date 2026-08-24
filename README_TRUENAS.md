@@ -140,6 +140,27 @@ heading-aware chunker changes the semantic index signature, so the first startup
 automatically discards old derived chunks and schedules a full rebuild from Markdown. No manual
 SQLite migration is required. The ranking model and hybrid ranking weights are unchanged.
 
+## Application logs
+
+VaultBridge application events are written to the container's standard error stream as one JSON
+object per line, so no persistent log directory or application-managed rotation is required. Inspect
+them through the TrueNAS app log view or Docker, for example:
+
+```bash
+docker logs --tail 100 obsidian-chatgpt
+```
+
+A completed synchronization resembles:
+
+```json
+{"timestamp":"2026-08-24T05:52:00.123Z","level":"INFO","logger":"vaultbridge.semantic","event":"semantic_sync_completed","message":"Semantic synchronization completed","operation":"full","indexed_notes":12,"unchanged_notes":830,"removed_notes":0,"duration_ms":421.7,"index_state":"ready"}
+```
+
+VaultBridge JSON records intentionally exclude API keys, Authorization headers, note content,
+embedding/query text, exception messages, and absolute host paths. Vault-relative note paths may be
+present. Uvicorn's server/access records retain their framework-managed format, so a container log
+stream can contain both JSON VaultBridge records and ordinary Uvicorn records.
+
 ## 7. Update the GPT Action
 
 Replace the existing Action schema with the new `action_openapi.yaml` and keep your existing server hostname.

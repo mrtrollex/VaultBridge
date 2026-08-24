@@ -14,6 +14,8 @@ The project intends to follow Semantic Versioning after the public repository ba
 - compatibility-preserving rich `/health` output for vault, semantic lifecycle, search availability, background activity, recovery debt, coherent eligible-note/index counts, and last successful full synchronization
 - deterministic retrieval evaluation with a sanitized Markdown corpus, EN/SK/cross-language
   relevance cases, Hit@1/Hit@3/MRR metrics, and production-pipeline failure diagnostics
+- safe standard-library JSON application logging for container lifecycle, semantic synchronization,
+  targeted reindexing, and committed note-write events
 
 ### Changed
 
