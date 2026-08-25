@@ -504,7 +504,7 @@ aligned from `0.1.0` to the stable target `1.0.0`. FastAPI uses the latter only 
 internal OpenAPI metadata; routes, operation IDs, schemas, authentication, runtime behavior, API
 namespace, semantic index signature, dependencies, deployment files, and the GHCR workflow are
 unchanged. The Git tag/GitHub Release and GHCR digest remain the authoritative release and immutable
-deployment identities. An RC release still derives only `1.0.0-rc.1` from tag `v1.0.0-rc.1`.
+deployment identities. A prerelease derives only its exact prerelease image tag from its GitHub Release tag and does not update stable aliases.
 
 ### VB-060 — Public repository exposure audit — P0 ✅
 

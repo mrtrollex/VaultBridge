@@ -40,9 +40,9 @@ Completed:
 
 Next required v1.0 release work:
 
-- **finalize the stable release documentation, verify green CI on the exact final `main` commit,
-  publish `v1.0.0`, verify the stable GHCR aliases and digest, and run the final pulled-image
-  disposable-vault smoke test**
+- **complete final privacy/security and release validation on the exact rewritten `main`, publish
+  and verify `v1.0.0-rc.2`, run the exact-digest pulled-image disposable-vault smoke test, then
+  publish stable `v1.0.0` and verify its stable GHCR aliases and digest**
 
 Next recommended backlog task:
 
@@ -50,11 +50,11 @@ Next recommended backlog task:
 
 Current v1.0 release status:
 
-- **all current v1.0 acceptance criteria are satisfied. Public source installation and the
-  `v1.0.0-rc.1` GHCR release candidate were verified on Linux amd64, including anonymous image pull,
-  digest verification, liveness, readiness, authenticated `/api/v1` behavior, safe logs, and
-  absence of stable GHCR aliases. Final stable `v1.0.0` publication and post-publication
-  verification remain open**
+- **the public repository history has been rewritten and the rewritten `main` is the release source
+  of truth. The historical `v1.0.0-rc.1` candidate was retired after that rewrite; its GitHub
+  Release, Git tag, and GHCR package were removed. Its old commit, workflow, digest, and runtime
+  verification are therefore no longer current release evidence. `v1.0.0-rc.2` publication and
+  verification are the next release gate before stable `v1.0.0`**
 
 Current milestones:
 
@@ -116,15 +116,12 @@ Current milestones:
   `major.minor`, `major`, and `latest`, while prereleases update only their exact version tag
 - GHCR publication is normal Linux runner architecture only; source-build Docker and TrueNAS
   deployments remain supported and multi-architecture manifests remain VB-055
-- `v1.0.0-rc.1` was published publicly to GHCR from commit
-  `bd127219e4f2f7a5707dcfe4d0bd56e838579d71`
-- RC publication workflow `32870928239` passed release-source verification and image publication
-- RC OCI digest:
-  `sha256:dd742182a1d0be1e66180e13dd1890ef62aa40b54c50b8346f165f4f23d40d1b`
-- published runtime platform is `linux/amd64`
-- the exact RC image was anonymously pulled and smoke-tested against a disposable empty vault;
-  `/health/live`, `/health/ready`, and authenticated `/api/v1/notes/list` passed
-- stable aliases `1.0.0`, `1.0`, `1`, and `latest` were confirmed absent after RC publication
+- published runtime platform remains `linux/amd64`; multi-architecture manifests remain VB-055
+- historical prerelease `v1.0.0-rc.1` was retired after the public-history rewrite; its GitHub
+  Release, Git tag, and GHCR package were removed and its old SHA/workflow/digest are not current
+  release evidence
+- the next distribution gate is `v1.0.0-rc.2` from the exact final rewritten `main`, followed by
+  exact-digest runtime smoke testing before stable `v1.0.0`
 
 ## Current implementation boundaries
 
