@@ -6,6 +6,8 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-08-25
+
 ### Added
 
 - project roadmap and Codex development playbook
@@ -77,7 +79,4 @@ The project intends to follow Semantic Versioning after the public repository ba
 - public repository availability and the generic Docker clean-install path were verified from an
   anonymous clone on TrueNAS SCALE / Linux amd64 with a disposable vault; source build, container
   startup, liveness, readiness, and authenticated `/api/v1` note listing all passed
-
-## [0.1.0] - TBD
-
-Planned first public baseline based on the currently working Obsidian bridge with local semantic search.
+  

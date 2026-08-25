@@ -437,7 +437,7 @@ explicit leases. The repository is now public and the anonymous clean-install ga
 
 - [x] clean install succeeds from public documentation
 - [x] CI is green
-- [ ] container image is published
+- [x] container image is published
 - [x] public API is versioned
 - [x] full semantic rebuild does not block ordinary request handling
 - [x] retrieval evaluation suite exists
@@ -449,8 +449,8 @@ VB-056 evidence and the exact remaining release gates are recorded in
 [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md). VB-057 closes the confirmed literal
 search/list symlink-containment bypass after focused Linux and compatibility review, VB-059 closes
 the version-alignment blocker, and VB-060 closes the repository-exposure-safety blocker. Public repository visibility and anonymous isolated clean installation are now verified.
-RC/GHCR publication and verification, pulled-image RC smoke testing, and final stable publication
-remain unmet release gates; the publication workflow alone is not a published container.
+RC/GHCR publication and verification and the pulled-image RC smoke test are complete.
+Final stable `v1.0.0` publication and post-publication verification remain as the release gates.
 
 ---
 

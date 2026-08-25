@@ -4,7 +4,9 @@
 
 It exposes a deliberately small API for reading, searching and safely writing notes while keeping Markdown files as the source of truth. Semantic search runs locally with an ONNX embedding model and a disposable SQLite index.
 
-> Status: **pre-release / working prototype**. The current implementation is already usable; the repository is being refactored toward a public `1.0.0` release. See [`ROADMAP.md`](ROADMAP.md).
+> Status: **release candidate**. `v1.0.0-rc.1` is publicly available and has passed the
+> release-candidate deployment and smoke-test gates. Stable `v1.0.0` is being finalized.
+> See [`ROADMAP.md`](ROADMAP.md).
 
 ## Why VaultBridge
 
