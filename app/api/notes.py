@@ -39,7 +39,11 @@ def _enqueue_after_committed_write(
 
 class CreateNoteRequest(BaseModel):
     title: str = Field(min_length=1, max_length=180, description="Human-readable note title without .md")
-    folder: str = Field(default="Inbox", max_length=500, description="Vault-relative folder, e.g. Technical Notes/Example Project")
+    folder: str = Field(
+        default="Inbox",
+        max_length=500,
+        description="Vault-relative folder, e.g. Technical Notes/Example Project",
+    )
     content: str = Field(default="", max_length=800_000, description="Markdown body. Do not include YAML front matter.")
     tags: list[str] = Field(default_factory=list, max_length=30)
 

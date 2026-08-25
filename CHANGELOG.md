@@ -6,7 +6,7 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-08-25
+## [1.0.0] - TBD
 
 ### Added
 
