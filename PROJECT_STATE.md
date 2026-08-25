@@ -31,6 +31,7 @@ Completed:
 - VB-050 — Introduce `/api/v1`
 - VB-052 — Generic Docker deployment docs
 - VB-053 — TrueNAS deployment docs
+- VB-054 — Publish GHCR image workflow
 
 Next recommended task:
 
@@ -38,12 +39,13 @@ Next recommended task:
 
 Next incomplete P0 task:
 
-- **VB-054 — Publish GHCR image workflow**
+- **VB-056 — GitHub v1.0 release checklist**
 
 Current milestones:
 
 - **Milestone 5 — Operational maturity and security (active)**
 - **Milestone 6 — Public API and developer experience (active)**
+- **Milestone 7 — Distribution and `v1.0.0` (active)**
 
 ## Working production characteristics
 
@@ -83,6 +85,12 @@ Current milestones:
   host loopback at `API_PORT` (default `8765`)
 - generic Docker Compose runs as configurable `PUID:PGID` (defaults `1000:1000`); the mounted vault
   must grant that identity the read/write access required by enabled note operations and indexing
+- published GitHub Releases build the existing root Dockerfile and use `GITHUB_TOKEN` to publish
+  `ghcr.io/<lowercase-repository-owner>/vaultbridge` after tests, compilation, and Compose validation
+- exact semantic-version image tags omit the release tag's leading `v`; stable releases also update
+  `major.minor`, `major`, and `latest`, while prereleases update only their exact version tag
+- GHCR publication is normal Linux runner architecture only; source-build Docker and TrueNAS
+  deployments remain supported and multi-architecture manifests remain VB-055
 
 ## Current implementation boundaries
 
@@ -311,7 +319,7 @@ ties now have focused production regressions.
 4. GPT/AI clients can invent wikilinks unless client instructions require verified existing notes.
 5. Graceful shutdown cannot interrupt a model download, ONNX inference call, or filesystem operation already in progress.
 
-## Verified baseline after VB-053
+## Verified baseline after VB-054
 
 Native Windows:
 
@@ -333,7 +341,10 @@ all 15 published endpoint paths and operation IDs: verified unique and stable
 generic Docker contract: 14 static assertions passed
 all 10 Compose substitutions covered by .env.example
 TrueNAS runbook/Compose/Dockerfile/settings contract: 48 static assertions passed
-Docker / Docker Compose: unavailable in the current environment; config/build not run
+GHCR workflow: YAML parsed and checksum-verified actionlint 1.7.12 passed
+GHCR security/publication contract: 7 action references pinned to full commit SHAs; trigger,
+permissions, credentials, tags, OCI labels, build inputs, architecture scope, and manifest inspection verified
+Docker / Docker Compose: unavailable in the current environment; config/build not run locally
 ```
 
 Focused VB-053 configuration, legacy/v1 route, health/readiness, maintenance CLI, logging, and

@@ -140,6 +140,27 @@ from the existing `make-bundle.ps1` `git archive` helper, preserve `.env`, and n
 overwrite the external vault/data datasets. Maintenance remains stopped-service and uses an isolated
 container with the same `.env`, mounts, and semantic settings.
 
+## Container publication convention
+
+Keep the repository-root `Dockerfile` as the single production image definition. GitHub Release
+publication uses a `v`-prefixed semantic version, the repository-scoped `GITHUB_TOKEN`, and
+full-commit-SHA-pinned actions to publish `ghcr.io/<lowercase-repository-owner>/vaultbridge`. Every
+release gets its exact version tag without `v`; stable releases also update `major.minor`, `major`,
+and `latest`, while prereleases update no stable alias. The metadata action owns deterministic GHCR
+lowercasing and OCI labels. Release version tags are not reusable; deployments that require a
+cryptographically immutable reference should use the published digest.
+
+Use minimal BuildKit provenance when it remains supported by the existing build action and requires
+no broader token permissions. Stronger GitHub attestations, SBOM policy, or external signing need a
+separate hardening decision; do not introduce credentials or services implicitly.
+
+Keep package-write permission on the publish job only, never publish from a pull request or
+`pull_request_target`, and do not add PAT credentials. The first package publication may be private;
+visibility and repository linkage must be checked deliberately in GitHub Packages. Source-build
+Docker Compose and TrueNAS deployment remain supported, and a release image must not change runtime
+paths, mounts, ports, settings, APIs, or semantic-index compatibility. Publish only the normal Linux
+architecture until VB-055 explicitly introduces multi-architecture support.
+
 ## Structured logging convention
 
 Future runtime features should emit VaultBridge-owned events through `app/core/logging.py`. Use a

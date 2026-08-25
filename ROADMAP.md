@@ -81,10 +81,11 @@ app/semantic.py                 legacy compatibility facade
 - [x] **VB-050 — Introduce `/api/v1`**
 - [x] **VB-052 — Generic Docker deployment docs**
 - [x] **VB-053 — TrueNAS deployment docs**
+- [x] **VB-054 — Publish GHCR image workflow**
 
 ## Current verified baseline
 
-At completion of VB-053:
+At completion of VB-054:
 
 ```text
 latest verified test baseline is recorded in PROJECT_STATE.md
@@ -94,7 +95,9 @@ git diff --check passed
 generic deployment contract statically verified against Compose, Dockerfile, settings, and routes
 TrueNAS runbook contract statically verified against its include, Compose, Dockerfile, settings,
 routes, CLI, health, and logging behavior
-Docker Compose runtime validation unavailable in the current environment
+GHCR release workflow syntax, action pins, permissions, tags, OCI labels, build inputs, architecture
+scope, and publish isolation statically verified
+Docker and Docker Compose runtime validation unavailable in the current environment
 ```
 
 ## Current known limitations
@@ -384,9 +387,16 @@ ChatGPT Action remains an integration example, not the core product identity.
 
 **Goal:** ship VaultBridge as a polished public open-source project.
 
-### VB-054 — Publish GHCR image workflow — P0 ← NEXT P0
+### VB-054 — Publish GHCR image workflow — P0 ✅
+
+Published GitHub Releases now rerun the established source checks and build the existing production
+Dockerfile before pushing a normal Linux runner image to GHCR. Exact semantic-version tags are always
+created; only stable releases update rolling aliases and `latest`. Publication uses job-scoped
+package-write permission, `GITHUB_TOKEN`, SHA-pinned actions, OCI metadata, and a post-push manifest
+inspection. Existing source-build deployments remain unchanged.
+
 ### VB-055 — Multi-architecture image — P1
-### VB-056 — GitHub v1.0 release checklist — P0
+### VB-056 — GitHub v1.0 release checklist — P0 ← NEXT P0
 
 ## `v1.0.0` acceptance criteria
 

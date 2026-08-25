@@ -199,6 +199,37 @@ docker compose logs --tail 100
 The source build uses Python 3.12, installs the Linux `libgomp1` runtime required by ONNX Runtime,
 and starts Uvicorn on container port `8000`.
 
+## GHCR release images
+
+Published GitHub Releases also produce the same Dockerfile-based application image at:
+
+```text
+ghcr.io/<repository-owner>/vaultbridge:<version>
+```
+
+Use the lowercase repository owner shown on the package page. For example, after a `v1.0.0` release:
+
+```bash
+docker pull ghcr.io/<repository-owner>/vaultbridge:1.0.0
+```
+
+The publication workflow accepts v-prefixed semantic release tags. Every release receives the exact
+version tag without the leading `v`. A stable release also updates its `major.minor` alias and
+`major` alias plus `latest`; a GitHub prerelease receives only its exact prerelease tag, such as
+`1.0.0-rc.1`. Release tags must not be reused. For a cryptographically immutable deployment
+reference, copy the published
+digest from GHCR and pull `ghcr.io/<repository-owner>/vaultbridge@sha256:...`.
+
+GHCR packages are private on first publication unless account/organization policy says otherwise.
+After the first successful release, the repository owner should open the package's **Package
+settings**, verify repository linkage, and deliberately change visibility to **Public** if anonymous
+pulls are intended. Public visibility is not assumed by this workflow.
+
+The checked-in source-build Compose workflow remains supported and unchanged. The GHCR image is an
+additional distribution artifact, not an automatic migration of existing Docker or TrueNAS
+installations. VB-054 publishes only the normal Linux architecture produced by the GitHub-hosted
+runner; multi-architecture manifests remain VB-055.
+
 ## Docker configuration
 
 The generic Compose file reads `.env`, validates application settings at startup, and uses this
