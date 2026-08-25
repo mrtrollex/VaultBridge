@@ -129,6 +129,17 @@ new smoke tests, preserve public unversioned health probes, and keep `index chec
 stopped-service operations. Do not expose resolved secrets through environment dumps or pasted
 Compose output.
 
+## TrueNAS deployment convention
+
+Preserve the production compatibility paths under `/mnt/Apps/AppsData/ObsidianChatGPT*`, Compose
+service `obsidian-api`, container `obsidian-chatgpt`, runtime identity `568:568`, `/vault` and `/data`
+mounts, and `8765:8000` mapping unless a separate migration task says otherwise. The primary
+deployment uses a TrueNAS-managed Custom App whose YAML includes `truenas-install.yml`; shell-managed
+Compose is a distinct alternative and must not create a duplicate serving stack. Source bundles come
+from the existing `make-bundle.ps1` `git archive` helper, preserve `.env`, and never contain or
+overwrite the external vault/data datasets. Maintenance remains stopped-service and uses an isolated
+container with the same `.env`, mounts, and semantic settings.
+
 ## Structured logging convention
 
 Future runtime features should emit VaultBridge-owned events through `app/core/logging.py`. Use a
