@@ -46,17 +46,36 @@ The vault is never replaced by the index and there is no general filesystem endp
 
 ## Current API
 
+New integrations should use the versioned application API:
+
 | Method | Path | Operation |
 |---|---|---|
-| GET | `/health` | `healthCheck` |
-| POST | `/notes` | `createNote` |
-| POST | `/notes/append` | `appendNote` |
-| GET | `/notes/read` | `readNote` |
-| POST | `/notes/search` | `searchNotes` |
-| POST | `/notes/related` | `findRelatedNotes` |
-| GET | `/notes/list` | `listNotes` |
+| POST | `/api/v1/notes` | `createNoteV1` |
+| POST | `/api/v1/notes/append` | `appendNoteV1` |
+| GET | `/api/v1/notes/read` | `readNoteV1` |
+| POST | `/api/v1/notes/search` | `searchNotesV1` |
+| POST | `/api/v1/notes/related` | `findRelatedNotesV1` |
+| GET | `/api/v1/notes/list` | `listNotesV1` |
 
-The public versioned `/api/v1` API is planned before `1.0.0`.
+Existing clients may continue using the unversioned compatibility layer:
+
+| Legacy path | Legacy operation | Preferred path |
+|---|---|---|
+| `/notes` | `createNote` | `/api/v1/notes` |
+| `/notes/append` | `appendNote` | `/api/v1/notes/append` |
+| `/notes/read` | `readNote` | `/api/v1/notes/read` |
+| `/notes/search` | `searchNotes` | `/api/v1/notes/search` |
+| `/notes/related` | `findRelatedNotes` | `/api/v1/notes/related` |
+| `/notes/list` | `listNotes` | `/api/v1/notes/list` |
+
+Both paths in each pair use the same authentication, validation, response, error, and domain-service
+implementation. The checked-in ChatGPT Action schema remains on the legacy paths so existing Actions
+continue working without an immediate configuration change. Migrating that external configuration
+and removing the compatibility layer are separate future decisions; no removal date is set.
+
+Operational routes remain unversioned: `GET /health` (`healthCheck`), `GET /health/live`
+(`livenessCheck`), and `GET /health/ready` (`readinessCheck`). The public `GET /privacy` text endpoint
+is intentionally excluded from OpenAPI and also remains unversioned.
 
 ## Health and operator status
 
@@ -117,7 +136,7 @@ refresh encounters an older signature, it safely performs the required full rebu
 Example:
 
 ```bash
-curl -X POST http://127.0.0.1:8765/notes/related \
+curl -X POST http://127.0.0.1:8765/api/v1/notes/related \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"text":"professional courses and certifications","limit":5}'

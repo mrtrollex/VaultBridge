@@ -28,6 +28,7 @@ Completed:
 - VB-041 — Request IDs and latency logging
 - VB-044 — Liveness and readiness endpoints
 - VB-045 — Index integrity/rebuild CLI
+- VB-050 — Introduce `/api/v1`
 
 Next recommended task:
 
@@ -58,6 +59,8 @@ Current milestone:
 - `SemanticRepository` persists semantic data and lifecycle state
 - `/health` reports semantic lifecycle and search availability separately without starting semantic work
 - `/health/live` provides dependency-free liveness and `/health/ready` reports usable-vault plus semantic-search availability
+- protected note/search operations are available under `/api/v1` with stable `*V1` operation IDs
+- existing unversioned note/search paths and operation IDs remain compatibility aliases
 - standard-library `index check` and offline `index rebuild` administrative CLI commands
 - successful full synchronization persists `last_successful_sync`; targeted refresh does not change it
 - TrueNAS container commonly runs as UID/GID 568
@@ -74,7 +77,7 @@ app/cli.py
     read-only semantic integrity inspection and explicit offline rebuild orchestration
 
 app/api/
-    HTTP routers and API dependencies
+    HTTP routers, legacy/v1 route registration, and API dependencies
 
 app/core/config.py
     typed runtime configuration
@@ -130,6 +133,8 @@ exception escapes FastAPI. Terminal records contain only the HTTP method, matche
 an ASGI-observed response status when one exists, and non-negative `duration_ms` measured with
 `time.perf_counter()`. Cancellation or another abort before `http.response.start` omits
 `status_code`. Raw request paths, query strings, headers, bodies and responses are not logged.
+Legacy and versioned requests record distinct matched templates such as `/notes` and
+`/api/v1/notes` through the same middleware, without logging raw request paths.
 
 The request `ContextVar` is restored at ASGI exit, isolating concurrent and later requests.
 Synchronous note-write and targeted-queue events inherit the request ID. Later semantic execution on
@@ -289,12 +294,12 @@ ties now have focused production regressions.
 4. GPT/AI clients can invent wikilinks unless client instructions require verified existing notes.
 5. Graceful shutdown cannot interrupt a model download, ONNX inference call, or filesystem operation already in progress.
 
-## Verified baseline after VB-045
+## Verified baseline after VB-050
 
 Native Windows:
 
 ```text
-265 passed, 1 failed, 4 skipped
+289 passed, 1 failed, 4 skipped
 ```
 
 The one failure remains the known pre-existing Windows path-separator assertion around
@@ -307,10 +312,16 @@ Additional checks:
 Ruff: passed
 Python compileall: passed
 git diff --check: passed
-all 9 endpoint paths and operation IDs: unchanged
+all 15 published endpoint paths and operation IDs: verified unique and stable
 ```
 
-Focused VB-045 CLI run:
+Focused VB-050 legacy/v1 contract and authentication run:
+
+```text
+24 passed
+```
+
+Focused CLI run:
 
 ```text
 30 passed
@@ -322,10 +333,10 @@ Focused health/readiness run:
 30 passed
 ```
 
-Focused structured logging/request observability run:
+Focused request observability run:
 
 ```text
-43 passed
+17 passed
 ```
 
 Focused semantic/repository/indexer/ranking run:
@@ -334,10 +345,10 @@ Focused semantic/repository/indexer/ranking run:
 107 passed, 2 skipped
 ```
 
-Protected API/health run:
+Legacy protected API run:
 
 ```text
-47 passed, 1 known baseline failure
+17 passed, 1 known baseline failure
 ```
 
 Deterministic retrieval evaluation:

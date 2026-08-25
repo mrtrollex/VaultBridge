@@ -128,7 +128,7 @@ or vault-access problem to retry synchronization.
 PowerShell:
 
 ```powershell
-curl.exe -X POST http://TRUENAS_IP:8765/notes/related `
+curl.exe -X POST http://TRUENAS_IP:8765/api/v1/notes/related `
   -H "Authorization: Bearer YOUR_API_KEY" `
   -H "Content-Type: application/json" `
   -d '{"text":"TrueNAS home server storage","limit":3}'
@@ -223,7 +223,7 @@ X-Request-ID: 9f48b4f6d3b24b02a6a82db8a415ce70
 ```
 
 ```json
-{"timestamp":"2026-08-24T06:02:00.123Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"9f48b4f6d3b24b02a6a82db8a415ce70","method":"POST","route":"/notes","status_code":200,"duration_ms":5.271}
+{"timestamp":"2026-08-24T06:02:00.123Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"9f48b4f6d3b24b02a6a82db8a415ce70","method":"POST","route":"/api/v1/notes","status_code":200,"duration_ms":5.271}
 ```
 
 VaultBridge does not accept caller-selected request IDs: an incoming `X-Request-ID` is replaced.
@@ -236,14 +236,16 @@ embedding/query text, exception messages, and absolute host paths. Vault-relativ
 present. Uvicorn's server/access records retain their framework-managed format, so a container log
 stream can contain both JSON VaultBridge records and ordinary Uvicorn records.
 
-## 7. Update the GPT Action
+## 7. ChatGPT Action compatibility
 
-Replace the existing Action schema with the new `action_openapi.yaml` and keep your existing server hostname.
-
-The new Action is:
+VB-050 does not require an existing ChatGPT Action configuration change. The checked-in
+`action_openapi.yaml` continues to use the unversioned compatibility routes and established
+operation IDs, including:
 
 ```text
 findRelatedNotes -> POST /notes/related
 ```
 
-Your previous actions remain unchanged.
+Existing Actions therefore continue working. New non-Action integrations should prefer `/api/v1`.
+Migrating the external Action schema to v1 can happen separately; removal of the legacy routes is not
+part of VB-050.

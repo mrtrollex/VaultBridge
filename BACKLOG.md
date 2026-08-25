@@ -396,9 +396,20 @@ Added public, minimal orchestration probes while preserving the richer compatibi
 
 ## Developer experience / distribution
 
-### VB-050 — Introduce `/api/v1` — P0
+### VB-050 — Introduce `/api/v1` — P0 ✅
 
-Requires migration/compatibility plan.
+**Status:** Completed on 2026-08-24.
+
+The protected note/search application API is available under `/api/v1` with explicit `*V1`
+operation IDs. The original unversioned paths and operation IDs remain compatibility aliases for
+existing clients, including the current ChatGPT Action. Both path families register the same
+endpoint functions, dependencies, models, services, error handling, and request observability.
+
+Operational `/health`, `/health/live`, and `/health/ready` routes remain public and unversioned.
+The schema-hidden `/privacy` endpoint also remains unversioned. Runtime OpenAPI/docs endpoints remain
+disabled. Contract tests cover methods, schemas, auth, success/validation/failure parity, unique
+operation IDs, shared endpoint ownership, exactly-once domain calls, and versioned route-template
+logging.
 
 ### VB-051 — Add VaultBridge CLI — P1
 
@@ -445,6 +456,7 @@ VB-001 ✓
 → VB-041  ✓
 → VB-044  ✓
 → VB-045  ✓
+→ VB-050  ✓
 → VB-042  NEXT
 ```
 

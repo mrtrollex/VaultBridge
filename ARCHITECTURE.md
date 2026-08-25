@@ -12,6 +12,7 @@ Client (ChatGPT / curl / future integrations)
                     | HTTPS + Bearer token
                     v
                FastAPI app
+       (`/api/v1` + legacy aliases)
               /           \
              /             \
     Vault operations     Semantic search
@@ -32,7 +33,7 @@ The `.md` files are authoritative. The SQLite semantic index is disposable deriv
 ```text
 app/main.py          application construction, dependency wiring, router registration
 app/cli.py           read-only semantic integrity check and explicit offline rebuild entry point
-app/api/             health, note and search routers plus HTTP dependencies
+app/api/             health, note/search routers, versioned alias registration and HTTP dependencies
 app/core/config.py   typed environment configuration
 app/core/logging.py  structured VaultBridge application logging
 app/core/observability.py request correlation and HTTP lifecycle timing
@@ -42,6 +43,23 @@ app/services/indexer.py one in-process full/targeted synchronization worker and 
 app/repositories/semantic.py SQLite schema, semantic index persistence and read-only status statistics
 app/semantic.py      compatibility facade for the pre-VB-005 internal API
 ```
+
+### HTTP API versioning
+
+The public application API is namespaced under `/api/v1`. The original unversioned note/search
+paths remain compatibility aliases during the migration window, especially for the checked-in
+ChatGPT Action schema. Each legacy/v1 pair is registered from one endpoint function with identical
+dependencies, request/response models, service calls, exception handling, and content types; one
+request therefore executes one domain operation.
+
+Legacy operation IDs remain `createNote`, `appendNote`, `readNote`, `searchNotes`,
+`findRelatedNotes`, and `listNotes`. Their v1 counterparts use the explicit stable `V1` suffix.
+New integrations should use `/api/v1`; removal of compatibility paths requires a separate project
+decision.
+
+`/health`, `/health/live`, and `/health/ready` are unversioned operational interfaces. The public,
+schema-hidden `/privacy` text endpoint is also unversioned. FastAPI's runtime `/docs`, `/redoc`, and
+`/openapi.json` endpoints remain disabled.
 
 VaultBridge-owned operational events use the standard Python logging pipeline and an idempotent
 handler on the `vaultbridge` logger namespace. The handler writes one compact UTF-8 JSON object per
@@ -287,7 +305,9 @@ Pydantic HTTP request/response models only.
 
 ### `api/`
 
-FastAPI routers and dependencies. Routes should orchestrate services rather than implement domain logic.
+FastAPI routers, versioned route registration and dependencies. Routes should orchestrate services
+rather than implement domain logic. Legacy and current version paths must converge on the same
+endpoint function and service path.
 
 ---
 

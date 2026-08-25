@@ -9,6 +9,7 @@ from app.api.dependencies import (
     get_vault_service,
     require_auth,
 )
+from app.api.versioning import versioned_api_route
 from app.core.config import Settings
 from app.services.semantic_search import SemanticSearchService
 from app.services.vault import VaultService
@@ -34,9 +35,11 @@ class RelatedNotesRequest(BaseModel):
     )
 
 
-@router.post(
+@versioned_api_route(
+    router,
     "/notes/search",
     operation_id="searchNotes",
+    methods=["POST"],
     dependencies=[Depends(require_auth)],
     tags=["notes"],
     summary="Search Markdown notes in the vault",
@@ -54,9 +57,11 @@ def search_notes(
     }
 
 
-@router.post(
+@versioned_api_route(
+    router,
     "/notes/related",
     operation_id="findRelatedNotes",
+    methods=["POST"],
     dependencies=[Depends(require_auth)],
     tags=["notes"],
     summary="Find conceptually related Obsidian notes",

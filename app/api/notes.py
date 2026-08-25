@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field, field_validator
 
 from app.api.dependencies import get_semantic_indexer, get_vault_service, require_auth
+from app.api.versioning import versioned_api_route
 from app.core.logging import log_event
 from app.services.indexer import BackgroundSemanticIndexer
 from app.services.vault import VaultService
@@ -77,9 +78,11 @@ class NoteResult(BaseModel):
     status: Literal["created", "unchanged", "appended", "already_applied", "read"] | None = None
 
 
-@router.post(
+@versioned_api_route(
+    router,
     "/notes",
     operation_id="createNote",
+    methods=["POST"],
     response_model=NoteResult,
     dependencies=[Depends(require_auth)],
     tags=["notes"],
@@ -109,9 +112,11 @@ def create_note(
     return NoteResult(success=True, path=result.path, status=result.status)
 
 
-@router.post(
+@versioned_api_route(
+    router,
     "/notes/append",
     operation_id="appendNote",
+    methods=["POST"],
     response_model=NoteResult,
     dependencies=[Depends(require_auth)],
     tags=["notes"],
@@ -136,9 +141,11 @@ def append_note(
     return NoteResult(success=True, path=result.path, status=result.status)
 
 
-@router.get(
+@versioned_api_route(
+    router,
     "/notes/read",
     operation_id="readNote",
+    methods=["GET"],
     dependencies=[Depends(require_auth)],
     tags=["notes"],
     summary="Read one Obsidian note",
@@ -151,9 +158,11 @@ def read_note(
     return {"path": result.path, "content": result.content}
 
 
-@router.get(
+@versioned_api_route(
+    router,
     "/notes/list",
     operation_id="listNotes",
+    methods=["GET"],
     dependencies=[Depends(require_auth)],
     tags=["notes"],
     summary="List Markdown notes in a vault folder",

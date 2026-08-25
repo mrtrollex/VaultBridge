@@ -20,19 +20,29 @@ VaultBridge is a small self-hosted REST + semantic search bridge for Obsidian Ma
 
 ## Current compatibility contract
 
-Until the roadmap task that versions the API is completed, preserve these endpoints and operation IDs:
+Preserve these endpoints and operation IDs. New integrations should prefer `/api/v1`; the
+unversioned note/search routes remain compatibility aliases:
 
 | Method | Path | operationId |
 |---|---|---|
 | GET | `/health` | `healthCheck` |
+| GET | `/health/live` | `livenessCheck` |
+| GET | `/health/ready` | `readinessCheck` |
 | POST | `/notes` | `createNote` |
 | POST | `/notes/append` | `appendNote` |
 | GET | `/notes/read` | `readNote` |
 | POST | `/notes/search` | `searchNotes` |
 | POST | `/notes/related` | `findRelatedNotes` |
 | GET | `/notes/list` | `listNotes` |
+| POST | `/api/v1/notes` | `createNoteV1` |
+| POST | `/api/v1/notes/append` | `appendNoteV1` |
+| GET | `/api/v1/notes/read` | `readNoteV1` |
+| POST | `/api/v1/notes/search` | `searchNotesV1` |
+| POST | `/api/v1/notes/related` | `findRelatedNotesV1` |
+| GET | `/api/v1/notes/list` | `listNotesV1` |
 
-Do not silently change request or response semantics.
+The schema-hidden `/privacy` route also remains unversioned. Do not silently change request or
+response semantics.
 
 ## Working method
 

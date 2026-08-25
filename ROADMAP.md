@@ -78,6 +78,7 @@ app/semantic.py                 legacy compatibility facade
 - [x] **VB-024 — Tune hybrid ranking from evaluation data**
 - [x] **VB-040 — Structured JSON logging**
 - [x] **VB-041 — Request IDs and latency logging**
+- [x] **VB-050 — Introduce `/api/v1`**
 
 ## Current verified baseline
 
@@ -355,7 +356,12 @@ Do not add Redis.
 
 **Goal:** make VaultBridge easy to understand and deploy by someone other than the original author.
 
-### VB-050 — Introduce `/api/v1` — P0
+### VB-050 — Introduce `/api/v1` — P0 ✅
+
+New integrations use the stable `/api/v1` note/search namespace and explicit `*V1` operation IDs.
+The original unversioned paths and operation IDs remain compatibility aliases for the existing
+ChatGPT Action and other clients. Operational health probes remain unversioned.
+
 ### VB-051 — VaultBridge CLI — P1
 ### VB-052 — Generic Docker deployment docs — P0
 ### VB-053 — TrueNAS deployment docs — P0
@@ -377,7 +383,7 @@ ChatGPT Action remains an integration example, not the core product identity.
 - [ ] clean install succeeds from public documentation
 - [ ] CI is green
 - [ ] container image is published
-- [ ] public API is versioned
+- [x] public API is versioned
 - [ ] full semantic rebuild does not block ordinary request handling
 - [ ] retrieval evaluation suite exists
 - [ ] no known authentication/path-traversal bypass

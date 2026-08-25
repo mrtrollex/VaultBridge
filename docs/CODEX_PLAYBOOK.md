@@ -105,6 +105,19 @@ searchable during or after a failed refresh, and a compatible legacy index with 
 searchable without persisted lifecycle state. Expected filesystem/SQLite availability failures are
 not-ready states; unexpected programming errors retain the normal server-error boundary.
 
+## API versioning convention
+
+New application integrations should use `/api/v1`. The original unversioned note/search routes are
+compatibility aliases and retain their established operation IDs for clients such as the current
+ChatGPT Action. V1 operation IDs use the explicit stable `V1` suffix. Register both paths from one
+endpoint function so authentication, validation, domain calls, responses, errors, and observability
+cannot drift or execute twice.
+
+Keep `/health`, `/health/live`, `/health/ready`, and the schema-hidden `/privacy` endpoint outside the
+application API namespace. Do not enable `/docs`, `/redoc`, or `/openapi.json`. Removing legacy
+routes or migrating the external Action configuration requires a separate task and migration
+decision; do not invent a removal date.
+
 ## Structured logging convention
 
 Future runtime features should emit VaultBridge-owned events through `app/core/logging.py`. Use a

@@ -53,7 +53,7 @@ Before the first index is ready, semantic search returns no results while indexi
 after a failed initial synchronization. Restarting the application retries synchronization.
 
 ```bash
-curl -X POST http://127.0.0.1:8765/notes/related \
+curl -X POST http://127.0.0.1:8765/api/v1/notes/related \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"text":"professional courses and certifications","limit":5}'

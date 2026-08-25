@@ -23,6 +23,8 @@ The project intends to follow Semantic Versioning after the public repository ba
 - a standard-library semantic-index administration CLI with filesystem-immutable stopped-service
   persisted inspection, stable exit codes, and explicit offline rebuild through the production
   batched synchronization pipeline with atomic successful-sync finalization
+- a stable `/api/v1` namespace for every protected note/search operation with explicit `*V1`
+  operation IDs, shared legacy/v1 endpoint registration, and contract-matrix coverage
 
 ### Changed
 
@@ -45,6 +47,8 @@ The project intends to follow Semantic Versioning after the public repository ba
 - hybrid retrieval now normalizes the existing `1.0:0.70` semantic/lexical combination instead of
   clamping distinct high scores, and resolves exact ties through semantic score, lexical score,
   canonical path and source chunk order without depending on SQLite iteration order
+- new integrations now prefer `/api/v1`; existing unversioned paths and operation IDs remain
+  compatibility aliases, while operational health endpoints stay public and unversioned
 
 ## [0.1.0] - TBD
 
