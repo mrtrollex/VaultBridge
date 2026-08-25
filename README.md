@@ -142,97 +142,246 @@ curl -X POST http://127.0.0.1:8765/api/v1/notes/related \
   -d '{"text":"professional courses and certifications","limit":5}'
 ```
 
-## Quick start with Docker
+## Docker quick start
+
+### Prerequisites
+
+- Docker Engine or Docker Desktop with Docker Compose support
+- Git, when cloning the repository
+- an existing Obsidian vault directory
+- enough free disk space for the local embedding model cache and semantic index
+- internet access when the container image and embedding model are downloaded for the first time
+
+TrueNAS, Kubernetes, Redis, an external vector database, and a cloud embedding API are not required.
+
+The following is the canonical Linux/macOS shell workflow:
 
 ```bash
+git clone https://github.com/mrtrollex/VaultBridge.git
+cd VaultBridge
 cp .env.example .env
+docker run --rm python:3.12-slim python -c 'import secrets; print(secrets.token_urlsafe(48))'
 ```
 
-Generate a secret:
-
-```bash
-python -c "import secrets; print(secrets.token_urlsafe(48))"
-```
-
-Set at minimum:
+Copy the generated value into `API_KEY` in `.env`, then set the host path to your existing vault:
 
 ```env
-API_KEY=replace-with-your-secret
-OBSIDIAN_VAULT_PATH=/path/to/your/Obsidian/Vault
+API_KEY=YOUR_GENERATED_API_KEY
+OBSIDIAN_VAULT_PATH=/home/alice/Documents/MyVault
 ```
 
-Start:
+`OBSIDIAN_VAULT_PATH` is a path on the Docker host. Compose bind-mounts it at `/vault` in the
+container; it is not a container path. Never commit `.env`. It is ignored by Git, but you should
+still treat it as a secret-bearing file.
+
+On Linux, set the container identity to the user that owns the vault:
+
+```bash
+id -u
+id -g
+```
+
+Put those values in `PUID` and `PGID` in `.env`. The defaults are `1000:1000`. VaultBridge needs
+read access for all note operations and write access for create/append operations and its derived
+semantic-data directory. Fix ownership or access-control rules deliberately; do not use `chmod 777`.
+Docker Desktop for macOS and Windows mediates bind-mount permissions through its VM, so host UID/GID
+behavior is not identical to native Linux. Ensure the vault directory is shared with Docker Desktop;
+leave the defaults unless your Docker Desktop setup requires different values.
+
+Build and start VaultBridge:
 
 ```bash
 docker compose up -d --build
-curl http://127.0.0.1:8765/health
+docker compose ps
+docker compose logs --tail 100
 ```
 
-Application startup begins downloading the embedding model, when needed, and synchronizing the index in the background. Semantic requests return no results while the first index is still building; if that initial build fails, semantic requests return HTTP `503`. A compatible committed index remains searchable during an in-process refresh. After restart from a persisted `error`, VaultBridge conservatively waits for a successful startup full synchronization before exposing that index again.
+The source build uses Python 3.12, installs the Linux `libgomp1` runtime required by ONNX Runtime,
+and starts Uvicorn on container port `8000`.
 
-Successful `createNote` and `appendNote` mutations queue only the affected note for background semantic refresh. Repeated pending writes to the same note are coalesced, and note-write responses do not wait for embedding or fail after a durable write if scheduling is temporarily unavailable. Failed targeted refreshes keep their paths for a later write-triggered retry; shutdown may discard the process-local queue, with the next startup full synchronization recovering from Markdown. External edits are still discovered by startup/full synchronization; no filesystem watcher is enabled.
+## Docker configuration
 
-The current production/TrueNAS deployment keeps the Obsidian Markdown source at `/vault` and sets
-`SEMANTIC_DATA_PATH=/data`. The `/data` mount contains `semantic-index.sqlite3` plus downloaded
-model/cache data, keeping disposable semantic artifacts outside the vault.
+The generic Compose file reads `.env`, validates application settings at startup, and uses this
+deployment contract:
 
-## Application configuration
+```text
+host OBSIDIAN_VAULT_PATH  ->  container /vault
+/vault/.obsidian-chatgpt-data  ->  configured SEMANTIC_DATA_PATH
+host 127.0.0.1:API_PORT  ->  container port 8000
+host PUID:PGID  ->  container process user and group
+```
 
-VaultBridge reads and validates its application settings once at startup. Invalid numeric values or empty paths/model names stop startup with a configuration error; the API key is treated as a secret and is not included in the settings representation.
-
-| Environment variable | Default | Constraint |
+| `.env` variable | Default/example | Purpose and constraint |
 |---|---|---|
-| `API_KEY` | empty | Required for authenticated endpoints, as before |
-| `VAULT_PATH` | `/vault` | Non-empty path |
-| `MAX_NOTE_BYTES` | `1000000` | Positive integer |
-| `SEMANTIC_DATA_PATH` | `/vault/.obsidian-chatgpt-data` | Non-empty path |
-| `SEMANTIC_MODEL` | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` | Non-empty name |
-| `SEMANTIC_CHUNK_CHARS` | `600` | Integer, at least `250` |
-| `SEMANTIC_CHUNK_OVERLAP` | `100` | Non-negative integer, at most half of chunk size |
-| `SEMANTIC_INDEX_BATCH_SIZE` | `25` | Positive integer; maximum notes committed per indexing transaction |
+| `API_KEY` | placeholder only | Required by protected routes; replace with a long random secret |
+| `OBSIDIAN_VAULT_PATH` | `/path/to/your/Obsidian/Vault` | Required absolute host path to the vault |
+| `API_PORT` | `8765` | Host loopback port mapped to container port `8000` |
+| `PUID` / `PGID` | `1000` / `1000` | Numeric container user/group used for bind-mounted files |
+| `MAX_NOTE_BYTES` | `1000000` | Positive maximum note size |
+| `SEMANTIC_MODEL` | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` | Non-empty local model name |
+| `SEMANTIC_CHUNK_CHARS` | `600` | Integer of at least `250` |
+| `SEMANTIC_CHUNK_OVERLAP` | `100` | Non-negative and at most half the chunk size |
+| `SEMANTIC_INDEX_BATCH_SIZE` | `25` | Positive maximum notes committed per indexing transaction |
 
-`OBSIDIAN_VAULT_PATH`, `API_PORT`, `PUID`, and `PGID` remain Docker Compose inputs and are not read by the Python application.
-The application default for `SEMANTIC_DATA_PATH` remains inside `/vault` for backward compatibility;
-the production TrueNAS compose file explicitly overrides it to `/data`.
+Compose fixes the application-only `VAULT_PATH` to `/vault` and `SEMANTIC_DATA_PATH` to
+`/vault/.obsidian-chatgpt-data`; do not put host paths in either setting. Invalid numeric values or
+empty paths/model names stop application startup. `OBSIDIAN_VAULT_PATH`, `API_PORT`, `PUID`, and
+`PGID` are Compose inputs and are not read by the Python application.
+
+### Semantic-data persistence
+
+The generic Compose deployment stores these derived files inside the mounted vault directory:
+
+```text
+/vault/.obsidian-chatgpt-data/semantic-index.sqlite3
+/vault/.obsidian-chatgpt-data/models/
+```
+
+On the host, they are under `${OBSIDIAN_VAULT_PATH}/.obsidian-chatgpt-data`. This directory therefore
+persists across container replacement and requires write permission for `PUID:PGID`. The SQLite
+index and downloaded model cache are derived/disposable; Markdown files remain the source of truth
+and should be the focus of backups. Do not edit SQLite manually. Use the supported stopped-service
+maintenance commands below to inspect or rebuild the index.
+
+The separate `/data` mount described in the TrueNAS guide is not part of generic Compose.
+
+## First startup and health verification
+
+The HTTP application starts without waiting for the whole vault to be indexed. A background semantic
+synchronization then scans the vault and downloads the local embedding model if it is not cached.
+Consequently, liveness can succeed before semantic readiness:
+
+```bash
+curl -fsS http://127.0.0.1:8765/health/live
+curl -i http://127.0.0.1:8765/health/ready
+curl -fsS http://127.0.0.1:8765/health
+```
+
+- `/health/live` means the HTTP process is alive and returns `200` with `{"ok":true}`.
+- `/health/ready` means VaultBridge can serve its intended vault and semantic workload. It returns
+  `503` with `{"ready":false}` during an initial build and `200` with `{"ready":true}` when usable.
+- `/health` returns richer operator diagnostics, including lifecycle state, availability, indexer
+  activity, counts, and the last successful full synchronization.
+
+Poll readiness and inspect logs while the first index is built. Semantic functionality becomes
+available after a successful initial index. A later startup synchronizes changed Markdown; when the
+stored index signature is incompatible with the running model/chunk configuration, VaultBridge
+automatically rebuilds the derived index from Markdown.
+
+After readiness succeeds, test the preferred versioned API with a non-destructive request:
+
+```bash
+curl -fsS 'http://127.0.0.1:8765/api/v1/notes/list?limit=5' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+Replace `YOUR_API_KEY` with the value in `.env`. The API key protects note and search routes; health
+probes are intentionally public. Unversioned note/search routes remain compatibility aliases, but
+new integrations should use `/api/v1`.
+
+If you changed `API_PORT`, replace `8765` in these commands with that value.
+
+## Logs and basic troubleshooting
+
+VaultBridge writes structured application events to the container log stream. Useful commands are:
+
+```bash
+docker compose ps
+docker compose logs --tail 100
+docker compose logs -f
+docker compose restart
+docker compose down
+```
+
+Common first-start checks:
+
+- Readiness remains `503` while initial indexing or model download is still running; inspect
+  `/health` and follow the logs rather than assuming container startup is blocked.
+- Permission errors usually mean `PUID:PGID` cannot read/write the host vault or create
+  `.obsidian-chatgpt-data`.
+- Protected requests return an authentication error when `API_KEY` is missing or the Bearer value is
+  wrong.
+- Invalid typed environment values stop startup; the container logs identify the configuration
+  validation failure without exposing the API key.
+- A first model download requires network access. Network/download failures appear in container logs
+  and leave initial semantic readiness unavailable. Correct the problem, then run
+  `docker compose restart` to schedule a new startup synchronization.
+
+Avoid pasting a resolved `docker compose config` into support requests: depending on the Compose
+version, it can include the resolved `API_KEY`. Never dump the complete container environment.
+
+## Updating and stopping
+
+This deployment builds from the checked-out source. Update it conservatively with:
+
+```bash
+git pull
+docker compose up -d --build
+docker compose ps
+```
+
+This recreates the application container as needed and is not a zero-downtime procedure. Markdown
+remains authoritative. Ordinary compatible updates reuse the persisted semantic data; a change to
+the model/chunk/index signature triggers the existing automatic rebuild logic.
+
+`docker compose stop` stops the existing container so it can be started again. `docker compose down`
+stops and removes the Compose container and network. Neither command removes the bind-mounted host
+vault or `.obsidian-chatgpt-data`; deleting host files is a separate destructive action. Do not use
+`docker compose down -v` as a cleanup shortcut, and never point a removal command at the vault.
 
 ## Semantic index administration
 
-After stopping VaultBridge, inspect the configured vault and persisted semantic index without loading
-the embedding model or changing any semantic-storage file:
+VaultBridge has no cross-process index lock. Both maintenance commands are stopped-service
+operations; do not run them through `docker exec` in the serving application container.
+
+Inspect persisted index integrity without loading the embedding model or changing storage:
 
 ```bash
-python -m app.cli index check
+docker compose stop obsidian-api
+docker compose run --rm --no-deps obsidian-api python -m app.cli index check
+docker compose up -d obsidian-api
 ```
 
-The check reports vault, database, schema, signature, persisted lifecycle state, standalone persisted
-searchability, physical stored counts and the stored last successful full sync. It uses SQLite's
-immutable mode and refuses to inspect a database with WAL/SHM sidecars; stop VaultBridge first. It
-does not scan note contents, construct FastEmbed, or report live process availability. Use `/health`
-and `/health/ready` as the authoritative live-process views.
+The check reports vault/database/schema/signature/lifecycle/searchability/count status. It uses an
+immutable SQLite view and refuses inspection while SQLite WAL/SHM sidecars are present. Exit `0`
+means healthy, `1` means an integrity/readiness problem, and `2` means a CLI, configuration, or
+programming failure. `/health` and `/health/ready` remain authoritative for the running service.
 
-Explicitly rebuild all derived semantic data from authoritative Markdown:
+If inspection shows a rebuild is appropriate, keep the service stopped and rebuild only the derived
+semantic data through the production synchronization path:
 
 ```bash
-python -m app.cli index rebuild
+docker compose stop obsidian-api
+docker compose run --rm --no-deps obsidian-api python -m app.cli index rebuild
+docker compose up -d obsidian-api
 ```
 
-Stop the VaultBridge application before check or rebuild. There is no cross-process index lock, and
-rebuild intentionally clears derived notes/chunks and current lifecycle state before using the normal full-sync,
-chunking, embedding and batching pipeline. Markdown files are not changed.
-SQLite files explicitly identified by SQLite as corrupt/not-a-database are recreated as derived data;
-lock, permission and other database failures remain failures rather than being mislabeled corruption.
+Rebuild may download the model if its cache is empty. It clears/recreates semantic index data but
+does not modify Markdown. Review a failed check before deciding to rebuild; do not edit or delete the
+SQLite files while the service is running.
 
-Exit codes are stable: `0` means healthy/success, `1` means an integrity/readiness problem or failed
-rebuild, and `2` means invalid CLI usage/configuration or an unexpected programming failure. A failed
-full-sync finalization atomically preserves the previous successful-sync timestamp and does not persist
-`ready`. Output is
-concise human-readable text; VB-045 does not add JSON mode because its backlog item does not require it.
+## Networking and security
+
+Generic Compose publishes `127.0.0.1:${API_PORT:-8765}:8000`, so VaultBridge is reachable only from
+the Docker host by default. Keep this security-positive binding. For access from another device or
+the public internet, place an HTTPS reverse proxy or VPN in front rather than changing the binding to
+`0.0.0.0` merely for convenience. VaultBridge does not terminate TLS itself.
+
+- use a strong random API key and never commit `.env`;
+- never expose or publish the vault directory itself;
+- use HTTPS, a VPN, or both for remote access;
+- back up the authoritative Markdown vault;
+- treat the semantic database/model cache as rebuildable derived data;
+- do not assume rate limiting or API-key rotation exists.
+
+See [`SECURITY.md`](SECURITY.md) for the security invariants.
 
 ## TrueNAS
 
-The existing TrueNAS-specific deployment files are kept for compatibility with the working prototype. See [`README_TRUENAS.md`](README_TRUENAS.md).
-
-The service/container names, data-directory name, and `ObsidianChatGPT*` TrueNAS paths in those files are legacy compatibility identifiers. They remain unchanged so an existing deployment can be rebuilt without an implicit migration.
+The generic workflow above does not require TrueNAS. Existing TrueNAS installations use a separate
+Compose file, `/data` mount, and compatibility identifiers; see
+[`README_TRUENAS.md`](README_TRUENAS.md). Those paths and identifiers are intentionally not reused in
+the generic examples.
 
 ## Development
 
@@ -255,18 +404,7 @@ The repository is prepared for task-by-task Codex work:
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — current and target design
 - [`docs/CODEX_PLAYBOOK.md`](docs/CODEX_PLAYBOOK.md) — ready-to-use prompts
 
-Start with `VB-001`, then follow the recommended sequence in `BACKLOG.md`.
-
-## Security
-
-- use a long random API key,
-- expose the service publicly only through HTTPS,
-- never expose the vault directory itself,
-- do not commit `.env`, semantic databases or model cache,
-- embeddings are computed locally by default,
-- there is intentionally no delete endpoint.
-
-See [`SECURITY.md`](SECURITY.md).
+Use one exact item from `BACKLOG.md` at a time and verify the current recommendation before starting.
 
 ## License
 

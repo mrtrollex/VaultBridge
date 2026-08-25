@@ -79,17 +79,19 @@ app/semantic.py                 legacy compatibility facade
 - [x] **VB-040 — Structured JSON logging**
 - [x] **VB-041 — Request IDs and latency logging**
 - [x] **VB-050 — Introduce `/api/v1`**
+- [x] **VB-052 — Generic Docker deployment docs**
 
 ## Current verified baseline
 
-At completion of VB-041:
+At completion of VB-052:
 
 ```text
 latest verified test baseline is recorded in PROJECT_STATE.md
 Ruff passed
 compileall passed
 git diff --check passed
-all existing endpoint paths and operationIds verified unchanged
+generic deployment contract statically verified against Compose, Dockerfile, settings, and routes
+Docker Compose runtime validation unavailable in the current environment
 ```
 
 ## Current known limitations
@@ -363,7 +365,7 @@ The original unversioned paths and operation IDs remain compatibility aliases fo
 ChatGPT Action and other clients. Operational health probes remain unversioned.
 
 ### VB-051 — VaultBridge CLI — P1
-### VB-052 — Generic Docker deployment docs — P0
+### VB-052 — Generic Docker deployment docs — P0 ✅
 ### VB-053 — TrueNAS deployment docs — P0
 
 ChatGPT Action remains an integration example, not the core product identity.

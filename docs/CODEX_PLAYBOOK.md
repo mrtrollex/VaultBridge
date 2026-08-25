@@ -118,6 +118,17 @@ application API namespace. Do not enable `/docs`, `/redoc`, or `/openapi.json`. 
 routes or migrating the external Action configuration requires a separate task and migration
 decision; do not invent a removal date.
 
+## Generic Docker deployment convention
+
+Keep `README.md` as the canonical normal-Docker path and `README_TRUENAS.md` as the TrueNAS-specific
+path. Verify every command and value against `Dockerfile`, `docker-compose.yml`, `.env.example`, and
+typed settings. Generic Compose bind-mounts host `OBSIDIAN_VAULT_PATH` at `/vault`, stores derived
+semantic data at `/vault/.obsidian-chatgpt-data`, maps host-loopback `API_PORT` to container port
+`8000`, and runs as `PUID:PGID`; do not substitute the TrueNAS `/data` layout. Prefer `/api/v1` in
+new smoke tests, preserve public unversioned health probes, and keep `index check`/`index rebuild` as
+stopped-service operations. Do not expose resolved secrets through environment dumps or pasted
+Compose output.
+
 ## Structured logging convention
 
 Future runtime features should emit VaultBridge-owned events through `app/core/logging.py`. Use a
