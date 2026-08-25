@@ -264,7 +264,7 @@ def test_create_read_search_append(tmp_path):
     )
     assert response.status_code == 200
     path = response.json()["path"]
-    assert Path(path) == Path("Oracle APEX") / "Example Project" / "APEX limit validation.md"
+    assert Path(path) == Path("Technical Notes") / "Example Project" / "APEX limit validation.md"
 
     response = client.get("/notes/read", headers=auth(), params={"path": path})
     assert response.status_code == 200
@@ -286,7 +286,7 @@ def test_create_read_search_append(tmp_path):
 
 def test_targeted_reindex_updates_semantic_results_after_append(tmp_path):
     home_server = tmp_path / "Infrastructure Notes"
-    oracle_apex = tmp_path / "Oracle APEX"
+    oracle_apex = tmp_path / "Technical Notes"
     home_server.mkdir()
     oracle_apex.mkdir()
     (home_server / "TrueNAS backup strategy.md").write_text(
@@ -373,9 +373,9 @@ def test_note_write_response_does_not_wait_for_targeted_embedding(tmp_path):
 
 def test_related_notes_folder_filter(tmp_path):
     (tmp_path / "Infrastructure Notes").mkdir()
-    (tmp_path / "Oracle APEX").mkdir()
+    (tmp_path / "Technical Notes").mkdir()
     (tmp_path / "Infrastructure Notes" / "NAS.md").write_text("TrueNAS storage backup server", encoding="utf-8")
-    (tmp_path / "Oracle APEX" / "Database.md").write_text("Oracle APEX database ORDS", encoding="utf-8")
+    (tmp_path / "Technical Notes" / "Database.md").write_text("Oracle APEX database ORDS", encoding="utf-8")
     client = client_for(tmp_path)
 
     with client:
@@ -383,7 +383,7 @@ def test_related_notes_folder_filter(tmp_path):
         response = client.post(
             "/notes/related",
             headers=auth(),
-            json={"text": "server storage", "folder": "Oracle APEX", "min_score": 0.0},
+            json={"text": "server storage", "folder": "Technical Notes", "min_score": 0.0},
         )
         assert response.status_code == 200
         assert [item["path"] for item in response.json()["results"]] == ["Technical Notes/Database.md"]
