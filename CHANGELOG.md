@@ -74,6 +74,9 @@ The project intends to follow Semantic Versioning after the public repository ba
   compatibility aliases, while operational health endpoints stay public and unversioned
 - Docker build contexts now exclude local environments, vault/index/model data, caches, tests,
   documentation, repository automation, and generated artifacts from build-context transfer
+- public repository availability and the generic Docker clean-install path were verified from an
+  anonymous clone on TrueNAS SCALE / Linux amd64 with a disposable vault; source build, container
+  startup, liveness, readiness, and authenticated `/api/v1` note listing all passed
 
 ## [0.1.0] - TBD
 
