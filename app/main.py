@@ -30,7 +30,7 @@ from app.services.vault import (
 )
 
 APP_TITLE = "VaultBridge"
-APP_VERSION = "0.1.0"
+APP_VERSION = "1.0.0"
 APP_DESCRIPTION = "Self-hosted REST and semantic search API for an Obsidian vault."
 
 configure_application_logging()

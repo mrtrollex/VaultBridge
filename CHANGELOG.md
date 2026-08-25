@@ -41,6 +41,8 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ### Changed
 
+- existing package and FastAPI application metadata now target `1.0.0`; Git tags/GitHub Releases and
+  GHCR digests remain the authoritative release and immutable deployment identities
 - the create/read/search/append API regression now verifies the exact returned note path with a
   platform-neutral `Path` comparison instead of assuming POSIX separators on native Windows
 - Markdown discovery for literal search, note listing, and full semantic synchronization now

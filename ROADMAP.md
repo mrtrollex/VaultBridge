@@ -16,7 +16,7 @@
 
 ---
 
-# Current project state — `v0.1.x`
+# Current project state — `v1.0.0` release preparation
 
 VaultBridge has moved beyond the original prototype and now has explicit API, service, repository, and configuration boundaries.
 
@@ -85,6 +85,7 @@ app/semantic.py                 legacy compatibility facade
 - [x] **VB-056 — GitHub v1.0 release checklist**
 - [x] **VB-057 — Enforce symlink containment in vault enumeration**
 - [x] **VB-058 — Fix cross-platform path assertion**
+- [x] **VB-059 — Align v1.0 version metadata**
 
 ## Current verified baseline
 
@@ -415,6 +416,13 @@ than an API or runtime defect. The exact note path is now asserted through `path
 native VaultService serialization while passing on Windows and Linux. No application behavior or
 public contract changed.
 
+### VB-059 — Align v1.0 version metadata — P0 ✅
+
+The existing package and FastAPI application metadata now target `1.0.0` without introducing a new
+version source. Release identity remains the Git tag/GitHub Release, prerelease and stable GHCR tags
+remain workflow-derived, and immutable deployments remain digest-addressed. No API, runtime,
+semantic-index, dependency, deployment, or workflow behavior changed.
+
 ## `v1.0.0` acceptance criteria
 
 - [ ] clean install succeeds from public documentation
@@ -429,9 +437,10 @@ public contract changed.
 
 VB-056 evidence and the exact remaining release gates are recorded in
 [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md). VB-057 closes the confirmed literal
-search/list symlink-containment bypass after focused Linux and compatibility review. Clean
-installation and GHCR publication remain unmet release gates; the publication workflow alone is
-not a published container.
+search/list symlink-containment bypass after focused Linux and compatibility review, and VB-059
+closes the version-alignment blocker. Public documentation, isolated clean installation, RC/GHCR
+verification, RC smoke testing, and final stable publication remain unmet release gates; the
+publication workflow alone is not a published container.
 
 ---
 
