@@ -434,7 +434,16 @@ updates, stopping/removal semantics, offline index maintenance, and loopback-onl
 The generic `/vault/.obsidian-chatgpt-data` layout remains separate from the TrueNAS `/data` layout.
 Runtime, Compose, Dockerfile, API, index, and TrueNAS compatibility behavior are unchanged.
 
-### VB-053 — TrueNAS deployment docs — P0
+### VB-053 — TrueNAS deployment docs — P0 ✅
+
+**Status:** Completed on 2026-08-25.
+
+`README_TRUENAS.md` is now a self-contained operational runbook for the existing TrueNAS SCALE
+Custom App deployment. It preserves the legacy source/dataset/service/container identifiers,
+documents the `truenas-install.yml` include model, UID/GID `568:568` ACL principle, asynchronous
+first startup, public health probes, an authenticated `/api/v1` smoke test, safe log correlation,
+managed and shell-only lifecycle boundaries, bundle/no-Git updates, backup/rollback guidance, and
+stopped-service semantic maintenance. Compose, Dockerfile, runtime, and API behavior are unchanged.
 
 ### VB-054 — Publish GHCR image workflow — P0
 
@@ -469,7 +478,7 @@ VB-001 ✓
 → VB-042  NEXT
 ```
 
-The next incomplete P0 task is VB-053 — TrueNAS deployment docs. Do not infer scope from priority;
+The next incomplete P0 task is VB-054 — Publish GHCR image workflow. Do not infer scope from priority;
 read its exact task definition before implementation.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

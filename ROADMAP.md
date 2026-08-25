@@ -80,10 +80,11 @@ app/semantic.py                 legacy compatibility facade
 - [x] **VB-041 — Request IDs and latency logging**
 - [x] **VB-050 — Introduce `/api/v1`**
 - [x] **VB-052 — Generic Docker deployment docs**
+- [x] **VB-053 — TrueNAS deployment docs**
 
 ## Current verified baseline
 
-At completion of VB-052:
+At completion of VB-053:
 
 ```text
 latest verified test baseline is recorded in PROJECT_STATE.md
@@ -91,6 +92,8 @@ Ruff passed
 compileall passed
 git diff --check passed
 generic deployment contract statically verified against Compose, Dockerfile, settings, and routes
+TrueNAS runbook contract statically verified against its include, Compose, Dockerfile, settings,
+routes, CLI, health, and logging behavior
 Docker Compose runtime validation unavailable in the current environment
 ```
 
@@ -366,7 +369,12 @@ ChatGPT Action and other clients. Operational health probes remain unversioned.
 
 ### VB-051 — VaultBridge CLI — P1
 ### VB-052 — Generic Docker deployment docs — P0 ✅
-### VB-053 — TrueNAS deployment docs — P0
+### VB-053 — TrueNAS deployment docs — P0 ✅
+
+The TrueNAS SCALE runbook now preserves the existing compatibility identifiers and documents the
+source-built Custom App YAML include, separate vault/derived-data datasets, UID/GID access principle,
+fresh installation, first-start health verification, managed/no-Git updates, rollback, logs, and
+stopped-service semantic-index maintenance without changing deployment behavior.
 
 ChatGPT Action remains an integration example, not the core product identity.
 
@@ -376,7 +384,7 @@ ChatGPT Action remains an integration example, not the core product identity.
 
 **Goal:** ship VaultBridge as a polished public open-source project.
 
-### VB-054 — Publish GHCR image workflow — P0
+### VB-054 — Publish GHCR image workflow — P0 ← NEXT P0
 ### VB-055 — Multi-architecture image — P1
 ### VB-056 — GitHub v1.0 release checklist — P0
 

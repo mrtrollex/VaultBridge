@@ -30,6 +30,7 @@ Completed:
 - VB-045 — Index integrity/rebuild CLI
 - VB-050 — Introduce `/api/v1`
 - VB-052 — Generic Docker deployment docs
+- VB-053 — TrueNAS deployment docs
 
 Next recommended task:
 
@@ -37,7 +38,7 @@ Next recommended task:
 
 Next incomplete P0 task:
 
-- **VB-053 — TrueNAS deployment docs**
+- **VB-054 — Publish GHCR image workflow**
 
 Current milestones:
 
@@ -72,6 +73,11 @@ Current milestones:
 - TrueNAS container commonly runs as UID/GID 568
 - existing production deployment uses port 8765 → 8000
 - separate `/vault` and `/data` mounts are used by the TrueNAS compose file
+- TrueNAS Custom App deployment uses `truenas-install.yml` to include the source-tree
+  `compose.truenas.yml`; TrueNAS owns the serving app lifecycle, while shell Compose is documented as
+  a separate alternative that must not run alongside it
+- the supported no-Git TrueNAS update path uses the existing `make-bundle.ps1` `git archive` bundle,
+  preserves `.env`, and leaves the external vault and semantic-data datasets outside source extraction
 - generic Docker Compose bind-mounts the host `OBSIDIAN_VAULT_PATH` at `/vault`, stores derived
   semantic data under `/vault/.obsidian-chatgpt-data`, and publishes container port `8000` only on
   host loopback at `API_PORT` (default `8765`)
@@ -305,7 +311,7 @@ ties now have focused production regressions.
 4. GPT/AI clients can invent wikilinks unless client instructions require verified existing notes.
 5. Graceful shutdown cannot interrupt a model download, ONNX inference call, or filesystem operation already in progress.
 
-## Verified baseline after VB-052
+## Verified baseline after VB-053
 
 Native Windows:
 
@@ -326,7 +332,15 @@ git diff --check: passed
 all 15 published endpoint paths and operation IDs: verified unique and stable
 generic Docker contract: 14 static assertions passed
 all 10 Compose substitutions covered by .env.example
+TrueNAS runbook/Compose/Dockerfile/settings contract: 48 static assertions passed
 Docker / Docker Compose: unavailable in the current environment; config/build not run
+```
+
+Focused VB-053 configuration, legacy/v1 route, health/readiness, maintenance CLI, logging, and
+request-observability run:
+
+```text
+141 passed
 ```
 
 Focused VB-052 configuration, legacy/v1 route, health/readiness, and maintenance CLI run:
@@ -377,7 +391,10 @@ Deterministic retrieval evaluation:
 9 passed
 ```
 
-Docker checks were not required because no Docker-related files changed.
+Docker/TrueNAS runtime verification was unavailable. The TrueNAS include, Compose, Dockerfile,
+settings, environment template, documented commands, identifiers, mounts, and ports were verified
+statically; no live app installation, image build, model download, ACL check, or health request is
+claimed.
 
 ## Compatibility contract
 

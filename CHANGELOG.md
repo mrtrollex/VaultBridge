@@ -28,6 +28,9 @@ The project intends to follow Semantic Versioning after the public repository ba
 - a generic Docker Compose guide covering clean installation, host vault and UID/GID mapping,
   first-start readiness, authenticated `/api/v1` verification, logs, updates, stopped-service index
   maintenance, loopback-only networking, and security without relying on TrueNAS-specific paths
+- a TrueNAS SCALE operational runbook covering the existing Custom App YAML include, legacy
+  production identifiers, dataset ACL principles, fresh and bundle/no-Git installation, managed
+  source/image updates, health and log verification, rollback, and offline semantic-index recovery
 
 ### Changed
 
