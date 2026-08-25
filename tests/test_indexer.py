@@ -85,6 +85,41 @@ def test_application_startup_is_non_blocking_and_shutdown_waits_for_sync(tmp_pat
         lifespan_thread.join(timeout=2)
 
 
+def test_ordinary_http_requests_continue_during_full_rebuild(tmp_path):
+    blocking_sync = BlockingSync()
+    indexer = BackgroundSemanticIndexer(blocking_sync)
+    settings = Settings(api_key="test-secret", vault_path=tmp_path)
+    service = SemanticSearchService(
+        vault_root=settings.vault_path,
+        repository=SemanticRepository(tmp_path / "data" / "semantic-index.sqlite3"),
+        embedder=ConstantEmbedder(),
+    )
+    application = main.create_app(
+        settings=settings,
+        semantic_search_service=service,
+        semantic_indexer=indexer,
+    )
+
+    with TestClient(application) as client:
+        try:
+            assert blocking_sync.started.wait(timeout=2)
+            assert indexer.is_running is True
+
+            liveness = client.get("/health/live")
+            ordinary_request = client.get(
+                "/api/v1/notes/list",
+                headers={"Authorization": "Bearer test-secret"},
+            )
+
+            assert liveness.status_code == 200
+            assert liveness.json() == {"ok": True}
+            assert ordinary_request.status_code == 200
+            assert ordinary_request.json() == {"folder": "", "notes": []}
+            assert indexer.is_running is True
+        finally:
+            blocking_sync.release.set()
+
+
 def test_background_indexer_prevents_duplicate_jobs(tmp_path):
     blocking_sync = BlockingSync()
     indexer = BackgroundSemanticIndexer(blocking_sync)

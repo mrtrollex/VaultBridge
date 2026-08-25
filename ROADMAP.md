@@ -396,19 +396,24 @@ package-write permission, `GITHUB_TOKEN`, SHA-pinned actions, OCI metadata, and 
 inspection. Existing source-build deployments remain unchanged.
 
 ### VB-055 — Multi-architecture image — P1
-### VB-056 — GitHub v1.0 release checklist — P0 ← NEXT P0
+### VB-056 — GitHub v1.0 release checklist — P0 ✅
 
 ## `v1.0.0` acceptance criteria
 
 - [ ] clean install succeeds from public documentation
-- [ ] CI is green
+- [x] CI is green
 - [ ] container image is published
 - [x] public API is versioned
-- [ ] full semantic rebuild does not block ordinary request handling
-- [ ] retrieval evaluation suite exists
+- [x] full semantic rebuild does not block ordinary request handling
+- [x] retrieval evaluation suite exists
 - [ ] no known authentication/path-traversal bypass
-- [ ] secrets are not committed or logged
-- [ ] upgrade/rebuild procedure is documented
+- [x] secrets are not committed or logged
+- [x] upgrade/rebuild procedure is documented
+
+VB-056 evidence and the exact remaining release gates are recorded in
+[`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md). An unresolved literal search/list symlink
+containment defect blocks the security criterion. Clean installation and GHCR publication remain
+unmet release gates; the publication workflow alone is not a published container.
 
 ---
 

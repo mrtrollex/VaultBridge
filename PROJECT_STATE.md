@@ -32,14 +32,19 @@ Completed:
 - VB-052 — Generic Docker deployment docs
 - VB-053 — TrueNAS deployment docs
 - VB-054 — Publish GHCR image workflow
+- VB-056 — GitHub v1.0 release checklist
 
 Next recommended task:
 
+- **define and fix the literal search/list symlink-containment release blocker as a separate P0 task**
+
+Next non-blocking P1 task:
+
 - **VB-042 — API key rotation**
 
-Next incomplete P0 task:
+Current v1.0 P0 release blocker:
 
-- **VB-056 — GitHub v1.0 release checklist**
+- **literal search/list symlink containment must be fixed in a separately scoped task**
 
 Current milestones:
 
@@ -318,18 +323,22 @@ ties now have focused production regressions.
 3. Multiple application processes sharing one index are not coordinated.
 4. GPT/AI clients can invent wikilinks unless client instructions require verified existing notes.
 5. Graceful shutdown cannot interrupt a model download, ONNX inference call, or filesystem operation already in progress.
+6. Literal whole-vault search/list discovery currently follows an in-vault Markdown file symlink to
+   an out-of-vault target on Linux. Direct path operations and semantic indexing reject symlink
+   escape, but this separate confirmed defect blocks the v1.0 security criterion until fixed.
 
-## Verified baseline after VB-054
+## Verified baseline after VB-056
 
 Native Windows:
 
 ```text
-289 passed, 1 failed, 4 skipped
+290 passed, 1 failed, 4 skipped
 ```
 
-The one failure remains the known pre-existing Windows path-separator assertion around
-`VaultService` response paths. The four skips are privilege-dependent symlink tests. Linux/CI was
-not available with project dependencies in the current environment, so no new Linux result is claimed.
+The one failure remains the known native-Windows path-separator assertion around `VaultService`
+response paths and is classified as a test-portability issue for the documented Linux-container
+production runtime. The four skips are privilege-dependent Windows symlink tests. A disposable WSL
+audit confirmed the separate literal search/list symlink-containment release blocker.
 
 Additional checks:
 
@@ -345,7 +354,27 @@ GHCR workflow: YAML parsed and checksum-verified actionlint 1.7.12 passed
 GHCR security/publication contract: 7 action references pinned to full commit SHAs; trigger,
 permissions, credentials, tags, OCI labels, build inputs, architecture scope, and manifest inspection verified
 Docker / Docker Compose: unavailable in the current environment; config/build not run locally
+GitHub CI: run 32857711831 passed `python` and `docker` on main commit 71f69141
+GitHub repository: private; no GitHub Releases existed, so no release-triggered GHCR publication is claimed
+secret audit: only example env files tracked; targeted HEAD/history token and private-key scans found no hits
 ```
+
+Focused VB-056 release audit:
+
+```text
+authentication and API contract selection: 9 passed
+API v1 contract: 24 passed
+path-containment selection on Windows: 3 passed, 4 skipped
+background rebuild/search-availability selection: 7 passed
+deterministic retrieval evaluation: 9 passed
+semantic-index CLI: 30 passed
+logging and request observability: 43 passed
+health/readiness: 30 passed
+```
+
+The focused Windows path run cannot close Linux symlink behavior because creating symlinks requires
+privileges there. The disposable WSL proof found one external target returned by literal search and
+one by listing; it is release-blocking evidence rather than a passing focused test.
 
 Focused VB-053 configuration, legacy/v1 route, health/readiness, maintenance CLI, logging, and
 request-observability run:
