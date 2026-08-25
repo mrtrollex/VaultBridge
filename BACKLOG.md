@@ -495,6 +495,17 @@ not define separator serialization, while `VaultService._relative_path()` delibe
 native filesystem representation. Runtime and API behavior are unchanged. Native Windows now has
 zero test failures, and focused WSL/Linux path, authentication, legacy/v1, and real-symlink tests pass.
 
+### VB-059 — Align v1.0 version metadata — P0 ✅
+
+**Status:** Completed on 2026-08-25.
+
+The existing `pyproject.toml` package version and `app.main.APP_VERSION` application metadata are
+aligned from `0.1.0` to the stable target `1.0.0`. FastAPI uses the latter only for application and
+internal OpenAPI metadata; routes, operation IDs, schemas, authentication, runtime behavior, API
+namespace, semantic index signature, dependencies, deployment files, and the GHCR workflow are
+unchanged. The Git tag/GitHub Release and GHCR digest remain the authoritative release and immutable
+deployment identities. An RC release still derives only `1.0.0-rc.1` from tag `v1.0.0-rc.1`.
+
 ---
 
 ## Recommended Codex sequence
@@ -522,12 +533,13 @@ VB-001 ✓
 → VB-056  ✓
 → VB-057  ✓
 → VB-058  ✓
+→ VB-059  ✓
 ```
 
-VB-057 and VB-058 close the confirmed containment and native-Windows test-portability blockers.
-`v1.0.0` remains blocked
-by the live clean-install, release-version alignment, public-repository, RC, and GHCR publication
-gates recorded in `docs/RELEASE_CHECKLIST.md`.
+VB-057, VB-058, and VB-059 close the confirmed containment, native-Windows test-portability, and
+release-version alignment blockers. `v1.0.0` remains blocked by the public-repository, isolated
+clean-install, RC, GHCR verification, RC smoke-test, and final stable-release gates recorded in
+`docs/RELEASE_CHECKLIST.md`.
 
 VB-042 remains the next non-blocking P1 backlog task.
 

@@ -19,6 +19,10 @@ VB-058 portability addendum: 2026-08-25. The native-Windows suite now has 291 pa
 privilege-dependent symlink skips, and zero failures. The path assertion changed only in the test;
 runtime path serialization and API schemas are unchanged.
 
+VB-059 version-metadata addendum: 2026-08-25. The existing package and FastAPI application metadata
+are aligned to the stable target `1.0.0`. This does not create a release, tag, image, or additional
+version source; release and deployed-image identity remain the Git tag/GitHub Release and GHCR digest.
+
 | ROADMAP acceptance criterion | Status | Evidence | Still required |
 |---|---|---|---|
 | Clean install succeeds from public documentation | **BLOCKED / REQUIRES LIVE VERIFICATION** | `README.md` documents clone, `.env`, API-key generation, vault mapping, source build, liveness, readiness, and authenticated `/api/v1` smoke testing. The repository was private during the audit and Docker was unavailable locally. | Make the source/docs public, then run the isolated clean-install procedure below with disposable data. |
@@ -36,11 +40,10 @@ criteria remain unchecked.
 
 ## Release blockers and exact remaining work
 
-1. Align the existing `pyproject.toml` version and `app.main.APP_VERSION` with `1.0.0` on the final
-   release-preparation commit. Do not add another version source or cosmetic version endpoint.
-2. Make the repository and release documentation publicly accessible.
-3. Run the isolated clean-install smoke test below from the exact verified commit.
-4. Publish and verify `v1.0.0-rc.1`: GHCR visibility/linkage, exact tag, digest, platform, runtime
+1. Make the repository and release documentation publicly accessible.
+2. Run the isolated clean-install smoke test below from the exact verified commit.
+3. Publish `v1.0.0-rc.1` as a GitHub prerelease and require the GHCR workflow to succeed.
+4. Verify GHCR visibility/linkage, exact tag, digest, platform, runtime
    health/readiness, authenticated v1 behavior, and no prerelease `latest` update.
 5. Repeat the public clean-install and pulled-image smoke checks against the RC tag/digest.
 6. Fix every RC blocker, rerun all checks on the exact final `main` commit, then execute the stable
@@ -64,8 +67,8 @@ criteria remain unchecked.
   `latest` are mutable stable aliases to the same digest.
 - A prerelease such as `v1.0.0-rc.1` publishes only `1.0.0-rc.1` and must not update stable aliases.
 - Immutable deployments use `ghcr.io/<lowercase-owner>/vaultbridge@sha256:<digest>`.
-- `pyproject.toml` and `app.main.APP_VERSION` both currently say `0.1.0`; align those existing fields
-  during final release preparation. They do not replace tag/release and GHCR digest identity.
+- `pyproject.toml` and `app.main.APP_VERSION` are aligned to the stable target `1.0.0`. They do not
+  replace tag/release and GHCR digest identity.
 
 ## Reusable source validation
 
@@ -164,7 +167,8 @@ Do not execute this sequence until the remaining source gates are closed.
 
 1. Confirm every ROADMAP criterion and checklist blocker is closed with current evidence.
 2. Verify the exact final `main` commit and successful `python`/`docker` CI checks.
-3. Align existing version metadata, finalize `CHANGELOG.md`, and prepare final release notes.
+3. Verify existing version metadata remains `1.0.0`, finalize `CHANGELOG.md`, and prepare final
+   release notes.
 4. Create immutable tag `v1.0.0` and publish the GitHub Release from that commit.
 5. Require both GHCR publication jobs to succeed.
 6. Verify GHCR tags `1.0.0`, `1.0`, `1`, and `latest` resolve to the stable digest.

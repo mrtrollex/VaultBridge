@@ -35,11 +35,12 @@ Completed:
 - VB-056 — GitHub v1.0 release checklist
 - VB-057 — Enforce symlink containment in vault enumeration
 - VB-058 — Fix cross-platform path assertion
+- VB-059 — Align v1.0 version metadata
 
 Next required v1.0 release work:
 
-- **make the source/release documentation public, align the existing release version fields, and
-  execute the checklist's isolated clean-install and RC/GHCR publication gates**
+- **make the source/release documentation public and execute the checklist's isolated clean-install,
+  RC/GHCR verification, RC smoke-test, and final stable-release gates**
 
 Next recommended backlog task:
 
@@ -47,8 +48,9 @@ Next recommended backlog task:
 
 Current v1.0 release status:
 
-- **no known authentication/path-containment bypass remains after VB-057; live clean-install,
-  version alignment, public-repository, RC, and published-container gates remain open**
+- **no known authentication/path-containment bypass remains after VB-057 and existing version
+  metadata is aligned to `1.0.0`; public-repository, live clean-install, RC, published-container,
+  RC smoke-test, and final stable-release gates remain open**
 
 Current milestones:
 
@@ -59,6 +61,7 @@ Current milestones:
 ## Working production characteristics
 
 - FastAPI application
+- package and FastAPI application metadata aligned to the stable target `1.0.0`
 - Python 3.12 container
 - FastAPI routes, vault operations, semantic orchestration and SQLite persistence have separate modules
 - typed runtime settings via `app/core/config.py`
