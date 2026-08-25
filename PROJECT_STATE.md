@@ -33,18 +33,21 @@ Completed:
 - VB-053 — TrueNAS deployment docs
 - VB-054 — Publish GHCR image workflow
 - VB-056 — GitHub v1.0 release checklist
+- VB-057 — Enforce symlink containment in vault enumeration
 
-Next recommended task:
+Next required v1.0 release work:
 
-- **define and fix the literal search/list symlink-containment release blocker as a separate P0 task**
+- **make the source/release documentation public, align the existing release version fields, and
+  execute the checklist's isolated clean-install and RC/GHCR publication gates**
 
-Next non-blocking P1 task:
+Next recommended backlog task:
 
 - **VB-042 — API key rotation**
 
-Current v1.0 P0 release blocker:
+Current v1.0 release status:
 
-- **literal search/list symlink containment must be fixed in a separately scoped task**
+- **no known authentication/path-containment bypass remains after VB-057; live clean-install,
+  version alignment, public-repository, RC, and published-container gates remain open**
 
 Current milestones:
 
@@ -75,6 +78,10 @@ Current milestones:
 - `/health/live` provides dependency-free liveness and `/health/ready` reports usable-vault plus semantic-search availability
 - protected note/search operations are available under `/api/v1` with stable `*V1` operation IDs
 - existing unversioned note/search paths and operation IDs remain compatibility aliases
+- literal search, note listing, and semantic full synchronization enumerate only Markdown targets
+  whose resolved paths remain under the resolved vault root, then stat/read those validated paths
+- safe internal file symlinks return one canonical vault-relative path; external and broken symlinks
+  are skipped without per-file logging
 - standard-library `index check` and offline `index rebuild` administrative CLI commands
 - successful full synchronization persists `last_successful_sync`; targeted refresh does not change it
 - TrueNAS container commonly runs as UID/GID 568
@@ -323,22 +330,18 @@ ties now have focused production regressions.
 3. Multiple application processes sharing one index are not coordinated.
 4. GPT/AI clients can invent wikilinks unless client instructions require verified existing notes.
 5. Graceful shutdown cannot interrupt a model download, ONNX inference call, or filesystem operation already in progress.
-6. Literal whole-vault search/list discovery currently follows an in-vault Markdown file symlink to
-   an out-of-vault target on Linux. Direct path operations and semantic indexing reject symlink
-   escape, but this separate confirmed defect blocks the v1.0 security criterion until fixed.
-
-## Verified baseline after VB-056
+## Verified baseline after VB-057
 
 Native Windows:
 
 ```text
-290 passed, 1 failed, 4 skipped
+290 passed, 1 failed, 10 skipped
 ```
 
 The one failure remains the known native-Windows path-separator assertion around `VaultService`
 response paths and is classified as a test-portability issue for the documented Linux-container
-production runtime. The four skips are privilege-dependent Windows symlink tests. A disposable WSL
-audit confirmed the separate literal search/list symlink-containment release blocker.
+production runtime. The ten skips are privilege-dependent Windows symlink tests. Focused WSL/Linux
+tests execute the real symlink cases and pass.
 
 Additional checks:
 
@@ -359,22 +362,21 @@ GitHub repository: private; no GitHub Releases existed, so no release-triggered 
 secret audit: only example env files tracked; targeted HEAD/history token and private-key scans found no hits
 ```
 
-Focused VB-056 release audit:
+Focused VB-057 containment audit:
 
 ```text
-authentication and API contract selection: 9 passed
-API v1 contract: 24 passed
-path-containment selection on Windows: 3 passed, 4 skipped
-background rebuild/search-availability selection: 7 passed
-deterministic retrieval evaluation: 9 passed
-semantic-index CLI: 30 passed
-logging and request observability: 43 passed
-health/readiness: 30 passed
+WSL/Linux real-symlink selection: 6 passed, 114 deselected, 0 skipped
+direct_read_symlink_escape=blocked
+literal_search_external_symlink_results=0
+list_external_symlink_results=0
+Windows security/compatibility selection: passed; privilege-dependent symlink cases skipped
+full Windows suite: 290 passed, 1 known portability failure, 10 symlink skips
 ```
 
-The focused Windows path run cannot close Linux symlink behavior because creating symlinks requires
-privileges there. The disposable WSL proof found one external target returned by literal search and
-one by listing; it is release-blocking evidence rather than a passing focused test.
+The WSL run used actual file, directory, internal, external, and broken symlinks. External targets
+are absent from literal search/list and semantic full synchronization; an unsafe note previously in
+the semantic index is removed by the next full synchronization. This does not claim protection
+against a hostile concurrent filesystem mutation between path resolution and file access.
 
 Focused VB-053 configuration, legacy/v1 route, health/readiness, maintenance CLI, logging, and
 request-observability run:

@@ -11,6 +11,9 @@ Do not create a tag, publish a GitHub Release, or publish to GHCR until every bl
 Audit date: 2026-08-25. Audited commit: `71f69141fb83ac2973474009043712a4bc66ff98`
 (`main` and the initial `vb-056-v1-release-checklist` branch point).
 
+VB-057 security addendum: 2026-08-25. The containment evidence below applies to the current VB-057
+candidate worktree and still requires normal CI/release verification on its eventual commit.
+
 | ROADMAP acceptance criterion | Status | Evidence | Still required |
 |---|---|---|---|
 | Clean install succeeds from public documentation | **BLOCKED / REQUIRES LIVE VERIFICATION** | `README.md` documents clone, `.env`, API-key generation, vault mapping, source build, liveness, readiness, and authenticated `/api/v1` smoke testing. The repository was private during the audit and Docker was unavailable locally. | Make the source/docs public, then run the isolated clean-install procedure below with disposable data. |
@@ -19,27 +22,25 @@ Audit date: 2026-08-25. Audited commit: `71f69141fb83ac2973474009043712a4bc66ff9
 | Public API is versioned | **PASS** | `app/api/versioning.py` registers six protected legacy/v1 route pairs from shared handlers. `tests/test_api_versioning.py` passed 24 tests; `tests/test_api.py::test_router_registration_preserves_public_contract` checks all 15 public schema paths and operation IDs. Health and `/privacy` intentionally remain unversioned. | Re-run contract tests on the release commit. Keep legacy aliases until a separate migration decision. |
 | Full semantic rebuild does not block ordinary request handling | **PASS** | `tests/test_indexer.py::test_application_startup_is_non_blocking_and_shutdown_waits_for_sync` proves lifespan startup completes while full sync is blocked. `test_ordinary_http_requests_continue_during_full_rebuild` proves liveness and authenticated non-semantic `/api/v1/notes/list` requests succeed during blocked full sync. Semantic tests prove an older compatible index remains searchable during and after a failed refresh. | Preserve the precise guarantee: initial semantic search waits for readiness, and shutdown can still wait on uninterruptible model/filesystem work. |
 | Retrieval evaluation suite exists | **PASS** | `python -m pytest -q tests/eval` passed 9 tests. The deterministic production-pipeline fixture covers 13 cases: all 13/100% Hit@1/100% Hit@3/100% MRR; English 8/100%/100%/100%; Slovak 4/100%/100%/100%; cross-language 1/100%/100%/100%; heading context 2/100%/100%/100%. | Re-run without changing `tests/eval/baseline.json` merely to clear a gate. This does not measure real-model accuracy or latency. |
-| No known authentication/path-traversal bypass | **FAIL** | Missing/invalid keys are rejected, valid keys are accepted, unconfigured `API_KEY` fails closed, protected legacy/v1 routes share auth, and health/privacy are intentionally public. Direct `../`, normalized/encoded traversal, absolute POSIX paths, Windows drive forms, and direct symlink reads were rejected. A disposable WSL/Linux audit nevertheless proved `VaultService.search_notes()` and `list_notes()` include an in-vault Markdown symlink whose target is outside the vault. | Create a separate P0 blocker task. Enforce resolved-root containment during literal search/list discovery, add Linux symlink regressions through legacy and v1 routes, review the fix, and rerun security/full suites. Do not waive this gate. |
+| No known authentication/path-traversal bypass | **PASS** | VB-057 centralizes resolved-target containment for literal search, listing, and semantic enumeration and uses the validated resolved path for stat/read. Real WSL/Linux service and legacy/v1 route tests cover external file and directory links, broken links, safe internal aliases, folder scope, direct reads, and semantic cleanup: 6 selected tests passed with no symlink skips. Explicit reproduction now reports direct read blocked and zero external search/list results. Windows auth, traversal, API-contract, health, observability, and semantic selections pass; the full suite retains only the pre-existing path-separator assertion. | Re-run Linux symlink regressions and the full suite in CI on the exact RC/stable commit. The proportionate path-based design does not claim an OS file-descriptor sandbox against hostile concurrent filesystem mutation. |
 | Secrets are not committed or logged | **PASS** | Only example `.env` files are tracked; `.gitignore` and `.dockerignore` exclude secret/runtime data. HEAD and all reachable revisions had no high-confidence token/private-key pattern hits; no real `.env` appeared in history. Tracked `API_KEY=` assignments were placeholders/references. Logging/observability passed 43 tests and verify bodies, queries, credentials, headers, exception messages, and absolute paths are omitted. | Repeat on the final commit. This was a targeted history scan, not an exhaustive entropy-based external audit. Never paste resolved Compose output or environments. |
 | Upgrade/rebuild procedure is documented | **PASS** | `README.md` covers source updates, automatic signature invalidation, stopped-service `index check`, explicit `index rebuild`, and Markdown as source of truth. `README_TRUENAS.md` covers managed/source updates, bundles, rollback, automatic incompatibility rebuilds, stopped-service inspection/rebuild, and recovery. Commands match current deployment files and CLI. | Recheck if deployment files change. |
 
-ROADMAP checkboxes may be checked only for the six criteria marked `PASS`. The failed and live-only
+ROADMAP checkboxes may be checked only for the seven criteria marked `PASS`. The failed and live-only
 criteria remain unchecked.
 
 ## Release blockers and exact remaining work
 
-1. Fix the literal search/list symlink-containment vulnerability in a separate authorized P0 task,
-   with Linux route-level regressions and maintainer review.
-2. Fix the small native-Windows path-separator test portability issue or explicitly keep it recorded;
+1. Fix the small native-Windows path-separator test portability issue or explicitly keep it recorded;
    it is not a production Docker/Linux defect, but the local suite must not be described as green.
-3. Align the existing `pyproject.toml` version and `app.main.APP_VERSION` with `1.0.0` on the final
+2. Align the existing `pyproject.toml` version and `app.main.APP_VERSION` with `1.0.0` on the final
    release-preparation commit. Do not add another version source or cosmetic version endpoint.
-4. Make the repository and release documentation publicly accessible.
-5. Run the isolated clean-install smoke test below from the exact verified commit.
-6. Publish and verify `v1.0.0-rc.1`: GHCR visibility/linkage, exact tag, digest, platform, runtime
+3. Make the repository and release documentation publicly accessible.
+4. Run the isolated clean-install smoke test below from the exact verified commit.
+5. Publish and verify `v1.0.0-rc.1`: GHCR visibility/linkage, exact tag, digest, platform, runtime
    health/readiness, authenticated v1 behavior, and no prerelease `latest` update.
-7. Repeat the public clean-install and pulled-image smoke checks against the RC tag/digest.
-8. Fix every RC blocker, rerun all checks on the exact final `main` commit, then execute the stable
+6. Repeat the public clean-install and pulled-image smoke checks against the RC tag/digest.
+7. Fix every RC blocker, rerun all checks on the exact final `main` commit, then execute the stable
    release procedure.
 
 ## Supported platform statement for v1.0.0
@@ -139,7 +140,7 @@ Local pytest supports the audit; it does not prove GitHub CI is green.
 
 ## `v1.0.0-rc.1` procedure
 
-Do not execute this sequence until the security blocker and source gates are closed.
+Do not execute this sequence until the remaining source gates are closed.
 
 1. Verify clean `main` and green `python`/`docker` CI on the exact commit.
 2. Record the current digest or absence of `latest` before publication.

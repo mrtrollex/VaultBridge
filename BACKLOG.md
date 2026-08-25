@@ -469,8 +469,20 @@ GitHub attestations or signing require a separate hardening decision.
 documents reusable source/CI/clean-install checks, supported platforms, artifact/version identity,
 RC and stable publication procedures, post-publication GHCR verification, draft release notes, and
 non-blocking P1 follow-ups. VB-056 completion means the audit/checklist exists; it does not mean
-`v1.0.0` was released. Clean-install and image-publication gates remain unmet, and a confirmed
-literal search/list symlink-containment defect is a separate P0 release blocker.
+`v1.0.0` was released. Clean-install and image-publication gates remain unmet.
+
+### VB-057 — Enforce symlink containment in vault enumeration — P0 ✅
+
+**Status:** Completed on 2026-08-25.
+
+Literal search, note listing, and semantic full synchronization now share contained Markdown
+enumeration: each discovered candidate is resolved, checked against the resolved vault root,
+deduplicated by its contained canonical path, and only then read or inspected through that validated
+path. External file and directory symlinks and broken links are skipped without exposing content,
+metadata, or host paths. Internal file symlinks resolve to the canonical vault-relative note without
+duplicates. Linux/WSL service, legacy/v1 route, direct-read, and semantic synchronization regressions
+execute with real symlinks. No API, schema, index-signature, ranking, lifecycle, CLI, deployment, or
+dependency change was required.
 
 ---
 
@@ -496,12 +508,14 @@ VB-001 ✓
 → VB-044  ✓
 → VB-045  ✓
 → VB-050  ✓
-→ P0 literal search/list symlink-containment blocker  NEXT
+→ VB-056  ✓
+→ VB-057  ✓
 ```
 
-VB-056 is complete, but `v1.0.0` remains blocked by the release checklist. Create a separate P0 task
-for the confirmed literal search/list symlink-containment defect before release work continues.
+VB-057 closes the confirmed code-level symlink-containment release blocker. `v1.0.0` remains blocked
+by the live clean-install, release-version alignment, public-repository, RC, and GHCR publication
+gates recorded in `docs/RELEASE_CHECKLIST.md`.
 
-VB-042 remains the next non-blocking P1 task after the release blocker is resolved.
+VB-042 remains the next non-blocking P1 backlog task.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

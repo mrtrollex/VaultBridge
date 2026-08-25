@@ -462,3 +462,49 @@ def test_path_traversal_is_blocked(tmp_path):
         json={"text": "anything", "folder": "../"},
     )
     assert response.status_code == 400
+
+
+def test_legacy_and_v1_literal_routes_block_external_symlink_escape(tmp_path):
+    vault = tmp_path / "vault"
+    scoped = vault / "Scoped"
+    scoped.mkdir(parents=True)
+    (scoped / "safe.md").write_text("Contained route marker.", encoding="utf-8")
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    secret = outside / "secret.md"
+    secret.write_text("Unique external route marker.", encoding="utf-8")
+    link = scoped / "external-link.md"
+    try:
+        link.symlink_to(secret)
+    except OSError as exc:
+        pytest.skip(f"Symlink creation is unavailable: {exc}")
+
+    client = client_for(vault, semantic_indexer=RecordingIndexer())
+    for prefix in ("", "/api/v1"):
+        search = client.post(
+            f"{prefix}/notes/search",
+            headers=auth(),
+            json={"query": "Unique external route marker", "folder": "Scoped"},
+        )
+        listing = client.get(
+            f"{prefix}/notes/list",
+            headers=auth(),
+            params={"folder": "Scoped"},
+        )
+        direct_read = client.get(
+            f"{prefix}/notes/read",
+            headers=auth(),
+            params={"path": "Scoped/external-link.md"},
+        )
+
+        assert search.status_code == 200
+        assert search.json()["results"] == []
+        assert listing.status_code == 200
+        assert [note["path"] for note in listing.json()["notes"]] == [
+            str(Path("Scoped") / "safe.md")
+        ]
+        assert direct_read.status_code == 400
+        assert direct_read.json() == {"detail": "Path escapes the vault"}
+        assert str(secret.resolve()) not in search.text
+        assert str(secret.resolve()) not in listing.text
+        assert str(secret.resolve()) not in direct_read.text
