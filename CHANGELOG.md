@@ -41,6 +41,8 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ### Changed
 
+- the create/read/search/append API regression now verifies the exact returned note path with a
+  platform-neutral `Path` comparison instead of assuming POSIX separators on native Windows
 - Markdown discovery for literal search, note listing, and full semantic synchronization now
   validates each resolved target against the resolved vault root before stat/read, skips external
   and broken symlinks, and canonicalizes/deduplicates safe internal file aliases

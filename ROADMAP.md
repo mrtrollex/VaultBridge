@@ -84,6 +84,7 @@ app/semantic.py                 legacy compatibility facade
 - [x] **VB-054 — Publish GHCR image workflow**
 - [x] **VB-056 — GitHub v1.0 release checklist**
 - [x] **VB-057 — Enforce symlink containment in vault enumeration**
+- [x] **VB-058 — Fix cross-platform path assertion**
 
 ## Current verified baseline
 
@@ -406,6 +407,13 @@ Literal search, note listing, and semantic full synchronization now apply one re
 containment rule before reading or inspecting discovered Markdown files. External and broken
 symlinks are skipped, internal file aliases are canonicalized and deduplicated, and real Linux
 symlink regressions cover service, legacy/v1 HTTP, direct-read, and semantic-index paths.
+
+### VB-058 — Fix cross-platform path assertion — P0 ✅
+
+The remaining native-Windows failure was confirmed as a hard-coded POSIX test assumption rather
+than an API or runtime defect. The exact note path is now asserted through `pathlib.Path`, preserving
+native VaultService serialization while passing on Windows and Linux. No application behavior or
+public contract changed.
 
 ## `v1.0.0` acceptance criteria
 

@@ -34,6 +34,7 @@ Completed:
 - VB-054 — Publish GHCR image workflow
 - VB-056 — GitHub v1.0 release checklist
 - VB-057 — Enforce symlink containment in vault enumeration
+- VB-058 — Fix cross-platform path assertion
 
 Next required v1.0 release work:
 
@@ -330,18 +331,17 @@ ties now have focused production regressions.
 3. Multiple application processes sharing one index are not coordinated.
 4. GPT/AI clients can invent wikilinks unless client instructions require verified existing notes.
 5. Graceful shutdown cannot interrupt a model download, ONNX inference call, or filesystem operation already in progress.
-## Verified baseline after VB-057
+## Verified baseline after VB-058
 
 Native Windows:
 
 ```text
-290 passed, 1 failed, 10 skipped
+291 passed, 10 skipped, 0 failed
 ```
 
-The one failure remains the known native-Windows path-separator assertion around `VaultService`
-response paths and is classified as a test-portability issue for the documented Linux-container
-production runtime. The ten skips are privilege-dependent Windows symlink tests. Focused WSL/Linux
-tests execute the real symlink cases and pass.
+VB-058 replaces the single hard-coded POSIX-separator assertion with an exact platform-neutral
+`Path` comparison. The ten skips are privilege-dependent Windows symlink tests; focused WSL/Linux
+tests execute the real symlink cases and pass without skips.
 
 Additional checks:
 
@@ -377,6 +377,20 @@ The WSL run used actual file, directory, internal, external, and broken symlinks
 are absent from literal search/list and semantic full synchronization; an unsafe note previously in
 the semantic index is removed by the next full synchronization. This does not claim protection
 against a hostile concurrent filesystem mutation between path resolution and file access.
+
+Focused VB-058 portability audit:
+
+```text
+formerly failing Windows end-to-end API test: passed
+Windows path/auth/legacy-v1 selection: passed; 7 privilege-dependent symlink skips
+full native-Windows suite: 291 passed, 10 privilege-dependent symlink skips, 0 failed
+WSL/Linux path/auth/legacy-v1/VB-057 selection: 52 passed, 0 skipped
+WSL/Linux full suite on Python 3.14: 298 passed, 3 unrelated ordering/mtime-sensitive failures
+```
+
+The WSL full-suite failures are outside VB-058: two rely on immediate file-change detection and one
+relies on discovery/batch order. The release CI contract remains Ubuntu with Python 3.12; its exact
+release-commit run is still required by the checklist.
 
 Focused VB-053 configuration, legacy/v1 route, health/readiness, maintenance CLI, logging, and
 request-observability run:
