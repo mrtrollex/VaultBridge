@@ -25,6 +25,9 @@ The project intends to follow Semantic Versioning after the public repository ba
   batched synchronization pipeline with atomic successful-sync finalization
 - a stable `/api/v1` namespace for every protected note/search operation with explicit `*V1`
   operation IDs, shared legacy/v1 endpoint registration, and contract-matrix coverage
+- a generic Docker Compose guide covering clean installation, host vault and UID/GID mapping,
+  first-start readiness, authenticated `/api/v1` verification, logs, updates, stopped-service index
+  maintenance, loopback-only networking, and security without relying on TrueNAS-specific paths
 
 ### Changed
 

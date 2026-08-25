@@ -4,7 +4,7 @@ This document is the current factual snapshot for future Codex sessions. It shou
 
 ## Baseline date
 
-2026-08-24
+2026-08-25
 
 ## Current development position
 
@@ -29,14 +29,20 @@ Completed:
 - VB-044 — Liveness and readiness endpoints
 - VB-045 — Index integrity/rebuild CLI
 - VB-050 — Introduce `/api/v1`
+- VB-052 — Generic Docker deployment docs
 
 Next recommended task:
 
 - **VB-042 — API key rotation**
 
-Current milestone:
+Next incomplete P0 task:
+
+- **VB-053 — TrueNAS deployment docs**
+
+Current milestones:
 
 - **Milestone 5 — Operational maturity and security (active)**
+- **Milestone 6 — Public API and developer experience (active)**
 
 ## Working production characteristics
 
@@ -66,6 +72,11 @@ Current milestone:
 - TrueNAS container commonly runs as UID/GID 568
 - existing production deployment uses port 8765 → 8000
 - separate `/vault` and `/data` mounts are used by the TrueNAS compose file
+- generic Docker Compose bind-mounts the host `OBSIDIAN_VAULT_PATH` at `/vault`, stores derived
+  semantic data under `/vault/.obsidian-chatgpt-data`, and publishes container port `8000` only on
+  host loopback at `API_PORT` (default `8765`)
+- generic Docker Compose runs as configurable `PUID:PGID` (defaults `1000:1000`); the mounted vault
+  must grant that identity the read/write access required by enabled note operations and indexing
 
 ## Current implementation boundaries
 
@@ -294,7 +305,7 @@ ties now have focused production regressions.
 4. GPT/AI clients can invent wikilinks unless client instructions require verified existing notes.
 5. Graceful shutdown cannot interrupt a model download, ONNX inference call, or filesystem operation already in progress.
 
-## Verified baseline after VB-050
+## Verified baseline after VB-052
 
 Native Windows:
 
@@ -313,6 +324,15 @@ Ruff: passed
 Python compileall: passed
 git diff --check: passed
 all 15 published endpoint paths and operation IDs: verified unique and stable
+generic Docker contract: 14 static assertions passed
+all 10 Compose substitutions covered by .env.example
+Docker / Docker Compose: unavailable in the current environment; config/build not run
+```
+
+Focused VB-052 configuration, legacy/v1 route, health/readiness, and maintenance CLI run:
+
+```text
+98 passed
 ```
 
 Focused VB-050 legacy/v1 contract and authentication run:

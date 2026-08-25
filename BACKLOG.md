@@ -423,7 +423,16 @@ search
 related
 ```
 
-### VB-052 — Generic Docker deployment docs — P0
+### VB-052 — Generic Docker deployment docs — P0 ✅
+
+**Status:** Completed on 2026-08-25.
+
+`README.md` now provides a linear source-build Docker Compose workflow for a normal host: prerequisites,
+safe API-key creation, host vault and UID/GID mapping, generic semantic-data persistence, asynchronous
+first-start behavior, public health probes, an authenticated `/api/v1` smoke test, structured logs,
+updates, stopping/removal semantics, offline index maintenance, and loopback-only exposure guidance.
+The generic `/vault/.obsidian-chatgpt-data` layout remains separate from the TrueNAS `/data` layout.
+Runtime, Compose, Dockerfile, API, index, and TrueNAS compatibility behavior are unchanged.
 
 ### VB-053 — TrueNAS deployment docs — P0
 
@@ -459,5 +468,8 @@ VB-001 ✓
 → VB-050  ✓
 → VB-042  NEXT
 ```
+
+The next incomplete P0 task is VB-053 — TrueNAS deployment docs. Do not infer scope from priority;
+read its exact task definition before implementation.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.
