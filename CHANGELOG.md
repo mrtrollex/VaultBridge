@@ -31,6 +31,10 @@ The project intends to follow Semantic Versioning after the public repository ba
 - a TrueNAS SCALE operational runbook covering the existing Custom App YAML include, legacy
   production identifiers, dataset ACL principles, fresh and bundle/no-Git installation, managed
   source/image updates, health and log verification, rollback, and offline semantic-index recovery
+- a release-gated GHCR publication workflow for the existing production Dockerfile, with
+  semantic-version tags, stable-only aliases and `latest`, OCI metadata, minimal package permission,
+  SHA-pinned actions, minimal BuildKit provenance, repeated release-source validation, and
+  published-manifest inspection
 
 ### Changed
 
@@ -55,6 +59,8 @@ The project intends to follow Semantic Versioning after the public repository ba
   canonical path and source chunk order without depending on SQLite iteration order
 - new integrations now prefer `/api/v1`; existing unversioned paths and operation IDs remain
   compatibility aliases, while operational health endpoints stay public and unversioned
+- Docker build contexts now exclude local environments, vault/index/model data, caches, tests,
+  documentation, repository automation, and generated artifacts from build-context transfer
 
 ## [0.1.0] - TBD
 

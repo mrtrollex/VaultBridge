@@ -445,7 +445,19 @@ first startup, public health probes, an authenticated `/api/v1` smoke test, safe
 managed and shell-only lifecycle boundaries, bundle/no-Git updates, backup/rollback guidance, and
 stopped-service semantic maintenance. Compose, Dockerfile, runtime, and API behavior are unchanged.
 
-### VB-054 — Publish GHCR image workflow — P0
+### VB-054 — Publish GHCR image workflow — P0 ✅
+
+**Status:** Completed on 2026-08-25.
+
+Published GitHub Releases with validated `v`-prefixed semantic-version tags now build the existing
+root Dockerfile and push `ghcr.io/<lowercase-repository-owner>/vaultbridge` with an exact version
+tag. Stable releases also update `major.minor`, `major`, and `latest`; prereleases update only their
+exact tag. The release workflow repeats tests, compilation, and Compose validation before a
+minimal-permission publish job can use `GITHUB_TOKEN`, pins every action to a verified commit SHA,
+adds OCI source/revision/version/license labels, and inspects the published digest. Source-build
+Docker/TrueNAS deployment, runtime behavior, and single-architecture scope remain unchanged. The
+existing BuildKit path emits minimal provenance without external signing credentials; stronger
+GitHub attestations or signing require a separate hardening decision.
 
 ### VB-055 — Multi-arch image — P1
 
@@ -478,7 +490,7 @@ VB-001 ✓
 → VB-042  NEXT
 ```
 
-The next incomplete P0 task is VB-054 — Publish GHCR image workflow. Do not infer scope from priority;
+The next incomplete P0 task is VB-056 — GitHub v1.0 release checklist. Do not infer scope from priority;
 read its exact task definition before implementation.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

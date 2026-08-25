@@ -4,6 +4,9 @@ This runbook documents the existing source-built deployment on the Docker-based 
 in TrueNAS SCALE 24.10 or later. It is independent of the generic Docker workflow in
 [`README.md`](README.md).
 
+Versioned GHCR images are an additional distribution artifact. VB-054 does not migrate or replace
+this known-working TrueNAS source-build deployment.
+
 The installation intentionally retains older identifiers. `ObsidianChatGPT*`, `obsidian-api`, and
 `obsidian-chatgpt` are compatibility names from the working installation, not the public product
 name. Do not rename them merely to match VaultBridge.

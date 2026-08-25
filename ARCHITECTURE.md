@@ -28,6 +28,15 @@ Client (ChatGPT / curl / future integrations)
 
 The `.md` files are authoritative. The SQLite semantic index is disposable derived data and must be rebuildable.
 
+### Container distribution
+
+The repository root `Dockerfile` remains the single production image definition. Normal Docker
+Compose and the existing TrueNAS Custom App build it from source. Published GitHub Releases also
+build that same file and distribute a versioned image as
+`ghcr.io/<lowercase-repository-owner>/vaultbridge`; this adds a delivery artifact without changing
+runtime configuration, mounts, API behavior, or semantic-index compatibility. VB-054 publishes only
+the GitHub-hosted runner's normal Linux architecture. Multi-architecture manifests remain VB-055.
+
 ### Current implementation modules
 
 ```text
