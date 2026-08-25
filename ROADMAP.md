@@ -86,6 +86,7 @@ app/semantic.py                 legacy compatibility facade
 - [x] **VB-057 — Enforce symlink containment in vault enumeration**
 - [x] **VB-058 — Fix cross-platform path assertion**
 - [x] **VB-059 — Align v1.0 version metadata**
+- [x] **VB-060 — Public repository exposure audit**
 
 ## Current verified baseline
 
@@ -423,6 +424,15 @@ version source. Release identity remains the Git tag/GitHub Release, prerelease 
 remain workflow-derived, and immutable deployments remain digest-addressed. No API, runtime,
 semantic-index, dependency, deployment, or workflow behavior changed.
 
+### VB-060 — Public repository exposure audit — P0 ✅
+
+Tracked source, generated artifacts, public documentation, workflow permissions, licensing, and all
+reachable branch history were audited and remediated before exposure. The generated distribution
+bundle was removed, `SECURITY.md` now states the current reporting-channel limitation, and the
+repository owner's historical commit metadata was replaced with the configured GitHub noreply
+identity after a verified external backup. Rewritten remote branches were updated atomically with
+explicit leases. The repository remains private and the anonymous clean-install gate remains open.
+
 ## `v1.0.0` acceptance criteria
 
 - [ ] clean install succeeds from public documentation
@@ -437,10 +447,11 @@ semantic-index, dependency, deployment, or workflow behavior changed.
 
 VB-056 evidence and the exact remaining release gates are recorded in
 [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md). VB-057 closes the confirmed literal
-search/list symlink-containment bypass after focused Linux and compatibility review, and VB-059
-closes the version-alignment blocker. Public documentation, isolated clean installation, RC/GHCR
-verification, RC smoke testing, and final stable publication remain unmet release gates; the
-publication workflow alone is not a published container.
+search/list symlink-containment bypass after focused Linux and compatibility review, VB-059 closes
+the version-alignment blocker, and VB-060 closes the repository-exposure-safety blocker. Deliberate
+public visibility, anonymous isolated clean installation, RC/GHCR verification, RC smoke testing,
+and final stable publication remain unmet release gates; the publication workflow alone is not a
+published container.
 
 ---
 

@@ -506,6 +506,22 @@ namespace, semantic index signature, dependencies, deployment files, and the GHC
 unchanged. The Git tag/GitHub Release and GHCR digest remain the authoritative release and immutable
 deployment identities. An RC release still derives only `1.0.0-rc.1` from tag `v1.0.0-rc.1`.
 
+### VB-060 — Public repository exposure audit — P0 ✅
+
+**Status:** Completed on 2026-08-25.
+
+The complete tracked tree and reachable Git history were audited before public exposure. A verified
+external Git bundle was created before rewriting only the repository owner's historical personal
+author/committer email to the configured GitHub noreply identity. All 11 existing remote branches
+were updated atomically with explicit force-with-lease protection; deleted stale branches were not
+recreated, no tags existed, and the removed identity has zero reachable occurrences after fetch and
+prune. The generated `dist/` bundle is no longer tracked and future bundles are ignored.
+
+`SECURITY.md` now accurately states that no confirmed dedicated private external vulnerability
+reporting channel exists. Repeated HEAD/history secret, personal/internal-data, artifact, workflow,
+test, lint, compilation, and diff checks passed. The repository remains private; VB-060 completion
+does not satisfy the separate public anonymous clean-install or release-publication gates.
+
 ---
 
 ## Recommended Codex sequence
@@ -534,11 +550,13 @@ VB-001 ✓
 → VB-057  ✓
 → VB-058  ✓
 → VB-059  ✓
+→ VB-060  ✓
 ```
 
-VB-057, VB-058, and VB-059 close the confirmed containment, native-Windows test-portability, and
-release-version alignment blockers. `v1.0.0` remains blocked by the public-repository, isolated
-clean-install, RC, GHCR verification, RC smoke-test, and final stable-release gates recorded in
+VB-057 through VB-060 close the confirmed containment, native-Windows test-portability,
+release-version alignment, and repository-exposure-safety blockers. The repository remains private.
+`v1.0.0` remains blocked by deliberate public exposure, anonymous isolated clean installation, RC,
+GHCR verification, RC smoke-test, and final stable-release gates recorded in
 `docs/RELEASE_CHECKLIST.md`.
 
 VB-042 remains the next non-blocking P1 backlog task.

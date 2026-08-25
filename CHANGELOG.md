@@ -41,6 +41,9 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ### Changed
 
+- public-exposure remediation now excludes generated distribution bundles, documents the current
+  private vulnerability-reporting limitation, and uses the configured GitHub noreply identity in
+  reachable commit metadata without changing runtime behavior
 - existing package and FastAPI application metadata now target `1.0.0`; Git tags/GitHub Releases and
   GHCR digests remain the authoritative release and immutable deployment identities
 - the create/read/search/append API regression now verifies the exact returned note path with a
