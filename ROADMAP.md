@@ -431,11 +431,11 @@ reachable branch history were audited and remediated before exposure. The genera
 bundle was removed, `SECURITY.md` now states the current reporting-channel limitation, and the
 repository owner's historical commit metadata was replaced with the configured GitHub noreply
 identity after a verified external backup. Rewritten remote branches were updated atomically with
-explicit leases. The repository remains private and the anonymous clean-install gate remains open.
+explicit leases. The repository is now public and the anonymous clean-install gate has passed.
 
 ## `v1.0.0` acceptance criteria
 
-- [ ] clean install succeeds from public documentation
+- [x] clean install succeeds from public documentation
 - [x] CI is green
 - [ ] container image is published
 - [x] public API is versioned
@@ -448,10 +448,9 @@ explicit leases. The repository remains private and the anonymous clean-install 
 VB-056 evidence and the exact remaining release gates are recorded in
 [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md). VB-057 closes the confirmed literal
 search/list symlink-containment bypass after focused Linux and compatibility review, VB-059 closes
-the version-alignment blocker, and VB-060 closes the repository-exposure-safety blocker. Deliberate
-public visibility, anonymous isolated clean installation, RC/GHCR verification, RC smoke testing,
-and final stable publication remain unmet release gates; the publication workflow alone is not a
-published container.
+the version-alignment blocker, and VB-060 closes the repository-exposure-safety blocker. Public repository visibility and anonymous isolated clean installation are now verified.
+RC/GHCR publication and verification, pulled-image RC smoke testing, and final stable publication
+remain unmet release gates; the publication workflow alone is not a published container.
 
 ---
 

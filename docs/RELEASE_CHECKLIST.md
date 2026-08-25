@@ -26,11 +26,12 @@ version source; release and deployed-image identity remain the Git tag/GitHub Re
 VB-060 public-exposure addendum: 2026-08-25. Tracked source and all reachable remote branch history
 passed the public-exposure audit after a verified external backup, targeted commit-identity rewrite,
 generated-bundle removal, reporting-channel documentation correction, and atomic leased remote
-updates. The repository remains private; anonymous clean installation has not been attempted.
+updates. The repository was subsequently made public and an anonymous clean installation was
+successfully verified on TrueNAS SCALE / Linux amd64 using disposable test data.
 
 | ROADMAP acceptance criterion | Status | Evidence | Still required |
 |---|---|---|---|
-| Clean install succeeds from public documentation | **BLOCKED / REQUIRES LIVE VERIFICATION** | `README.md` documents clone, `.env`, API-key generation, vault mapping, source build, liveness, readiness, and authenticated `/api/v1` smoke testing. The repository was private during the audit and Docker was unavailable locally. | Make the source/docs public, then run the isolated clean-install procedure below with disposable data. |
+| Clean install succeeds from public documentation | **PASS** | On 2026-08-25 VaultBridge was anonymously cloned from the public GitHub repository onto TrueNAS SCALE / Linux amd64 with Docker Engine 28.3.1. The generic Docker Compose deployment built successfully from source against a disposable empty vault using isolated host port `8876`. The container started successfully; `GET /health/live` returned HTTP 200 `{"ok":true}`, `GET /health/ready` returned HTTP 200 `{"ready":true}`, and authenticated `GET /api/v1/notes/list?limit=5` returned `{"folder":"","notes":[]}`. The existing production container and production vault were not modified. | Re-run deployment verification on the exact RC/stable artifacts where required by the release procedure. |
 | CI is green | **PASS** | `.github/workflows/ci.yml` represents pytest, compileall, Compose validation, and an image build. Checksum-verified actionlint 1.7.12 passed. [GitHub run 32857711831](https://github.com/mrtrollex/VaultBridge/actions/runs/32857711831) passed both `python` and `docker` on the audited `main` commit. | Require both jobs again on the exact RC/stable commit. Branch protection was unavailable on the private repository, so this remains a manual release gate. |
 | Container image is published | **FAIL** | `.github/workflows/publish-ghcr.yml` is release-triggered and statically valid, but the repository had no GitHub Releases. The workflow alone is not a published image. Package enumeration also requires `read:packages`, so no separate private-package claim is made. | Publish and verify `v1.0.0-rc.1` through the RC procedure. Do not publish stable first. |
 | Public API is versioned | **PASS** | `app/api/versioning.py` registers six protected legacy/v1 route pairs from shared handlers. `tests/test_api_versioning.py` passed 24 tests; `tests/test_api.py::test_router_registration_preserves_public_contract` checks all 15 public schema paths and operation IDs. Health and `/privacy` intentionally remain unversioned. | Re-run contract tests on the release commit. Keep legacy aliases until a separate migration decision. |
@@ -40,19 +41,19 @@ updates. The repository remains private; anonymous clean installation has not be
 | Secrets are not committed or logged | **PASS** | VB-060 repeated targeted scans across 85 tracked files, 328 reachable unique blobs, and the historical source archive with zero high-confidence secret hits. Only example `.env` files are tracked; generated bundles are no longer tracked; reachable author/committer metadata uses the approved noreply/service identities. Logging/observability tests verify bodies, queries, credentials, headers, exception messages, and absolute paths are omitted. | Repeat on the final commit. This was a targeted pattern audit, not exhaustive entropy-based secret detection. Never paste resolved Compose output or environments. |
 | Upgrade/rebuild procedure is documented | **PASS** | `README.md` covers source updates, automatic signature invalidation, stopped-service `index check`, explicit `index rebuild`, and Markdown as source of truth. `README_TRUENAS.md` covers managed/source updates, bundles, rollback, automatic incompatibility rebuilds, stopped-service inspection/rebuild, and recovery. Commands match current deployment files and CLI. | Recheck if deployment files change. |
 
-ROADMAP checkboxes may be checked only for the seven criteria marked `PASS`. The failed and live-only
-criteria remain unchecked.
+ROADMAP checkboxes may be checked only for criteria currently marked `PASS`. The container-image
+publication criterion remains incomplete until the RC GHCR artifact is published and verified.
 
 ## Release blockers and exact remaining work
 
-1. Make the repository and release documentation publicly accessible.
-2. Run the isolated clean-install smoke test below from the exact verified commit.
-3. Publish `v1.0.0-rc.1` as a GitHub prerelease and require the GHCR workflow to succeed.
-4. Verify GHCR visibility/linkage, exact tag, digest, platform, runtime
-   health/readiness, authenticated v1 behavior, and no prerelease `latest` update.
-5. Repeat the public clean-install and pulled-image smoke checks against the RC tag/digest.
-6. Fix every RC blocker, rerun all checks on the exact final `main` commit, then execute the stable
-   release procedure.
+1. Verify green CI on the exact RC commit.
+2. Publish and verify `v1.0.0-rc.1`: GHCR package creation, repository linkage, visibility,
+   exact prerelease tag, digest and platform.
+3. Pull the exact RC image and run the disposable-vault smoke test against the published artifact.
+4. Verify `/health/live`, eventual `/health/ready`, authenticated `/api/v1` behavior, safe logs,
+   and that the prerelease did not create or update `1.0.0`, `1.0`, `1`, or `latest`.
+5. Resolve any RC blocker and rerun validation on the exact final `main` commit.
+6. Execute and verify the stable `v1.0.0` release procedure.
 
 ## Supported platform statement for v1.0.0
 

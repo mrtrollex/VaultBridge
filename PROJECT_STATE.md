@@ -40,9 +40,8 @@ Completed:
 
 Next required v1.0 release work:
 
-- **deliberately make the repository/source documentation public, then execute the checklist's
-  anonymous isolated clean-install, RC/GHCR verification, RC smoke-test, and final stable-release
-  gates**
+- **publish and verify `v1.0.0-rc.1` through GHCR, run the pulled-image RC smoke test, resolve any
+  release blockers, then execute the final stable `v1.0.0` release gate**
 
 Next recommended backlog task:
 
@@ -50,10 +49,10 @@ Next recommended backlog task:
 
 Current v1.0 release status:
 
-- **no known authentication/path-containment or repository-exposure blocker remains after VB-060,
-  and existing version metadata is aligned to `1.0.0`; the repository is still private and public
-  anonymous clean-install, RC, published-container, RC smoke-test, and final stable-release gates
-  remain open**
+- **no known authentication/path-containment or repository-exposure blocker remains; version metadata
+  is aligned to `1.0.0`, the repository is public, and an anonymous clean source installation has
+  passed on TrueNAS SCALE / Linux amd64. RC/GHCR publication, pulled-image RC smoke testing, and
+  final stable-release verification remain open**
 
 Current milestones:
 
@@ -66,6 +65,10 @@ Current milestones:
 - FastAPI application
 - package and FastAPI application metadata aligned to the stable target `1.0.0`
 - tracked source and reachable remote branch history passed the VB-060 public-exposure audit
+- public GitHub source was anonymously cloned and clean-built on TrueNAS SCALE / Linux amd64 with
+  Docker Engine 28.3.1 using a disposable empty vault and isolated port `8876`
+- the clean-install smoke test returned HTTP 200 from `/health/live` and `/health/ready`, and
+  authenticated `GET /api/v1/notes/list?limit=5` returned an empty note list
 - Python 3.12 container
 - FastAPI routes, vault operations, semantic orchestration and SQLite persistence have separate modules
 - typed runtime settings via `app/core/config.py`
