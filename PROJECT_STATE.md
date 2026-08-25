@@ -40,8 +40,9 @@ Completed:
 
 Next required v1.0 release work:
 
-- **publish and verify `v1.0.0-rc.1` through GHCR, run the pulled-image RC smoke test, resolve any
-  release blockers, then execute the final stable `v1.0.0` release gate**
+- **finalize the stable release documentation, verify green CI on the exact final `main` commit,
+  publish `v1.0.0`, verify the stable GHCR aliases and digest, and run the final pulled-image
+  disposable-vault smoke test**
 
 Next recommended backlog task:
 
@@ -49,10 +50,11 @@ Next recommended backlog task:
 
 Current v1.0 release status:
 
-- **no known authentication/path-containment or repository-exposure blocker remains; version metadata
-  is aligned to `1.0.0`, the repository is public, and an anonymous clean source installation has
-  passed on TrueNAS SCALE / Linux amd64. RC/GHCR publication, pulled-image RC smoke testing, and
-  final stable-release verification remain open**
+- **all current v1.0 acceptance criteria are satisfied. Public source installation and the
+  `v1.0.0-rc.1` GHCR release candidate were verified on Linux amd64, including anonymous image pull,
+  digest verification, liveness, readiness, authenticated `/api/v1` behavior, safe logs, and
+  absence of stable GHCR aliases. Final stable `v1.0.0` publication and post-publication
+  verification remain open**
 
 Current milestones:
 
@@ -114,6 +116,15 @@ Current milestones:
   `major.minor`, `major`, and `latest`, while prereleases update only their exact version tag
 - GHCR publication is normal Linux runner architecture only; source-build Docker and TrueNAS
   deployments remain supported and multi-architecture manifests remain VB-055
+- `v1.0.0-rc.1` was published publicly to GHCR from commit
+  `bd127219e4f2f7a5707dcfe4d0bd56e838579d71`
+- RC publication workflow `32870928239` passed release-source verification and image publication
+- RC OCI digest:
+  `sha256:dd742182a1d0be1e66180e13dd1890ef62aa40b54c50b8346f165f4f23d40d1b`
+- published runtime platform is `linux/amd64`
+- the exact RC image was anonymously pulled and smoke-tested against a disposable empty vault;
+  `/health/live`, `/health/ready`, and authenticated `/api/v1/notes/list` passed
+- stable aliases `1.0.0`, `1.0`, `1`, and `latest` were confirmed absent after RC publication
 
 ## Current implementation boundaries
 
