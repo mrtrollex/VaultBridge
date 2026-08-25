@@ -230,6 +230,20 @@ additional distribution artifact, not an automatic migration of existing Docker 
 installations. VB-054 publishes only the normal Linux architecture produced by the GitHub-hosted
 runner; multi-architecture manifests remain VB-055.
 
+### Supported deployment platforms
+
+- Production is the repository Dockerfile running as a Linux container, built from source or pulled
+  from GHCR after a release image is actually published and verified.
+- Docker-based TrueNAS SCALE 24.10 or later is supported through the source-built workflow in
+  [`README_TRUENAS.md`](README_TRUENAS.md).
+- Docker Desktop on Windows or macOS may run the Linux container. Native Windows is a development
+  and test environment, not a documented production deployment.
+- The current GHCR workflow is single-architecture. Do not assume ARM64 or multi-architecture image
+  support before VB-055 and manifest verification.
+
+Release gates, RC validation, and the stable release procedure are tracked in
+[`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md).
+
 ## Docker configuration
 
 The generic Compose file reads `.env`, validates application settings at startup, and uses this

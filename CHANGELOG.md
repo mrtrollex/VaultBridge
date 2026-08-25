@@ -35,6 +35,9 @@ The project intends to follow Semantic Versioning after the public repository ba
   semantic-version tags, stable-only aliases and `latest`, OCI metadata, minimal package permission,
   SHA-pinned actions, minimal BuildKit provenance, repeated release-source validation, and
   published-manifest inspection
+- an evidence-backed release checklist with explicit v1.0 acceptance status, isolated clean-install
+  validation, supported-platform and artifact-version contracts, RC/stable GHCR procedures, draft
+  release notes, and exact unresolved release blockers
 
 ### Changed
 

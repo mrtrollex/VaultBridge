@@ -461,7 +461,16 @@ GitHub attestations or signing require a separate hardening decision.
 
 ### VB-055 — Multi-arch image — P1
 
-### VB-056 — GitHub v1.0 release checklist — P0
+### VB-056 — GitHub v1.0 release checklist — P0 ✅
+
+**Status:** Completed on 2026-08-25.
+
+`docs/RELEASE_CHECKLIST.md` turns every ROADMAP `v1.0.0` criterion into an evidence-backed gate and
+documents reusable source/CI/clean-install checks, supported platforms, artifact/version identity,
+RC and stable publication procedures, post-publication GHCR verification, draft release notes, and
+non-blocking P1 follow-ups. VB-056 completion means the audit/checklist exists; it does not mean
+`v1.0.0` was released. Clean-install and image-publication gates remain unmet, and a confirmed
+literal search/list symlink-containment defect is a separate P0 release blocker.
 
 ---
 
@@ -487,10 +496,12 @@ VB-001 ✓
 → VB-044  ✓
 → VB-045  ✓
 → VB-050  ✓
-→ VB-042  NEXT
+→ P0 literal search/list symlink-containment blocker  NEXT
 ```
 
-The next incomplete P0 task is VB-056 — GitHub v1.0 release checklist. Do not infer scope from priority;
-read its exact task definition before implementation.
+VB-056 is complete, but `v1.0.0` remains blocked by the release checklist. Create a separate P0 task
+for the confirmed literal search/list symlink-containment defect before release work continues.
+
+VB-042 remains the next non-blocking P1 task after the release blocker is resolved.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.
