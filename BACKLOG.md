@@ -484,6 +484,17 @@ duplicates. Linux/WSL service, legacy/v1 route, direct-read, and semantic synchr
 execute with real symlinks. No API, schema, index-signature, ranking, lifecycle, CLI, deployment, or
 dependency change was required.
 
+### VB-058 — Fix cross-platform path assertion — P0 ✅
+
+**Status:** Completed on 2026-08-25.
+
+The end-to-end create/read/search/append test now compares the returned vault-relative note path as
+a native `Path` instead of comparing it with a hard-coded POSIX-separator string. Repository review
+confirmed that the response model and Action schema promise a vault-relative Markdown path but do
+not define separator serialization, while `VaultService._relative_path()` deliberately returns the
+native filesystem representation. Runtime and API behavior are unchanged. Native Windows now has
+zero test failures, and focused WSL/Linux path, authentication, legacy/v1, and real-symlink tests pass.
+
 ---
 
 ## Recommended Codex sequence
@@ -510,9 +521,11 @@ VB-001 ✓
 → VB-050  ✓
 → VB-056  ✓
 → VB-057  ✓
+→ VB-058  ✓
 ```
 
-VB-057 closes the confirmed code-level symlink-containment release blocker. `v1.0.0` remains blocked
+VB-057 and VB-058 close the confirmed containment and native-Windows test-portability blockers.
+`v1.0.0` remains blocked
 by the live clean-install, release-version alignment, public-repository, RC, and GHCR publication
 gates recorded in `docs/RELEASE_CHECKLIST.md`.
 

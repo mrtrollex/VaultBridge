@@ -264,7 +264,7 @@ def test_create_read_search_append(tmp_path):
     )
     assert response.status_code == 200
     path = response.json()["path"]
-    assert path == "Technical Notes/Example Project/APEX limit validation.md"
+    assert Path(path) == Path("Oracle APEX") / "Example Project" / "APEX limit validation.md"
 
     response = client.get("/notes/read", headers=auth(), params={"path": path})
     assert response.status_code == 200
