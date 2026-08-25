@@ -10,7 +10,12 @@ Before `1.0.0`, only the latest release is expected to receive security fixes.
 
 ## Reporting a vulnerability
 
-For the initial repository, use a private GitHub security advisory once the repository is published. Do not open a public issue for an authentication bypass, arbitrary file access, path traversal, or secret exposure.
+VaultBridge does not currently provide a confirmed dedicated private external vulnerability-reporting
+channel. Do not include credentials, API keys, vault contents, exploit details, or other sensitive
+data in public GitHub issues.
+
+A private reporting channel may be added in the future. This document will be updated when one is
+actually available.
 
 ## Security invariants
 

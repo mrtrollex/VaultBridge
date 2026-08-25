@@ -21,6 +21,7 @@ semantic-data/
 *.sqlite3-wal
 models/
 .cache/
+dist/
 
 # IDE/OS
 .vscode/
