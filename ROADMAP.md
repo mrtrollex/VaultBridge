@@ -82,6 +82,8 @@ app/semantic.py                 legacy compatibility facade
 - [x] **VB-052 — Generic Docker deployment docs**
 - [x] **VB-053 — TrueNAS deployment docs**
 - [x] **VB-054 — Publish GHCR image workflow**
+- [x] **VB-056 — GitHub v1.0 release checklist**
+- [x] **VB-057 — Enforce symlink containment in vault enumeration**
 
 ## Current verified baseline
 
@@ -398,6 +400,13 @@ inspection. Existing source-build deployments remain unchanged.
 ### VB-055 — Multi-architecture image — P1
 ### VB-056 — GitHub v1.0 release checklist — P0 ✅
 
+### VB-057 — Enforce symlink containment in vault enumeration — P0 ✅
+
+Literal search, note listing, and semantic full synchronization now apply one resolved-target
+containment rule before reading or inspecting discovered Markdown files. External and broken
+symlinks are skipped, internal file aliases are canonicalized and deduplicated, and real Linux
+symlink regressions cover service, legacy/v1 HTTP, direct-read, and semantic-index paths.
+
 ## `v1.0.0` acceptance criteria
 
 - [ ] clean install succeeds from public documentation
@@ -406,14 +415,15 @@ inspection. Existing source-build deployments remain unchanged.
 - [x] public API is versioned
 - [x] full semantic rebuild does not block ordinary request handling
 - [x] retrieval evaluation suite exists
-- [ ] no known authentication/path-traversal bypass
+- [x] no known authentication/path-traversal bypass
 - [x] secrets are not committed or logged
 - [x] upgrade/rebuild procedure is documented
 
 VB-056 evidence and the exact remaining release gates are recorded in
-[`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md). An unresolved literal search/list symlink
-containment defect blocks the security criterion. Clean installation and GHCR publication remain
-unmet release gates; the publication workflow alone is not a published container.
+[`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md). VB-057 closes the confirmed literal
+search/list symlink-containment bypass after focused Linux and compatibility review. Clean
+installation and GHCR publication remain unmet release gates; the publication workflow alone is
+not a published container.
 
 ---
 

@@ -41,6 +41,9 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ### Changed
 
+- Markdown discovery for literal search, note listing, and full semantic synchronization now
+  validates each resolved target against the resolved vault root before stat/read, skips external
+  and broken symlinks, and canonicalizes/deduplicates safe internal file aliases
 - semantic index synchronization now commits durable, configurable note batches so interruption only rolls back the active batch
 - application startup now runs semantic-index synchronization in one managed background worker; search no longer performs synchronization inline
 - failed initial indexing now returns semantic-search HTTP 503, while compatible indexes remain searchable after failed refreshes

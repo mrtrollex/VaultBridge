@@ -13,32 +13,61 @@ SEMANTIC_EXCLUDED_DIRECTORIES = frozenset(
 )
 
 
-def eligible_markdown_files(vault_root: Path, max_note_bytes: int) -> list[Path]:
-    """Return contained Markdown files accepted by full semantic synchronization."""
-    vault_root = Path(vault_root)
-    if not vault_root.exists():
-        return []
+def _resolve_contained_path(path: Path, resolved_root: Path) -> Path:
+    """Resolve one path and require its real target to remain under the vault root."""
+    resolved_path = path.resolve()
+    resolved_path.relative_to(resolved_root)
+    return resolved_path
 
+
+def contained_markdown_files(
+    vault_root: Path,
+    discovery_root: Path | None = None,
+) -> list[Path]:
+    """Return unique Markdown files whose resolved targets remain inside the vault."""
+    vault_root = Path(vault_root)
+    discovery_root = vault_root if discovery_root is None else Path(discovery_root)
     try:
         resolved_root = vault_root.resolve()
-    except OSError:
+        resolved_discovery_root = _resolve_contained_path(discovery_root, resolved_root)
+    except (OSError, ValueError):
+        return []
+    if not resolved_discovery_root.exists():
         return []
 
     files: dict[Path, None] = {}
     try:
-        for discovered_path in vault_root.rglob("*.md"):
+        for discovered_path in resolved_discovery_root.rglob("*.md"):
             try:
-                path = discovered_path.resolve()
-                relative_path = path.relative_to(resolved_root)
-                if any(part in SEMANTIC_EXCLUDED_DIRECTORIES for part in relative_path.parts):
-                    continue
-                if path.is_file() and path.stat().st_size <= max_note_bytes:
+                path = _resolve_contained_path(discovered_path, resolved_root)
+                if path.suffix.lower() == ".md" and path.is_file():
                     files[path] = None
             except (OSError, ValueError):
                 continue
     except OSError:
         pass
     return list(files)
+
+
+def eligible_markdown_files(vault_root: Path, max_note_bytes: int) -> list[Path]:
+    """Return contained Markdown files accepted by full semantic synchronization."""
+    vault_root = Path(vault_root)
+    try:
+        resolved_root = vault_root.resolve()
+    except OSError:
+        return []
+
+    files: list[Path] = []
+    for path in contained_markdown_files(resolved_root):
+        try:
+            relative_path = path.relative_to(resolved_root)
+            if any(part in SEMANTIC_EXCLUDED_DIRECTORIES for part in relative_path.parts):
+                continue
+            if path.stat().st_size <= max_note_bytes:
+                files.append(path)
+        except (OSError, ValueError):
+            continue
+    return files
 
 
 class VaultServiceError(Exception):
@@ -118,10 +147,9 @@ class VaultService:
         path = Path(normalized)
         if path.is_absolute():
             raise VaultValidationError("Path must be vault-relative")
-        candidate = (self.vault_root / path).resolve()
         try:
-            candidate.relative_to(self.vault_root)
-        except ValueError as exc:
+            candidate = _resolve_contained_path(self.vault_root / path, self.vault_root)
+        except (OSError, ValueError) as exc:
             raise VaultValidationError("Path escapes the vault") from exc
         return candidate
 
@@ -207,12 +235,12 @@ class VaultService:
 
         needle = query.casefold()
         results: list[NoteSearchResult] = []
-        for path in root.rglob("*.md"):
-            if not path.is_file() or path.stat().st_size > self.max_note_bytes:
-                continue
+        for path in contained_markdown_files(self.vault_root, root):
             try:
+                if path.stat().st_size > self.max_note_bytes:
+                    continue
                 text = path.read_text(encoding="utf-8")
-            except UnicodeDecodeError:
+            except (OSError, UnicodeDecodeError):
                 continue
             title_match = needle in path.stem.casefold()
             text_folded = text.casefold()
@@ -241,13 +269,20 @@ class VaultService:
         if not root.exists():
             return []
 
+        candidates: list[tuple[Path, float]] = []
+        for path in contained_markdown_files(self.vault_root, root):
+            try:
+                candidates.append((path, path.stat().st_mtime))
+            except OSError:
+                continue
+
         notes: list[NoteListResult] = []
-        for path in sorted(root.rglob("*.md"), key=lambda item: item.stat().st_mtime, reverse=True):
+        for path, modified in sorted(candidates, key=lambda item: item[1], reverse=True):
             notes.append(
                 NoteListResult(
                     path=self._relative_path(path),
                     title=path.stem,
-                    modified=datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc).isoformat(
+                    modified=datetime.fromtimestamp(modified, tz=timezone.utc).isoformat(
                         timespec="seconds"
                     ),
                 )

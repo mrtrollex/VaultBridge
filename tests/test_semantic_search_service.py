@@ -686,6 +686,24 @@ def test_full_sync_never_indexes_symlinks_outside_the_vault(tmp_path):
     assert all("External" not in result.snippet for result in results)
 
 
+def test_full_sync_removes_note_replaced_by_external_symlink(tmp_path):
+    service = semantic_service(tmp_path)
+    note = service.vault_root / "replaced.md"
+    note.write_text("Previously safe indexed content.", encoding="utf-8")
+    assert service.sync() == {"indexed": 1, "unchanged": 0, "removed": 0}
+
+    note.unlink()
+    outside = tmp_path / "outside.md"
+    outside.write_text("External replacement secret.", encoding="utf-8")
+    try:
+        note.symlink_to(outside)
+    except OSError:
+        pytest.skip("symlink creation is unavailable on this platform")
+
+    assert service.sync() == {"indexed": 0, "unchanged": 0, "removed": 1}
+    assert service.repository.load_chunks() == []
+
+
 def test_sync_commits_successful_work_in_configured_batches(tmp_path):
     repository = TrackingRepository(tmp_path / "data" / "semantic-index.sqlite3")
     service = semantic_service(
