@@ -292,6 +292,8 @@ host PUID:PGID  ->  container process user and group
 | `SEMANTIC_CHUNK_CHARS` | `600` | Integer of at least `250` |
 | `SEMANTIC_CHUNK_OVERLAP` | `100` | Non-negative and at most half the chunk size |
 | `SEMANTIC_INDEX_BATCH_SIZE` | `25` | Positive maximum notes committed per indexing transaction |
+| `SEMANTIC_WATCH_ENABLED` | `false` | Opt in to recursive external Markdown change watching |
+| `SEMANTIC_WATCH_DEBOUNCE_SECONDS` | `1.0` | Positive coalescing window for editor/synchronizer event bursts |
 
 Compose fixes the application-only `VAULT_PATH` to `/vault` and `SEMANTIC_DATA_PATH` to
 `/vault/.obsidian-chatgpt-data`; do not put host paths in either setting. Invalid numeric values or
@@ -346,6 +348,7 @@ The generic Compose deployment stores these derived files inside the mounted vau
 ```text
 /vault/.obsidian-chatgpt-data/semantic-index.sqlite3
 /vault/.obsidian-chatgpt-data/models/
+/vault/.obsidian-chatgpt-data/huggingface/
 ```
 
 On the host, they are under `${OBSIDIAN_VAULT_PATH}/.obsidian-chatgpt-data`. This directory therefore
@@ -354,7 +357,25 @@ index and downloaded model cache are derived/disposable; Markdown files remain t
 and should be the focus of backups. Do not edit SQLite manually. Use the supported stopped-service
 maintenance commands below to inspect or rebuild the index.
 
+Compose fixes FastEmbed/Hugging Face's internal `HF_HOME` to the `huggingface/` directory above, so
+the configured non-root `PUID:PGID` uses the same writable derived-data mount instead of an unwritable
+root-home cache. This is an internal container path and requires no additional `.env` setting.
+
 The separate `/data` mount described in the TrueNAS guide is not part of generic Compose.
+
+### External Obsidian and synchronization edits
+
+Filesystem watching is disabled by default, preserving the previous startup/full-sync behavior. Set
+`SEMANTIC_WATCH_ENABLED=true` to observe the mounted vault recursively for external Markdown creates,
+changes, deletes, and renames from tools such as Obsidian or Syncthing. The default one-second
+debounce coalesces event bursts and atomic-replace patterns before paths enter the existing targeted
+semantic-index queue. Non-Markdown files, Obsidian internals, temporary artifacts, the semantic data
+directory, and paths that fail vault containment checks are ignored.
+
+The watcher is incremental, process-local functionality for one VaultBridge process. It does not
+replace the authoritative startup full synchronization, which still reconciles changes made while
+VaultBridge was stopped. It also does not replace normal Markdown backups. Disable the watcher if
+the mounted filesystem does not reliably deliver native change notifications.
 
 ## First startup and health verification
 

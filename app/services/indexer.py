@@ -62,6 +62,49 @@ class BackgroundSemanticIndexer:
 
     def enqueue(self, path: str) -> bool:
         """Queue one vault-relative note path, coalescing duplicate pending work."""
+        return self.enqueue_paths((path,)) > 0
+
+    def enqueue_paths(self, paths: Sequence[str]) -> int:
+        """Atomically queue vault-relative paths and return the number newly pending."""
+        normalized_paths: set[str] = set()
+        for path in paths:
+            normalized_paths.add(self._normalize_path(path))
+
+        if not normalized_paths:
+            return 0
+
+        future = None
+        queued_notes = 0
+        log_queued = False
+        with self._lock:
+            if self._closed:
+                return 0
+            added_paths = normalized_paths - self._pending_paths
+            self._pending_paths.update(normalized_paths)
+            queued_notes = len(self._pending_paths)
+            if self._future is not None and not self._future.done():
+                self._follow_up_requested = True
+                log_queued = bool(added_paths)
+            else:
+                future = self._submit_locked()
+                log_queued = future is not None
+            if log_queued:
+                note_path = next(iter(normalized_paths)) if len(normalized_paths) == 1 else None
+                log_event(
+                    logger,
+                    logging.INFO,
+                    "targeted_reindex_queued",
+                    "Targeted semantic reindex was queued",
+                    operation="targeted",
+                    note_path=note_path,
+                    queued_notes=queued_notes,
+                )
+        if future is not None:
+            future.add_done_callback(self._record_completion)
+        return len(added_paths)
+
+    @staticmethod
+    def _normalize_path(path: str) -> str:
         normalized = path.strip().replace("\\", "/")
         posix_path = PurePosixPath(normalized)
         if (
@@ -71,36 +114,7 @@ class BackgroundSemanticIndexer:
             or ".." in posix_path.parts
         ):
             raise ValueError("Queued semantic path must be vault-relative")
-        normalized = posix_path.as_posix()
-
-        future = None
-        queued_notes = 0
-        log_queued = False
-        with self._lock:
-            if self._closed:
-                return False
-            added = normalized not in self._pending_paths
-            self._pending_paths.add(normalized)
-            queued_notes = len(self._pending_paths)
-            if self._future is not None and not self._future.done():
-                self._follow_up_requested = True
-                log_queued = added
-            else:
-                future = self._submit_locked()
-                log_queued = future is not None
-            if log_queued:
-                log_event(
-                    logger,
-                    logging.INFO,
-                    "targeted_reindex_queued",
-                    "Targeted semantic reindex was queued",
-                    operation="targeted",
-                    note_path=normalized,
-                    queued_notes=queued_notes,
-                )
-        if future is not None:
-            future.add_done_callback(self._record_completion)
-        return added
+        return posix_path.as_posix()
 
     def _submit_locked(self) -> Future[Any] | None:
         self._cancel_event.clear()

@@ -156,11 +156,25 @@ States:
 - failed targeted paths remain pending for a later write-triggered retry or full synchronization,
 - shutdown discards the in-memory queue after requesting cancellation; the next startup full synchronization recovers from Markdown source files.
 
-### VB-014 — Optional filesystem watcher — P1
+VB-014 later extends safely contained missing targets into targeted derived-row removal for external
+delete/rename handling; the other strict failure behavior remains unchanged.
+
+### VB-014 — Optional filesystem watcher — P1 ✅
+
+**Status:** Completed on 2026-08-26.
 
 **Depends on:** VB-012, VB-013
 
-Add debounced `watchdog`/inotify only after background indexing exists.
+**Implemented behavior**
+
+- disabled by default through typed settings; disabled applications start no observer/dispatcher,
+- `watchdog` supplies recursive native cross-platform events without polling full-vault scans,
+- safe Markdown create/modify/delete/move paths pass through existing vault containment semantics,
+- one monotonic dispatcher coalesces path bursts before one atomic call to the existing thread-safe
+  indexer queue,
+- targeted missing paths remove only their derived semantic rows; rename queues old and new paths,
+- watcher shutdown precedes dispatcher flush and semantic-indexer shutdown,
+- startup full synchronization remains the downtime reconciliation authority.
 
 ### VB-015 — Rich health/readiness output — P0 ✅
 
@@ -262,7 +276,7 @@ per-sync counters such as current note, percentage complete, current batch or ET
   the English-to-Slovak case depends on multilingual concept equivalence,
 - the measured baseline is Hit@1 `13/13` (100%), Hit@3 `13/13` (100%) and MRR `13/13` (100%).
 
-### VB-023 — Retrieval benchmark command — P1
+### VB-023 — Retrieval benchmark command — P1 ▶
 
 Output latency, returned paths and scores as JSON and/or Markdown.
 
@@ -330,15 +344,19 @@ Hardened the existing related-note contract without adding backlink writes or an
 - verification is read-only. Externally edited live note content can still leave scores, snippets,
   and headings stale until normal synchronization updates the derived index.
 
-### VB-032 — Section-level update design/ADR — P1 ▶
+### VB-032 — Section-level update design/ADR — P1
 
-Design before implementation.
+**Status:** Deferred / optional future work. Do not treat as the next task.
+
+Design before implementation if section-level mutation becomes a demonstrated workflow need.
 
 ### VB-033 — `updateNoteSection` endpoint — P1
 
 **Depends on:** VB-032
 
-Must include conflict detection/content hash.
+**Status:** Deferred / optional future work. Do not implement unless VB-032 is resumed first.
+
+Must include conflict detection/content hash if resumed.
 
 ### VB-034 — Opt-in verified backlink insertion — P2
 
@@ -630,7 +648,8 @@ release-version alignment, and repository-exposure-safety blockers. The reposito
 GHCR verification, RC smoke-test, and final stable-release gates recorded in
 `docs/RELEASE_CHECKLIST.md`.
 
-VB-051 completes the developer-experience milestone. VB-032 is the next recommended unblocked P1:
-its section-identity and concurrency ADR is required before VB-033 can be implemented.
+VB-051 completes the developer-experience milestone. After VB-014, VB-023 is the next recommended
+practical P1 because it makes retrieval-quality and latency measurements repeatable without adding
+mutation surface. VB-032 and VB-033 remain deferred optional work.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

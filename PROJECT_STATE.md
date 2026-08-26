@@ -19,6 +19,7 @@ Completed:
 - VB-011 — Batch index commits
 - VB-012 — Background startup indexing
 - VB-013 — Enqueue reindex after note writes
+- VB-014 — Optional filesystem watcher
 - VB-015 — Rich health/readiness output
 - VB-020 — Markdown heading-aware chunker
 - VB-021 — Embed title + heading hierarchy + chunk
@@ -50,7 +51,9 @@ Post-v1 development position:
 
 Next recommended backlog task:
 
-- **VB-032 — Section-level update design/ADR**
+- **VB-023 — Retrieval benchmark command**
+
+VB-032 and VB-033 are deferred optional future work; neither is the current next task.
 
 Current v1.0 release status:
 
@@ -220,6 +223,9 @@ app/services/semantic_search.py
 app/services/indexer.py
     single-process background synchronization ownership and cooperative shutdown
 
+app/services/filesystem_watcher.py
+    optional recursive Markdown event watching and monotonic debounce dispatch
+
 app/services/rate_limiter.py
     bounded process-local fixed-window request allowance with injectable monotonic time
 
@@ -230,13 +236,18 @@ app/semantic.py
     compatibility facade retained for pre-VB-005 internal API compatibility
 ```
 
+Docker deployments set Hugging Face's `HF_HOME` to persistent derived storage rather than a home
+directory: `/vault/.obsidian-chatgpt-data/huggingface` in generic Compose and `/data/huggingface` in
+TrueNAS. Existing non-root `PUID:PGID` and `568:568` runtime identities remain unchanged.
+
 ## Application logging
 
 VaultBridge-owned application logs are emitted to stderr as one UTF-8 JSON object per line. Every
 record has `timestamp`, `level`, `logger`, `event`, and `message`; optional allowlisted context is
 included only when meaningful. UTC timestamps use millisecond ISO-8601 `Z` notation. Stable events
-cover application startup/shutdown, full semantic synchronization, targeted reindex scheduling and
-outcomes, and committed note create/append operations.
+cover application startup/shutdown, optional watcher startup/shutdown/failure, full semantic
+synchronization, targeted reindex scheduling and outcomes, and committed note create/append
+operations.
 
 Successful full-sync scheduling and targeted queue events are emitted from their lock-protected
 state snapshot before the worker can enter the corresponding observable synchronization path.
@@ -316,6 +327,8 @@ Deterministic behavior:
 - application startup schedules synchronization in the background without waiting for completion
 - one application process runs at most one synchronization job at a time
 - successful API note creates/appends enqueue their affected vault-relative path for targeted refresh
+- the optional watcher is disabled by default; when enabled, safe external Markdown
+  create/modify/delete/move events are debounced and atomically batched into the same targeted queue
 - unchanged/idempotent/failed writes do not enqueue semantic work
 - enqueue/submission failure after a committed write does not fail or repeat the Markdown mutation
 - duplicate pending paths are coalesced; a write during active processing requests one follow-up evaluation after success or failure
@@ -324,7 +337,8 @@ Deterministic behavior:
 - failed/cancelled full synchronization retains process-local recovery debt; a write queued before or during that failure schedules one prioritized full retry before `ready` can be restored
 - a failed follow-up with no newer work retains paths/debt for later recovery without an immediate retry loop
 - targeted refresh commits in the same configurable note-count batches as full synchronization
-- failed targeted batches, including unavailable/unreadable/non-UTF-8 paths, keep the previous committed index, persist `error`, and retain their paths for retry
+- safely contained missing targeted paths remove their derived note/chunk rows without a full scan
+- failed targeted batches, including inaccessible/unreadable/non-UTF-8 paths, keep the previous committed index, persist `error`, and retain their paths for retry
 - full synchronization resolves discovered Markdown candidates and never indexes a symlink target outside the resolved vault root
 - first-time semantic search returns no results until the index reaches `ready`
 - failed initial indexing with no valid index makes semantic search unavailable with HTTP `503`
@@ -359,6 +373,9 @@ legacy index with chunks is available without persisting missing state. Previous
 through active or failed refreshes. Expected vault/storage filesystem and SQLite availability failures
 return HTTP `503`; missing, corrupt, incompatible, uninitialized, initial-indexing, and initial-error
 states remain unavailable.
+
+The optional watcher does not change `/health`, `/health/live`, or `/health/ready` response fields or
+semantics. Disabled watching never makes semantic search unavailable.
 
 Chunk generation prefers ATX heading boundaries outside fenced code and stores the available heading
 hierarchy on every resulting chunk. Sections remain within the configured character bound. Long
@@ -414,15 +431,28 @@ ties now have focused production regressions.
 
 ## Known limitations observed during real use
 
-1. External filesystem changes are not watched; they are picked up by startup/full synchronization.
-   Related-note paths are verified live before response, but scores, snippets, and headings can still
-   reflect older indexed content after an external edit until synchronization catches up.
+1. External filesystem changes are watched only when the disabled-by-default optional watcher is
+   enabled. Without it, startup/full synchronization remains the reconciliation path. With it,
+   debounce still makes index freshness eventual rather than instantaneous.
 2. The deterministic fixture does not measure real-model quality or latency on a production vault.
 3. Multiple application processes sharing one index are not coordinated.
 4. GPT/AI clients can invent wikilinks unless client instructions require verified existing notes.
 5. Graceful shutdown cannot interrupt a model download, ONNX inference call, or filesystem operation already in progress.
 6. Rate-limit state is not shared across application processes, and reverse-proxy peers can aggregate
    multiple external clients because forwarded client-address headers are not trusted.
+## Verified baseline after VB-014
+
+Native Windows:
+
+```text
+398 passed, 15 skipped, 0 failed
+```
+
+The fifteen skips are privilege-dependent Windows symlink tests. Ruff, Python compileall,
+`git diff --check`, static Compose YAML parsing, all 17 protected/system endpoint operation IDs, and
+a real native `watchdog` create-event smoke test passed. Docker and Docker Compose are unavailable in
+the current environment, so Compose rendering and image build were not run locally.
+
 ## Verified baseline after VB-058
 
 Native Windows:

@@ -16,6 +16,7 @@ from app.core.config import Settings
 from app.core.logging import configure_application_logging, log_event
 from app.core.observability import RequestObservabilityMiddleware
 from app.services.duplicate_candidates import DuplicateCandidateService
+from app.services.filesystem_watcher import SemanticFilesystemWatcher
 from app.services.indexer import BackgroundSemanticIndexer
 from app.services.rate_limiter import FixedWindowRateLimiter
 from app.services.semantic_search import (
@@ -49,6 +50,11 @@ class VaultBridgeApplication(FastAPI):
 @asynccontextmanager
 async def lifespan(application: FastAPI):
     semantic_indexer: BackgroundSemanticIndexer = application.state.semantic_indexer
+    semantic_watcher: SemanticFilesystemWatcher | None = getattr(
+        application.state,
+        "semantic_watcher",
+        None,
+    )
     started_at = time.perf_counter()
     log_event(
         logger,
@@ -58,6 +64,8 @@ async def lifespan(application: FastAPI):
     )
     try:
         semantic_indexer.start()
+        if semantic_watcher is not None:
+            semantic_watcher.start()
     except BaseException as exc:
         log_event(
             logger,
@@ -67,6 +75,11 @@ async def lifespan(application: FastAPI):
             exc_info=(type(exc), exc, exc.__traceback__),
             error_type=type(exc).__name__,
         )
+        try:
+            if semantic_watcher is not None:
+                await asyncio.to_thread(semantic_watcher.stop)
+        finally:
+            await asyncio.to_thread(semantic_indexer.shutdown)
         raise
     log_event(
         logger,
@@ -86,18 +99,30 @@ async def lifespan(application: FastAPI):
             "application_stopping",
             "VaultBridge application is stopping",
         )
+        shutdown_error: BaseException | None = None
+        if semantic_watcher is not None:
+            try:
+                await asyncio.to_thread(semantic_watcher.stop)
+            except BaseException as exc:
+                shutdown_error = exc
         try:
             await asyncio.to_thread(semantic_indexer.shutdown)
         except BaseException as exc:
+            shutdown_error = shutdown_error or exc
+        if shutdown_error is not None:
             log_event(
                 logger,
                 logging.ERROR,
                 "application_shutdown_failed",
                 "VaultBridge application shutdown failed",
-                exc_info=(type(exc), exc, exc.__traceback__),
-                error_type=type(exc).__name__,
+                exc_info=(
+                    type(shutdown_error),
+                    shutdown_error,
+                    shutdown_error.__traceback__,
+                ),
+                error_type=type(shutdown_error).__name__,
             )
-            raise
+            raise shutdown_error
         log_event(
             logger,
             logging.INFO,
@@ -123,6 +148,7 @@ def create_app(
     duplicate_candidate_service: DuplicateCandidateService | None = None,
     semantic_search_service: SemanticSearchService | None = None,
     semantic_indexer: BackgroundSemanticIndexer | None = None,
+    semantic_watcher: SemanticFilesystemWatcher | None = None,
     rate_limiter: FixedWindowRateLimiter | None = None,
     vault_service: VaultService | None = None,
 ) -> FastAPI:
@@ -162,6 +188,14 @@ def create_app(
             max_clients=app_settings.rate_limit_max_clients,
         )
     )
+    app_semantic_watcher = semantic_watcher
+    if app_semantic_watcher is None and app_settings.semantic_watch_enabled:
+        app_semantic_watcher = SemanticFilesystemWatcher(
+            vault_service=app_vault_service,
+            semantic_indexer=app_semantic_indexer,
+            semantic_data_path=app_settings.semantic_data_path,
+            debounce_seconds=app_settings.semantic_watch_debounce_seconds,
+        )
 
     application = VaultBridgeApplication(
         title=APP_TITLE,
@@ -176,6 +210,7 @@ def create_app(
     application.state.duplicate_candidate_service = app_duplicate_candidate_service
     application.state.semantic_search_service = app_semantic_search_service
     application.state.semantic_indexer = app_semantic_indexer
+    application.state.semantic_watcher = app_semantic_watcher
     application.state.rate_limiter = app_rate_limiter
     application.state.vault_service = app_vault_service
     application.add_exception_handler(VaultServiceError, handle_vault_service_error)
