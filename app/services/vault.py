@@ -5,7 +5,7 @@ import os
 import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Literal
 
 SEMANTIC_EXCLUDED_DIRECTORIES = frozenset(
@@ -158,6 +158,30 @@ class VaultService:
         if not path.exists():
             return None
         return self._relative_path(path).replace("\\", "/")
+
+    def verify_existing_markdown_path(self, raw: str, *, folder: str = "") -> str | None:
+        """Return one canonical live Markdown path contained by the vault and optional folder."""
+        try:
+            normalized = raw.strip().replace("\\", "/")
+            posix_path = PurePosixPath(normalized)
+            windows_path = PureWindowsPath(normalized)
+            if (
+                not normalized
+                or posix_path.is_absolute()
+                or windows_path.is_absolute()
+                or windows_path.drive
+                or ".." in posix_path.parts
+            ):
+                return None
+            path = self.resolve_path(raw)
+            if folder:
+                folder_path = self.resolve_path(folder)
+                path.relative_to(folder_path)
+            if path.suffix.lower() != ".md" or not path.is_file():
+                return None
+            return self._relative_path(path).replace("\\", "/")
+        except (OSError, RuntimeError, ValueError, VaultValidationError):
+            return None
 
     def create_note(
         self,

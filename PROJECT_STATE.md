@@ -24,6 +24,7 @@ Completed:
 - VB-021 — Embed title + heading hierarchy + chunk
 - VB-022 — Retrieval evaluation fixture
 - VB-024 — Tune hybrid ranking from evaluation data
+- VB-031 — Verified related-note suggestions
 - VB-040 — Structured JSON logging
 - VB-041 — Request IDs and latency logging
 - VB-042 — API key rotation
@@ -110,6 +111,8 @@ Current milestones:
 - `/health/live` provides dependency-free liveness and `/health/ready` reports usable-vault plus semantic-search availability
 - protected note/search operations are available under `/api/v1` with stable `*V1` operation IDs
 - existing unversioned note/search paths and operation IDs remain compatibility aliases
+- legacy and `/api/v1` related-note results are filtered through live `VaultService` containment and
+  regular-Markdown verification, return canonical paths/titles, and boundedly backfill stale entries
 - literal search, note listing, and semantic full synchronization enumerate only Markdown targets
   whose resolved paths remain under the resolved vault root, then stat/read those validated paths
 - safe internal file symlinks return one canonical vault-relative path; external and broken symlinks
@@ -396,6 +399,8 @@ ties now have focused production regressions.
 ## Known limitations observed during real use
 
 1. External filesystem changes are not watched; they are picked up by startup/full synchronization.
+   Related-note paths are verified live before response, but scores, snippets, and headings can still
+   reflect older indexed content after an external edit until synchronization catches up.
 2. The deterministic fixture does not measure real-model quality or latency on a production vault.
 3. Multiple application processes sharing one index are not coordinated.
 4. GPT/AI clients can invent wikilinks unless client instructions require verified existing notes.

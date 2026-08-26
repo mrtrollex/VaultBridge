@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 import app.main as main
 from app.core.config import Settings
 from app.repositories.semantic import SemanticRepository
-from app.services.semantic_search import SemanticSearchService
+from app.services.semantic_search import SemanticResult, SemanticSearchService
 from app.services.vault import VaultService
 
 
@@ -70,6 +70,14 @@ def client_for(
 
 def auth():
     return {"Authorization": "Bearer test-secret"}
+
+
+def replace_with_symlink_or_skip(link: Path, target: Path) -> None:
+    link.unlink()
+    try:
+        link.symlink_to(target)
+    except OSError as exc:
+        pytest.skip(f"Symlink creation is unavailable: {exc}")
 
 
 class RecordingIndexer:
@@ -495,6 +503,146 @@ def test_related_notes_folder_filter(tmp_path):
         )
         assert response.status_code == 200
         assert [item["path"] for item in response.json()["results"]] == ["Technical Notes/Database.md"]
+
+
+def test_related_notes_verify_live_paths_backfill_limit_and_preserve_legacy_v1_contract(
+    tmp_path,
+    monkeypatch,
+):
+    scoped = tmp_path / "Scoped"
+    other = tmp_path / "Other"
+    scoped.mkdir()
+    other.mkdir()
+    for name in ("B.md", "C.md", "D.md"):
+        (scoped / name).write_text(f"Live {name}.", encoding="utf-8")
+    (other / "Outside.md").write_text("Outside folder.", encoding="utf-8")
+    client = client_for(tmp_path, semantic_indexer=RecordingIndexer())
+    candidates = [
+        SemanticResult("Scoped/Stale.md", "Stale", 0.99, 0.99, 0.90, "stale", "Old"),
+        SemanticResult("Scoped/B.md", "Indexed B", 0.90, 0.91, 0.80, "snippet B", "Heading B"),
+        SemanticResult("Scoped/C.md", "Indexed C", 0.80, 0.81, 0.70, "snippet C", None),
+        SemanticResult("Scoped/D.md", "Indexed D", 0.70, 0.71, 0.60, "snippet D", "Heading D"),
+        SemanticResult("Other/Outside.md", "Outside", 0.60, 0.61, 0.50, "outside", None),
+    ]
+    search_calls = []
+
+    def fake_search(text, *, folder, limit, min_score):
+        search_calls.append((text, folder, limit, min_score))
+        return candidates[:limit]
+
+    monkeypatch.setattr(client.app.state.semantic_search_service, "search", fake_search)
+    payload = {"text": "related concept", "folder": "Scoped", "limit": 3, "min_score": 0.1}
+
+    legacy = client.post("/notes/related", headers=auth(), json=payload)
+    versioned = client.post("/api/v1/notes/related", headers=auth(), json=payload)
+    maximum_limit = client.post(
+        "/api/v1/notes/related",
+        headers=auth(),
+        json={**payload, "limit": 20},
+    )
+
+    assert legacy.status_code == versioned.status_code == 200
+    assert maximum_limit.status_code == 200
+    assert legacy.json() == versioned.json()
+    assert [item["path"] for item in legacy.json()["results"]] == [
+        "Scoped/B.md",
+        "Scoped/C.md",
+        "Scoped/D.md",
+    ]
+    assert legacy.json()["results"][0] == {
+        "path": "Scoped/B.md",
+        "title": "B",
+        "score": 0.90,
+        "semantic_score": 0.91,
+        "lexical_score": 0.80,
+        "snippet": "snippet B",
+        "heading": "Heading B",
+    }
+    assert search_calls == [
+        ("related concept", "Scoped", 9, 0.1),
+        ("related concept", "Scoped", 9, 0.1),
+        ("related concept", "Scoped", 50, 0.1),
+    ]
+
+
+def test_related_notes_filter_deleted_stale_index_without_mutating_semantic_storage(tmp_path):
+    stale = tmp_path / "TrueNAS backup server.md"
+    live = tmp_path / "Storage recovery.md"
+    stale.write_text("TrueNAS NAS storage backup server recovery.", encoding="utf-8")
+    live.write_text("TrueNAS NAS storage backup server recovery guide.", encoding="utf-8")
+    client = client_for(tmp_path)
+    query = "TrueNAS storage backup server"
+
+    with client:
+        client.app.state.semantic_indexer.wait(timeout=2)
+        service = client.app.state.semantic_search_service
+        indexed_paths = [
+            result.path for result in service.search(query, limit=10, min_score=0.0)
+        ]
+        stored_before = service.repository.load_chunks()
+        assert stale.name in indexed_paths
+        stale.unlink()
+
+        response = client.post(
+            "/api/v1/notes/related",
+            headers=auth(),
+            json={"text": query, "limit": 5, "min_score": 0.0},
+        )
+
+        assert response.status_code == 200
+        returned_paths = [item["path"] for item in response.json()["results"]]
+        assert stale.name not in returned_paths
+        assert live.name in returned_paths
+        assert service.repository.load_chunks() == stored_before
+        assert stale.name in {chunk.path for chunk in stored_before}
+
+
+def test_related_notes_filter_candidate_replaced_by_directory(tmp_path):
+    replaced = tmp_path / "Directory.md"
+    live = tmp_path / "Live.md"
+    replaced.write_text("TrueNAS storage backup server.", encoding="utf-8")
+    live.write_text("TrueNAS storage backup server live.", encoding="utf-8")
+    client = client_for(tmp_path)
+
+    with client:
+        client.app.state.semantic_indexer.wait(timeout=2)
+        replaced.unlink()
+        replaced.mkdir()
+
+        response = client.post(
+            "/notes/related",
+            headers=auth(),
+            json={"text": "TrueNAS storage backup server", "limit": 5, "min_score": 0.0},
+        )
+
+    assert response.status_code == 200
+    assert [item["path"] for item in response.json()["results"]] == [live.name]
+
+
+def test_related_notes_filter_broken_non_markdown_and_external_symlink_candidates(tmp_path):
+    candidate_names = ("Broken.md", "Non-Markdown.md", "External.md", "Live.md")
+    for name in candidate_names:
+        (tmp_path / name).write_text("TrueNAS storage backup server.", encoding="utf-8")
+    client = client_for(tmp_path)
+
+    with client:
+        client.app.state.semantic_indexer.wait(timeout=2)
+        internal_text = tmp_path / "replacement.txt"
+        internal_text.write_text("Not Markdown.", encoding="utf-8")
+        external = tmp_path.parent / f"{tmp_path.name}-external-related-note.md"
+        external.write_text("External Markdown.", encoding="utf-8")
+        replace_with_symlink_or_skip(tmp_path / "Broken.md", tmp_path / "missing.md")
+        replace_with_symlink_or_skip(tmp_path / "Non-Markdown.md", internal_text)
+        replace_with_symlink_or_skip(tmp_path / "External.md", external)
+
+        response = client.post(
+            "/api/v1/notes/related",
+            headers=auth(),
+            json={"text": "TrueNAS storage backup server", "limit": 10, "min_score": 0.0},
+        )
+
+    assert response.status_code == 200
+    assert [item["path"] for item in response.json()["results"]] == ["Live.md"]
 
 
 def test_health_reports_semantic_state(tmp_path):

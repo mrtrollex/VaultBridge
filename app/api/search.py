@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import PurePosixPath
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
@@ -15,6 +17,9 @@ from app.services.semantic_search import SemanticSearchService
 from app.services.vault import VaultService
 
 router = APIRouter()
+
+RELATED_CANDIDATE_OVERFETCH_FACTOR = 3
+RELATED_CANDIDATE_LIMIT = 50
 
 
 class SearchRequest(BaseModel):
@@ -83,28 +88,39 @@ def find_related_notes(
         vault_root=settings.vault_path,
         max_note_bytes=settings.max_note_bytes,
     )
+    # Keep backfill bounded while allowing a small stale prefix to be filtered without
+    # needlessly shortening the caller-visible result list.
+    candidate_limit = min(
+        RELATED_CANDIDATE_LIMIT,
+        req.limit * RELATED_CANDIDATE_OVERFETCH_FACTOR,
+    )
     try:
         results = semantic_search_service.search(
             req.text,
             folder=folder,
-            limit=req.limit,
+            limit=candidate_limit,
             min_score=req.min_score,
         )
     except Exception as exc:
         raise HTTPException(status_code=503, detail=f"Semantic search unavailable: {exc}") from exc
 
-    return {
-        "text": req.text,
-        "results": [
+    verified_results = []
+    for result in results:
+        verified_path = vault_service.verify_existing_markdown_path(result.path, folder=folder)
+        if verified_path is None:
+            continue
+        verified_results.append(
             {
-                "path": result.path,
-                "title": result.title,
+                "path": verified_path,
+                "title": PurePosixPath(verified_path).stem,
                 "score": result.score,
                 "semantic_score": result.semantic_score,
                 "lexical_score": result.lexical_score,
                 "snippet": result.snippet,
                 "heading": result.heading,
             }
-            for result in results
-        ],
-    }
+        )
+        if len(verified_results) >= req.limit:
+            break
+
+    return {"text": req.text, "results": verified_results}
