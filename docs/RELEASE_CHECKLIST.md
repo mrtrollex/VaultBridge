@@ -15,14 +15,14 @@ A subsequent public-history rewrite intentionally changed commit identities and 
 release candidate artifacts. Pre-rewrite commit SHAs, workflow runs, and RC1 digests are therefore
 historical evidence only and must not be used as final `v1.0.0` release evidence.
 
-The current release gate is to validate the exact rewritten source, publish and verify
-`v1.0.0-rc.2`, run the pulled-image exact-digest smoke test, and only then publish stable
-`v1.0.0`.
+The exact rewritten source and `v1.0.0-rc.2` publication, GHCR, and pulled-image runtime gates are
+complete. Stable `v1.0.0` publication and its post-publication verification are the remaining gate.
+
 | ROADMAP acceptance criterion | Status | Evidence | Still required |
 |---|---|---|---|
 | Clean install succeeds from public documentation | **PASS** | On 2026-08-25 VaultBridge was anonymously cloned from the public GitHub repository onto TrueNAS SCALE / Linux amd64 with Docker Engine 28.3.1. The generic Docker Compose deployment built successfully from source against a disposable empty vault using isolated host port `8876`. The container started successfully; `GET /health/live` returned HTTP 200 `{"ok":true}`, `GET /health/ready` returned HTTP 200 `{"ready":true}`, and authenticated `GET /api/v1/notes/list?limit=5` returned `{"folder":"","notes":[]}`. The existing production container and production vault were not modified. | Re-run deployment verification on the exact RC/stable artifacts where required by the release procedure. |
-| CI is green | **PASS** | `.github/workflows/ci.yml` represents pytest, compileall, Compose validation, and an image build. Checksum-verified actionlint 1.7.12 passed. [GitHub run 32857711831](https://github.com/mrtrollex/VaultBridge/actions/runs/32857711831) passed both `python` and `docker` on the audited `main` commit. | Require both jobs again on the exact RC/stable commit. Branch protection is not enabled, so this remains a manual release gate. |
-| Container image is published | **PENDING** | Historical `v1.0.0-rc.1` publication evidence was retired after the public-history rewrite. Its GitHub Release, Git tag, and GHCR package were removed, so the old commit/workflow/digest are not current release evidence. | Publish and verify `v1.0.0-rc.2`, including package linkage/visibility, exact tag, digest/platform, absence of stable aliases, and exact-digest smoke testing. Then repeat the stable publication checks for `v1.0.0`. |
+| CI is green | **PASS** | `.github/workflows/ci.yml` represents pytest, compileall, Compose validation, and an image build. Exact-source main [CI run 32880752547](https://github.com/mrtrollex/VaultBridge/actions/runs/32880752547) passed both `python` and `docker` on RC2 source commit `f1131ceec2c003d94af7f9c0a67a802ed067902d`. | Require both jobs again on the exact resulting stable `main`. Branch protection is not enabled, so this remains a manual release gate. |
+| Container image is published | **PASS (RC2)** | Historical RC1 evidence remains retired. RC2 source commit `f1131ceec2c003d94af7f9c0a67a802ed067902d` published through workflow run `32881004757`, with both `Verify release source` and `Build and publish` passing. `ghcr.io/mrtrollex/vaultbridge` is public and linked to `mrtrollex/VaultBridge`. Only prerelease tag `1.0.0-rc.2` was published; stable aliases `1.0.0`, `1.0`, `1`, and `latest` were absent. OCI index digest `sha256:ce5c9c75e8757389fca06e3706379f4801e03312b3852d1338d82624af0a45b2` contains the `linux/amd64` runtime manifest `sha256:dbc23ff9b921ce3e0502e2f4d3713c359c190e16ca289e21261888a6566d3d20`. Anonymous tag and exact-digest pulls passed, followed by the disposable-vault runtime smoke test. | Publish stable `v1.0.0`, verify its stable aliases and digest, and repeat the final exact-digest disposable-vault smoke test. |
 | Public API is versioned | **PASS** | `app/api/versioning.py` registers six protected legacy/v1 route pairs from shared handlers. `tests/test_api_versioning.py` passed 24 tests; `tests/test_api.py::test_router_registration_preserves_public_contract` checks all 15 public schema paths and operation IDs. Health and `/privacy` intentionally remain unversioned. | Re-run contract tests on the release commit. Keep legacy aliases until a separate migration decision. |
 | Full semantic rebuild does not block ordinary request handling | **PASS** | `tests/test_indexer.py::test_application_startup_is_non_blocking_and_shutdown_waits_for_sync` proves lifespan startup completes while full sync is blocked. `test_ordinary_http_requests_continue_during_full_rebuild` proves liveness and authenticated non-semantic `/api/v1/notes/list` requests succeed during blocked full sync. Semantic tests prove an older compatible index remains searchable during and after a failed refresh. | Preserve the precise guarantee: initial semantic search waits for readiness, and shutdown can still wait on uninterruptible model/filesystem work. |
 | Retrieval evaluation suite exists | **PASS** | `python -m pytest -q tests/eval` passed 9 tests. The deterministic production-pipeline fixture covers 13 cases: all 13/100% Hit@1/100% Hit@3/100% MRR; English 8/100%/100%/100%; Slovak 4/100%/100%/100%; cross-language 1/100%/100%/100%; heading context 2/100%/100%/100%. | Re-run without changing `tests/eval/baseline.json` merely to clear a gate. This does not measure real-model accuracy or latency. |
@@ -30,25 +30,22 @@ The current release gate is to validate the exact rewritten source, publish and 
 | Secrets are not committed or logged | **PASS** | VB-060 repeated targeted scans across 85 tracked files, 328 reachable unique blobs, and the historical source archive with zero high-confidence secret hits. Only example `.env` files are tracked; generated bundles are no longer tracked; reachable author/committer metadata uses the approved noreply/service identities. Logging/observability tests verify bodies, queries, credentials, headers, exception messages, and absolute paths are omitted. | Repeat on the final commit. This was a targeted pattern audit, not exhaustive entropy-based secret detection. Never paste resolved Compose output or environments. |
 | Upgrade/rebuild procedure is documented | **PASS** | `README.md` covers source updates, automatic signature invalidation, stopped-service `index check`, explicit `index rebuild`, and Markdown as source of truth. `README_TRUENAS.md` covers managed/source updates, bundles, rollback, automatic incompatibility rebuilds, stopped-service inspection/rebuild, and recovery. Commands match current deployment files and CLI. | Recheck if deployment files change. |
 
-The source-level ROADMAP `v1.0.0` acceptance criteria have supporting evidence, but distribution
-evidence must be re-established after the public-history rewrite. RC2 and stable publication plus
-post-publication verification remain required before declaring `v1.0.0` shipped.
+The source-level ROADMAP `v1.0.0` acceptance criteria and the rewritten-source/RC2 distribution gates
+have current supporting evidence. Stable publication and post-publication verification remain
+required before declaring `v1.0.0` shipped.
 
 ## Release blockers and exact remaining work
 
 1. Finalize `README.md`, `CHANGELOG.md`, release status documentation, and release notes.
-2. Merge this release-preparation documentation and require green `python` and `docker` CI on the
-   exact resulting `main` commit.
-3. Run the final privacy/security and source validation on that exact commit.
-4. Create and publish GitHub prerelease `v1.0.0-rc.2` from that exact commit.
-5. Require the GHCR publication workflow to succeed and verify that only `1.0.0-rc.2` is published.
-6. Verify package linkage/visibility and record the RC2 digest and platform.
-7. Pull RC2 by exact digest and run the disposable-vault smoke test.
-8. If RC2 passes, create and publish stable GitHub Release `v1.0.0`.
-9. Verify `1.0.0`, `1.0`, `1`, and `latest` resolve to the same stable digest and run the final
-   exact-digest smoke test.
-10. Record release URLs, commits, CI/publish runs, digests, platform, package visibility,
-    health/readiness, authenticated v1 behavior, and safe logs.
+2. Merge the stable-release documentation and require green `python` and `docker` CI on the exact
+   resulting `main` commit.
+3. Run final privacy/security and source validation on that exact commit.
+4. Create and publish stable GitHub Release `v1.0.0` from that commit.
+5. Require both GHCR publication jobs to pass and verify `1.0.0`, `1.0`, `1`, and `latest` resolve
+   to the same stable digest.
+6. Pull the stable image by exact digest, run the final disposable-vault smoke test, and record the
+   release URL, commit, CI/publish runs, tags, digest, platform, visibility/linkage,
+   health/readiness, authenticated v1 behavior, and safe logs.
 
 ## Supported platform statement for v1.0.0
 
@@ -58,8 +55,8 @@ post-publication verification remain required before declaring `v1.0.0` shipped.
   SCALE 24.10 or later.
 - Windows/macOS hosts: Docker Desktop may run the Linux container. Native Windows is a development
   and test environment, not a documented production deployment.
-- Published architecture: the current workflow builds only the GitHub-hosted runner's native Linux
-  architecture. Verify the RC manifest; do not claim ARM64/multi-architecture support before VB-055.
+- Published architecture: RC2 verified the workflow's `linux/amd64` runtime manifest. Do not claim
+  ARM64/multi-architecture support before VB-055.
 
 ## Version and artifact contract
 
@@ -147,7 +144,8 @@ Local pytest supports the audit; it does not prove GitHub CI is green.
 
 ## `v1.0.0-rc.2` procedure
 
-Do not execute this sequence until the remaining source gates are closed.
+This sequence completed successfully for `v1.0.0-rc.2`; the durable evidence is recorded below.
+Retain these steps as the verification procedure for future release candidates.
 
 1. Verify clean `main` and green `python`/`docker` CI on the exact commit.
 2. Record the current digest or absence of `latest` before publication.
@@ -163,6 +161,26 @@ Do not execute this sequence until the remaining source gates are closed.
 9. Inspect logs for safe lifecycle output and no secret/header/query/content/absolute-path exposure.
 10. Record workflow/package URLs, visibility/linkage, tag, digest, platform, smoke evidence, and the
     unchanged/absent `latest`. Fix blockers before stable release.
+
+## Verified `v1.0.0-rc.2` evidence
+
+- Source commit: `f1131ceec2c003d94af7f9c0a67a802ed067902d`.
+- Exact-source main CI: run `32880752547`; `python` and `docker` passed.
+- GitHub prerelease: `v1.0.0-rc.2`.
+- GHCR publish workflow: run `32881004757`; `Verify release source` and `Build and publish` passed.
+- Package: public `ghcr.io/mrtrollex/vaultbridge`, linked to `mrtrollex/VaultBridge`.
+- Published prerelease tag: `1.0.0-rc.2`; stable aliases `1.0.0`, `1.0`, `1`, and `latest` were absent.
+- OCI index digest: `sha256:ce5c9c75e8757389fca06e3706379f4801e03312b3852d1338d82624af0a45b2`.
+- `linux/amd64` runtime manifest:
+  `sha256:dbc23ff9b921ce3e0502e2f4d3713c359c190e16ca289e21261888a6566d3d20`.
+- BuildKit provenance attestation:
+  `sha256:81a78834c34d26563ad0d52497e1cef6e19fb247805c7035bee9c064ca7ab0f2`.
+- Anonymous pulls by tag and exact OCI digest passed; the tag resolved to the expected digest.
+- TrueNAS disposable-vault/data runtime smoke passed for `linux/amd64`; OCI revision/version matched
+  the source commit and `v1.0.0-rc.2`; `/health/live`, `/health/ready`, and authenticated
+  `/api/v1/notes/list` passed; logs contained neither the API key nor disposable host path; and the
+  disposable container/data were removed.
+- Stable `v1.0.0` has not yet shipped; stable publication and post-publication verification remain.
 
 ## Stable `v1.0.0` procedure
 
