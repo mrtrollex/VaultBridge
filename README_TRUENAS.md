@@ -431,8 +431,9 @@ commands into the TrueNAS-managed app sequence.
 
 ## Offline semantic-index maintenance
 
-VaultBridge has no cross-process semantic-index lock. Stop the API service before `index check` or
-`index rebuild`, and do not use `docker exec` against the running API container.
+VaultBridge has no cross-process semantic-index lock. Stop the API service before `status`, `index`,
+`reindex`, `index check`, or `index rebuild`, and do not use `docker exec` against the running API
+container.
 
 For a TrueNAS-managed app, stop it in the Apps UI and confirm that the serving container is absent:
 
@@ -451,15 +452,26 @@ check_status=$?
 printf 'index check exit: %s\n' "$check_status"
 ```
 
-Review the result before choosing a rebuild. If the issue is a corrupt/incompatible derived index
-and the vault and permissions are healthy:
+To bring a compatible derived index up to date without resetting it:
 
 ```bash
 docker compose -f compose.truenas.yml run --rm --no-deps --build \
-  obsidian-api python -m app.cli index rebuild
-rebuild_status=$?
-printf 'index rebuild exit: %s\n' "$rebuild_status"
+  obsidian-api python -m app.cli index
 ```
+
+Review the check result before choosing a clean rebuild. If the issue is a corrupt/incompatible
+derived index and the vault and permissions are healthy:
+
+```bash
+docker compose -f compose.truenas.yml run --rm --no-deps --build \
+  obsidian-api python -m app.cli reindex
+rebuild_status=$?
+printf 'reindex exit: %s\n' "$rebuild_status"
+```
+
+`index` updates a compatible derived index without resetting it. `reindex` is equivalent to the
+still-supported `index rebuild` command and performs a clean derived-data rebuild. Both use the
+production synchronization path and leave Markdown unchanged.
 
 Exit codes are stable:
 

@@ -33,6 +33,7 @@ Completed:
 - VB-044 — Liveness and readiness endpoints
 - VB-045 — Index integrity/rebuild CLI
 - VB-050 — Introduce `/api/v1`
+- VB-051 — Add VaultBridge CLI
 - VB-052 — Generic Docker deployment docs
 - VB-053 — TrueNAS deployment docs
 - VB-054 — Publish GHCR image workflow
@@ -49,7 +50,7 @@ Post-v1 development position:
 
 Next recommended backlog task:
 
-- **VB-051 — Add VaultBridge CLI**
+- **VB-032 — Section-level update design/ADR**
 
 Current v1.0 release status:
 
@@ -79,7 +80,7 @@ Current v1.0 release status:
 Current milestones:
 
 - **Milestone 5 — Operational maturity and security (complete)**
-- **Milestone 6 — Public API and developer experience (active)**
+- **Milestone 6 — Public API and developer experience (complete)**
 - **Milestone 7 — Distribution and `v1.0.0` (complete)**
 
 ## Working production characteristics
@@ -127,7 +128,9 @@ Current milestones:
   whose resolved paths remain under the resolved vault root, then stat/read those validated paths
 - safe internal file symlinks return one canonical vault-relative path; external and broken symlinks
   are skipped without per-file logging
-- standard-library `index check` and offline `index rebuild` administrative CLI commands
+- standard-library local CLI with read-only `status`, literal `search`, existing-index semantic
+  `related`, offline incremental `index`, and clean `reindex`; the VB-045 `index check` and
+  `index rebuild` administrative commands remain supported
 - successful full synchronization persists `last_successful_sync`; targeted refresh does not change it
 - TrueNAS container commonly runs as UID/GID 568
 - existing production deployment uses port 8765 → 8000
@@ -504,6 +507,18 @@ Focused CLI run:
 
 ```text
 30 passed
+```
+
+Focused VB-051 CLI run:
+
+```text
+47 passed, 1 privilege-dependent symlink test skipped
+```
+
+Full native-Windows suite after VB-051:
+
+```text
+369 passed, 14 privilege-dependent symlink tests skipped
 ```
 
 Focused health/readiness run:

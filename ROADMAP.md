@@ -346,7 +346,7 @@ vault containment and Markdown-file verification, return canonical paths/titles,
 overfetch to backfill filtered stale candidates without changing ranking or response fields. Live
 content edits can still leave semantic scores/snippets stale until synchronization.
 
-### VB-032 — Section-level update design / ADR — P1
+### VB-032 — Section-level update design / ADR — P1 ← NEXT
 
 Design concurrency and section identity before implementation.
 
@@ -384,7 +384,7 @@ adds no Redis, service, background worker, or dependency.
 
 ---
 
-# Milestone 6 — Public API and developer experience — ACTIVE
+# Milestone 6 — Public API and developer experience ✅ COMPLETE
 
 **Goal:** make VaultBridge easy to understand and deploy by someone other than the original author.
 
@@ -394,7 +394,12 @@ New integrations use the stable `/api/v1` note/search namespace and explicit `*V
 The original unversioned paths and operation IDs remain compatibility aliases for the existing
 ChatGPT Action and other clients. Operational health probes remain unversioned.
 
-### VB-051 — VaultBridge CLI — P1 ← NEXT
+### VB-051 — VaultBridge CLI — P1 ✅
+
+The standard-library local CLI exposes read-only status, literal search, and existing-index semantic
+retrieval plus stopped-service incremental indexing and clean reindexing. It reuses `VaultService`
+and `SemanticSearchService`, preserves the VB-045 `index check`/`index rebuild` interface, validates
+vault-relative folders, and live-verifies semantic result paths before display.
 ### VB-052 — Generic Docker deployment docs — P0 ✅
 ### VB-053 — TrueNAS deployment docs — P0 ✅
 

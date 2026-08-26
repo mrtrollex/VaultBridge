@@ -8,6 +8,9 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ### Added
 
+- a dependency-free local CLI with persisted `status`, offline incremental `index`, clean `reindex`,
+  literal `search`, and existing-index semantic `related` commands, while retaining VB-045
+  `index check` and `index rebuild`
 - protected legacy and `/api/v1` advisory duplicate-candidate routes combining conservative live
   title equivalence with one existing semantic search, VB-031 live-path verification, deterministic
   exact-first merging, and no note or semantic-index writes

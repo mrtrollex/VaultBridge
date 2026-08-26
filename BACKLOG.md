@@ -330,7 +330,7 @@ Hardened the existing related-note contract without adding backlink writes or an
 - verification is read-only. Externally edited live note content can still leave scores, snippets,
   and headings stale until normal synchronization updates the derived index.
 
-### VB-032 — Section-level update design/ADR — P1
+### VB-032 — Section-level update design/ADR — P1 ▶
 
 Design before implementation.
 
@@ -471,7 +471,9 @@ disabled. Contract tests cover methods, schemas, auth, success/validation/failur
 operation IDs, shared endpoint ownership, exactly-once domain calls, and versioned route-template
 logging.
 
-### VB-051 — Add VaultBridge CLI — P1 ▶
+### VB-051 — Add VaultBridge CLI — P1 ✅
+
+**Status:** Completed on 2026-08-26.
 
 Commands:
 
@@ -482,6 +484,14 @@ reindex
 search
 related
 ```
+
+The standard-library local CLI now reuses the production vault and semantic services. `status`
+shares VB-045's immutable persisted inspection; `index` runs an offline incremental/full sync without
+discarding a compatible index; `reindex` is the friendly alias for the existing clean rebuild;
+`search` uses literal title/content search without embeddings; and `related` queries an existing
+compatible semantic index without synchronizing it. Search folders use the vault-relative
+containment boundary, and semantic paths are live-verified before display. The VB-045 `index check`
+and `index rebuild` commands and exit-code contract remain supported.
 
 ### VB-052 — Generic Docker deployment docs — P0 ✅
 
@@ -620,6 +630,7 @@ release-version alignment, and repository-exposure-safety blockers. The reposito
 GHCR verification, RC smoke-test, and final stable-release gates recorded in
 `docs/RELEASE_CHECKLIST.md`.
 
-VB-051 is the next recommended P1 task in the active developer-experience milestone.
+VB-051 completes the developer-experience milestone. VB-032 is the next recommended unblocked P1:
+its section-identity and concurrency ADR is required before VB-033 can be implemented.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

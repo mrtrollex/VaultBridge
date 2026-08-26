@@ -246,6 +246,17 @@ Schema availability and search readiness are separate conditions.
 
 ### Operational index maintenance
 
+`python -m app.cli` is a standard-library local interface over existing domain services. `search`
+calls `VaultService.search_notes()` and never constructs an embedder. `related` queries a compatible
+persisted index without synchronizing it, preserves production ranking, and passes every candidate
+through `VaultService.verify_existing_markdown_path()` before displaying a vault-relative path.
+Both commands accept only validated vault-relative folders. `status` shares the VB-045 immutable
+persisted-index inspection and formatting described below.
+
+`index` runs the production `SemanticSearchService.sync()` path without first resetting a compatible
+index. `reindex` is a top-level alias for the existing `index rebuild` clean-rebuild path. Both are
+offline derived-index writes; Markdown remains authoritative and unchanged.
+
 `python -m app.cli index check` is a stopped-service, persisted-storage administrative view. It uses an
 immutable SQLite connection and refuses inspection when WAL/SHM sidecars exist, so the complete
 semantic storage remains filesystem-unchanged. It checks only vault inspectability, SQLite
@@ -265,9 +276,10 @@ If SQLite explicitly reports the derived database as corrupt or not a database, 
 it, removes only the configured database and its SQLite sidecars, and recreates current storage before
 full synchronization. Other database errors are not treated as corruption.
 
-VaultBridge has no cross-process synchronization lock, so the server must be stopped before check or
-rebuild; the CLI does not
-claim or introduce multi-process coordination.
+VaultBridge has no cross-process synchronization lock, so the server must be stopped before
+`status`/`index check`, `index`, `reindex`, or `index rebuild`. The CLI does not claim or introduce
+multi-process coordination. Literal and semantic query commands do not intentionally mutate the
+vault or index, but they are local filesystem/SQLite readers rather than a remote concurrency layer.
 
 ---
 
