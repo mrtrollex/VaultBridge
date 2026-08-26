@@ -40,9 +40,11 @@ Completed:
 
 Next required v1.0 release work:
 
-- **complete final privacy/security and release validation on the exact rewritten `main`, publish
-  and verify `v1.0.0-rc.2`, run the exact-digest pulled-image disposable-vault smoke test, then
-  publish stable `v1.0.0` and verify its stable GHCR aliases and digest**
+- finalize stable documentation
+- require green CI and final validation on the exact resulting `main`
+- publish stable `v1.0.0`
+- verify the stable GHCR aliases and digest
+- run the final exact-digest disposable-vault smoke test
 
 Next recommended backlog task:
 
@@ -50,11 +52,14 @@ Next recommended backlog task:
 
 Current v1.0 release status:
 
-- **the public repository history has been rewritten and the rewritten `main` is the release source
-  of truth. The historical `v1.0.0-rc.1` candidate was retired after that rewrite; its GitHub
-  Release, Git tag, and GHCR package were removed. Its old commit, workflow, digest, and runtime
-  verification are therefore no longer current release evidence. `v1.0.0-rc.2` publication and
-  verification are the next release gate before stable `v1.0.0`**
+- the public repository history has been rewritten and the rewritten `main` is the release source
+  of truth
+- the historical `v1.0.0-rc.1` candidate was retired after that rewrite; its GitHub Release, Git
+  tag, GHCR package, old commit, workflow, digest, and runtime verification are not current release
+  evidence
+- `v1.0.0-rc.2` passed exact-source CI, GitHub prerelease publication, GHCR publication, public
+  package/repository linkage, tag/digest verification, and disposable-vault runtime smoke testing
+- stable `v1.0.0` publication and post-publication verification remain
 
 Current milestones:
 
@@ -120,8 +125,25 @@ Current milestones:
 - historical prerelease `v1.0.0-rc.1` was retired after the public-history rewrite; its GitHub
   Release, Git tag, and GHCR package were removed and its old SHA/workflow/digest are not current
   release evidence
-- the next distribution gate is `v1.0.0-rc.2` from the exact final rewritten `main`, followed by
-  exact-digest runtime smoke testing before stable `v1.0.0`
+- current prerelease `v1.0.0-rc.2` was built from release source commit
+  `f1131ceec2c003d94af7f9c0a67a802ed067902d`; exact-source main CI run `32880752547` passed both
+  `python` and `docker`
+- GitHub prerelease `v1.0.0-rc.2` is published; GHCR publish workflow run `32881004757` passed both
+  `Verify release source` and `Build and publish`
+- `ghcr.io/mrtrollex/vaultbridge` is public and linked to `mrtrollex/VaultBridge`; the published
+  prerelease tag is `1.0.0-rc.2`, while stable aliases `1.0.0`, `1.0`, `1`, and `latest` were not
+  created
+- the RC2 OCI index digest is
+  `sha256:ce5c9c75e8757389fca06e3706379f4801e03312b3852d1338d82624af0a45b2`; its `linux/amd64`
+  runtime manifest is `sha256:dbc23ff9b921ce3e0502e2f4d3713c359c190e16ca289e21261888a6566d3d20`
+- the RC2 BuildKit provenance attestation is
+  `sha256:81a78834c34d26563ad0d52497e1cef6e19fb247805c7035bee9c064ca7ab0f2`
+- TrueNAS RC2 verification anonymously pulled the image by tag and exact OCI digest using disposable
+  vault/data; the tag resolved to the expected digest, the platform and OCI revision/version labels
+  matched, liveness, readiness, and authenticated `/api/v1/notes/list` passed, logs exposed neither
+  the API key nor disposable host path, and the disposable container/data were removed
+- stable `v1.0.0` publication, stable-alias/digest verification, and the final exact-digest
+  disposable-vault smoke test remain
 
 ## Current implementation boundaries
 

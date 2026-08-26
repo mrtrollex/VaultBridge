@@ -6,7 +6,7 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ## [Unreleased]
 
-## [1.0.0] - TBD
+## [1.0.0] - 2026-08-26
 
 ### Added
 
@@ -79,4 +79,3 @@ The project intends to follow Semantic Versioning after the public repository ba
 - public repository availability and the generic Docker clean-install path were verified from an
   anonymous clone on TrueNAS SCALE / Linux amd64 with a disposable vault; source build, container
   startup, liveness, readiness, and authenticated `/api/v1` note listing all passed
-  
