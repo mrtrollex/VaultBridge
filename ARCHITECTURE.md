@@ -55,6 +55,7 @@ app/core/config.py   typed environment configuration
 app/core/logging.py  structured VaultBridge application logging
 app/core/observability.py request correlation and HTTP lifecycle timing
 app/services/vault.py safe path resolution, Markdown note operations and contained note counting
+app/services/duplicate_candidates.py live-title and verified semantic candidate composition
 app/services/semantic_search.py embedding, incremental indexing, hybrid ranking and semantic health state
 app/services/indexer.py one in-process full/targeted synchronization worker and deduplicating path queue
 app/repositories/semantic.py SQLite schema, semantic index persistence and read-only status statistics
@@ -70,7 +71,8 @@ dependencies, request/response models, service calls, exception handling, and co
 request therefore executes one domain operation.
 
 Legacy operation IDs remain `createNote`, `appendNote`, `readNote`, `searchNotes`,
-`findRelatedNotes`, and `listNotes`. Their v1 counterparts use the explicit stable `V1` suffix.
+`findRelatedNotes`, `findDuplicateCandidates`, and `listNotes`. Their v1 counterparts use the
+explicit stable `V1` suffix.
 New integrations should use `/api/v1`; removal of compatibility paths requires a separate project
 decision.
 
@@ -412,6 +414,34 @@ vault and optional folder survive; safe internal aliases become canonical vault-
 titles. Filtering is read-only and preserves surviving rank order. Semantic score, lexical score,
 combined score, heading, and snippet still reflect the indexed snapshot, so an externally edited
 live note can retain stale semantic fields until normal synchronization runs.
+
+### Duplicate-candidate discovery
+
+```text
+prospective title + optional text
+  ↓
+conservative live filename equivalence ───────┐
+  ↓                                           │
+one existing semantic search                  │
+  ↓                                           │
+VB-031 live Markdown path verification        │
+  └───────────────────────────────────────────┘
+  ↓
+canonical-path merge: exact title first, then semantic order
+  ↓
+caller-visible limit → advisory response only
+```
+
+The service scans contained live user-note filenames without reading their bodies, excluding the
+same internal service directories used by semantic indexing. Title equivalence uses NFKC, trim,
+Unicode casefolding, and collapsed whitespace; it does not use fuzzy or substring matching. One
+bounded semantic query uses the existing ranking unchanged, and every derived semantic path is
+verified against the live vault before merging. An overlap remains `exact_title` while retaining its
+semantic scores/snippet. Semantic-only evidence indicates relatedness, not a duplicate verdict.
+
+If semantic search is unavailable, live exact-title candidates can still be returned; with no exact
+evidence the existing semantic-unavailable HTTP response is preserved. The operation is read-only:
+it does not merge, create, append, rename, delete, add backlinks, enqueue indexing, or mutate SQLite.
 
 ### Note write
 

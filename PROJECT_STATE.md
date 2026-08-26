@@ -24,6 +24,7 @@ Completed:
 - VB-021 — Embed title + heading hierarchy + chunk
 - VB-022 — Retrieval evaluation fixture
 - VB-024 — Tune hybrid ranking from evaluation data
+- VB-030 — Duplicate candidate service
 - VB-031 — Verified related-note suggestions
 - VB-040 — Structured JSON logging
 - VB-041 — Request IDs and latency logging
@@ -113,6 +114,9 @@ Current milestones:
 - existing unversioned note/search paths and operation IDs remain compatibility aliases
 - legacy and `/api/v1` related-note results are filtered through live `VaultService` containment and
   regular-Markdown verification, return canonical paths/titles, and boundedly backfill stale entries
+- protected legacy and `/api/v1` duplicate-candidate routes compose conservative live title evidence
+  with one verified semantic search, return exact-title candidates before semantic-only candidates,
+  and remain advisory and read-only with no automatic merge or index mutation
 - literal search, note listing, and semantic full synchronization enumerate only Markdown targets
   whose resolved paths remain under the resolved vault root, then stat/read those validated paths
 - safe internal file symlinks return one canonical vault-relative path; external and broken symlinks

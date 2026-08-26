@@ -183,6 +183,23 @@ class VaultService:
         except (OSError, RuntimeError, ValueError, VaultValidationError):
             return None
 
+    def live_markdown_paths(self, *, folder: str = "") -> list[str]:
+        """Return deterministic canonical paths for live user-note Markdown files."""
+        root = self.resolve_path(folder) if folder else self.vault_root
+        if not root.is_dir():
+            return []
+
+        paths: list[str] = []
+        for path in contained_markdown_files(self.vault_root, root):
+            try:
+                relative_path = path.relative_to(self.vault_root)
+            except ValueError:
+                continue
+            if any(part in SEMANTIC_EXCLUDED_DIRECTORIES for part in relative_path.parts):
+                continue
+            paths.append(relative_path.as_posix())
+        return sorted(paths, key=lambda path: (path.casefold(), path))
+
     def create_note(
         self,
         *,

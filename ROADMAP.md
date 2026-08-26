@@ -330,9 +330,13 @@ Candidate metrics:
 
 **Goal:** let clients maintain a knowledge base safely, not merely search it.
 
-### VB-030 — Duplicate candidate service — P1
+### VB-030 — Duplicate candidate service — P1 ✅
 
-Return candidates only; no automatic merging.
+The protected legacy and `/api/v1` duplicate-candidate routes now combine conservative live filename
+equivalence with one existing semantic search. Exact-title evidence leads semantic-only results; all
+semantic paths cross the VB-031 live Markdown verification boundary, and bounded overfetch is applied
+before canonical-path deduplication and the caller limit. The result is advisory: semantic similarity
+is not a duplicate verdict, and the operation performs no merge, note write, or index mutation.
 
 ### VB-031 — Verified related-note suggestions — P1 ✅
 
