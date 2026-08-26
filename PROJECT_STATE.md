@@ -4,7 +4,7 @@ This document is the current factual snapshot for future Codex sessions. It shou
 
 ## Baseline date
 
-2026-08-25
+2026-08-26
 
 ## Current development position
 
@@ -38,13 +38,10 @@ Completed:
 - VB-059 — Align v1.0 version metadata
 - VB-060 — Public repository exposure audit
 
-Next required v1.0 release work:
+Post-v1 development position:
 
-- finalize stable documentation
-- require green CI and final validation on the exact resulting `main`
-- publish stable `v1.0.0`
-- verify the stable GHCR aliases and digest
-- run the final exact-digest disposable-vault smoke test
+- stable `v1.0.0` is released and all v1.0 release gates are complete
+- optional and future backlog work continues independently of the completed v1.0 release
 
 Next recommended backlog task:
 
@@ -52,20 +49,34 @@ Next recommended backlog task:
 
 Current v1.0 release status:
 
-- the public repository history has been rewritten and the rewritten `main` is the release source
-  of truth
+- stable `v1.0.0` was published from source commit
+  `1a430996c9db331f448339d233e940d7aa7b3b6d`; exact-main CI run `32932765995` passed both `python`
+  and `docker`
+- Git tag `v1.0.0` identifies the stable, non-prerelease GitHub Release
+  [VaultBridge v1.0.0](https://github.com/mrtrollex/VaultBridge/releases/tag/v1.0.0)
+- GHCR publish workflow run `32932955416` passed `Verify release source` and `Build and publish`;
+  `ghcr.io/mrtrollex/vaultbridge` is public and linked to `mrtrollex/VaultBridge`
+- stable aliases `1.0.0`, `1.0`, `1`, and `latest` all resolve to OCI index
+  `sha256:0b6734d485df83326cac0ea394b17aaa86fde0be4f7ad7dca9ca49cb531ead71`
+- the verified `linux/amd64` runtime manifest is
+  `sha256:577522d36484888de6620cd168d9129c7c9ecbb44d1be35260956ca54ecc6791`; OCI revision, version,
+  source, and MIT license labels matched the stable release
+- anonymous exact-digest TrueNAS smoke testing passed startup, liveness, readiness, authenticated
+  `/api/v1/notes/list`, safe-log, and disposable-cleanup checks
+- all `v1.0.0` release gates are complete
+- the public repository history rewrite remains part of the release history; the final stable source
+  above is the authoritative release commit
 - the historical `v1.0.0-rc.1` candidate was retired after that rewrite; its GitHub Release, Git
   tag, GHCR package, old commit, workflow, digest, and runtime verification are not current release
   evidence
-- `v1.0.0-rc.2` passed exact-source CI, GitHub prerelease publication, GHCR publication, public
-  package/repository linkage, tag/digest verification, and disposable-vault runtime smoke testing
-- stable `v1.0.0` publication and post-publication verification remain
+- `v1.0.0-rc.2` remains verified historical prerelease evidence, distinct from the final stable
+  release evidence
 
 Current milestones:
 
 - **Milestone 5 — Operational maturity and security (active)**
 - **Milestone 6 — Public API and developer experience (active)**
-- **Milestone 7 — Distribution and `v1.0.0` (active)**
+- **Milestone 7 — Distribution and `v1.0.0` (complete)**
 
 ## Working production characteristics
 
@@ -125,7 +136,7 @@ Current milestones:
 - historical prerelease `v1.0.0-rc.1` was retired after the public-history rewrite; its GitHub
   Release, Git tag, and GHCR package were removed and its old SHA/workflow/digest are not current
   release evidence
-- current prerelease `v1.0.0-rc.2` was built from release source commit
+- historical verified prerelease `v1.0.0-rc.2` was built from release source commit
   `f1131ceec2c003d94af7f9c0a67a802ed067902d`; exact-source main CI run `32880752547` passed both
   `python` and `docker`
 - GitHub prerelease `v1.0.0-rc.2` is published; GHCR publish workflow run `32881004757` passed both
@@ -142,8 +153,23 @@ Current milestones:
   vault/data; the tag resolved to the expected digest, the platform and OCI revision/version labels
   matched, liveness, readiness, and authenticated `/api/v1/notes/list` passed, logs exposed neither
   the API key nor disposable host path, and the disposable container/data were removed
-- stable `v1.0.0` publication, stable-alias/digest verification, and the final exact-digest
-  disposable-vault smoke test remain
+- stable `v1.0.0` source commit is `1a430996c9db331f448339d233e940d7aa7b3b6d`; exact-main CI run
+  `32932765995` passed `python` and `docker`
+- stable Git tag `v1.0.0` and non-prerelease GitHub Release
+  `https://github.com/mrtrollex/VaultBridge/releases/tag/v1.0.0` are published
+- stable GHCR workflow run `32932955416` passed `Verify release source` and `Build and publish`;
+  package `ghcr.io/mrtrollex/vaultbridge` is public and linked to `mrtrollex/VaultBridge`
+- stable aliases `1.0.0`, `1.0`, `1`, and `latest` all resolve to OCI index
+  `sha256:0b6734d485df83326cac0ea394b17aaa86fde0be4f7ad7dca9ca49cb531ead71`
+- the stable `linux/amd64` runtime manifest is
+  `sha256:577522d36484888de6620cd168d9129c7c9ecbb44d1be35260956ca54ecc6791`; the BuildKit provenance
+  attestation is `sha256:1b1c0596963f5c1ab56e628b9faecf39b8943d304ce46263ed47ff2e5ffe8aec`
+- stable OCI metadata verified revision `1a430996c9db331f448339d233e940d7aa7b3b6d`, version `v1.0.0`,
+  source `https://github.com/mrtrollex/VaultBridge`, license `MIT`, and platform `linux/amd64`
+- final TrueNAS stable verification anonymously pulled the public image by exact OCI digest using
+  disposable vault/data; the pull, platform, revision/version, startup, `/health/live`,
+  `/health/ready`, authenticated `/api/v1/notes/list`, safe-log, and disposable-cleanup checks passed
+- all stable `v1.0.0` release gates are complete
 
 ## Current implementation boundaries
 

@@ -16,9 +16,11 @@
 
 ---
 
-# Current project state — `v1.0.0` release preparation
+# Current project state — `v1.0.0` released; post-v1 development
 
-VaultBridge has moved beyond the original prototype and now has explicit API, service, repository, and configuration boundaries.
+VaultBridge `v1.0.0` has shipped with its stable release and distribution evidence verified.
+Post-v1 development continues through the open knowledge-maintenance, operational-security, and
+developer-experience backlog without changing the completed v1.0 release scope.
 
 ## Current architecture
 
@@ -90,20 +92,20 @@ app/semantic.py                 legacy compatibility facade
 
 ## Current verified baseline
 
-At completion of VB-054:
+At stable `v1.0.0` release completion:
 
 ```text
-latest verified test baseline is recorded in PROJECT_STATE.md
-Ruff passed
-compileall passed
-git diff --check passed
-generic deployment contract statically verified against Compose, Dockerfile, settings, and routes
-TrueNAS runbook contract statically verified against its include, Compose, Dockerfile, settings,
-routes, CLI, health, and logging behavior
-GHCR release workflow syntax, action pins, permissions, tags, OCI labels, build inputs, architecture
-scope, and publish isolation statically verified
-Docker and Docker Compose runtime validation unavailable in the current environment
+stable release source commit: 1a430996c9db331f448339d233e940d7aa7b3b6d
+exact-main CI run 32932765995: python PASS, docker PASS
+stable GitHub Release: v1.0.0
+GHCR publish workflow run 32932955416: Verify release source PASS, Build and publish PASS
+public package and repository linkage verified
+stable aliases and exact OCI digest verified for linux/amd64
+anonymous exact-digest TrueNAS disposable-vault runtime smoke test PASS
 ```
+
+The immutable artifact values and complete release evidence are recorded in
+[`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md).
 
 ## Current known limitations
 
@@ -350,7 +352,7 @@ No invented wikilink targets.
 
 ---
 
-# Milestone 5 — Operational maturity and security
+# Milestone 5 — Operational maturity and security — ACTIVE
 
 **Goal:** make VaultBridge predictable to run continuously on NAS/server hardware.
 
@@ -365,7 +367,7 @@ Do not add Redis.
 
 ---
 
-# Milestone 6 — Public API and developer experience
+# Milestone 6 — Public API and developer experience — ACTIVE
 
 **Goal:** make VaultBridge easy to understand and deploy by someone other than the original author.
 
@@ -388,7 +390,7 @@ ChatGPT Action remains an integration example, not the core product identity.
 
 ---
 
-# Milestone 7 — Distribution and `v1.0.0`
+# Milestone 7 — Distribution and `v1.0.0` ✅ COMPLETE
 
 **Goal:** ship VaultBridge as a polished public open-source project.
 
@@ -445,12 +447,13 @@ explicit leases. The repository is now public and the anonymous clean-install ga
 - [x] secrets are not committed or logged
 - [x] upgrade/rebuild procedure is documented
 
-VB-056 evidence and the exact remaining release gates are recorded in
+VB-056 and final stable release evidence are recorded in
 [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md). VB-057 closes the confirmed literal
 search/list symlink-containment bypass after focused Linux and compatibility review, VB-059 closes
-the version-alignment blocker, and VB-060 closes the repository-exposure-safety blocker. Public repository visibility and anonymous isolated clean installation are now verified.
-RC/GHCR publication and verification and the pulled-image RC smoke test are complete.
-Final stable `v1.0.0` publication and post-publication verification remain as the release gates.
+the version-alignment blocker, and VB-060 closes the repository-exposure-safety blocker. Public
+repository visibility, anonymous isolated clean installation, RC2 verification, stable GitHub/GHCR
+publication, stable alias/digest verification, and final exact-digest TrueNAS smoke testing are
+complete. Milestone 7 is complete; VB-055 remains an optional post-v1 P1 improvement.
 
 ---
 
@@ -524,10 +527,12 @@ VB-024  ✓
 OPERATIONS / KNOWLEDGE / DX
 ...
    ↓
-v1.0.0
+v1.0.0 ✓
 ```
 
-`VB-014`, `VB-023`, and other P1/P2 tasks may be scheduled when their prerequisites exist and their value is demonstrated.
+`v1.0.0` has shipped. Milestones 4, 5, and 6 retain their open future/P1 work; `VB-014`, `VB-023`,
+and other P1/P2 tasks may be scheduled when their prerequisites exist and their value is
+demonstrated. No v1.1 scope is implied.
 
 ---
 
