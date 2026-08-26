@@ -5,6 +5,7 @@ import hmac
 from fastapi import Depends, Header, HTTPException, Request, status
 
 from app.core.config import Settings
+from app.services.duplicate_candidates import DuplicateCandidateService
 from app.services.indexer import BackgroundSemanticIndexer
 from app.services.semantic_search import SemanticSearchService
 from app.services.vault import VaultService
@@ -24,6 +25,10 @@ def get_semantic_search_service(request: Request) -> SemanticSearchService:
 
 def get_semantic_indexer(request: Request) -> BackgroundSemanticIndexer:
     return request.app.state.semantic_indexer
+
+
+def get_duplicate_candidate_service(request: Request) -> DuplicateCandidateService:
+    return request.app.state.duplicate_candidate_service
 
 
 def require_auth(

@@ -15,6 +15,7 @@ from app.api.search import router as search_router
 from app.core.config import Settings
 from app.core.logging import configure_application_logging, log_event
 from app.core.observability import RequestObservabilityMiddleware
+from app.services.duplicate_candidates import DuplicateCandidateService
 from app.services.indexer import BackgroundSemanticIndexer
 from app.services.semantic_search import (
     SemanticSearchService,
@@ -118,6 +119,7 @@ async def handle_vault_service_error(_request: Request, exc: VaultServiceError) 
 def create_app(
     *,
     settings: Settings | None = None,
+    duplicate_candidate_service: DuplicateCandidateService | None = None,
     semantic_search_service: SemanticSearchService | None = None,
     semantic_indexer: BackgroundSemanticIndexer | None = None,
     vault_service: VaultService | None = None,
@@ -132,6 +134,14 @@ def create_app(
         vault_service
         if vault_service is not None
         else VaultService(vault_root=app_settings.vault_path, max_note_bytes=app_settings.max_note_bytes)
+    )
+    app_duplicate_candidate_service = (
+        duplicate_candidate_service
+        if duplicate_candidate_service is not None
+        else DuplicateCandidateService(
+            vault_service=app_vault_service,
+            semantic_search_service=app_semantic_search_service,
+        )
     )
     app_semantic_indexer = (
         semantic_indexer
@@ -152,6 +162,7 @@ def create_app(
         lifespan=lifespan,
     )
     application.state.settings = app_settings
+    application.state.duplicate_candidate_service = app_duplicate_candidate_service
     application.state.semantic_search_service = app_semantic_search_service
     application.state.semantic_indexer = app_semantic_indexer
     application.state.vault_service = app_vault_service

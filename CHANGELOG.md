@@ -8,6 +8,9 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ### Added
 
+- protected legacy and `/api/v1` advisory duplicate-candidate routes combining conservative live
+  title equivalence with one existing semantic search, VB-031 live-path verification, deterministic
+  exact-first merging, and no note or semantic-index writes
 - an operator-controlled API-key rotation window using required current `API_KEY` plus one optional
   secret-safe `API_KEY_PREVIOUS`, shared by legacy and `/api/v1` protected routes with constant-time
   Bearer comparison and no authentication-contract or health-route changes

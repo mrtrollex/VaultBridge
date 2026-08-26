@@ -290,9 +290,25 @@ No arbitrary weight changes without before/after evaluation results.
 
 ## Knowledge operations
 
-### VB-030 — Duplicate candidate service — P1
+### VB-030 — Duplicate candidate service — P1 ✅
 
-Return candidates only; no automatic merges.
+**Status:** Completed on 2026-08-26.
+
+Added one advisory, read-only operation under shared legacy and `/api/v1` routes:
+
+- live filename titles use NFKC normalization, trim, Unicode casefolding, and collapsed whitespace;
+  fuzzy and substring-only matches are not exact-title evidence;
+- one existing semantic search call supplies conceptual candidates without changing ranking, model,
+  chunking, index signature, or persistence;
+- every semantic path is verified against the live contained Markdown vault through the VB-031
+  boundary before response serialization;
+- exact-title candidates lead, semantic-only candidates retain semantic order, canonical paths are
+  deduplicated, semantic evidence enriches overlapping exact matches, and bounded overfetch precedes
+  the caller-visible limit;
+- semantic unavailability falls back to exact-title evidence when present and otherwise retains the
+  semantic-search `503`; unexpected programming failures are not converted into that expected error;
+- results are candidates, not duplicate verdicts. No note or semantic-index write, merge, append,
+  rename, delete, backlink insertion, or reindex is performed.
 
 ### VB-031 — Verified related-note suggestions — P1 ✅
 

@@ -35,6 +35,7 @@ The vault is never replaced by the index and there is no general filesystem endp
 - read one note
 - literal text search
 - multilingual semantic related-note search
+- advisory live duplicate-candidate discovery before note creation
 - hybrid semantic + lexical ranking
 - list notes
 - Bearer API-key authentication
@@ -56,6 +57,7 @@ New integrations should use the versioned application API:
 | GET | `/api/v1/notes/read` | `readNoteV1` |
 | POST | `/api/v1/notes/search` | `searchNotesV1` |
 | POST | `/api/v1/notes/related` | `findRelatedNotesV1` |
+| POST | `/api/v1/notes/duplicates` | `findDuplicateCandidatesV1` |
 | GET | `/api/v1/notes/list` | `listNotesV1` |
 
 Existing clients may continue using the unversioned compatibility layer:
@@ -67,6 +69,7 @@ Existing clients may continue using the unversioned compatibility layer:
 | `/notes/read` | `readNote` | `/api/v1/notes/read` |
 | `/notes/search` | `searchNotes` | `/api/v1/notes/search` |
 | `/notes/related` | `findRelatedNotes` | `/api/v1/notes/related` |
+| `/notes/duplicates` | `findDuplicateCandidates` | `/api/v1/notes/duplicates` |
 | `/notes/list` | `listNotes` | `/api/v1/notes/list` |
 
 Both paths in each pair use the same authentication, validation, response, error, and domain-service
@@ -142,6 +145,21 @@ curl -X POST http://127.0.0.1:8765/api/v1/notes/related \
   -H "Content-Type: application/json" \
   -d '{"text":"professional courses and certifications","limit":5}'
 ```
+
+Before creating a note, clients can request advisory duplicate candidates:
+
+```bash
+curl -X POST http://127.0.0.1:8765/api/v1/notes/duplicates \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Professional certifications","text":"Courses, exams, and renewal notes","limit":5}'
+```
+
+The response contains only real live vault notes. Conservative normalized filename equivalence is
+reported as `exact_title` and is stronger evidence than semantic relatedness; a `semantic` match does
+not prove that two notes are duplicates. Semantic paths are verified against the live vault before
+return, and the operation never merges, creates, appends, renames, deletes, or otherwise writes notes
+or the semantic index.
 
 ## Docker quick start
 

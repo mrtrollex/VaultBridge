@@ -95,6 +95,18 @@ API_CONTRACT_CASES = (
         service_method="search",
     ),
     ApiContractCase(
+        method="POST",
+        legacy_path="/notes/duplicates",
+        v1_path="/api/v1/notes/duplicates",
+        legacy_operation_id="findDuplicateCandidates",
+        v1_operation_id="findDuplicateCandidatesV1",
+        success_kwargs={"json": {"title": "Seed"}},
+        validation_kwargs={"json": {}},
+        failure_kwargs={"json": {"title": "Seed", "folder": "../"}},
+        service_owner="duplicate_candidate_service",
+        service_method="find_candidates",
+    ),
+    ApiContractCase(
         method="GET",
         legacy_path="/notes/list",
         v1_path="/api/v1/notes/list",
