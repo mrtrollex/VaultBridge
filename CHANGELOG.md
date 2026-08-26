@@ -14,6 +14,9 @@ The project intends to follow Semantic Versioning after the public repository ba
 - an operator-controlled API-key rotation window using required current `API_KEY` plus one optional
   secret-safe `API_KEY_PREVIOUS`, shared by legacy and `/api/v1` protected routes with constant-time
   Bearer comparison and no authentication-contract or health-route changes
+- a dependency-free, process-local fixed-window limiter for protected legacy and `/api/v1` traffic,
+  keyed only by the direct ASGI peer, with monotonic timing, bounded client state, deterministic
+  cleanup/eviction, `429` plus `Retry-After`, and public health/privacy exemptions
 
 ### Changed
 

@@ -280,6 +280,10 @@ host PUID:PGID  ->  container process user and group
 |---|---|---|
 | `API_KEY` | placeholder only | Required by protected routes; replace with a long random secret |
 | `API_KEY_PREVIOUS` | empty | Optional old key accepted only during an operator-controlled rotation window |
+| `RATE_LIMIT_ENABLED` | `true` | Enable the process-local protected-route limiter |
+| `RATE_LIMIT_REQUESTS` | `120` | Positive requests allowed per peer in one fixed window |
+| `RATE_LIMIT_WINDOW_SECONDS` | `60` | Positive fixed-window duration in seconds |
+| `RATE_LIMIT_MAX_CLIENTS` | `1024` | Positive hard cap on process-local peer state |
 | `OBSIDIAN_VAULT_PATH` | `/path/to/your/Obsidian/Vault` | Required absolute host path to the vault |
 | `API_PORT` | `8765` | Host loopback port mapped to container port `8000` |
 | `PUID` / `PGID` | `1000` / `1000` | Numeric container user/group used for bind-mounted files |
@@ -317,6 +321,23 @@ Use this operator-controlled rotation procedure:
 The application does not expire, generate, persist, or hot-reload keys. The previous key remains
 valid until the operator removes it and recreates/restarts the service. Keep both values out of logs,
 support output, shell history, and version control.
+
+### Tune process-local rate limiting
+
+VaultBridge limits protected legacy and `/api/v1` note/search requests by the ASGI peer address.
+The default allows `120` requests per `60` seconds for each peer and retains at most `1024` peer
+windows. `GET /health`, `GET /health/live`, `GET /health/ready`, and the public schema-hidden
+`/privacy` route are exempt. A rejected request returns HTTP `429` with
+`{"detail":"Rate limit exceeded"}` and an integer `Retry-After` value for the remaining fixed
+window.
+
+The limiter is deliberately in-process: state is not persisted, is reset by a restart, and is not
+shared across multiple workers or application instances. It does not provide a distributed quota.
+VaultBridge uses the direct ASGI peer address and does not trust `X-Forwarded-For`, `X-Real-IP`, or
+`Forwarded`. Behind a reverse proxy the peer is commonly the proxy itself, so multiple external
+clients may share one bucket. VB-043 does not add trusted-proxy parsing; size and tune the shared
+bucket for that deployment or disable it with `RATE_LIMIT_ENABLED=false` only when equivalent
+protection exists elsewhere.
 
 ### Semantic-data persistence
 
@@ -394,6 +415,8 @@ Common first-start checks:
   Bearer credentials return the existing generic authentication error.
 - Invalid typed environment values stop startup; the container logs identify the configuration
   validation failure without exposing the API key.
+- HTTP `429` means the process-local peer bucket is exhausted; honor `Retry-After` and check for an
+  accidental client loop before raising the configured allowance.
 - A first model download requires network access. Network/download failures appear in container logs
   and leave initial semantic readiness unavailable. Correct the problem, then run
   `docker compose restart` to schedule a new startup synchronization.
@@ -464,7 +487,8 @@ the public internet, place an HTTPS reverse proxy or VPN in front rather than ch
 - use HTTPS, a VPN, or both for remote access;
 - back up the authoritative Markdown vault;
 - treat the semantic database/model cache as rebuildable derived data;
-- do not assume rate limiting or API-key rotation exists.
+- remember that the built-in rate limiter is process-local and may aggregate clients behind a
+  reverse proxy; it is not a distributed edge-protection service.
 
 See [`SECURITY.md`](SECURITY.md) for the security invariants.
 

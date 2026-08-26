@@ -217,6 +217,33 @@ def test_handled_auth_validation_http_and_not_found_errors_have_one_terminal_eve
         assert "unmatched-private-location" not in raw
 
 
+def test_rate_limited_response_keeps_request_id_lifecycle_and_log_privacy(tmp_path):
+    client = client_for(
+        tmp_path,
+        semantic_indexer=RecordingIndexer(),
+        rate_limit_requests=1,
+    )
+    invalid_headers = {"Authorization": "Bearer private-rate-limit-secret"}
+
+    assert client.get("/notes/list", headers=invalid_headers).status_code == 401
+    with capture_application_logs() as stream:
+        response = client.get("/notes/list", headers=invalid_headers)
+
+    records = lifecycle_records(parsed_records(stream))
+    request_id = response.headers["x-request-id"]
+    assert response.status_code == 429
+    assert response.json() == {"detail": "Rate limit exceeded"}
+    assert re.fullmatch(r"[0-9a-f]{32}", request_id)
+    assert [record["event"] for record in records] == [
+        "request_started",
+        "request_completed",
+    ]
+    assert {record["request_id"] for record in records} == {request_id}
+    assert records[1]["route"] == "/notes/list"
+    assert records[1]["status_code"] == 429
+    assert "private-rate-limit-secret" not in stream.getvalue()
+
+
 def test_search_query_and_raw_query_string_are_not_logged(tmp_path):
     client = client_for(tmp_path, semantic_indexer=RecordingIndexer())
     search_query = "private semantic search phrase"

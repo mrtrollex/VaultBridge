@@ -7,11 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
 from app.api.dependencies import (
+    PROTECTED_ROUTE_DEPENDENCIES,
     get_duplicate_candidate_service,
     get_semantic_search_service,
     get_settings,
     get_vault_service,
-    require_auth,
 )
 from app.api.versioning import versioned_api_route
 from app.core.config import Settings
@@ -82,7 +82,7 @@ class DuplicateCandidatesResponse(BaseModel):
     "/notes/search",
     operation_id="searchNotes",
     methods=["POST"],
-    dependencies=[Depends(require_auth)],
+    dependencies=PROTECTED_ROUTE_DEPENDENCIES,
     tags=["notes"],
     summary="Search Markdown notes in the vault",
 )
@@ -104,7 +104,7 @@ def search_notes(
     "/notes/related",
     operation_id="findRelatedNotes",
     methods=["POST"],
-    dependencies=[Depends(require_auth)],
+    dependencies=PROTECTED_ROUTE_DEPENDENCIES,
     tags=["notes"],
     summary="Find conceptually related Obsidian notes",
 )
@@ -168,7 +168,7 @@ def find_related_notes(
     "/notes/duplicates",
     operation_id="findDuplicateCandidates",
     methods=["POST"],
-    dependencies=[Depends(require_auth)],
+    dependencies=PROTECTED_ROUTE_DEPENDENCIES,
     response_model=DuplicateCandidatesResponse,
     tags=["notes"],
     summary="Find advisory duplicate candidates for a prospective note",

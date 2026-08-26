@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 import app.main as main
 from app.core.config import Settings
 from app.repositories.semantic import SemanticRepository
+from app.services.rate_limiter import FixedWindowRateLimiter
 from app.services.semantic_search import SemanticResult, SemanticSearchService
 from app.services.vault import VaultService
 
@@ -40,12 +41,22 @@ def client_for(
     max_note_bytes: int = 1_000_000,
     embedder=None,
     semantic_indexer=None,
+    rate_limit_enabled: bool = True,
+    rate_limit_requests: int = 120,
+    rate_limit_window_seconds: int = 60,
+    rate_limit_max_clients: int = 1024,
+    rate_limiter: FixedWindowRateLimiter | None = None,
+    peer: tuple[str, int] = ("testclient", 50000),
 ) -> TestClient:
     settings = Settings(
         api_key=api_key,
         previous_api_key=previous_api_key,
         vault_path=tmp_path,
         max_note_bytes=max_note_bytes,
+        rate_limit_enabled=rate_limit_enabled,
+        rate_limit_requests=rate_limit_requests,
+        rate_limit_window_seconds=rate_limit_window_seconds,
+        rate_limit_max_clients=rate_limit_max_clients,
     )
     vault_service = VaultService(
         vault_root=settings.vault_path,
@@ -64,8 +75,9 @@ def client_for(
         vault_service=vault_service,
         semantic_search_service=semantic_search_service,
         semantic_indexer=semantic_indexer,
+        rate_limiter=rate_limiter,
     )
-    return TestClient(app)
+    return TestClient(app, client=peer)
 
 
 def auth():

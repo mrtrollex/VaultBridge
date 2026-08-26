@@ -6,7 +6,11 @@ from typing import Literal
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field, field_validator
 
-from app.api.dependencies import get_semantic_indexer, get_vault_service, require_auth
+from app.api.dependencies import (
+    PROTECTED_ROUTE_DEPENDENCIES,
+    get_semantic_indexer,
+    get_vault_service,
+)
 from app.api.versioning import versioned_api_route
 from app.core.logging import log_event
 from app.services.indexer import BackgroundSemanticIndexer
@@ -88,7 +92,7 @@ class NoteResult(BaseModel):
     operation_id="createNote",
     methods=["POST"],
     response_model=NoteResult,
-    dependencies=[Depends(require_auth)],
+    dependencies=PROTECTED_ROUTE_DEPENDENCIES,
     tags=["notes"],
     summary="Create an Obsidian Markdown note",
 )
@@ -122,7 +126,7 @@ def create_note(
     operation_id="appendNote",
     methods=["POST"],
     response_model=NoteResult,
-    dependencies=[Depends(require_auth)],
+    dependencies=PROTECTED_ROUTE_DEPENDENCIES,
     tags=["notes"],
     summary="Append Markdown to an existing Obsidian note",
 )
@@ -150,7 +154,7 @@ def append_note(
     "/notes/read",
     operation_id="readNote",
     methods=["GET"],
-    dependencies=[Depends(require_auth)],
+    dependencies=PROTECTED_ROUTE_DEPENDENCIES,
     tags=["notes"],
     summary="Read one Obsidian note",
 )
@@ -167,7 +171,7 @@ def read_note(
     "/notes/list",
     operation_id="listNotes",
     methods=["GET"],
-    dependencies=[Depends(require_auth)],
+    dependencies=PROTECTED_ROUTE_DEPENDENCIES,
     tags=["notes"],
     summary="List Markdown notes in a vault folder",
 )

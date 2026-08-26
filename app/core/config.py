@@ -25,6 +25,10 @@ class Settings(BaseModel):
         "SEMANTIC_CHUNK_CHARS",
         "SEMANTIC_CHUNK_OVERLAP",
         "SEMANTIC_INDEX_BATCH_SIZE",
+        "RATE_LIMIT_ENABLED",
+        "RATE_LIMIT_REQUESTS",
+        "RATE_LIMIT_WINDOW_SECONDS",
+        "RATE_LIMIT_MAX_CLIENTS",
     )
 
     api_key: SecretStr = Field(default=SecretStr(""), alias="API_KEY", repr=False)
@@ -43,6 +47,10 @@ class Settings(BaseModel):
     semantic_chunk_chars: int = Field(default=600, alias="SEMANTIC_CHUNK_CHARS", ge=250)
     semantic_chunk_overlap: int = Field(default=100, alias="SEMANTIC_CHUNK_OVERLAP", ge=0)
     semantic_index_batch_size: int = Field(default=25, alias="SEMANTIC_INDEX_BATCH_SIZE", gt=0)
+    rate_limit_enabled: bool = Field(default=True, alias="RATE_LIMIT_ENABLED")
+    rate_limit_requests: int = Field(default=120, alias="RATE_LIMIT_REQUESTS", gt=0)
+    rate_limit_window_seconds: int = Field(default=60, alias="RATE_LIMIT_WINDOW_SECONDS", gt=0)
+    rate_limit_max_clients: int = Field(default=1024, alias="RATE_LIMIT_MAX_CLIENTS", gt=0)
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> Settings:

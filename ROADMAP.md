@@ -80,6 +80,7 @@ app/semantic.py                 legacy compatibility facade
 - [x] **VB-024 — Tune hybrid ranking from evaluation data**
 - [x] **VB-040 — Structured JSON logging**
 - [x] **VB-041 — Request IDs and latency logging**
+- [x] **VB-043 — Lightweight rate limiting**
 - [x] **VB-050 — Introduce `/api/v1`**
 - [x] **VB-052 — Generic Docker deployment docs**
 - [x] **VB-053 — TrueNAS deployment docs**
@@ -359,7 +360,7 @@ No invented wikilink targets.
 
 ---
 
-# Milestone 5 — Operational maturity and security — ACTIVE
+# Milestone 5 — Operational maturity and security — COMPLETE
 
 **Goal:** make VaultBridge predictable to run continuously on NAS/server hardware.
 
@@ -373,9 +374,13 @@ The required current `API_KEY` can overlap with one optional secret-safe `API_KE
 an operator-controlled restart/redeploy rotation window. Both legacy and `/api/v1` protected routes
 share the same constant-time Bearer verification; public health routes remain unaffected.
 
-### VB-043 — Lightweight rate limiting — P1 ← NEXT
+### VB-043 — Lightweight rate limiting — P1 ✅
 
-Do not add Redis.
+Protected legacy and `/api/v1` application traffic now uses one process-local, bounded fixed-window
+limiter before authentication. It uses monotonic time and the direct ASGI peer address, deliberately
+ignores forwarded client-address headers, and preserves public health/privacy access. HTTP `429`
+includes a safe fixed detail and `Retry-After`. The limiter is not persistent or distributed and
+adds no Redis, service, background worker, or dependency.
 
 ---
 
@@ -389,7 +394,7 @@ New integrations use the stable `/api/v1` note/search namespace and explicit `*V
 The original unversioned paths and operation IDs remain compatibility aliases for the existing
 ChatGPT Action and other clients. Operational health probes remain unversioned.
 
-### VB-051 — VaultBridge CLI — P1
+### VB-051 — VaultBridge CLI — P1 ← NEXT
 ### VB-052 — Generic Docker deployment docs — P0 ✅
 ### VB-053 — TrueNAS deployment docs — P0 ✅
 
