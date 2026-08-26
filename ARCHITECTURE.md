@@ -394,10 +394,24 @@ hybrid reranking
   ↓
 best result per note
   ↓
+bounded candidate overfetch
+  ↓
+VaultService live Markdown containment verification
+  ↓
+caller-visible limit
+  ↓
 response
 
 Background index maintenance happens independently.
 ```
+
+Related-note responses treat semantic-index paths as derived input. The shared legacy and `/api/v1`
+endpoint asks for a bounded three-times candidate window capped at `50`, then `VaultService` resolves
+each path through the live vault containment policy. Only regular `.md` targets inside the configured
+vault and optional folder survive; safe internal aliases become canonical vault-relative paths and
+titles. Filtering is read-only and preserves surviving rank order. Semantic score, lexical score,
+combined score, heading, and snippet still reflect the indexed snapshot, so an externally edited
+live note can retain stale semantic fields until normal synchronization runs.
 
 ### Note write
 

@@ -294,9 +294,25 @@ No arbitrary weight changes without before/after evaluation results.
 
 Return candidates only; no automatic merges.
 
-### VB-031 — Verified related-note suggestions — P1
+### VB-031 — Verified related-note suggestions — P1 ✅
 
-Only return actual vault paths.
+**Status:** Completed on 2026-08-26.
+
+Hardened the existing related-note contract without adding backlink writes or another endpoint:
+
+- every semantic candidate crosses the existing `VaultService` containment boundary before response
+  serialization and must resolve to a live regular Markdown file inside the vault;
+- safe internal symlinks return their canonical vault-relative target, while missing, directory,
+  non-Markdown, traversal, absolute, broken, external-symlink, and expected filesystem-error
+  candidates are filtered;
+- related search requests use a bounded three-times candidate window capped at `50`, then preserve
+  surviving rank order and the caller-visible limit so small stale prefixes can be backfilled;
+- verified paths determine the returned title; score, semantic score, lexical score, snippet, and
+  heading remain the existing semantic-result values;
+- legacy and `/api/v1` routes remain one shared endpoint with unchanged schemas, operation IDs,
+  authentication, ranking, model, chunking, index signature, and semantic persistence;
+- verification is read-only. Externally edited live note content can still leave scores, snippets,
+  and headings stale until normal synchronization updates the derived index.
 
 ### VB-032 — Section-level update design/ADR — P1
 

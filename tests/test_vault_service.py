@@ -174,6 +174,69 @@ def test_absolute_path_and_non_markdown_file_are_rejected(tmp_path):
         service.read_note("Note.txt")
 
 
+def test_verify_existing_markdown_path_returns_only_canonical_live_notes(tmp_path):
+    vault = tmp_path / "vault"
+    scoped = vault / "Scoped"
+    scoped.mkdir(parents=True)
+    note = scoped / "Live.md"
+    note.write_text("Live note.", encoding="utf-8")
+    (scoped / "Directory.md").mkdir()
+    (scoped / "Not-Markdown.txt").write_text("Not a note.", encoding="utf-8")
+    outside_folder = vault / "Other"
+    outside_folder.mkdir()
+    (outside_folder / "Outside.md").write_text("Outside scope.", encoding="utf-8")
+    service = service_for(vault)
+
+    assert service.verify_existing_markdown_path("Scoped/Live.md") == "Scoped/Live.md"
+    assert service.verify_existing_markdown_path("Scoped/Live.md", folder="Scoped") == (
+        "Scoped/Live.md"
+    )
+    assert service.verify_existing_markdown_path("Missing.md") is None
+    assert service.verify_existing_markdown_path("Scoped/Directory.md") is None
+    assert service.verify_existing_markdown_path("Scoped/Not-Markdown.txt") is None
+    assert service.verify_existing_markdown_path("../outside.md") is None
+    assert service.verify_existing_markdown_path("Scoped/../Scoped/Live.md") is None
+    assert service.verify_existing_markdown_path("C:Live.md") is None
+    assert service.verify_existing_markdown_path(str(note.resolve())) is None
+    assert service.verify_existing_markdown_path("Other/Outside.md", folder="Scoped") is None
+
+
+def test_verify_existing_markdown_path_filters_expected_filesystem_errors(tmp_path, monkeypatch):
+    service = service_for(tmp_path)
+
+    def unavailable(_raw):
+        raise PermissionError("candidate metadata unavailable")
+
+    monkeypatch.setattr(service, "resolve_path", unavailable)
+
+    assert service.verify_existing_markdown_path("Unavailable.md") is None
+
+
+def test_verify_existing_markdown_path_handles_internal_broken_and_escaping_symlinks(tmp_path):
+    vault = tmp_path / "vault"
+    scoped = vault / "Scoped"
+    canonical_folder = vault / "Canonical"
+    scoped.mkdir(parents=True)
+    canonical_folder.mkdir()
+    canonical = canonical_folder / "Live.md"
+    canonical.write_text("Canonical live note.", encoding="utf-8")
+    non_markdown = canonical_folder / "Not-Markdown.txt"
+    non_markdown.write_text("Not Markdown.", encoding="utf-8")
+    outside = tmp_path / "outside.md"
+    outside.write_text("External note.", encoding="utf-8")
+    create_symlink_or_skip(scoped / "internal.md", canonical)
+    create_symlink_or_skip(scoped / "non-markdown.md", non_markdown)
+    create_symlink_or_skip(scoped / "broken.md", tmp_path / "missing.md")
+    create_symlink_or_skip(scoped / "external.md", outside)
+    service = service_for(vault)
+
+    assert service.verify_existing_markdown_path("Scoped/internal.md") == "Canonical/Live.md"
+    assert service.verify_existing_markdown_path("Scoped/internal.md", folder="Scoped") is None
+    assert service.verify_existing_markdown_path("Scoped/non-markdown.md") is None
+    assert service.verify_existing_markdown_path("Scoped/broken.md") is None
+    assert service.verify_existing_markdown_path("Scoped/external.md") is None
+
+
 def test_symlink_escape_is_rejected(tmp_path):
     service = service_for(tmp_path / "vault")
     service.vault_root.mkdir()

@@ -334,9 +334,12 @@ Candidate metrics:
 
 Return candidates only; no automatic merging.
 
-### VB-031 — Verified related-note suggestions — P1
+### VB-031 — Verified related-note suggestions — P1 ✅
 
-Return only real vault paths with path/title/score/heading/snippet.
+The existing legacy and `/api/v1` related-note routes now filter semantic candidates through live
+vault containment and Markdown-file verification, return canonical paths/titles, and use bounded
+overfetch to backfill filtered stale candidates without changing ranking or response fields. Live
+content edits can still leave semantic scores/snippets stale until synchronization.
 
 ### VB-032 — Section-level update design / ADR — P1
 

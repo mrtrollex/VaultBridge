@@ -12,6 +12,12 @@ The project intends to follow Semantic Versioning after the public repository ba
   secret-safe `API_KEY_PREVIOUS`, shared by legacy and `/api/v1` protected routes with constant-time
   Bearer comparison and no authentication-contract or health-route changes
 
+### Changed
+
+- related-note suggestions now return only live, contained regular Markdown paths verified through
+  `VaultService`, canonicalize safe internal aliases, and boundedly backfill filtered stale candidates
+  while preserving response fields, surviving order, caller limits, and semantic-index contents
+
 ## [1.0.0] - 2026-08-26
 
 ### Added
