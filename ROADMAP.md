@@ -360,8 +360,13 @@ No invented wikilink targets.
 ### VB-041 — Request IDs and latency logging — P0 ✅
 ### VB-044 — Liveness and readiness endpoints — P0 ✅
 ### VB-045 — Index integrity/rebuild CLI — P0 ✅
-### VB-042 — API key rotation — P1 ← NEXT
-### VB-043 — Lightweight rate limiting — P1
+### VB-042 — API key rotation — P1 ✅
+
+The required current `API_KEY` can overlap with one optional secret-safe `API_KEY_PREVIOUS` during
+an operator-controlled restart/redeploy rotation window. Both legacy and `/api/v1` protected routes
+share the same constant-time Bearer verification; public health routes remain unaffected.
+
+### VB-043 — Lightweight rate limiting — P1 ← NEXT
 
 Do not add Redis.
 

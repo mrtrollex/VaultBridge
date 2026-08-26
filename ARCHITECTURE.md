@@ -28,6 +28,14 @@ Client (ChatGPT / curl / future integrations)
 
 The `.md` files are authoritative. The SQLite semantic index is disposable derived data and must be rebuildable.
 
+### Authentication
+
+All protected legacy and `/api/v1` routes share one Bearer-token dependency. `API_KEY` is the
+required current credential. An optional secret-safe `API_KEY_PREVIOUS` is accepted only during an
+operator-controlled rotation window; removing it and restarting/redeploying ends that window. Both
+configured candidates are checked with standard-library constant-time comparison. Authentication
+does not log or return either credential, and public health endpoints remain outside this dependency.
+
 ### Container distribution
 
 The repository root `Dockerfile` remains the single production image definition. Normal Docker
@@ -276,7 +284,8 @@ Typed environment configuration. No HTTP or vault logic.
 
 ### `core/security.py`
 
-Bearer token verification and future key rotation logic.
+Potential home for Bearer token verification if security logic grows beyond the current small shared
+API dependency.
 
 ### `services/vault.py`
 

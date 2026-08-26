@@ -6,6 +6,7 @@ services:
     user: "${PUID:-1000}:${PGID:-1000}"
     environment:
       API_KEY: ${API_KEY}
+      API_KEY_PREVIOUS: ${API_KEY_PREVIOUS:-}
       VAULT_PATH: /vault
       MAX_NOTE_BYTES: ${MAX_NOTE_BYTES:-1000000}
       SEMANTIC_DATA_PATH: /vault/.obsidian-chatgpt-data

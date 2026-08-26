@@ -168,6 +168,7 @@ Copy the generated value into `API_KEY` in `.env`, then set the host path to you
 
 ```env
 API_KEY=YOUR_GENERATED_API_KEY
+API_KEY_PREVIOUS=
 OBSIDIAN_VAULT_PATH=/home/alice/Documents/MyVault
 ```
 
@@ -260,6 +261,7 @@ host PUID:PGID  ->  container process user and group
 | `.env` variable | Default/example | Purpose and constraint |
 |---|---|---|
 | `API_KEY` | placeholder only | Required by protected routes; replace with a long random secret |
+| `API_KEY_PREVIOUS` | empty | Optional old key accepted only during an operator-controlled rotation window |
 | `OBSIDIAN_VAULT_PATH` | `/path/to/your/Obsidian/Vault` | Required absolute host path to the vault |
 | `API_PORT` | `8765` | Host loopback port mapped to container port `8000` |
 | `PUID` / `PGID` | `1000` / `1000` | Numeric container user/group used for bind-mounted files |
@@ -273,6 +275,30 @@ Compose fixes the application-only `VAULT_PATH` to `/vault` and `SEMANTIC_DATA_P
 `/vault/.obsidian-chatgpt-data`; do not put host paths in either setting. Invalid numeric values or
 empty paths/model names stop application startup. `OBSIDIAN_VAULT_PATH`, `API_PORT`, `PUID`, and
 `PGID` are Compose inputs and are not read by the Python application.
+
+### Rotate the API key safely
+
+`API_KEY` is always the required current credential. `API_KEY_PREVIOUS` is optional; when it is
+non-empty, protected legacy and `/api/v1` routes accept either key with the unchanged
+`Authorization: Bearer <key>` header. It does not replace a missing `API_KEY`.
+
+Use this operator-controlled rotation procedure:
+
+1. Generate a new long random key without printing or storing it in repository files.
+2. Edit the untracked `.env` so the new key is current and the old key is previous:
+
+   ```env
+   API_KEY=<new-current-key>
+   API_KEY_PREVIOUS=<old-key-during-rotation>
+   ```
+
+3. Run `docker compose up -d` to recreate the service with both keys accepted.
+4. Migrate every client to the new `API_KEY` and verify its protected requests.
+5. Remove `API_KEY_PREVIOUS` or set it to empty, then run `docker compose up -d` again.
+
+The application does not expire, generate, persist, or hot-reload keys. The previous key remains
+valid until the operator removes it and recreates/restarts the service. Keep both values out of logs,
+support output, shell history, and version control.
 
 ### Semantic-data persistence
 
@@ -345,8 +371,9 @@ Common first-start checks:
   `/health` and follow the logs rather than assuming container startup is blocked.
 - Permission errors usually mean `PUID:PGID` cannot read/write the host vault or create
   `.obsidian-chatgpt-data`.
-- Protected requests return an authentication error when `API_KEY` is missing or the Bearer value is
-  wrong.
+- Protected requests return the existing server configuration error when `API_KEY` is missing; an
+  `API_KEY_PREVIOUS` value cannot become the primary credential. Missing, malformed, or unknown
+  Bearer credentials return the existing generic authentication error.
 - Invalid typed environment values stop startup; the container logs identify the configuration
   validation failure without exposing the API key.
 - A first model download requires network access. Network/download failures appear in container logs
@@ -354,7 +381,8 @@ Common first-start checks:
   `docker compose restart` to schedule a new startup synchronization.
 
 Avoid pasting a resolved `docker compose config` into support requests: depending on the Compose
-version, it can include the resolved `API_KEY`. Never dump the complete container environment.
+version, it can include the resolved `API_KEY` and `API_KEY_PREVIOUS`. Never dump the complete
+container environment.
 
 ## Updating and stopping
 
