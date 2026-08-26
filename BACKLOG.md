@@ -396,9 +396,24 @@ Added a deliberately bounded operator-controlled rotation window:
 - deployment examples and operator documentation cover adding the previous key only during client
   migration, then removing it and restarting/redeploying to end the window.
 
-### VB-043 — Lightweight rate limiting — P1
+### VB-043 — Lightweight rate limiting — P1 ✅
 
-In-process by default; do not add Redis.
+**Status:** Completed on 2026-08-26.
+
+Added deliberately small in-process protection without Redis or another dependency:
+
+- protected legacy and `/api/v1` note, literal/semantic search, related, duplicate-candidate,
+  read/list, create, and append traffic shares a direct-ASGI-peer fixed-window allowance;
+- the limiter executes before the existing authentication dependency, so repeated invalid
+  credentials eventually receive HTTP `429`, while current/previous keys and the missing-current-key
+  configuration error retain VB-042 behavior;
+- timing uses `time.monotonic`; state is lock-protected, non-persistent, reclaimed when stale, and
+  hard-capped with deterministic least-recently-used eviction and no background thread;
+- `GET /health`, `GET /health/live`, `GET /health/ready`, and schema-hidden `/privacy` are exempt;
+- forwarded client-address headers are ignored. A reverse proxy can therefore aggregate external
+  clients into one peer bucket, and multiple VaultBridge processes do not share limiter state;
+- operators can disable or tune the `true`, `120` requests, `60` seconds, and `1024` clients defaults
+  through typed environment settings.
 
 ### VB-044 — Liveness and readiness endpoints — P0 ✅
 
@@ -456,7 +471,7 @@ disabled. Contract tests cover methods, schemas, auth, success/validation/failur
 operation IDs, shared endpoint ownership, exactly-once domain calls, and versioned route-template
 logging.
 
-### VB-051 — Add VaultBridge CLI — P1
+### VB-051 — Add VaultBridge CLI — P1 ▶
 
 Commands:
 
@@ -605,6 +620,6 @@ release-version alignment, and repository-exposure-safety blockers. The reposito
 GHCR verification, RC smoke-test, and final stable-release gates recorded in
 `docs/RELEASE_CHECKLIST.md`.
 
-VB-043 is the next non-blocking P1 backlog task.
+VB-051 is the next recommended P1 task in the active developer-experience milestone.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

@@ -19,6 +19,10 @@ def test_configuration_defaults_match_existing_behavior():
     assert settings.semantic_chunk_chars == 600
     assert settings.semantic_chunk_overlap == 100
     assert settings.semantic_index_batch_size == 25
+    assert settings.rate_limit_enabled is True
+    assert settings.rate_limit_requests == 120
+    assert settings.rate_limit_window_seconds == 60
+    assert settings.rate_limit_max_clients == 1024
 
 
 def test_configuration_environment_overrides(tmp_path):
@@ -33,6 +37,10 @@ def test_configuration_environment_overrides(tmp_path):
             "SEMANTIC_CHUNK_CHARS": "800",
             "SEMANTIC_CHUNK_OVERLAP": "200",
             "SEMANTIC_INDEX_BATCH_SIZE": "10",
+            "RATE_LIMIT_ENABLED": "false",
+            "RATE_LIMIT_REQUESTS": "40",
+            "RATE_LIMIT_WINDOW_SECONDS": "30",
+            "RATE_LIMIT_MAX_CLIENTS": "256",
         }
     )
 
@@ -45,6 +53,10 @@ def test_configuration_environment_overrides(tmp_path):
     assert settings.semantic_chunk_chars == 800
     assert settings.semantic_chunk_overlap == 200
     assert settings.semantic_index_batch_size == 10
+    assert settings.rate_limit_enabled is False
+    assert settings.rate_limit_requests == 40
+    assert settings.rate_limit_window_seconds == 30
+    assert settings.rate_limit_max_clients == 256
 
 
 def test_semantic_search_service_uses_typed_configuration(tmp_path):
@@ -80,6 +92,13 @@ def test_semantic_search_service_uses_typed_configuration(tmp_path):
         ({"SEMANTIC_CHUNK_OVERLAP": "301"}, "SEMANTIC_CHUNK_OVERLAP"),
         ({"SEMANTIC_INDEX_BATCH_SIZE": "0"}, "SEMANTIC_INDEX_BATCH_SIZE"),
         ({"SEMANTIC_INDEX_BATCH_SIZE": "not-an-integer"}, "SEMANTIC_INDEX_BATCH_SIZE"),
+        ({"RATE_LIMIT_ENABLED": "sometimes"}, "RATE_LIMIT_ENABLED"),
+        ({"RATE_LIMIT_REQUESTS": "0"}, "RATE_LIMIT_REQUESTS"),
+        ({"RATE_LIMIT_REQUESTS": "not-an-integer"}, "RATE_LIMIT_REQUESTS"),
+        ({"RATE_LIMIT_WINDOW_SECONDS": "0"}, "RATE_LIMIT_WINDOW_SECONDS"),
+        ({"RATE_LIMIT_WINDOW_SECONDS": "not-an-integer"}, "RATE_LIMIT_WINDOW_SECONDS"),
+        ({"RATE_LIMIT_MAX_CLIENTS": "0"}, "RATE_LIMIT_MAX_CLIENTS"),
+        ({"RATE_LIMIT_MAX_CLIENTS": "not-an-integer"}, "RATE_LIMIT_MAX_CLIENTS"),
     ],
 )
 def test_invalid_numeric_configuration_fails_with_environment_name(environment, expected_error):

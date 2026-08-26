@@ -17,6 +17,7 @@ from app.core.logging import configure_application_logging, log_event
 from app.core.observability import RequestObservabilityMiddleware
 from app.services.duplicate_candidates import DuplicateCandidateService
 from app.services.indexer import BackgroundSemanticIndexer
+from app.services.rate_limiter import FixedWindowRateLimiter
 from app.services.semantic_search import (
     SemanticSearchService,
     semantic_search_service_from_settings,
@@ -122,6 +123,7 @@ def create_app(
     duplicate_candidate_service: DuplicateCandidateService | None = None,
     semantic_search_service: SemanticSearchService | None = None,
     semantic_indexer: BackgroundSemanticIndexer | None = None,
+    rate_limiter: FixedWindowRateLimiter | None = None,
     vault_service: VaultService | None = None,
 ) -> FastAPI:
     app_settings = settings if settings is not None else Settings.from_env()
@@ -151,6 +153,15 @@ def create_app(
             app_semantic_search_service.sync_paths,
         )
     )
+    app_rate_limiter = (
+        rate_limiter
+        if rate_limiter is not None
+        else FixedWindowRateLimiter(
+            requests=app_settings.rate_limit_requests,
+            window_seconds=app_settings.rate_limit_window_seconds,
+            max_clients=app_settings.rate_limit_max_clients,
+        )
+    )
 
     application = VaultBridgeApplication(
         title=APP_TITLE,
@@ -165,6 +176,7 @@ def create_app(
     application.state.duplicate_candidate_service = app_duplicate_candidate_service
     application.state.semantic_search_service = app_semantic_search_service
     application.state.semantic_indexer = app_semantic_indexer
+    application.state.rate_limiter = app_rate_limiter
     application.state.vault_service = app_vault_service
     application.add_exception_handler(VaultServiceError, handle_vault_service_error)
     application.include_router(health_router)

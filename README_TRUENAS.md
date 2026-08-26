@@ -90,7 +90,16 @@ Copy the generated value into `API_KEY` in `.env` using a local editor. Do not p
 Compose or documentation. Restrict access to `.env` according to the ACL model used on the source
 dataset.
 
-`API_KEY` and the optional `API_KEY_PREVIOUS` come from `.env` in this deployment.
+`API_KEY`, optional `API_KEY_PREVIOUS`, and the process-local rate-limit settings come from `.env`
+in this deployment. The example defaults are:
+
+```text
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_REQUESTS=120
+RATE_LIMIT_WINDOW_SECONDS=60
+RATE_LIMIT_MAX_CLIENTS=1024
+```
+
 `compose.truenas.yml` directly fixes the application settings that must match the mounts and current
 semantic index:
 
@@ -127,6 +136,18 @@ credential on the same protected legacy and `/api/v1` routes; both use
 
 There is no automatic expiry or hot reload. The old key remains accepted until the final
 redeploy/restart, so keep the overlap as short as practical.
+
+#### Tune process-local rate limiting
+
+Protected legacy and `/api/v1` note/search traffic uses a fixed-window bucket keyed by the direct
+ASGI peer address. Health probes and `/privacy` are exempt. Exceeding the allowance returns HTTP
+`429`, `{"detail":"Rate limit exceeded"}`, and `Retry-After` for the remaining window.
+
+The limiter is held only in one VaultBridge process; restart clears it and multiple workers do not
+share it. Forwarded client-address headers are deliberately ignored. With the documented reverse
+proxy pattern, the proxy may be the peer, so multiple external clients can consume the same bucket.
+Tune `RATE_LIMIT_REQUESTS`, `RATE_LIMIT_WINDOW_SECONDS`, and `RATE_LIMIT_MAX_CLIENTS` for that shared
+traffic, or set `RATE_LIMIT_ENABLED=false` only when equivalent upstream protection is intentional.
 
 ### 3. Grant deliberate dataset access
 
@@ -517,7 +538,8 @@ network. This runbook does not add proxy configuration.
 - never expose or share the `/vault` dataset as an API substitute;
 - treat `/data` as derived state, not an authoritative backup;
 - do not expose resolved secrets through logs, environment dumps, or Compose output;
-- do not assume rate limiting or API-key rotation exists.
+- treat the built-in limiter as process-local loop/abuse protection, not a distributed or
+  trusted-proxy-aware edge limiter.
 
 Existing ChatGPT Actions continue to work through the unversioned compatibility routes and stable
 operation IDs. New integrations should prefer `/api/v1`. HTTPS and public/private connectivity are

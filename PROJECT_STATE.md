@@ -29,6 +29,7 @@ Completed:
 - VB-040 — Structured JSON logging
 - VB-041 — Request IDs and latency logging
 - VB-042 — API key rotation
+- VB-043 — Lightweight rate limiting
 - VB-044 — Liveness and readiness endpoints
 - VB-045 — Index integrity/rebuild CLI
 - VB-050 — Introduce `/api/v1`
@@ -48,7 +49,7 @@ Post-v1 development position:
 
 Next recommended backlog task:
 
-- **VB-043 — Lightweight rate limiting**
+- **VB-051 — Add VaultBridge CLI**
 
 Current v1.0 release status:
 
@@ -77,7 +78,7 @@ Current v1.0 release status:
 
 Current milestones:
 
-- **Milestone 5 — Operational maturity and security (active)**
+- **Milestone 5 — Operational maturity and security (complete)**
 - **Milestone 6 — Public API and developer experience (active)**
 - **Milestone 7 — Distribution and `v1.0.0` (complete)**
 
@@ -97,6 +98,11 @@ Current milestones:
 - context-local HTTP request correlation and latency events via `app/core/observability.py`
 - required current `API_KEY` plus one optional secret-safe `API_KEY_PREVIOUS` allow a controlled
   two-key rotation window through the shared constant-time legacy/v1 Bearer verifier
+- protected legacy and `/api/v1` traffic has a thread-safe, process-local fixed-window limiter before
+  authentication, using direct ASGI peer identity, monotonic timing, stale cleanup, and a hard
+  client cap with defaults of `120` requests per `60` seconds across at most `1024` peers
+- public health routes and schema-hidden `/privacy` are exempt; forwarded client-address headers are
+  ignored, so reverse proxies can aggregate external clients into one bucket
 - local semantic model through FastEmbed / ONNX Runtime
 - default model: `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`
 - SQLite semantic index using WAL
@@ -210,6 +216,9 @@ app/services/semantic_search.py
 
 app/services/indexer.py
     single-process background synchronization ownership and cooperative shutdown
+
+app/services/rate_limiter.py
+    bounded process-local fixed-window request allowance with injectable monotonic time
 
 app/repositories/semantic.py
     SQLite semantic persistence, lifecycle-state storage and read-only status statistics
@@ -409,6 +418,8 @@ ties now have focused production regressions.
 3. Multiple application processes sharing one index are not coordinated.
 4. GPT/AI clients can invent wikilinks unless client instructions require verified existing notes.
 5. Graceful shutdown cannot interrupt a model download, ONNX inference call, or filesystem operation already in progress.
+6. Rate-limit state is not shared across application processes, and reverse-proxy peers can aggregate
+   multiple external clients because forwarded client-address headers are not trusted.
 ## Verified baseline after VB-058
 
 Native Windows:

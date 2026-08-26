@@ -7,6 +7,7 @@ from fastapi import Depends, Header, HTTPException, Request, status
 from app.core.config import Settings
 from app.services.duplicate_candidates import DuplicateCandidateService
 from app.services.indexer import BackgroundSemanticIndexer
+from app.services.rate_limiter import FixedWindowRateLimiter
 from app.services.semantic_search import SemanticSearchService
 from app.services.vault import VaultService
 
@@ -31,6 +32,33 @@ def get_duplicate_candidate_service(request: Request) -> DuplicateCandidateServi
     return request.app.state.duplicate_candidate_service
 
 
+def get_rate_limiter(request: Request) -> FixedWindowRateLimiter:
+    return request.app.state.rate_limiter
+
+
+def enforce_rate_limit(
+    request: Request,
+    settings: Settings = Depends(get_settings),
+    rate_limiter: FixedWindowRateLimiter = Depends(get_rate_limiter),
+) -> None:
+    if not settings.rate_limit_enabled or not settings.api_key.get_secret_value():
+        return
+
+    client_id = request.client.host if request.client is not None else "unknown-peer"
+    decision = rate_limiter.check(client_id)
+    if not decision.allowed:
+        headers = (
+            {"Retry-After": str(decision.retry_after_seconds)}
+            if decision.retry_after_seconds is not None
+            else None
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Rate limit exceeded",
+            headers=headers,
+        )
+
+
 def require_auth(
     authorization: str | None = Header(default=None),
     settings: Settings = Depends(get_settings),
@@ -48,3 +76,9 @@ def require_auth(
     )
     if not (current_matches | previous_matches):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
+
+
+PROTECTED_ROUTE_DEPENDENCIES = (
+    Depends(enforce_rate_limit),
+    Depends(require_auth),
+)

@@ -36,6 +36,25 @@ operator-controlled rotation window; removing it and restarting/redeploying ends
 configured candidates are checked with standard-library constant-time comparison. Authentication
 does not log or return either credential, and public health endpoints remain outside this dependency.
 
+### Rate limiting
+
+Every protected legacy and `/api/v1` note/search route runs one shared rate-limit dependency before
+the VB-042 authentication dependency. The standard-library fixed-window limiter uses monotonic time
+and the direct ASGI peer host as its identity; it never reads bearer credentials or forwarded
+client-address headers. Repeated invalid authentication attempts therefore eventually receive HTTP
+`429`, while a missing required `API_KEY` retains the existing configuration error.
+
+State is thread-safe, process-local, non-persistent, and bounded. Expired windows are reclaimed on
+request handling; when the configured client cap remains full, the least-recently-used peer window
+is evicted deterministically. There is no background cleanup thread, Redis, database counter, new
+service, or distributed-quota claim. Restarts clear state and multiple processes do not coordinate.
+Behind a reverse proxy, the ASGI peer may be the proxy, so external clients can share a bucket;
+VB-043 deliberately does not infer trust from `X-Forwarded-For`, `X-Real-IP`, or `Forwarded`.
+
+`GET /health`, `GET /health/live`, `GET /health/ready`, and the public schema-hidden `/privacy`
+route do not carry the dependency. Request observability remains the outer ASGI layer, so handled
+429 responses retain `X-Request-ID` and the normal safe lifecycle event with status `429`.
+
 ### Container distribution
 
 The repository root `Dockerfile` remains the single production image definition. Normal Docker
@@ -58,6 +77,7 @@ app/services/vault.py safe path resolution, Markdown note operations and contain
 app/services/duplicate_candidates.py live-title and verified semantic candidate composition
 app/services/semantic_search.py embedding, incremental indexing, hybrid ranking and semantic health state
 app/services/indexer.py one in-process full/targeted synchronization worker and deduplicating path queue
+app/services/rate_limiter.py bounded process-local fixed-window request allowance
 app/repositories/semantic.py SQLite schema, semantic index persistence and read-only status statistics
 app/semantic.py      compatibility facade for the pre-VB-005 internal API
 ```
@@ -374,7 +394,7 @@ embedding generations are not mixed.
 ### Literal search
 
 ```text
-request → auth → validate folder → scan/search Markdown → response
+request → rate limit → auth → validate folder → scan/search Markdown → response
 ```
 
 A future optimization may add a lexical index, but only if measured vault sizes justify it.
@@ -383,6 +403,8 @@ A future optimization may add a lexical index, but only if measured vault sizes 
 
 ```text
 request
+  ↓
+rate limit
   ↓
 auth
   ↓
@@ -446,7 +468,7 @@ it does not merge, create, append, rename, delete, add backlinks, enqueue indexi
 ### Note write
 
 ```text
-request → auth → safe path → validate size → write Markdown → enqueue note for re-index
+request → rate limit → auth → safe path → validate size → write Markdown → enqueue note for re-index
 ```
 
 Writes should not synchronously rebuild unrelated notes.
