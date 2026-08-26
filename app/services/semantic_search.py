@@ -429,6 +429,19 @@ class SemanticSearchService:
             has_chunks=storage.has_chunks,
         )
 
+    def use_persisted_index_for_read_only_search(self) -> bool:
+        """Enable this instance to search a compatible persisted index without lifecycle writes."""
+        storage = self.repository.read_availability_status()
+        available = self._stored_index_available_from_storage(
+            storage_initialized=storage.storage_initialized,
+            storage_error=storage.storage_error,
+            index_signature=storage.index_signature,
+            index_state=storage.index_state,
+            has_chunks=storage.has_chunks,
+        )
+        self._set_search_available(available)
+        return available
+
     def _set_search_available(self, available: bool) -> None:
         with self._availability_lock:
             self._search_available = available

@@ -444,15 +444,38 @@ stops and removes the Compose container and network. Neither command removes the
 vault or `.obsidian-chatgpt-data`; deleting host files is a separate destructive action. Do not use
 `docker compose down -v` as a cleanup shortcut, and never point a removal command at the vault.
 
-## Semantic index administration
+## Local CLI and semantic index administration
 
-VaultBridge has no cross-process index lock. Both maintenance commands are stopped-service
-operations; do not run them through `docker exec` in the serving application container.
+The dependency-free local CLI reuses VaultBridge's existing vault and semantic services:
+
+```bash
+python -m app.cli status
+python -m app.cli index
+python -m app.cli reindex
+python -m app.cli search "backup"
+python -m app.cli related "how is my backup replicated?"
+```
+
+`status` is the concise persisted vault/index view. `search` is literal title/content search and
+does not load the embedding model. `related` uses the existing compatible semantic index without
+synchronizing it and live-verifies result paths before display. Both query commands support
+`--folder`; `search` supports `--limit`, while `related` supports `--limit` and `--min-score`.
+They print bounded snippets and vault-relative paths. Empty query results are successful.
+
+`index` brings derived semantic data up to date through the production incremental/full sync path;
+`reindex` first discards and then rebuilds derived semantic data. Markdown remains the source of
+truth and neither command changes note files.
+
+VaultBridge has no cross-process index lock. `status`, `index`, and `reindex` are stopped-service
+operations; do not run them through `docker exec` in the serving application container. Read-only
+`search` and `related` do not mutate semantic persistence, but they are local readers and are not a
+new remote/concurrent-process coordination layer.
 
 Inspect persisted index integrity without loading the embedding model or changing storage:
 
 ```bash
 docker compose stop obsidian-api
+docker compose run --rm --no-deps obsidian-api python -m app.cli status
 docker compose run --rm --no-deps obsidian-api python -m app.cli index check
 docker compose up -d obsidian-api
 ```
@@ -462,18 +485,24 @@ immutable SQLite view and refuses inspection while SQLite WAL/SHM sidecars are p
 means healthy, `1` means an integrity/readiness problem, and `2` means a CLI, configuration, or
 programming failure. `/health` and `/health/ready` remain authoritative for the running service.
 
-If inspection shows a rebuild is appropriate, keep the service stopped and rebuild only the derived
-semantic data through the production synchronization path:
+To update a compatible index normally, keep the service stopped and synchronize it without a reset:
 
 ```bash
-docker compose stop obsidian-api
+docker compose run --rm --no-deps obsidian-api python -m app.cli index
+```
+
+If inspection shows a clean rebuild is appropriate, rebuild only the derived semantic data through
+the production synchronization path:
+
+```bash
+docker compose run --rm --no-deps obsidian-api python -m app.cli reindex
 docker compose run --rm --no-deps obsidian-api python -m app.cli index rebuild
 docker compose up -d obsidian-api
 ```
 
-Rebuild may download the model if its cache is empty. It clears/recreates semantic index data but
-does not modify Markdown. Review a failed check before deciding to rebuild; do not edit or delete the
-SQLite files while the service is running.
+`reindex` and `index rebuild` are equivalent. Rebuild may download the model if its cache is empty.
+It clears/recreates semantic index data but does not modify Markdown. Review a failed check before
+deciding to rebuild; do not edit or delete the SQLite files while the service is running.
 
 ## Networking and security
 

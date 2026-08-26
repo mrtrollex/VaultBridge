@@ -15,8 +15,13 @@ from app.cli import (
     EXIT_INTEGRITY_PROBLEM,
     EXIT_SUCCESS,
     main,
+    run_index,
     run_index_check,
     run_index_rebuild,
+    run_reindex,
+    run_related,
+    run_search,
+    run_status,
 )
 from app.core.config import Settings
 from app.repositories.semantic import SemanticRepository
@@ -24,6 +29,7 @@ from app.services.semantic_search import (
     FastEmbedder,
     IndexState,
     SemanticIndexOperationError,
+    SemanticResult,
     SemanticSearchService,
 )
 
@@ -679,3 +685,344 @@ def test_index_rebuild_rejects_unavailable_vault_before_creating_storage(tmp_pat
     assert exit_code == EXIT_INTEGRITY_PROBLEM
     assert "Rebuild not started" in error_output.getvalue()
     assert not settings.semantic_data_path.exists()
+
+
+def semantic_result(
+    path: str,
+    *,
+    score: float,
+    snippet: str = "matching excerpt",
+    heading: str | None = None,
+) -> SemanticResult:
+    return SemanticResult(
+        path=path,
+        title=Path(path).stem,
+        score=score,
+        semantic_score=score,
+        lexical_score=0.0,
+        snippet=snippet,
+        heading=heading,
+    )
+
+
+def test_top_level_and_command_help_are_available(capsys):
+    with pytest.raises(SystemExit, match="0"):
+        main(["--help"])
+    top_help = capsys.readouterr().out
+    for command in ("status", "index", "reindex", "search", "related"):
+        assert command in top_help
+
+    for arguments in (
+        ["status", "--help"],
+        ["index", "--help"],
+        ["reindex", "--help"],
+        ["search", "--help"],
+        ["related", "--help"],
+        ["index", "check", "--help"],
+        ["index", "rebuild", "--help"],
+    ):
+        with pytest.raises(SystemExit, match="0"):
+            main(arguments)
+        assert "usage:" in capsys.readouterr().out
+
+
+def test_status_is_the_existing_read_only_index_check(tmp_path):
+    settings = settings_for(tmp_path)
+    (settings.vault_path / "Ready.md").write_text("Ready content.", encoding="utf-8")
+    service = service_for(settings)
+    service.sync()
+    before = storage_snapshot(settings.semantic_data_path)
+    output = io.StringIO()
+
+    assert run_status(settings, output=output, service=service) == EXIT_SUCCESS
+    assert "Status:                   healthy" in output.getvalue()
+    assert storage_snapshot(settings.semantic_data_path) == before
+
+
+def test_status_reports_unhealthy_vault_with_operational_exit_without_creating_storage(tmp_path):
+    settings = settings_for(tmp_path, vault_path=tmp_path / "missing")
+    output = io.StringIO()
+
+    assert run_status(settings, output=output) == EXIT_INTEGRITY_PROBLEM
+    assert "Vault:                    missing" in output.getvalue()
+    assert not settings.semantic_data_path.exists()
+
+
+def test_index_runs_incremental_sync_without_resetting_compatible_data(tmp_path, monkeypatch):
+    settings = settings_for(tmp_path)
+    first = settings.vault_path / "First.md"
+    first.write_text("First source note.", encoding="utf-8")
+    service = service_for(settings)
+    service.sync()
+    second = settings.vault_path / "Second.md"
+    second.write_text("Second source note.", encoding="utf-8")
+    source_before = {path: path.read_bytes() for path in (first, second)}
+
+    def forbidden_reset():
+        raise AssertionError("incremental index must not reset compatible derived data")
+
+    monkeypatch.setattr(service.repository, "reset_index", forbidden_reset)
+    output = io.StringIO()
+
+    assert run_index(settings, output=output, service=service) == EXIT_SUCCESS
+    assert {chunk.path for chunk in service.repository.load_chunks()} == {"First.md", "Second.md"}
+    assert {path: path.read_bytes() for path in (first, second)} == source_before
+    assert "Status: ready" in output.getvalue()
+
+
+def test_reindex_alias_uses_clean_rebuild_and_preserves_markdown(tmp_path):
+    settings = settings_for(tmp_path)
+    note = settings.vault_path / "Source.md"
+    note.write_text("Authoritative Markdown.", encoding="utf-8")
+    service = service_for(settings)
+    service.sync()
+    note_before = note.read_bytes()
+
+    assert run_reindex(settings, output=io.StringIO(), service=service) == EXIT_SUCCESS
+    assert note.read_bytes() == note_before
+    assert service.repository.get_metadata("index_state") == IndexState.READY.value
+
+
+def test_literal_search_is_deterministic_folder_scoped_limited_and_embedder_free(
+    tmp_path,
+    monkeypatch,
+):
+    settings = settings_for(tmp_path)
+    folder = settings.vault_path / "Area"
+    folder.mkdir()
+    (folder / "B.md").write_text("Needle in B.", encoding="utf-8")
+    (folder / "A.md").write_text("Needle in A.", encoding="utf-8")
+    (settings.vault_path / "Outside.md").write_text("Needle outside.", encoding="utf-8")
+
+    def forbidden_semantic_service(*_args, **_kwargs):
+        raise AssertionError("literal search must not construct a semantic service")
+
+    monkeypatch.setattr(
+        "app.cli.semantic_search_service_from_settings",
+        forbidden_semantic_service,
+    )
+    output = io.StringIO()
+
+    assert run_search(settings, "needle", folder="Area", limit=1, output=output) == EXIT_SUCCESS
+    rendered = output.getvalue()
+    assert "Area/A.md" in rendered
+    assert "Area/B.md" not in rendered
+    assert "Outside.md" not in rendered
+
+
+def test_literal_search_displays_both_title_only_and_content_matches(tmp_path):
+    settings = settings_for(tmp_path)
+    (settings.vault_path / "Needle Title.md").write_text("ordinary body", encoding="utf-8")
+    (settings.vault_path / "Content.md").write_text("needle in the body", encoding="utf-8")
+    output = io.StringIO()
+
+    assert run_search(settings, "needle", output=output) == EXIT_SUCCESS
+    rendered = output.getvalue()
+    assert "Needle Title.md" in rendered
+    assert "Content.md" in rendered
+
+
+def test_literal_search_no_matches_is_success_and_unsafe_folders_fail(tmp_path):
+    settings = settings_for(tmp_path)
+    (settings.vault_path / "Note.md").write_text("ordinary content", encoding="utf-8")
+    output = io.StringIO()
+
+    assert run_search(settings, "absent", output=output) == EXIT_SUCCESS
+    assert output.getvalue() == "No literal matches.\n"
+
+    for folder in ("../outside", str(tmp_path)):
+        error = io.StringIO()
+        assert run_search(settings, "ordinary", folder=folder, error_output=error) == 1
+        assert "invalid or unavailable" in error.getvalue()
+
+
+def test_literal_search_rejects_external_directory_symlink_folder(tmp_path):
+    settings = settings_for(tmp_path)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "Private.md").write_text("needle outside", encoding="utf-8")
+    link = settings.vault_path / "External"
+    try:
+        link.symlink_to(outside, target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"directory symlink unavailable: {exc}")
+    error = io.StringIO()
+
+    assert run_search(settings, "needle", folder="External", error_output=error) == 1
+    assert "invalid or unavailable" in error.getvalue()
+    assert str(outside) not in error.getvalue()
+
+
+def test_literal_search_redacts_configured_secrets_and_local_roots(tmp_path):
+    settings = Settings.model_validate(
+        {
+            **settings_for(tmp_path).model_dump(),
+            "api_key": "active-secret",
+            "previous_api_key": "previous-secret",
+        }
+    )
+    note = settings.vault_path / "Sensitive.md"
+    note.write_text(
+        f"needle active-secret previous-secret {settings.vault_path} {settings.semantic_data_path}",
+        encoding="utf-8",
+    )
+    output = io.StringIO()
+
+    assert run_search(settings, "needle", output=output) == EXIT_SUCCESS
+    rendered = output.getvalue()
+    for private_value in (
+        "active-secret",
+        "previous-secret",
+        str(settings.vault_path),
+        str(settings.semantic_data_path),
+    ):
+        assert private_value not in rendered
+    assert "[redacted]" in rendered
+
+
+class FakeRelatedService:
+    def __init__(self, results: list[SemanticResult], *, available: bool = True) -> None:
+        self.results = results
+        self.available = available
+        self.search_calls: list[tuple[str, str, int, float]] = []
+
+    def use_persisted_index_for_read_only_search(self) -> bool:
+        return self.available
+
+    def search(self, text: str, *, folder: str, limit: int, min_score: float):
+        self.search_calls.append((text, folder, limit, min_score))
+        return self.results
+
+
+def test_related_preserves_rank_applies_options_and_filters_non_live_candidates(tmp_path):
+    settings = settings_for(tmp_path)
+    folder = settings.vault_path / "Area"
+    folder.mkdir()
+    (folder / "Second.md").write_text("live second", encoding="utf-8")
+    (folder / "First.md").write_text("live first", encoding="utf-8")
+    (settings.vault_path / "Outside.md").write_text("outside", encoding="utf-8")
+    fake = FakeRelatedService(
+        [
+            semantic_result("Area/Second.md", score=0.91, heading="Heading two"),
+            semantic_result("Missing.md", score=0.90),
+            semantic_result("../escape.md", score=0.89),
+            semantic_result("Outside.md", score=0.88),
+            semantic_result("Area/First.md", score=0.87),
+        ]
+    )
+    output = io.StringIO()
+
+    assert (
+        run_related(
+            settings,
+            "concept",
+            folder="Area",
+            limit=2,
+            min_score=0.42,
+            output=output,
+            service=fake,
+        )
+        == EXIT_SUCCESS
+    )
+    rendered = output.getvalue()
+    assert rendered.index("Area/Second.md") < rendered.index("Area/First.md")
+    assert "Missing.md" not in rendered
+    assert "escape.md" not in rendered
+    assert "Outside.md" not in rendered
+    assert "Heading two" in rendered
+    assert "score: 0.910" in rendered
+    assert fake.search_calls == [("concept", "Area", 6, 0.42)]
+
+
+def test_related_unavailable_index_is_an_expected_operational_failure(tmp_path):
+    settings = settings_for(tmp_path)
+    error = io.StringIO()
+
+    assert (
+        run_related(
+            settings,
+            "concept",
+            error_output=error,
+            service=FakeRelatedService([], available=False),
+        )
+        == EXIT_INTEGRITY_PROBLEM
+    )
+    assert "no compatible searchable semantic index" in error.getvalue()
+
+
+def test_related_redacts_secrets_and_absolute_roots(tmp_path):
+    settings = Settings.model_validate(
+        {
+            **settings_for(tmp_path).model_dump(),
+            "api_key": "active-secret",
+            "previous_api_key": "previous-secret",
+        }
+    )
+    (settings.vault_path / "Live.md").write_text("live", encoding="utf-8")
+    fake = FakeRelatedService(
+        [
+            semantic_result(
+                "Live.md",
+                score=0.75,
+                snippet=(
+                    "active-secret previous-secret "
+                    f"{settings.vault_path} {settings.semantic_data_path}"
+                ),
+            )
+        ]
+    )
+    output = io.StringIO()
+
+    assert run_related(settings, "concept", output=output, service=fake) == EXIT_SUCCESS
+    rendered = output.getvalue()
+    for private_value in (
+        "active-secret",
+        "previous-secret",
+        str(settings.vault_path),
+        str(settings.semantic_data_path),
+    ):
+        assert private_value not in rendered
+
+
+def test_related_uses_persisted_index_without_sync_or_storage_mutation(tmp_path, monkeypatch):
+    settings = settings_for(tmp_path)
+    note = settings.vault_path / "Ready.md"
+    note.write_text("TrueNAS backup procedure.", encoding="utf-8")
+    service_for(settings).sync()
+    restarted = service_for(settings)
+    source_before = note.read_bytes()
+    storage_before = storage_snapshot(settings.semantic_data_path)
+
+    def forbidden_sync(*_args, **_kwargs):
+        raise AssertionError("related must not synchronize implicitly")
+
+    monkeypatch.setattr(restarted, "sync", forbidden_sync)
+    output = io.StringIO()
+
+    assert (
+        run_related(
+            settings,
+            "TrueNAS backup",
+            min_score=-1.0,
+            output=output,
+            service=restarted,
+        )
+        == EXIT_SUCCESS
+    )
+    assert "Ready.md" in output.getvalue()
+    assert note.read_bytes() == source_before
+    assert storage_snapshot(settings.semantic_data_path) == storage_before
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    (
+        ["search", "query", "--limit", "0"],
+        ["search", "query", "--limit", "51"],
+        ["related", "query", "--limit", "21"],
+        ["related", "query", "--min-score", "1.1"],
+    ),
+)
+def test_cli_rejects_invalid_search_arguments_with_exit_two(arguments):
+    with pytest.raises(SystemExit, match=str(EXIT_CLI_FAILURE)):
+        main(arguments)
