@@ -4,10 +4,8 @@
 
 It exposes a deliberately small API for reading, searching and safely writing notes while keeping Markdown files as the source of truth. Semantic search runs locally with an ONNX embedding model and a disposable SQLite index.
 
-> Status: **stable `v1.0.0` finalization**. `v1.0.0-rc.2` is publicly available and verified after
-> the public-history rewrite, including GitHub prerelease and GHCR publication plus exact-digest
-> disposable-vault runtime smoke testing. Stable `v1.0.0` is now being finalized. See
-> [`ROADMAP.md`](ROADMAP.md).
+> Status: **VaultBridge `v1.0.0` is released**. The stable source, GitHub Release, public GHCR image,
+> and exact-digest TrueNAS runtime have been verified. See [`ROADMAP.md`](ROADMAP.md).
 
 ## Why VaultBridge
 

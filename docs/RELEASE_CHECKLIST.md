@@ -1,51 +1,45 @@
 # VaultBridge release checklist
 
-This is the durable release gate for VaultBridge. The `v1.0.0` section records the evidence captured
-by VB-056; later releases should replace commit, run, tag, and digest evidence. Completing VB-056
-means this audit exists. It does not mean `v1.0.0` has shipped.
-
-Do not create a tag, publish a GitHub Release, or publish to GHCR until every blocker is closed.
+This is the durable completed release evidence for VaultBridge `v1.0.0`. VB-056 established the
+audit, and the final stable publication and runtime verification closed every v1.0 release gate on
+2026-08-26. Later releases should add their own evidence without replacing the immutable `v1.0.0`
+tag, GitHub Release, or artifact record below.
 
 ## v1.0.0 readiness audit
 
-Audit baseline: 2026-08-25.
+Audit baseline: 2026-08-26.
 
 VB-056 through VB-060 established the source, CI, security, deployment, and distribution gates.
 A subsequent public-history rewrite intentionally changed commit identities and retired the old
 release candidate artifacts. Pre-rewrite commit SHAs, workflow runs, and RC1 digests are therefore
 historical evidence only and must not be used as final `v1.0.0` release evidence.
 
-The exact rewritten source and `v1.0.0-rc.2` publication, GHCR, and pulled-image runtime gates are
-complete. Stable `v1.0.0` publication and its post-publication verification are the remaining gate.
+The exact rewritten source and `v1.0.0-rc.2` prerelease gates completed first. Stable `v1.0.0` then
+passed exact-main CI, GitHub/GHCR publication, alias/digest verification, and the final anonymous
+exact-digest TrueNAS runtime smoke test. All v1.0 release gates are complete.
 
-| ROADMAP acceptance criterion | Status | Evidence | Still required |
+| ROADMAP acceptance criterion | Status | Evidence | Post-release note |
 |---|---|---|---|
-| Clean install succeeds from public documentation | **PASS** | On 2026-08-25 VaultBridge was anonymously cloned from the public GitHub repository onto TrueNAS SCALE / Linux amd64 with Docker Engine 28.3.1. The generic Docker Compose deployment built successfully from source against a disposable empty vault using isolated host port `8876`. The container started successfully; `GET /health/live` returned HTTP 200 `{"ok":true}`, `GET /health/ready` returned HTTP 200 `{"ready":true}`, and authenticated `GET /api/v1/notes/list?limit=5` returned `{"folder":"","notes":[]}`. The existing production container and production vault were not modified. | Re-run deployment verification on the exact RC/stable artifacts where required by the release procedure. |
-| CI is green | **PASS** | `.github/workflows/ci.yml` represents pytest, compileall, Compose validation, and an image build. Exact-source main [CI run 32880752547](https://github.com/mrtrollex/VaultBridge/actions/runs/32880752547) passed both `python` and `docker` on RC2 source commit `f1131ceec2c003d94af7f9c0a67a802ed067902d`. | Require both jobs again on the exact resulting stable `main`. Branch protection is not enabled, so this remains a manual release gate. |
-| Container image is published | **PASS (RC2)** | Historical RC1 evidence remains retired. RC2 source commit `f1131ceec2c003d94af7f9c0a67a802ed067902d` published through workflow run `32881004757`, with both `Verify release source` and `Build and publish` passing. `ghcr.io/mrtrollex/vaultbridge` is public and linked to `mrtrollex/VaultBridge`. Only prerelease tag `1.0.0-rc.2` was published; stable aliases `1.0.0`, `1.0`, `1`, and `latest` were absent. OCI index digest `sha256:ce5c9c75e8757389fca06e3706379f4801e03312b3852d1338d82624af0a45b2` contains the `linux/amd64` runtime manifest `sha256:dbc23ff9b921ce3e0502e2f4d3713c359c190e16ca289e21261888a6566d3d20`. Anonymous tag and exact-digest pulls passed, followed by the disposable-vault runtime smoke test. | Publish stable `v1.0.0`, verify its stable aliases and digest, and repeat the final exact-digest disposable-vault smoke test. |
-| Public API is versioned | **PASS** | `app/api/versioning.py` registers six protected legacy/v1 route pairs from shared handlers. `tests/test_api_versioning.py` passed 24 tests; `tests/test_api.py::test_router_registration_preserves_public_contract` checks all 15 public schema paths and operation IDs. Health and `/privacy` intentionally remain unversioned. | Re-run contract tests on the release commit. Keep legacy aliases until a separate migration decision. |
+| Clean install succeeds from public documentation | **PASS** | On 2026-08-25 VaultBridge was anonymously cloned from the public GitHub repository onto TrueNAS SCALE / Linux amd64 with Docker Engine 28.3.1. The generic Docker Compose deployment built successfully from source against a disposable empty vault using isolated host port `8876`. The container started successfully; `GET /health/live` returned HTTP 200 `{"ok":true}`, `GET /health/ready` returned HTTP 200 `{"ready":true}`, and authenticated `GET /api/v1/notes/list?limit=5` returned `{"folder":"","notes":[]}`. Final stable verification also anonymously pulled the public image by exact OCI digest and passed the disposable-vault runtime checks. | Repeat for future releases or when deployment behavior changes. |
+| CI is green | **PASS** | Exact-main [CI run 32932765995](https://github.com/mrtrollex/VaultBridge/actions/runs/32932765995) passed both `python` and `docker` on stable source commit `1a430996c9db331f448339d233e940d7aa7b3b6d`. | Branch protection is not enabled; retain exact-commit CI as a manual gate for future releases. |
+| Container image is published | **PASS** | Stable publish workflow run `32932955416` passed `Verify release source` and `Build and publish`. Public package `ghcr.io/mrtrollex/vaultbridge` is linked to `mrtrollex/VaultBridge`. Aliases `1.0.0`, `1.0`, `1`, and `latest` all resolve to OCI index `sha256:0b6734d485df83326cac0ea394b17aaa86fde0be4f7ad7dca9ca49cb531ead71`, with `linux/amd64` runtime manifest `sha256:577522d36484888de6620cd168d9129c7c9ecbb44d1be35260956ca54ecc6791`. Anonymous exact-digest pull and the final disposable-vault smoke test passed. | VB-055 is optional post-v1 multi-architecture work. |
+| Public API is versioned | **PASS** | `app/api/versioning.py` registers six protected legacy/v1 route pairs from shared handlers. `tests/test_api_versioning.py` passed 24 tests; `tests/test_api.py::test_router_registration_preserves_public_contract` checks all 15 public schema paths and operation IDs. Health and `/privacy` intentionally remain unversioned. | Keep legacy aliases until a separate migration decision. |
 | Full semantic rebuild does not block ordinary request handling | **PASS** | `tests/test_indexer.py::test_application_startup_is_non_blocking_and_shutdown_waits_for_sync` proves lifespan startup completes while full sync is blocked. `test_ordinary_http_requests_continue_during_full_rebuild` proves liveness and authenticated non-semantic `/api/v1/notes/list` requests succeed during blocked full sync. Semantic tests prove an older compatible index remains searchable during and after a failed refresh. | Preserve the precise guarantee: initial semantic search waits for readiness, and shutdown can still wait on uninterruptible model/filesystem work. |
-| Retrieval evaluation suite exists | **PASS** | `python -m pytest -q tests/eval` passed 9 tests. The deterministic production-pipeline fixture covers 13 cases: all 13/100% Hit@1/100% Hit@3/100% MRR; English 8/100%/100%/100%; Slovak 4/100%/100%/100%; cross-language 1/100%/100%/100%; heading context 2/100%/100%/100%. | Re-run without changing `tests/eval/baseline.json` merely to clear a gate. This does not measure real-model accuracy or latency. |
-| No known authentication/path-traversal bypass | **PASS** | VB-057 centralizes resolved-target containment for literal search, listing, and semantic enumeration and uses the validated resolved path for stat/read. Real WSL/Linux service and legacy/v1 route tests cover external file and directory links, broken links, safe internal aliases, folder scope, direct reads, and semantic cleanup. The VB-058 focused Linux selection passed 52 tests with no symlink skips; native Windows passed the full suite with only privilege-dependent symlink skips. | Re-run Linux symlink regressions and the full suite in CI on the exact RC/stable commit. The proportionate path-based design does not claim an OS file-descriptor sandbox against hostile concurrent filesystem mutation. |
-| Secrets are not committed or logged | **PASS** | VB-060 repeated targeted scans across 85 tracked files, 328 reachable unique blobs, and the historical source archive with zero high-confidence secret hits. Only example `.env` files are tracked; generated bundles are no longer tracked; reachable author/committer metadata uses the approved noreply/service identities. Logging/observability tests verify bodies, queries, credentials, headers, exception messages, and absolute paths are omitted. | Repeat on the final commit. This was a targeted pattern audit, not exhaustive entropy-based secret detection. Never paste resolved Compose output or environments. |
+| Retrieval evaluation suite exists | **PASS** | `python -m pytest -q tests/eval` passed 9 tests. The deterministic production-pipeline fixture covers 13 cases: all 13/100% Hit@1/100% Hit@3/100% MRR; English 8/100%/100%/100%; Slovak 4/100%/100%/100%; cross-language 1/100%/100%/100%; heading context 2/100%/100%/100%. | Do not change `tests/eval/baseline.json` merely to clear a future gate. This does not measure real-model accuracy or latency. |
+| No known authentication/path-traversal bypass | **PASS** | VB-057 centralizes resolved-target containment for literal search, listing, and semantic enumeration and uses the validated resolved path for stat/read. Real WSL/Linux service and legacy/v1 route tests cover external file and directory links, broken links, safe internal aliases, folder scope, direct reads, and semantic cleanup. The VB-058 focused Linux selection passed 52 tests with no symlink skips; native Windows passed the full suite with only privilege-dependent symlink skips. | Continue Linux symlink coverage for future path-sensitive changes. The proportionate path-based design does not claim an OS file-descriptor sandbox against hostile concurrent filesystem mutation. |
+| Secrets are not committed or logged | **PASS** | VB-060 repeated targeted scans across 85 tracked files, 328 reachable unique blobs, and the historical source archive with zero high-confidence secret hits. Only example `.env` files are tracked; generated bundles are no longer tracked; reachable author/committer metadata uses the approved noreply/service identities. Logging/observability tests verify bodies, queries, credentials, headers, exception messages, and absolute paths are omitted. | Continue targeted scanning for future releases. This was not exhaustive entropy-based secret detection. Never paste resolved Compose output or environments. |
 | Upgrade/rebuild procedure is documented | **PASS** | `README.md` covers source updates, automatic signature invalidation, stopped-service `index check`, explicit `index rebuild`, and Markdown as source of truth. `README_TRUENAS.md` covers managed/source updates, bundles, rollback, automatic incompatibility rebuilds, stopped-service inspection/rebuild, and recovery. Commands match current deployment files and CLI. | Recheck if deployment files change. |
 
-The source-level ROADMAP `v1.0.0` acceptance criteria and the rewritten-source/RC2 distribution gates
-have current supporting evidence. Stable publication and post-publication verification remain
-required before declaring `v1.0.0` shipped.
+The source-level ROADMAP acceptance criteria, rewritten-source/RC2 gates, and final stable
+publication plus post-publication checks all have current supporting evidence. VaultBridge
+`v1.0.0` is released and every v1.0 release gate is complete.
 
-## Release blockers and exact remaining work
+## v1.0.0 release conclusion
 
-1. Finalize `README.md`, `CHANGELOG.md`, release status documentation, and release notes.
-2. Merge the stable-release documentation and require green `python` and `docker` CI on the exact
-   resulting `main` commit.
-3. Run final privacy/security and source validation on that exact commit.
-4. Create and publish stable GitHub Release `v1.0.0` from that commit.
-5. Require both GHCR publication jobs to pass and verify `1.0.0`, `1.0`, `1`, and `latest` resolve
-   to the same stable digest.
-6. Pull the stable image by exact digest, run the final disposable-vault smoke test, and record the
-   release URL, commit, CI/publish runs, tags, digest, platform, visibility/linkage,
-   health/readiness, authenticated v1 behavior, and safe logs.
+- Stable `v1.0.0` is released; there are no open v1.0 release blockers.
+- The Git tag, GitHub Release, and published GHCR artifact are immutable release evidence.
+- VB-042, VB-043, VB-051, VB-055, and other optional/future tasks are post-v1 work, not incomplete
+  v1.0 release gates.
 
 ## Supported platform statement for v1.0.0
 
@@ -55,8 +49,8 @@ required before declaring `v1.0.0` shipped.
   SCALE 24.10 or later.
 - Windows/macOS hosts: Docker Desktop may run the Linux container. Native Windows is a development
   and test environment, not a documented production deployment.
-- Published architecture: RC2 verified the workflow's `linux/amd64` runtime manifest. Do not claim
-  ARM64/multi-architecture support before VB-055.
+- Published architecture: stable `v1.0.0` verified the workflow's `linux/amd64` runtime manifest.
+  Do not claim ARM64/multi-architecture support before VB-055.
 
 ## Version and artifact contract
 
@@ -98,12 +92,12 @@ Do not paste resolved Compose output because it can contain `API_KEY`.
 
 ## Isolated clean-install smoke test
 
-Use a disposable empty vault, never a production/TrueNAS vault. Set `RELEASE_REF` to the exact RC tag
-or commit.
+Use a disposable empty vault, never a production/TrueNAS vault. Set `RELEASE_REF` to the exact
+release tag or commit.
 
 ```bash
 set -eu
-RELEASE_REF=v1.0.0-rc.2
+RELEASE_REF=v1.0.0
 SMOKE_ROOT="$(mktemp -d)"
 git clone --branch "$RELEASE_REF" --depth 1 https://github.com/mrtrollex/VaultBridge.git "$SMOKE_ROOT/VaultBridge"
 mkdir "$SMOKE_ROOT/vault"
@@ -180,9 +174,12 @@ Retain these steps as the verification procedure for future release candidates.
   the source commit and `v1.0.0-rc.2`; `/health/live`, `/health/ready`, and authenticated
   `/api/v1/notes/list` passed; logs contained neither the API key nor disposable host path; and the
   disposable container/data were removed.
-- Stable `v1.0.0` has not yet shipped; stable publication and post-publication verification remain.
+- This is historical prerelease evidence; the final stable evidence is recorded separately below.
 
 ## Stable `v1.0.0` procedure
+
+This sequence completed successfully for stable `v1.0.0`; the durable evidence follows the
+procedure.
 
 1. Confirm every ROADMAP criterion and checklist blocker is closed with current evidence.
 2. Verify the exact final `main` commit and successful `python`/`docker` CI checks.
@@ -195,9 +192,32 @@ Retain these steps as the verification procedure for future release candidates.
 8. Verify package linkage/visibility, manifest platform, health/readiness, authenticated v1 behavior,
    and safe logs.
 9. Record release URL, commit, CI/publish runs, tags, digest, platform, visibility, and smoke evidence.
-10. Only then mark the remaining ROADMAP v1.0.0 criteria complete.
+10. Record completion of every ROADMAP v1.0.0 criterion.
 
-## Draft `v1.0.0` release notes
+## Verified stable `v1.0.0` evidence
+
+- Stable source commit: `1a430996c9db331f448339d233e940d7aa7b3b6d`.
+- Exact-main CI: run `32932765995`; `python` and `docker` passed.
+- Git tag and stable, non-prerelease GitHub Release: [`v1.0.0`](https://github.com/mrtrollex/VaultBridge/releases/tag/v1.0.0).
+- GHCR publish workflow: run `32932955416`; `Verify release source` and `Build and publish` passed.
+- Package: public `ghcr.io/mrtrollex/vaultbridge`, linked to `mrtrollex/VaultBridge`.
+- Stable aliases `1.0.0`, `1.0`, `1`, and `latest` all resolve to OCI index
+  `sha256:0b6734d485df83326cac0ea394b17aaa86fde0be4f7ad7dca9ca49cb531ead71`.
+- `linux/amd64` runtime manifest:
+  `sha256:577522d36484888de6620cd168d9129c7c9ecbb44d1be35260956ca54ecc6791`.
+- BuildKit provenance attestation:
+  `sha256:1b1c0596963f5c1ab56e628b9faecf39b8943d304ce46263ed47ff2e5ffe8aec`.
+- OCI metadata verified revision `1a430996c9db331f448339d233e940d7aa7b3b6d`, version `v1.0.0`, source
+  `https://github.com/mrtrollex/VaultBridge`, and license `MIT`.
+- Published runtime platform: `linux/amd64`.
+- Final TrueNAS stable verification: **PASS**. The public image was anonymously pulled by exact OCI
+  digest using disposable vault/data; platform and revision/version checks passed; the container
+  started; `/health/live`, `/health/ready`, and authenticated `/api/v1/notes/list` passed; the
+  generated API key and disposable host path were absent from application logs; and the disposable
+  test container and data were removed.
+- All stable `v1.0.0` release gates are complete.
+
+## `v1.0.0` release notes
 
 VaultBridge 1.0 is a small self-hosted REST API for safe operations and local semantic retrieval over
 an Obsidian Markdown vault. Markdown remains the source of truth.
