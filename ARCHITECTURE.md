@@ -64,6 +64,12 @@ build that same file and distribute a versioned image as
 runtime configuration, mounts, API behavior, or semantic-index compatibility. VB-054 publishes only
 the GitHub-hosted runner's normal Linux architecture. Multi-architecture manifests remain VB-055.
 
+Docker sets Hugging Face's dedicated `HF_HOME` inside the existing writable semantic-data location:
+`/vault/.obsidian-chatgpt-data/huggingface` for generic Compose and `/data/huggingface` for TrueNAS.
+The image default is `/data/huggingface`, prepared for UID/GID 568. Compose retains its existing
+non-root runtime identities and overrides the path where the generic deployment uses arbitrary
+`PUID:PGID`. The cache is derived model data and never shares a note-content path.
+
 ### Current implementation modules
 
 ```text

@@ -14,6 +14,7 @@ services:
       VAULT_PATH: /vault
       MAX_NOTE_BYTES: ${MAX_NOTE_BYTES:-1000000}
       SEMANTIC_DATA_PATH: /vault/.obsidian-chatgpt-data
+      HF_HOME: /vault/.obsidian-chatgpt-data/huggingface
       SEMANTIC_MODEL: ${SEMANTIC_MODEL:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
       SEMANTIC_CHUNK_CHARS: ${SEMANTIC_CHUNK_CHARS:-600}
       SEMANTIC_CHUNK_OVERLAP: ${SEMANTIC_CHUNK_OVERLAP:-100}

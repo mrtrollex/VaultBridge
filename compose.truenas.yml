@@ -11,6 +11,7 @@ services:
       VAULT_PATH: /vault
       MAX_NOTE_BYTES: "1000000"
       SEMANTIC_DATA_PATH: /data
+      HF_HOME: /data/huggingface
       SEMANTIC_MODEL: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
       SEMANTIC_CHUNK_CHARS: "600"
       SEMANTIC_CHUNK_OVERLAP: "100"

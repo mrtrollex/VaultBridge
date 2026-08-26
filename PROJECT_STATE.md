@@ -236,6 +236,10 @@ app/semantic.py
     compatibility facade retained for pre-VB-005 internal API compatibility
 ```
 
+Docker deployments set Hugging Face's `HF_HOME` to persistent derived storage rather than a home
+directory: `/vault/.obsidian-chatgpt-data/huggingface` in generic Compose and `/data/huggingface` in
+TrueNAS. Existing non-root `PUID:PGID` and `568:568` runtime identities remain unchanged.
+
 ## Application logging
 
 VaultBridge-owned application logs are emitted to stderr as one UTF-8 JSON object per line. Every
@@ -441,7 +445,7 @@ ties now have focused production regressions.
 Native Windows:
 
 ```text
-395 passed, 15 skipped, 0 failed
+398 passed, 15 skipped, 0 failed
 ```
 
 The fifteen skips are privilege-dependent Windows symlink tests. Ruff, Python compileall,

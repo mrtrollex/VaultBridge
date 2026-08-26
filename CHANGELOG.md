@@ -6,6 +6,12 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ## [Unreleased]
 
+### Fixed
+
+- Docker clean installations now give FastEmbed/Hugging Face a predictable writable `HF_HOME`
+  inside the existing derived semantic-data mount, preserving generic `PUID:PGID` and TrueNAS
+  `568:568` non-root execution
+
 ### Added
 
 - an optional, disabled-by-default cross-platform filesystem watcher using `watchdog`, with safe

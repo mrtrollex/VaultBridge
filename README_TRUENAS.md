@@ -23,8 +23,10 @@ Compose service                        -> obsidian-api
 container                              -> obsidian-chatgpt
 ```
 
-`/vault` is the source of truth. `/data` holds `semantic-index.sqlite3` and the embedding-model cache;
-it is disposable and rebuildable from Markdown. Do not sync `/data` through Obsidian.
+`/vault` is the source of truth. `/data` holds `semantic-index.sqlite3`, FastEmbed's model files, and
+the Hugging Face cache under `/data/huggingface`; it is disposable and rebuildable from Markdown. The
+container fixes `HF_HOME` to that writable derived-data path for UID/GID `568:568`. Do not sync
+`/data` through Obsidian.
 
 The primary lifecycle owner in this guide is a TrueNAS **Custom App installed via YAML**. The small
 [`truenas-install.yml`](truenas-install.yml) file points the TrueNAS-managed app at

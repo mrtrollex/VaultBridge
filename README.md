@@ -348,6 +348,7 @@ The generic Compose deployment stores these derived files inside the mounted vau
 ```text
 /vault/.obsidian-chatgpt-data/semantic-index.sqlite3
 /vault/.obsidian-chatgpt-data/models/
+/vault/.obsidian-chatgpt-data/huggingface/
 ```
 
 On the host, they are under `${OBSIDIAN_VAULT_PATH}/.obsidian-chatgpt-data`. This directory therefore
@@ -355,6 +356,10 @@ persists across container replacement and requires write permission for `PUID:PG
 index and downloaded model cache are derived/disposable; Markdown files remain the source of truth
 and should be the focus of backups. Do not edit SQLite manually. Use the supported stopped-service
 maintenance commands below to inspect or rebuild the index.
+
+Compose fixes FastEmbed/Hugging Face's internal `HF_HOME` to the `huggingface/` directory above, so
+the configured non-root `PUID:PGID` uses the same writable derived-data mount instead of an unwritable
+root-home cache. This is an internal container path and requires no additional `.env` setting.
 
 The separate `/data` mount described in the TrueNAS guide is not part of generic Compose.
 
