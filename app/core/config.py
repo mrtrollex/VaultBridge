@@ -25,6 +25,8 @@ class Settings(BaseModel):
         "SEMANTIC_CHUNK_CHARS",
         "SEMANTIC_CHUNK_OVERLAP",
         "SEMANTIC_INDEX_BATCH_SIZE",
+        "SEMANTIC_WATCH_ENABLED",
+        "SEMANTIC_WATCH_DEBOUNCE_SECONDS",
         "RATE_LIMIT_ENABLED",
         "RATE_LIMIT_REQUESTS",
         "RATE_LIMIT_WINDOW_SECONDS",
@@ -47,6 +49,13 @@ class Settings(BaseModel):
     semantic_chunk_chars: int = Field(default=600, alias="SEMANTIC_CHUNK_CHARS", ge=250)
     semantic_chunk_overlap: int = Field(default=100, alias="SEMANTIC_CHUNK_OVERLAP", ge=0)
     semantic_index_batch_size: int = Field(default=25, alias="SEMANTIC_INDEX_BATCH_SIZE", gt=0)
+    semantic_watch_enabled: bool = Field(default=False, alias="SEMANTIC_WATCH_ENABLED")
+    semantic_watch_debounce_seconds: float = Field(
+        default=1.0,
+        alias="SEMANTIC_WATCH_DEBOUNCE_SECONDS",
+        gt=0,
+        allow_inf_nan=False,
+    )
     rate_limit_enabled: bool = Field(default=True, alias="RATE_LIMIT_ENABLED")
     rate_limit_requests: int = Field(default=120, alias="RATE_LIMIT_REQUESTS", gt=0)
     rate_limit_window_seconds: int = Field(default=60, alias="RATE_LIMIT_WINDOW_SECONDS", gt=0)

@@ -976,9 +976,10 @@ class SemanticSearchService:
         vault_root: Path,
         max_note_bytes: int,
         relative_paths: Sequence[str],
-    ) -> list[Path]:
+    ) -> tuple[list[Path], list[str]]:
         resolved_root = vault_root.resolve()
         files: list[Path] = []
+        missing_paths: list[str] = []
         for raw_path in sorted(set(relative_paths)):
             normalized = raw_path.strip().replace("\\", "/")
             posix_path = PurePosixPath(normalized)
@@ -994,31 +995,50 @@ class SemanticSearchService:
                 )
             normalized = posix_path.as_posix()
             relative_path = Path(normalized)
+            if any(part in SEMANTIC_EXCLUDED_DIRECTORIES for part in relative_path.parts):
+                raise TargetedSynchronizationError(
+                    f"Targeted note path is excluded: {normalized}"
+                )
+            candidate = resolved_root / relative_path
             try:
-                path = (resolved_root / relative_path).resolve()
-                resolved_relative = path.relative_to(resolved_root)
-                if any(
-                    part in SEMANTIC_EXCLUDED_DIRECTORIES for part in resolved_relative.parts
-                ):
-                    raise TargetedSynchronizationError(
-                        f"Targeted note path is excluded: {normalized}"
-                    )
+                path = candidate.resolve(strict=True)
+                path.relative_to(resolved_root)
+                try:
+                    stat = path.stat()
+                except FileNotFoundError:
+                    missing_paths.append(normalized)
+                    continue
                 if not path.is_file():
                     raise TargetedSynchronizationError(
                         f"Targeted note is unavailable: {normalized}"
                     )
-                if path.stat().st_size > max_note_bytes:
+                if stat.st_size > max_note_bytes:
                     raise TargetedSynchronizationError(
                         f"Targeted note is too large: {normalized}"
                     )
                 files.append(path)
+            except FileNotFoundError:
+                try:
+                    unresolved_path = candidate.resolve(strict=False)
+                    unresolved_path.relative_to(resolved_root)
+                    if candidate.is_symlink():
+                        raise TargetedSynchronizationError(
+                            f"Targeted note is inaccessible: {normalized}"
+                        )
+                except TargetedSynchronizationError:
+                    raise
+                except (OSError, ValueError) as exc:
+                    raise TargetedSynchronizationError(
+                        f"Targeted note is inaccessible: {normalized}"
+                    ) from exc
+                missing_paths.append(normalized)
             except TargetedSynchronizationError:
                 raise
             except (OSError, ValueError) as exc:
                 raise TargetedSynchronizationError(
                     f"Targeted note is inaccessible: {normalized}"
                 ) from exc
-        return files
+        return files, missing_paths
 
     def _index_files(
         self,
@@ -1156,9 +1176,23 @@ class SemanticSearchService:
         with self._configuration_lock:
             vault_root = self.vault_root
             max_note_bytes = self.max_note_bytes
-        files = self._target_files(vault_root, max_note_bytes, relative_paths)
+        files, missing_paths = self._target_files(
+            vault_root,
+            max_note_bytes,
+            relative_paths,
+        )
         with self.repository.transaction() as session:
             known = session.load_notes()
+        removed = 0
+        for stale_batch in batched(
+            (path for path in missing_paths if path in known),
+            self.index_batch_size,
+        ):
+            self._raise_if_cancelled(cancel_event)
+            with self.repository.transaction() as session:
+                for stale_path in stale_batch:
+                    session.delete_note(stale_path)
+            removed += len(stale_batch)
         indexed, unchanged = self._index_files(
             files=files,
             vault_root=vault_root,
@@ -1166,7 +1200,7 @@ class SemanticSearchService:
             cancel_event=cancel_event,
             strict_reads=True,
         )
-        return {"indexed": indexed, "unchanged": unchanged, "removed": 0}
+        return {"indexed": indexed, "unchanged": unchanged, "removed": removed}
 
     def _run_synchronization_locked(
         self,

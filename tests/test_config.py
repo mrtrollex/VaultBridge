@@ -19,6 +19,8 @@ def test_configuration_defaults_match_existing_behavior():
     assert settings.semantic_chunk_chars == 600
     assert settings.semantic_chunk_overlap == 100
     assert settings.semantic_index_batch_size == 25
+    assert settings.semantic_watch_enabled is False
+    assert settings.semantic_watch_debounce_seconds == 1.0
     assert settings.rate_limit_enabled is True
     assert settings.rate_limit_requests == 120
     assert settings.rate_limit_window_seconds == 60
@@ -37,6 +39,8 @@ def test_configuration_environment_overrides(tmp_path):
             "SEMANTIC_CHUNK_CHARS": "800",
             "SEMANTIC_CHUNK_OVERLAP": "200",
             "SEMANTIC_INDEX_BATCH_SIZE": "10",
+            "SEMANTIC_WATCH_ENABLED": "true",
+            "SEMANTIC_WATCH_DEBOUNCE_SECONDS": "0.25",
             "RATE_LIMIT_ENABLED": "false",
             "RATE_LIMIT_REQUESTS": "40",
             "RATE_LIMIT_WINDOW_SECONDS": "30",
@@ -53,6 +57,8 @@ def test_configuration_environment_overrides(tmp_path):
     assert settings.semantic_chunk_chars == 800
     assert settings.semantic_chunk_overlap == 200
     assert settings.semantic_index_batch_size == 10
+    assert settings.semantic_watch_enabled is True
+    assert settings.semantic_watch_debounce_seconds == 0.25
     assert settings.rate_limit_enabled is False
     assert settings.rate_limit_requests == 40
     assert settings.rate_limit_window_seconds == 30
@@ -92,6 +98,14 @@ def test_semantic_search_service_uses_typed_configuration(tmp_path):
         ({"SEMANTIC_CHUNK_OVERLAP": "301"}, "SEMANTIC_CHUNK_OVERLAP"),
         ({"SEMANTIC_INDEX_BATCH_SIZE": "0"}, "SEMANTIC_INDEX_BATCH_SIZE"),
         ({"SEMANTIC_INDEX_BATCH_SIZE": "not-an-integer"}, "SEMANTIC_INDEX_BATCH_SIZE"),
+        ({"SEMANTIC_WATCH_ENABLED": "sometimes"}, "SEMANTIC_WATCH_ENABLED"),
+        ({"SEMANTIC_WATCH_DEBOUNCE_SECONDS": "0"}, "SEMANTIC_WATCH_DEBOUNCE_SECONDS"),
+        (
+            {"SEMANTIC_WATCH_DEBOUNCE_SECONDS": "not-a-number"},
+            "SEMANTIC_WATCH_DEBOUNCE_SECONDS",
+        ),
+        ({"SEMANTIC_WATCH_DEBOUNCE_SECONDS": "inf"}, "SEMANTIC_WATCH_DEBOUNCE_SECONDS"),
+        ({"SEMANTIC_WATCH_DEBOUNCE_SECONDS": "nan"}, "SEMANTIC_WATCH_DEBOUNCE_SECONDS"),
         ({"RATE_LIMIT_ENABLED": "sometimes"}, "RATE_LIMIT_ENABLED"),
         ({"RATE_LIMIT_REQUESTS": "0"}, "RATE_LIMIT_REQUESTS"),
         ({"RATE_LIMIT_REQUESTS": "not-an-integer"}, "RATE_LIMIT_REQUESTS"),

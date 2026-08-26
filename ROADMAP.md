@@ -73,6 +73,7 @@ app/semantic.py                 legacy compatibility facade
 - [x] **VB-011 — Batch index commits**
 - [x] **VB-012 — Background startup indexing**
 - [x] **VB-013 — Enqueue reindex after note writes**
+- [x] **VB-014 — Optional filesystem watcher**
 - [x] **VB-015 — Rich health/readiness output**
 - [x] **VB-020 — Markdown heading-aware chunker**
 - [x] **VB-021 — Embed title + heading hierarchy + chunk**
@@ -110,7 +111,7 @@ The immutable artifact values and complete release evidence are recorded in
 
 ## Current known limitations
 
-1. External filesystem changes are not automatically queued.
+1. External filesystem changes are automatically queued only when the optional watcher is enabled.
 2. The deterministic retrieval fixture does not measure real-model quality or latency.
 3. Multiple VaultBridge processes sharing one semantic index are not coordinated.
 4. AI clients can invent wikilinks unless they use verified note results.
@@ -231,18 +232,12 @@ Implemented flat compatibility-preserving response:
 The counts expose useful operator context and inferred completeness. VB-015 does not introduce
 explicit per-sync current-note, percentage, current-batch or ETA counters; those remain future work.
 
-## Optional follow-up
+### VB-014 — Optional filesystem watcher — P1 ✅
 
-### VB-014 — Optional filesystem watcher — P1
-
-Only after the background indexer exists.
-
-Potential approach:
-
-- `watchdog`/inotify,
-- debounce Obsidian/Syncthing bursts,
-- enqueue changed Markdown paths,
-- watcher remains optional.
+The disabled-by-default recursive watcher uses `watchdog`, safe vault-relative Markdown event
+interpretation, one monotonic debounce dispatcher, and the existing VB-012/VB-013 targeted queue.
+Deletes remove only their derived path rows and renames process both old and new paths. Startup full
+synchronization remains authoritative for downtime reconciliation.
 
 ## Milestone 2 exit criteria
 
@@ -251,6 +246,7 @@ Potential approach:
 - [x] restart does not discard already committed batches
 - [x] lifecycle and inferred completeness are observable
 - [x] note writes can trigger targeted semantic refresh
+- [x] optional external Markdown watching reuses targeted semantic refresh
 - [x] no external queue/service is required
 
 ---
@@ -299,7 +295,7 @@ replaced. Its checked 13-case baseline is Hit@1 100%, Hit@3 100% and MRR 100%. R
 material-tie guards keep the fixture deterministic, while controlled ablations prove semantic,
 lexical, heading-context and cross-language sensitivity.
 
-### VB-023 — Retrieval benchmark command — P1
+### VB-023 — Retrieval benchmark command — P1 ← NEXT
 
 Record latency, paths, semantic score, lexical score, final score, and rank.
 
@@ -346,13 +342,13 @@ vault containment and Markdown-file verification, return canonical paths/titles,
 overfetch to backfill filtered stale candidates without changing ranking or response fields. Live
 content edits can still leave semantic scores/snippets stale until synchronization.
 
-### VB-032 — Section-level update design / ADR — P1 ← NEXT
+### VB-032 — Section-level update design / ADR — P1 — DEFERRED / OPTIONAL
 
-Design concurrency and section identity before implementation.
+Design concurrency and section identity only if section mutation becomes a demonstrated need.
 
-### VB-033 — `updateNoteSection` endpoint — P1
+### VB-033 — `updateNoteSection` endpoint — P1 — DEFERRED / OPTIONAL
 
-Must include conflict detection.
+Do not implement before a resumed VB-032 decision; any future endpoint must include conflict detection.
 
 ### VB-034 — Opt-in verified backlink insertion — P2
 
@@ -552,7 +548,7 @@ OPERATIONS / KNOWLEDGE / DX
 v1.0.0 ✓
 ```
 
-`v1.0.0` has shipped. Milestones 4, 5, and 6 retain their open future/P1 work; `VB-014`, `VB-023`,
+`v1.0.0` has shipped. Milestones 4, 5, and 6 retain their open future/P1 work; `VB-023`,
 and other P1/P2 tasks may be scheduled when their prerequisites exist and their value is
 demonstrated. No v1.1 scope is implied.
 

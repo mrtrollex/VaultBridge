@@ -8,6 +8,9 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ### Added
 
+- an optional, disabled-by-default cross-platform filesystem watcher using `watchdog`, with safe
+  recursive Markdown event interpretation, monotonic debounce/coalescing, and lifecycle integration
+  through the existing single semantic indexer
 - a dependency-free local CLI with persisted `status`, offline incremental `index`, clean `reindex`,
   literal `search`, and existing-index semantic `related` commands, while retaining VB-045
   `index check` and `index rebuild`
@@ -23,6 +26,8 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ### Changed
 
+- targeted synchronization now removes derived rows for safely contained missing Markdown paths, so
+  external deletes and both sides of renames are processed without a full vault scan
 - related-note suggestions now return only live, contained regular Markdown paths verified through
   `VaultService`, canonicalize safe internal aliases, and boundedly backfill filtered stale candidates
   while preserving response fields, surviving order, caller limits, and semantic-index contents

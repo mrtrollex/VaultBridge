@@ -77,6 +77,7 @@ app/services/vault.py safe path resolution, Markdown note operations and contain
 app/services/duplicate_candidates.py live-title and verified semantic candidate composition
 app/services/semantic_search.py embedding, incremental indexing, hybrid ranking and semantic health state
 app/services/indexer.py one in-process full/targeted synchronization worker and deduplicating path queue
+app/services/filesystem_watcher.py optional recursive Markdown event interpretation and debounce
 app/services/rate_limiter.py bounded process-local fixed-window request allowance
 app/repositories/semantic.py SQLite schema, semantic index persistence and read-only status statistics
 app/semantic.py      compatibility facade for the pre-VB-005 internal API
@@ -137,6 +138,14 @@ roll back normally, and skips remaining batches. Shutdown must still wait for an
 model download, ONNX inference call, or filesystem operation because those calls are not forcibly
 interruptible.
 
+When `SEMANTIC_WATCH_ENABLED=true`, lifespan starts one recursive `watchdog` observer after the
+semantic indexer exists. Filesystem callbacks only interpret safe Markdown paths and submit them to
+one monotonic debounce dispatcher; they never embed, write SQLite, or call the semantic service.
+The dispatcher coalesces repeated paths and feeds the existing thread-safe atomic batch-enqueue
+boundary, so both sides of a rename reach one targeted job even if the worker is idle.
+Shutdown stops the observer, flushes accepted debounced paths, and only then shuts down the semantic
+indexer. With the default `false`, no observer or debounce thread starts.
+
 Successful API create/append mutations enqueue their vault-relative path in the same worker. Pending
 paths are stored in a process-local set, so repeated writes before processing coalesce. A full
 synchronization takes priority and absorbs paths already queued when it starts; writes arriving while
@@ -155,9 +164,11 @@ includes a write that arrived while the failed full job was still running.
 
 Targeted refresh uses the same per-note indexing logic, lifecycle transitions, embedder lock and
 configurable VB-011 batch transactions as full synchronization, but it does not scan or remove
-unrelated notes. A failed targeted batch rolls back without replacing that batch's prior valid note
-index. Missing, inaccessible, path-escaping, oversized, and non-UTF-8 targeted notes fail strictly;
-failed paths remain queued until a later enqueue or explicit/full retry. Full-vault synchronization
+unrelated notes. A safely contained targeted path that no longer exists removes only its derived
+note/chunk rows; this lets watcher delete and rename events avoid full-vault scans. A failed targeted
+batch rolls back without replacing that batch's prior valid live-note index. Inaccessible,
+path-escaping, oversized, excluded, broken-symlink, and non-UTF-8 targets still fail strictly; failed
+paths remain queued until a later enqueue or explicit/full retry. Full-vault synchronization
 retains its existing tolerant file-discovery/read behavior, but resolves every discovered candidate
 and rejects paths outside the resolved vault root before reading or indexing them. Shutdown discards
 unprocessed in-memory paths after requesting cooperative cancellation. Markdown remains durable, so
@@ -337,7 +348,14 @@ API dependency.
 - shutdown waiting for any already-running uninterruptible third-party call
 
 Batching, lifecycle-state transitions and index contents remain owned by
-`SemanticSearchService` and `SemanticRepository`. Filesystem watching remains planned work.
+`SemanticSearchService` and `SemanticRepository`.
+
+### `services/filesystem_watcher.py`
+
+- disabled-by-default recursive `watchdog` observer
+- safe create/modify/delete/move interpretation through vault containment rules
+- one monotonic debounce dispatcher feeding the existing indexer queue
+- watcher-first shutdown with accepted-path flush before indexer shutdown
 
 ### `services/semantic_search.py`
 

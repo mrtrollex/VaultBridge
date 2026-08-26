@@ -560,27 +560,20 @@ def test_targeted_read_oserror_requeues_and_preserves_previous_index(tmp_path, m
         indexer.shutdown()
 
 
-def test_missing_target_requeues_and_preserves_previous_index(tmp_path):
+def test_missing_target_removes_previous_index_without_full_sync(tmp_path):
     service = semantic_service(tmp_path)
     note = service.vault_root / "note.md"
     note.write_text("Original indexed content.", encoding="utf-8")
     service.sync()
-    original_chunks = service.repository.load_chunks()
     note.unlink()
 
     indexer = BackgroundSemanticIndexer(service.sync, service.sync_paths)
     try:
         assert indexer.enqueue("note.md") is True
-        with pytest.raises(TargetedSynchronizationError, match="unavailable"):
-            indexer.wait(timeout=2)
-        assert service.state is IndexState.ERROR
-        assert service.repository.load_chunks() == original_chunks
-        assert indexer.queued_paths == ("note.md",)
-
-        note.write_text("Recovered newest content.", encoding="utf-8")
-        assert indexer.enqueue("note.md") is False
-        assert indexer.wait(timeout=2) == {"indexed": 1, "unchanged": 0, "removed": 0}
-        assert service.repository.load_chunks()[0].content == "Recovered newest content."
+        assert indexer.wait(timeout=2) == {"indexed": 0, "unchanged": 0, "removed": 1}
+        assert service.state is IndexState.READY
+        assert service.repository.load_chunks() == []
+        assert indexer.queued_paths == ()
     finally:
         indexer.shutdown()
 

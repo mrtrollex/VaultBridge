@@ -98,6 +98,8 @@ RATE_LIMIT_ENABLED=true
 RATE_LIMIT_REQUESTS=120
 RATE_LIMIT_WINDOW_SECONDS=60
 RATE_LIMIT_MAX_CLIENTS=1024
+SEMANTIC_WATCH_ENABLED=false
+SEMANTIC_WATCH_DEBOUNCE_SECONDS=1.0
 ```
 
 `compose.truenas.yml` directly fixes the application settings that must match the mounts and current
@@ -148,6 +150,19 @@ share it. Forwarded client-address headers are deliberately ignored. With the do
 proxy pattern, the proxy may be the peer, so multiple external clients can consume the same bucket.
 Tune `RATE_LIMIT_REQUESTS`, `RATE_LIMIT_WINDOW_SECONDS`, and `RATE_LIMIT_MAX_CLIENTS` for that shared
 traffic, or set `RATE_LIMIT_ENABLED=false` only when equivalent upstream protection is intentional.
+
+#### Watch external vault edits
+
+`SEMANTIC_WATCH_ENABLED=false` preserves the existing disabled behavior. Set it to `true` in `.env`
+and redeploy/restart the Custom App to observe recursive Markdown creates, changes, deletes, and
+renames made by Obsidian or Syncthing. `SEMANTIC_WATCH_DEBOUNCE_SECONDS=1.0` coalesces their common
+event bursts before using the existing targeted semantic queue. The watcher ignores non-Markdown,
+Obsidian-internal, temporary, semantic-data, escaping, and unsafe symlink paths.
+
+This is one-process, local incremental freshness. Startup full synchronization still reconciles
+changes made during downtime, and watching is not a substitute for backing up the authoritative
+Markdown dataset. Leave it disabled if the dataset/mount does not deliver reliable native filesystem
+notifications to the container.
 
 ### 3. Grant deliberate dataset access
 
