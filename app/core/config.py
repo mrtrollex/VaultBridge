@@ -17,6 +17,7 @@ class Settings(BaseModel):
 
     ENVIRONMENT_VARIABLES: ClassVar[tuple[str, ...]] = (
         "API_KEY",
+        "API_KEY_PREVIOUS",
         "VAULT_PATH",
         "MAX_NOTE_BYTES",
         "SEMANTIC_DATA_PATH",
@@ -27,6 +28,11 @@ class Settings(BaseModel):
     )
 
     api_key: SecretStr = Field(default=SecretStr(""), alias="API_KEY", repr=False)
+    previous_api_key: SecretStr = Field(
+        default=SecretStr(""),
+        alias="API_KEY_PREVIOUS",
+        repr=False,
+    )
     vault_path: Path = Field(default=Path("/vault"), alias="VAULT_PATH")
     max_note_bytes: int = Field(default=1_000_000, alias="MAX_NOTE_BYTES", gt=0)
     semantic_data_path: Path = Field(

@@ -26,6 +26,7 @@ Completed:
 - VB-024 — Tune hybrid ranking from evaluation data
 - VB-040 — Structured JSON logging
 - VB-041 — Request IDs and latency logging
+- VB-042 — API key rotation
 - VB-044 — Liveness and readiness endpoints
 - VB-045 — Index integrity/rebuild CLI
 - VB-050 — Introduce `/api/v1`
@@ -45,7 +46,7 @@ Post-v1 development position:
 
 Next recommended backlog task:
 
-- **VB-042 — API key rotation**
+- **VB-043 — Lightweight rate limiting**
 
 Current v1.0 release status:
 
@@ -92,6 +93,8 @@ Current milestones:
 - typed runtime settings via `app/core/config.py`
 - standard-library JSON application logging via `app/core/logging.py`
 - context-local HTTP request correlation and latency events via `app/core/observability.py`
+- required current `API_KEY` plus one optional secret-safe `API_KEY_PREVIOUS` allow a controlled
+  two-key rotation window through the shared constant-time legacy/v1 Bearer verifier
 - local semantic model through FastEmbed / ONNX Runtime
 - default model: `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`
 - SQLite semantic index using WAL

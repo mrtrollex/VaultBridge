@@ -76,8 +76,9 @@ If the production NAS does not use Git, use the supported bundle workflow descri
 ### 2. Create `.env` and the API key
 
 The TrueNAS Compose file loads `/mnt/Apps/AppsData/ObsidianChatGPT/.env` through `env_file`. The file
-contains the secret `API_KEY`; it must not be committed, included in an update archive, pasted into
-support logs, or exposed through an environment dump.
+contains the secret `API_KEY` and may temporarily contain `API_KEY_PREVIOUS`; it must not be
+committed, included in an update archive, pasted into support logs, or exposed through an
+environment dump.
 
 ```bash
 cd /mnt/Apps/AppsData/ObsidianChatGPT
@@ -89,8 +90,9 @@ Copy the generated value into `API_KEY` in `.env` using a local editor. Do not p
 Compose or documentation. Restrict access to `.env` according to the ACL model used on the source
 dataset.
 
-Only `API_KEY` comes from `.env` in this deployment. `compose.truenas.yml` directly fixes the
-application settings that must match the mounts and current semantic index:
+`API_KEY` and the optional `API_KEY_PREVIOUS` come from `.env` in this deployment.
+`compose.truenas.yml` directly fixes the application settings that must match the mounts and current
+semantic index:
 
 ```text
 VAULT_PATH=/vault
@@ -102,8 +104,29 @@ SEMANTIC_CHUNK_OVERLAP=100
 SEMANTIC_INDEX_BATCH_SIZE=25
 ```
 
-Avoid casual use of `docker compose config`: resolved output can contain the API key from `.env`.
+Avoid casual use of `docker compose config`: resolved output can contain both API keys from `.env`.
 Never paste resolved Compose output or the complete container environment into a support request.
+
+#### Rotate the API key safely
+
+The current `API_KEY` remains mandatory. A non-empty `API_KEY_PREVIOUS` temporarily allows the old
+credential on the same protected legacy and `/api/v1` routes; both use
+`Authorization: Bearer <key>`. The previous key cannot replace a missing current key.
+
+1. Generate a new long random key.
+2. Edit the protected, untracked `.env` with placeholders representing the new and old values:
+
+   ```env
+   API_KEY=<new-current-key>
+   API_KEY_PREVIOUS=<old-key-during-rotation>
+   ```
+
+3. Redeploy/restart the TrueNAS Custom App so both keys are loaded.
+4. Migrate every client to the new key and verify a protected request.
+5. Remove `API_KEY_PREVIOUS` or leave it empty, then redeploy/restart again.
+
+There is no automatic expiry or hot reload. The old key remains accepted until the final
+redeploy/restart, so keep the overlap as short as practical.
 
 ### 3. Grant deliberate dataset access
 

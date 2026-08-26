@@ -347,9 +347,22 @@ Completed:
 - logging failures remain isolated from response and exception behavior, and Uvicorn logging remains
   separately managed.
 
-### VB-042 — API key rotation — P1
+### VB-042 — API key rotation — P1 ✅
 
-Allow current + previous key during a rotation window.
+**Status:** Completed on 2026-08-26.
+
+Added a deliberately bounded operator-controlled rotation window:
+
+- `API_KEY` remains the required current credential and preserves the existing missing-configuration
+  error;
+- optional secret-safe `API_KEY_PREVIOUS` defaults to empty and, when configured, is accepted by the
+  shared legacy and `/api/v1` authentication dependency;
+- exact Bearer credentials are compared with the standard-library constant-time primitive, while
+  missing, malformed, and unknown credentials retain the generic HTTP `401` response;
+- public health routes, endpoint paths, operation IDs, request/response schemas, and semantic behavior
+  remain unchanged;
+- deployment examples and operator documentation cover adding the previous key only during client
+  migration, then removing it and restarting/redeploying to end the window.
 
 ### VB-043 — Lightweight rate limiting — P1
 
@@ -543,6 +556,7 @@ VB-001 ✓
 → VB-024  ✓
 → VB-040  ✓
 → VB-041  ✓
+→ VB-042  ✓
 → VB-044  ✓
 → VB-045  ✓
 → VB-050  ✓
@@ -559,6 +573,6 @@ release-version alignment, and repository-exposure-safety blockers. The reposito
 GHCR verification, RC smoke-test, and final stable-release gates recorded in
 `docs/RELEASE_CHECKLIST.md`.
 
-VB-042 remains the next non-blocking P1 backlog task.
+VB-043 is the next non-blocking P1 backlog task.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

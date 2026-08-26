@@ -11,6 +11,7 @@ def test_configuration_defaults_match_existing_behavior():
     settings = Settings.from_env({})
 
     assert settings.api_key.get_secret_value() == ""
+    assert settings.previous_api_key.get_secret_value() == ""
     assert settings.vault_path == Path("/vault").resolve()
     assert settings.max_note_bytes == 1_000_000
     assert settings.semantic_data_path == Path("/vault/.obsidian-chatgpt-data")
@@ -24,6 +25,7 @@ def test_configuration_environment_overrides(tmp_path):
     settings = Settings.from_env(
         {
             "API_KEY": "test-secret-value",
+            "API_KEY_PREVIOUS": "test-previous-secret-value",
             "VAULT_PATH": str(tmp_path / "vault"),
             "MAX_NOTE_BYTES": "2048",
             "SEMANTIC_DATA_PATH": str(tmp_path / "semantic-data"),
@@ -35,6 +37,7 @@ def test_configuration_environment_overrides(tmp_path):
     )
 
     assert settings.api_key.get_secret_value() == "test-secret-value"
+    assert settings.previous_api_key.get_secret_value() == "test-previous-secret-value"
     assert settings.vault_path == (tmp_path / "vault").resolve()
     assert settings.max_note_bytes == 2048
     assert settings.semantic_data_path == tmp_path / "semantic-data"
@@ -90,8 +93,17 @@ def test_empty_path_or_model_configuration_is_rejected(environment_name):
         Settings.from_env({environment_name: " "})
 
 
-def test_api_key_is_redacted_from_settings_representation():
-    secret = "must-not-appear-in-repr"
-    settings = Settings.from_env({"API_KEY": secret})
+def test_api_keys_are_redacted_from_settings_representations():
+    current_secret = "current-must-not-appear-in-repr"
+    previous_secret = "previous-must-not-appear-in-repr"
+    settings = Settings.from_env(
+        {
+            "API_KEY": current_secret,
+            "API_KEY_PREVIOUS": previous_secret,
+        }
+    )
 
-    assert secret not in repr(settings)
+    representations = (repr(settings), str(settings), repr(settings.model_dump()))
+    for representation in representations:
+        assert current_secret not in representation
+        assert previous_secret not in representation

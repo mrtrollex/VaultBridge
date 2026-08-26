@@ -78,7 +78,7 @@ Do not implement the recommended next task.
 At the current project state, the next recommended task is:
 
 ```text
-VB-042 — API key rotation
+VB-043 — Lightweight rate limiting
 ```
 
 Always verify this against `PROJECT_STATE.md` and `BACKLOG.md` before starting.

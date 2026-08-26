@@ -1,3 +1,4 @@
+import hmac
 import threading
 from pathlib import Path
 
@@ -35,11 +36,17 @@ def client_for(
     tmp_path: Path,
     *,
     api_key: str = "test-secret",
+    previous_api_key: str = "",
     max_note_bytes: int = 1_000_000,
     embedder=None,
     semantic_indexer=None,
 ) -> TestClient:
-    settings = Settings(api_key=api_key, vault_path=tmp_path, max_note_bytes=max_note_bytes)
+    settings = Settings(
+        api_key=api_key,
+        previous_api_key=previous_api_key,
+        vault_path=tmp_path,
+        max_note_bytes=max_note_bytes,
+    )
     vault_service = VaultService(
         vault_root=settings.vault_path,
         max_note_bytes=settings.max_note_bytes,
@@ -121,6 +128,75 @@ def test_auth_required(tmp_path):
     client = client_for(tmp_path)
     response = client.get("/notes/list")
     assert response.status_code == 401
+    assert response.json() == {"detail": "Invalid API key"}
+
+
+@pytest.mark.parametrize("path", ["/notes/list", "/api/v1/notes/list"])
+@pytest.mark.parametrize("api_key", ["test-secret", "test-previous-secret"])
+def test_current_and_previous_api_keys_authenticate_legacy_and_v1_routes(
+    tmp_path,
+    path,
+    api_key,
+):
+    client = client_for(tmp_path, previous_api_key="test-previous-secret")
+
+    response = client.get(path, headers={"Authorization": f"Bearer {api_key}"})
+
+    assert response.status_code == 200
+
+
+def test_authentication_checks_both_configured_keys_with_constant_time_comparison(
+    tmp_path,
+    monkeypatch,
+):
+    comparisons = []
+    compare_digest = hmac.compare_digest
+
+    def record_comparison(presented, expected):
+        comparisons.append((presented, expected))
+        return compare_digest(presented, expected)
+
+    monkeypatch.setattr("app.api.dependencies.hmac.compare_digest", record_comparison)
+    client = client_for(tmp_path, previous_api_key="test-previous-secret")
+
+    response = client.get("/notes/list", headers=auth())
+
+    assert response.status_code == 200
+    assert comparisons == [
+        (b"Bearer test-secret", b"Bearer test-secret"),
+        (b"Bearer test-secret", b"Bearer test-previous-secret"),
+    ]
+
+
+def test_previous_api_key_is_rejected_when_not_configured(tmp_path):
+    client = client_for(tmp_path)
+
+    response = client.get(
+        "/api/v1/notes/list",
+        headers={"Authorization": "Bearer test-previous-secret"},
+    )
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Invalid API key"}
+
+
+@pytest.mark.parametrize(
+    "headers",
+    [
+        None,
+        {"Authorization": "Basic test-secret"},
+        {"Authorization": "Bearer"},
+        {"Authorization": "bearer test-secret"},
+        {"Authorization": "Bearer invalid-key"},
+    ],
+)
+def test_missing_malformed_and_invalid_authorization_are_rejected(tmp_path, headers):
+    client = client_for(tmp_path, previous_api_key="test-previous-secret")
+
+    response = client.get("/api/v1/notes/list", headers=headers)
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Invalid API key"}
 
 
 def test_missing_api_key_is_rejected(tmp_path):
@@ -128,6 +204,38 @@ def test_missing_api_key_is_rejected(tmp_path):
     response = client.get("/notes/list")
     assert response.status_code == 500
     assert response.json() == {"detail": "Server API_KEY is not configured"}
+
+
+def test_previous_api_key_cannot_replace_missing_current_key(tmp_path):
+    client = client_for(tmp_path, api_key="", previous_api_key="test-previous-secret")
+
+    response = client.get(
+        "/api/v1/notes/list",
+        headers={"Authorization": "Bearer test-previous-secret"},
+    )
+
+    assert response.status_code == 500
+    assert response.json() == {"detail": "Server API_KEY is not configured"}
+
+
+@pytest.mark.parametrize(
+    ("path", "expected_status"),
+    [
+        ("/health", 200),
+        ("/health/live", 200),
+        ("/health/ready", 503),
+    ],
+)
+def test_public_health_routes_remain_unauthenticated_during_key_rotation(
+    tmp_path,
+    path,
+    expected_status,
+):
+    client = client_for(tmp_path, api_key="", previous_api_key="test-previous-secret")
+
+    response = client.get(path)
+
+    assert response.status_code == expected_status
 
 
 def test_vault_errors_keep_existing_http_contract(tmp_path):
