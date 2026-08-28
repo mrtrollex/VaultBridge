@@ -1,15 +1,52 @@
-# VaultBridge
+<p align="center">
+  <img src="docs/assets/vaultbridge-logo.webp" alt="VaultBridge" width="240">
+</p>
 
-**VaultBridge is a self-hosted REST and semantic search API for an Obsidian vault.**
+<p align="center">
+  <strong>VaultBridge is a self-hosted REST + semantic search API for Obsidian Markdown vaults.</strong>
+</p>
 
-It exposes a deliberately small API for reading, searching and safely writing notes while keeping Markdown files as the source of truth. Semantic search runs locally with an ONNX embedding model and a disposable SQLite index.
+<p align="center">
+  Keep Markdown as the source of truth while giving AI clients, scripts, and automations a small
+  authenticated interface for reading, searching, and safely writing notes. Semantic retrieval runs
+  locally, and the derived index remains disposable.
+</p>
 
-> Status: **VaultBridge `v1.0.0` is released**. The stable source, GitHub Release, public GHCR image,
-> and exact-digest TrueNAS runtime have been verified. See [`ROADMAP.md`](ROADMAP.md).
+<p align="center">
+  <a href="https://github.com/mrtrollex/VaultBridge/releases/tag/v1.0.0"><img src="https://img.shields.io/badge/stable-v1.0.0-2f6f5e" alt="Stable release v1.0.0"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-356a8a" alt="MIT License"></a>
+  <a href="pyproject.toml"><img src="https://img.shields.io/badge/python-3.12-3776AB?logo=python&amp;logoColor=white" alt="Python 3.12"></a>
+  <a href="https://github.com/mrtrollex/VaultBridge/pkgs/container/vaultbridge"><img src="https://img.shields.io/badge/container-GHCR-181717?logo=github" alt="VaultBridge container on GHCR"></a>
+</p>
+
+<p align="center">
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#current-api">API</a> ·
+  <a href="README_TRUENAS.md">TrueNAS</a> ·
+  <a href="https://richardsenko.com/vaultbridge-1-0/">Story behind v1.0</a>
+</p>
+
+<p align="center">
+  <img src="docs/assets/vaultbridge-architecture.webp" alt="VaultBridge architecture showing an AI client connected through VaultBridge to an Obsidian vault and a local semantic index" width="960">
+</p>
+
+> **Release status:** VaultBridge `v1.0.0` is released. Its stable source, GitHub Release, public
+> GHCR image, and exact-digest TrueNAS runtime were verified. Current development includes post-v1.0
+> capabilities; see [`ROADMAP.md`](ROADMAP.md) for the current state and historical release scope.
 
 ## Why VaultBridge
 
-VaultBridge is intended to sit between an Obsidian vault and API-capable clients such as ChatGPT, scripts, automations or future applications.
+VaultBridge sits between an Obsidian vault and API-capable clients such as ChatGPT, scripts,
+automations, or future applications. Its boundaries are intentionally narrow:
+
+- Markdown files remain authoritative and usable without VaultBridge.
+- Semantic data is local, derived, disposable, and rebuildable from the vault.
+- The API exposes a small set of authenticated note and search operations, not general filesystem
+  access.
+- Vault-relative path validation and containment keep clients inside the configured vault.
+- The service is client agnostic and needs only a normal self-hosted Docker setup plus SQLite.
+
+The architecture remains understandable without the graphic:
 
 ```text
 Client
@@ -26,25 +63,41 @@ Markdown vault    Semantic retrieval
                  SQLite index
 ```
 
-The vault is never replaced by the index and there is no general filesystem endpoint.
+The vault is never replaced by the index, and there is no general filesystem endpoint.
 
-## Current capabilities
+## Features
 
-- create Markdown notes
-- append idempotently to existing notes
-- read one note
-- literal text search
-- multilingual semantic related-note search
-- advisory live duplicate-candidate discovery before note creation
-- hybrid semantic + lexical ranking
-- list notes
-- Bearer API-key authentication
-- path traversal protection
-- incremental semantic indexing
-- targeted background semantic refresh after successful API note writes
-- Docker deployment
-- TrueNAS deployment example
-- Custom GPT Action example
+### 📁 Vault API
+
+- create, read, append to, and list Markdown notes
+- literal title and content search
+- safe vault-relative access with traversal and symlink-escape protection
+- advisory duplicate-candidate discovery against live notes
+
+### 🧠 Local semantic retrieval
+
+- multilingual related-note search
+- hybrid semantic + lexical ranking with inspectable scores
+- heading-aware chunks and title/heading embedding context
+- incremental SQLite index that remains derived from Markdown
+- startup, targeted, and background semantic refresh
+- optional filesystem watcher for external Markdown changes
+
+### 🔒 Self-hosted by design
+
+- Markdown remains the source of truth
+- local FastEmbed/ONNX embeddings on CPU
+- Bearer authentication with operator-controlled API-key rotation
+- process-local rate limiting for protected routes
+- no cloud embedding API or external vector database required
+
+### 🐳 Deployment & operations
+
+- Docker source builds and published GHCR release images
+- TrueNAS SCALE deployment runbook
+- liveness, readiness, and detailed operator health visibility
+- local CLI for search, status, related notes, and stopped-service index maintenance
+- Custom GPT Action example with legacy-route compatibility
 
 ## Current API
 
@@ -161,7 +214,7 @@ not prove that two notes are duplicates. Semantic paths are verified against the
 return, and the operation never merges, creates, appends, renames, deletes, or otherwise writes notes
 or the semantic index.
 
-## Docker quick start
+## Quick start
 
 ### Prerequisites
 
@@ -548,6 +601,13 @@ The generic workflow above does not require TrueNAS. Existing TrueNAS installati
 Compose file, `/data` mount, and compatibility identifiers; see
 [`README_TRUENAS.md`](README_TRUENAS.md). Those paths and identifiers are intentionally not reused in
 the generic examples.
+
+## About the project
+
+VaultBridge started as a personal bridge between ChatGPT and my Obsidian vault and grew into a
+standalone open-source project.
+
+📖 [Read the story behind VaultBridge 1.0](https://richardsenko.com/vaultbridge-1-0/).
 
 ## Development
 

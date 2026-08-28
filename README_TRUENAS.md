@@ -1,8 +1,12 @@
+<p align="center">
+  <a href="README.md"><img src="docs/assets/vaultbridge-logo.webp" alt="VaultBridge logo" width="180"></a>
+</p>
+
 # VaultBridge on TrueNAS SCALE
 
 This runbook documents the existing source-built deployment on the Docker-based Apps implementation
 in TrueNAS SCALE 24.10 or later. It is independent of the generic Docker workflow in
-[`README.md`](README.md).
+the [main VaultBridge README](README.md).
 
 Versioned GHCR images are an additional distribution artifact. VB-054 does not migrate or replace
 this known-working TrueNAS source-build deployment.
