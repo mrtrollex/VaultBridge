@@ -32,6 +32,9 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ### Changed
 
+- post-v1 documentation now plans a platform-neutral bundled Web Dashboard followed by a TrueNAS
+  Community App that consumes the normal published VaultBridge image; neither capability is
+  implemented or released by this documentation change
 - targeted synchronization now removes derived rows for safely contained missing Markdown paths, so
   external deletes and both sides of renames are processed without a full vault scan
 - related-note suggestions now return only live, contained regular Markdown paths verified through

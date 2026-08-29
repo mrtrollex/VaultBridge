@@ -276,7 +276,7 @@ per-sync counters such as current note, percentage complete, current batch or ET
   the English-to-Slovak case depends on multilingual concept equivalence,
 - the measured baseline is Hit@1 `13/13` (100%), Hit@3 `13/13` (100%) and MRR `13/13` (100%).
 
-### VB-023 — Retrieval benchmark command — P1 ▶
+### VB-023 — Retrieval benchmark command — P1
 
 Output latency, returned paths and scores as JSON and/or Markdown.
 
@@ -612,6 +612,368 @@ does not satisfy the separate public anonymous clean-install or release-publicat
 
 ---
 
+## Web Dashboard / operator experience
+
+### VB-070 — Web Dashboard architecture and security design — P1 ▶
+
+**Status:** Planned; next recommended task. Documentation/design only.
+
+**Goal:** define the deliberately small dashboard boundary, routing model, authentication handling,
+first-release information architecture, and reuse of the existing API/domain capabilities before UI
+implementation begins.
+
+**Depends on:** the completed v1.0 application/API/container baseline.
+
+**Acceptance criteria**
+
+- the dashboard remains in the `mrtrollex/VaultBridge` repository and is served by the existing
+  application in the same production container;
+- the design is platform-neutral and has no TrueNAS runtime dependency;
+- the API and CLI remain independently usable, first-class interfaces when the UI is unused;
+- first-release areas and boundaries are agreed for Overview, Search, API / Integration, and About;
+- the design identifies which existing health, vault, semantic-index, literal-search, and semantic
+  retrieval capabilities are reused, with no duplicate frontend business logic;
+- routing and same-origin behavior are documented without prematurely fixing internal filenames;
+- an authentication threat model covers browser credential entry/retention, protected requests,
+  same-origin behavior, logout/session clearing, injection, XSS, browser history, storage, logs, and
+  error rendering;
+- no configured API key is injected into generated HTML or JavaScript source, put in a URL, returned
+  by an endpoint, logged, or persisted server-side merely for the dashboard;
+- any considered operator-supplied key model, including session memory or `sessionStorage`, remains
+  a design outcome rather than an assumed final decision until the threats are reviewed;
+- accessibility, responsive behavior, privacy-safe rendering, and reduced-motion expectations are
+  documented for later implementation;
+- index state may be displayed, but note/index mutation is excluded unless separately designed;
+- the design explicitly prefers lightweight bundled assets with no mandatory Node/npm pipeline,
+  frontend framework, second service, or second container unless a demonstrated requirement is
+  documented;
+- no runtime implementation is added by this task.
+
+**Out of scope**
+
+- HTML, CSS, JavaScript, UI routes, bundled assets, screenshots, or browser automation;
+- note creation/editing, WYSIWYG editing, graph visualization, file management, account management,
+  multi-user administration, general NAS administration, or a general Obsidian replacement;
+- username/password accounts, OAuth, a user database, or another authentication subsystem;
+- an HTTP/live UI action for semantic-index rebuild or any conversion of stopped-service CLI
+  maintenance into a serving-process mutation;
+- TrueNAS catalog packaging or a release/version decision.
+
+**Safety/privacy constraints**
+
+- preserve the current Bearer-auth, rate-limit, safe-logging, request-observability, vault
+  containment, and offline-index-ownership boundaries;
+- design with credentials, queries, note-derived text, snippets, paths, and error data treated as
+  sensitive/untrusted browser inputs; do not create analytics or persistence for them by default.
+
+**Validation expectations**
+
+- review the design against current FastAPI routing, Bearer authentication, health/search services,
+  CLI index ownership, Dockerfile, Compose, and TrueNAS Custom App documentation;
+- verify that the design changes no endpoint, operation ID, request/response contract, dependency,
+  runtime file, container behavior, or release artifact.
+
+### VB-071 — Dashboard shell and authenticated session — P1
+
+**Status:** Planned.
+
+**Goal:** implement the approved lightweight first-party browser entry point and safe operator
+credential/session flow.
+
+**Depends on:** VB-070.
+
+**Acceptance criteria**
+
+- `/ui` or the equivalent route approved by VB-070 serves a responsive dashboard shell from the
+  existing VaultBridge application and production container;
+- Overview, Search, API / Integration, and About navigation follows the agreed first-release scope;
+- credential/session handling implements the VB-070 threat model, including explicit logout/session
+  clearing and safe authentication/error states;
+- protected data requests retain the existing Bearer-auth boundary and no secret is embedded in
+  assets, HTML, URLs, logs, server responses, or server-side dashboard persistence;
+- bundled assets are lightweight and require no frontend framework/build chain unless VB-070
+  explicitly documented and justified that need;
+- the API/CLI operate unchanged when the dashboard is disabled or unused;
+- focused tests cover routing, authentication failure, secret non-disclosure, safe rendering, and
+  compatibility of existing API routes/operation IDs.
+
+**Out of scope**
+
+- overview/search feature completion beyond the minimum shell wiring;
+- note/index mutation, editing, accounts, OAuth, or TrueNAS-specific runtime behavior.
+
+**Safety/privacy constraints**
+
+- never place credentials in URLs or persistent application storage contrary to VB-070;
+- render server/user-controlled strings as text unless an explicitly reviewed sanitizer boundary exists;
+- do not log browser credentials, queries, note content, headers, bodies, or raw paths.
+
+**Validation expectations**
+
+- focused route/auth/security tests, existing API/OpenAPI compatibility checks, browser smoke tests,
+  and normal Python/compile checks;
+- verify the production container serves the bundled shell without a second service.
+
+### VB-072 — Dashboard overview and health visibility — P1
+
+**Status:** Planned.
+
+**Goal:** provide a concise operator overview using facts already owned by VaultBridge.
+
+**Depends on:** VB-071.
+
+**Acceptance criteria**
+
+- the overview presents applicable application health, vault availability, semantic lifecycle,
+  semantic-search availability, indexed-note/chunk/vault-note counts, last successful full sync, and
+  existing watcher/indexer state;
+- backend/domain owners remain authoritative; frontend-specific code does not recalculate health,
+  readiness, index state, counts, or synchronization status;
+- public versus protected visibility follows VB-070 and does not weaken authentication;
+- unknown/unavailable/stale states are represented honestly rather than inferred as healthy;
+- the page is read-only and exposes no index rebuild or other maintenance mutation;
+- loading, empty, unavailable, and refresh/error states are covered by focused tests.
+
+**Out of scope**
+
+- new detailed progress/ETA promises, historical telemetry, log streaming, or NAS administration;
+- index, note, configuration, or process mutation.
+
+**Safety/privacy constraints**
+
+- expose only allowlisted operational facts; never display credentials, absolute host paths, note
+  content, queries, headers, or raw exception details.
+
+**Validation expectations**
+
+- service/API reuse tests, browser rendering/smoke tests, accessibility checks, and container-path verification.
+
+### VB-073 — Dashboard search interface — P1
+
+**Status:** Planned.
+
+**Goal:** provide browser access to existing literal and semantic retrieval behavior without a
+second search implementation.
+
+**Depends on:** VB-071.
+
+**Acceptance criteria**
+
+- the interface supports the existing literal search and semantic related-note search capabilities;
+- requests reuse stable VaultBridge APIs/domain services and preserve production ranking, thresholds,
+  ordering, folder/path containment, live-note verification, result limits, and error semantics;
+- score/debug fields are shown only where useful and already available, without inventing new
+  relevance meaning;
+- query, folder, result, empty, unavailable, and validation states are usable and accessible;
+- note content/snippets and paths are rendered safely as untrusted data;
+- search remains read-only and creates no alternative index, cache, or ranking pipeline.
+
+**Out of scope**
+
+- note creation/editing, automatic backlinks, duplicate merging, graph search, arbitrary filesystem
+  browsing, or index mutation;
+- model, chunking, ranking, schema, or API-contract changes unless separately approved.
+
+**Safety/privacy constraints**
+
+- do not log or persist queries, note content, snippets, credentials, or raw paths for UI analytics;
+- preserve the existing authentication, rate-limit, containment, and safe-error boundaries.
+
+**Validation expectations**
+
+- focused API/domain-reuse and browser tests covering literal/semantic results, auth, empty/error
+  states, safe rendering, ordering, and path filtering.
+
+### VB-074 — Dashboard usability, accessibility and release hardening — P1
+
+**Status:** Planned.
+
+**Goal:** harden the completed dashboard for supported browsers and the normal production image
+without declaring a release version in advance.
+
+**Depends on:** VB-071, VB-072, VB-073.
+
+**Acceptance criteria**
+
+- keyboard navigation, focus visibility/order, labels, landmarks, contrast, zoom/reflow, responsive
+  layout, and reduced-motion behavior meet the agreed accessibility baseline;
+- credential, loading, empty, validation, unavailable, retry, and unexpected-error states are clear
+  and privacy-safe;
+- note-derived text, snippets, headings, and paths cannot inject executable markup;
+- browser smoke tests cover the chosen lightweight implementation and supported responsive states;
+- documentation and sanitized screenshots accurately distinguish the dashboard from the API and do
+  not claim unsupported editing/index/NAS functionality;
+- the normal Dockerfile/image serves API, CLI, and dashboard together, with startup, health,
+  authenticated UI data access, and existing API behavior verified;
+- release-readiness evidence is recorded, but no release/version is automatically assigned.
+
+**Out of scope**
+
+- scope expansion into editing, accounts, graph/file/NAS management, a frontend framework migration,
+  or TrueNAS Community App packaging.
+
+**Safety/privacy constraints**
+
+- sanitized test data/evidence only; no API keys, vault contents, queries, absolute host paths, or
+  private environment details in screenshots, logs, fixtures, or documentation.
+
+**Validation expectations**
+
+- accessibility review, responsive/browser smoke suite, reduced-motion checks, Python/API regression
+  checks, container build/startup/runtime checks, and documentation consistency review.
+
+---
+
+## TrueNAS Community App distribution
+
+### VB-080 — TrueNAS Community App packaging design — P1
+
+**Status:** Planned.
+
+**Goal:** define the upstream TrueNAS catalog packaging, supported configuration, and upgrade
+contract around the normal published VaultBridge image.
+
+**Depends on:** VB-074 plus a published and verified dashboard-capable VaultBridge image.
+
+**Acceptance criteria**
+
+- current `truenas/apps` contribution conventions and ownership are documented from authoritative
+  upstream sources at implementation time;
+- the design defines image/tag/digest policy, application metadata, storage mappings, API-key input,
+  port exposure, health/readiness probes, resource settings, and the Web Portal target;
+- UID/GID/user behavior follows then-current TrueNAS conventions without moving platform behavior
+  into VaultBridge domain services;
+- authoritative Markdown storage and persistent derived semantic data remain distinct, and external
+  vault ownership is preserved across upgrade/uninstall;
+- upgrade and rollback expectations, supported versions, configuration migration, and evidence gates
+  are documented;
+- the catalog definition pulls `ghcr.io/mrtrollex/vaultbridge:<released-version>` and does not build,
+  fork, or reimplement VaultBridge;
+- `mrtrollex/VaultBridge` and `truenas/apps` ownership boundaries are explicit, with the published
+  image as their interface and no permanent `VaultBridge-TrueNAS` runtime repository/fork;
+- no catalog implementation is added in this design task.
+
+**Out of scope**
+
+- core runtime/domain/API changes, an alternative container image, upstream submission, or claiming
+  TrueNAS catalog availability.
+
+**Safety/privacy constraints**
+
+- secret fields must not appear in generated output, logs, portal URLs, support bundles, or screenshots;
+- packaging must not gain arbitrary filesystem, Docker socket, host administration, or vault-deletion behavior.
+
+**Validation expectations**
+
+- compare the design with current upstream TrueNAS documentation/schema and the verified VaultBridge
+  image/runtime contract; record any live or upstream-version gates explicitly.
+
+### VB-081 — Implement TrueNAS Community App definition — P1
+
+**Status:** Planned.
+
+**Goal:** create the catalog packaging approved by VB-080 using current TrueNAS Community App conventions.
+
+**Depends on:** VB-080.
+
+**Acceptance criteria**
+
+- the definition consumes the published VaultBridge GHCR release image and does not rebuild runtime code;
+- configuration, metadata, storage, secret, user/identity, port, health/readiness, resource, and Web
+  Portal fields implement the VB-080 contract;
+- the portal opens the bundled VaultBridge dashboard rather than a TrueNAS-specific UI fork;
+- catalog validation/lint/schema checks pass under the required upstream toolchain;
+- local fixtures are kept only where useful for reproducibility and do not become a second
+  authoritative copy after upstream acceptance;
+- no TrueNAS-specific code enters VaultBridge application/domain services.
+
+**Out of scope**
+
+- changing VaultBridge API, semantic behavior, CLI, Dockerfile, or image contents;
+- upstream acceptance claims or production-data testing.
+
+**Safety/privacy constraints**
+
+- use placeholders/sanitized fixtures only; do not commit API keys, vault content, private host paths,
+  resolved environment output, or generated semantic data.
+
+**Validation expectations**
+
+- upstream schema/lint/render checks and a review proving the image reference, mounts, secret handling,
+  health probes, and Web Portal match VB-080.
+
+### VB-082 — TrueNAS install/upgrade/portal validation — P1
+
+**Status:** Planned.
+
+**Goal:** validate the Community App lifecycle on a real disposable TrueNAS installation and capture
+sanitized evidence.
+
+**Depends on:** VB-081.
+
+**Acceptance criteria**
+
+- fresh install and startup succeed with disposable vault and semantic-data storage;
+- vault mount, semantic-data persistence, liveness/readiness, dashboard Web Portal, and authenticated
+  `/api/v1` access are verified;
+- restart and supported configuration edits preserve intended data and behavior;
+- upgrade is verified from an explicitly supported prior package/image state;
+- rollback is verified where current TrueNAS/App conventions support it, or accurately documented as
+  unsupported/blocked rather than claimed;
+- uninstall does not delete externally owned vault data; semantic-data behavior matches the approved
+  storage contract;
+- logs, UI evidence, commands, paths, and screenshots are sanitized of secrets and private content;
+- failures are classified as PASS, FAIL, or REQUIRES LIVE/UPSTREAM VERIFICATION with concrete evidence.
+
+**Out of scope**
+
+- production vaults, destructive tests against user-owned data, runtime forks, or upstream submission.
+
+**Safety/privacy constraints**
+
+- disposable data and scoped paths only; resolve storage targets before cleanup and preserve all
+  externally owned Markdown by default.
+
+**Validation expectations**
+
+- real TrueNAS install/start/health/portal/API/restart/configuration/upgrade/rollback/uninstall runbook
+  with sanitized artifact, image tag/digest, platform, and result evidence.
+
+### VB-083 — Submit VaultBridge to upstream TrueNAS Apps catalog — P1
+
+**Status:** Planned.
+
+**Goal:** prepare and submit the verified VaultBridge Community App contribution to `truenas/apps`.
+
+**Depends on:** successful VB-082.
+
+**Acceptance criteria**
+
+- the contribution follows current upstream repository, metadata, review, and testing requirements;
+- submission uses the VB-082-verified published VaultBridge image and approved packaging contract;
+- release notes/operator documentation state prerequisites and current limitations accurately;
+- review feedback is resolved without introducing a VaultBridge runtime fork or duplicating domain logic;
+- submission, review, and merge states are recorded separately;
+- catalog availability/acceptance is claimed only after the upstream pull request is merged and the
+  accepted app is visible through the applicable catalog delivery path.
+
+**Out of scope**
+
+- changing core runtime behavior solely to bypass upstream review, maintaining a permanent parallel
+  catalog fork, or claiming acceptance from an open pull request.
+
+**Safety/privacy constraints**
+
+- no secrets, private vault data, host paths, account details, or unsanitized validation artifacts in
+  commits, pull-request text, screenshots, or review logs.
+
+**Validation expectations**
+
+- upstream-required checks pass; record pull-request URL/state and, after merge, independently verify
+  the accepted catalog entry before marking the task complete.
+
+---
+
 ## Recommended Codex sequence
 
 ```text
@@ -635,21 +997,31 @@ VB-001 ✓
 → VB-044  ✓
 → VB-045  ✓
 → VB-050  ✓
+→ VB-051  ✓
 → VB-056  ✓
 → VB-057  ✓
 → VB-058  ✓
 → VB-059  ✓
 → VB-060  ✓
+→ v1.0.0 ✓
+→ VB-070 NEXT
+→ VB-071
+→ VB-072 + VB-073
+→ VB-074
+→ published/verified dashboard-capable VaultBridge image
+→ VB-080
+→ VB-081
+→ VB-082
+→ VB-083
 ```
 
 VB-057 through VB-060 close the confirmed containment, native-Windows test-portability,
-release-version alignment, and repository-exposure-safety blockers. The repository remains private.
-`v1.0.0` remains blocked by deliberate public exposure, anonymous isolated clean installation, RC,
-GHCR verification, RC smoke-test, and final stable-release gates recorded in
-`docs/RELEASE_CHECKLIST.md`.
+release-version alignment, and repository-exposure-safety blockers. Stable `v1.0.0` and its final
+distribution gates are complete; immutable evidence remains recorded in `docs/RELEASE_CHECKLIST.md`.
 
-VB-051 completes the developer-experience milestone. After VB-014, VB-023 is the next recommended
-practical P1 because it makes retrieval-quality and latency measurements repeatable without adding
-mutation surface. VB-032 and VB-033 remain deferred optional work.
+VB-070 is the next recommended task and is documentation/design only. VB-023 remains open P1
+retrieval work with unchanged scope, but it is no longer NEXT. VB-032 and VB-033 remain deferred
+optional work. VB-055 remains optional and is not a dashboard prerequisite. Milestone 9 begins only
+after Milestone 8 produces a published and verified dashboard-capable VaultBridge image.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

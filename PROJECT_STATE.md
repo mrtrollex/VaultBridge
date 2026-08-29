@@ -4,7 +4,7 @@ This document is the current factual snapshot for future Codex sessions. It shou
 
 ## Baseline date
 
-2026-08-26
+2026-08-29
 
 ## Current development position
 
@@ -51,9 +51,16 @@ Post-v1 development position:
 
 Next recommended backlog task:
 
-- **VB-023 — Retrieval benchmark command**
+- **VB-070 — Web Dashboard architecture and security design**
 
-VB-032 and VB-033 are deferred optional future work; neither is the current next task.
+Current post-v1 planning position:
+
+- no bundled Web Dashboard exists yet; Milestone 8 and VB-070 through VB-074 are planned work
+- no upstream TrueNAS Community App exists yet; Milestone 9 and VB-080 through VB-083 are planned work
+- current TrueNAS support remains the documented Docker/source-built Custom App deployment
+- VB-023 remains open P1 retrieval work with unchanged scope, but it is no longer the current next task
+- VB-032 and VB-033 remain deferred optional future work
+- VB-055 remains optional and is not a prerequisite for the planned dashboard
 
 Current v1.0 release status:
 
@@ -85,6 +92,8 @@ Current milestones:
 - **Milestone 5 — Operational maturity and security (complete)**
 - **Milestone 6 — Public API and developer experience (complete)**
 - **Milestone 7 — Distribution and `v1.0.0` (complete)**
+- **Milestone 8 — Web Dashboard / operator experience (planned; not implemented)**
+- **Milestone 9 — TrueNAS Community App distribution (planned; not implemented)**
 
 ## Working production characteristics
 

@@ -1,5 +1,9 @@
 # VaultBridge Roadmap
 
+> **Historical planning snapshot:** this file preserves the original pre-v1 roadmap. It is not the
+> current planning source. See [`ROADMAP.md`](ROADMAP.md), [`BACKLOG.md`](BACKLOG.md), and
+> [`PROJECT_STATE.md`](PROJECT_STATE.md); the current next recommended task is VB-070.
+
 > **Project goal:** turn the current working Obsidian ↔ AI bridge into a small, reliable, client-agnostic, self-hosted application that can be shipped publicly on GitHub and deployed with Docker.
 
 ## Product principles
@@ -320,7 +324,7 @@ These are intentionally **not** required for the first public release:
 - read-only mode
 - per-folder access policies
 - multiple vaults
-- web dashboard
+- bundled web dashboard (now promoted to planned Milestone 8 in the current `ROADMAP.md`)
 - MCP server adapter
 - webhook/event integrations
 - note metadata/frontmatter query language
