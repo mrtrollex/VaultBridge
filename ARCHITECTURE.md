@@ -300,6 +300,98 @@ vault or index, but they are local filesystem/SQLite readers rather than a remot
 
 ---
 
+## Planned Web Dashboard and platform packaging — NOT YET IMPLEMENTED
+
+This section records post-v1 extension boundaries only. It does not describe current routes, assets,
+container contents, or TrueNAS catalog availability. The current architecture above remains
+authoritative until the corresponding backlog tasks are implemented and verified.
+
+### Planned dashboard relationship
+
+VaultBridge remains one universal application in one core repository. The planned Web Dashboard is
+a small first-party browser client bundled with that application, not a separate product and not a
+TrueNAS-specific UI.
+
+```text
+Browser
+   |
+   v
+VaultBridge Web Dashboard (planned)
+   |
+   | existing/stable application boundaries
+   v
+VaultBridge services / API
+   |
+   +-- Markdown vault (authoritative)
+   +-- local semantic index (derived)
+
+ChatGPT / curl / scripts / integrations
+   |
+   +----------------------------------> VaultBridge API
+```
+
+The first planned dashboard areas are Overview, Search, API / Integration, and About. Overview may
+present operational facts already owned by health, vault, semantic, indexer, and watcher boundaries.
+Search must reuse existing literal and semantic retrieval behavior rather than duplicate ranking,
+filtering, containment, or note verification in UI-specific domain logic. The API and CLI remain
+first-class and independently usable; not using the UI must not change their behavior.
+
+The intended first implementation is served by the existing FastAPI application from the same
+repository, production image, and origin where practical. It should use lightweight bundled assets
+without a mandatory Node/npm pipeline, React/Vue/Svelte dependency, second service, or second
+container unless a later measured requirement and architecture decision justify one. Exact routes,
+files, and session mechanics remain VB-070 design outcomes, not current facts.
+
+The dashboard must not weaken Bearer authentication. A public shell may contain no embedded
+credential, while every protected data request still authenticates. The configured `API_KEY` must
+never be injected into HTML or JavaScript source, returned by an endpoint, placed in a URL, logged,
+or persisted server-side merely for the UI. VB-070 must resolve browser threat boundaries,
+same-origin behavior, operator-supplied credential retention, logout/session clearing, XSS, and safe
+rendering before implementation. It must not introduce accounts, username/password login, OAuth, or
+a user database for the initial dashboard.
+
+The initial UI may display semantic-index state. It must not expose a live rebuild/mutation action.
+The stopped-service CLI and existing single-process index ownership remain authoritative. Any future
+HTTP/UI index mutation requires a separate design proving it is safe while the serving process runs.
+
+### Planned deployment relationship
+
+The normal VaultBridge image is the one distributable application across platforms:
+
+```text
+                 one VaultBridge image
+                          |
+             +------------+-------------+
+             |                          |
+       Docker / Compose       TrueNAS catalog adapter
+             |                          |
+             +------------+-------------+
+                          |
+                     VaultBridge
+                  /api/v1 + planned /ui
+```
+
+TrueNAS Community App packaging is a configuration/distribution adapter around a published,
+dashboard-capable VaultBridge image. It may define metadata, storage, ports, environment/secrets,
+health checks, resources, and a Web Portal target, but it does not own API, CLI, vault, semantic,
+authentication, or other domain behavior. TrueNAS-specific code must not enter core services, and
+VaultBridge must remain deployable without TrueNAS.
+
+Repository ownership is deliberately separated:
+
+- `mrtrollex/VaultBridge` owns the application runtime, API, semantic behavior, CLI, planned bundled
+  dashboard, Dockerfile, GHCR image, and generic deployment documentation;
+- `truenas/apps` should own the accepted upstream TrueNAS Community App definition;
+- `ghcr.io/mrtrollex/vaultbridge:<released-version>` is the interface between those repositories.
+
+Temporary packaging/test fixtures may live in the core repository when useful for reproducibility,
+but there must be no permanent `VaultBridge-TrueNAS` runtime fork or two authoritative copies of the
+upstream catalog definition. Current TrueNAS support remains the documented source-built Custom App
+path until VB-080 through VB-083 are designed, implemented, validated on real TrueNAS, and accepted
+upstream.
+
+---
+
 ## Target architecture
 
 ```text

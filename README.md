@@ -34,6 +34,11 @@
 > GHCR image, and exact-digest TrueNAS runtime were verified. Current development includes post-v1.0
 > capabilities; see [`ROADMAP.md`](ROADMAP.md) for the current state and historical release scope.
 
+> **Planned, not available yet:** the post-v1 roadmap now prioritizes a small bundled Web Dashboard,
+> followed by TrueNAS Community App catalog packaging around the same published VaultBridge image.
+> Today there is no bundled dashboard or upstream catalog app; the API/CLI and existing documented
+> Docker/TrueNAS Custom App workflows remain the current product.
+
 ## Why VaultBridge
 
 VaultBridge sits between an Obsidian vault and API-capable clients such as ChatGPT, scripts,

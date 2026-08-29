@@ -13,6 +13,14 @@
 7. **No premature infrastructure.** Do not add Redis, Celery, Qdrant, Kubernetes, or a message broker without measured need and an ADR.
 8. **Measured retrieval changes.** Ranking/model/chunking changes must be evaluated, not tuned only by intuition.
 9. **Derived semantic data.** The semantic index must always be rebuildable from the Markdown vault.
+10. **Platform-neutral core.** VaultBridge runtime behavior must not depend on TrueNAS. Platform
+    packaging may configure and launch the application, but it must not fork domain behavior.
+11. **Bundled operator UI, API-first architecture.** The planned Web Dashboard is another
+    first-party client of stable VaultBridge capabilities, not a replacement for the API or CLI.
+    AI clients, scripts, and other integrations remain first-class.
+12. **One distributable application.** The planned dashboard should ship in the normal VaultBridge
+    production image. A second UI service/container requires a measured future need and an explicit
+    architecture decision.
 
 ---
 
@@ -295,7 +303,7 @@ replaced. Its checked 13-case baseline is Hit@1 100%, Hit@3 100% and MRR 100%. R
 material-tie guards keep the fixture deterministic, while controlled ablations prove semantic,
 lexical, heading-context and cross-language sensitivity.
 
-### VB-023 — Retrieval benchmark command — P1 ← NEXT
+### VB-023 — Retrieval benchmark command — P1
 
 Record latency, paths, semantic score, lexical score, final score, and rank.
 
@@ -475,6 +483,121 @@ complete. Milestone 7 is complete; VB-055 remains an optional post-v1 P1 improve
 
 ---
 
+# Milestone 8 — Web Dashboard / operator experience — PLANNED
+
+**Goal:** provide a small first-party browser interface for inspecting and using VaultBridge without
+turning the project into a general knowledge-management frontend.
+
+This milestone is not yet implemented. The planned first-release information architecture is:
+
+```text
+Overview
+Search
+API / Integration
+About
+```
+
+The Overview may present facts already owned by VaultBridge, including application/vault health,
+semantic lifecycle and availability, note/chunk counts, the last successful full synchronization,
+and existing watcher/indexer state. Search should expose the existing literal and semantic
+related-note behavior without duplicating ranking, filtering, containment, or domain logic.
+
+Implementation direction:
+
+- serve the dashboard from the existing VaultBridge application, repository, production image, and
+  same origin where practical;
+- keep the API independently usable and keep API/CLI behavior unchanged when the UI is unused;
+- prefer small bundled HTML/CSS/vanilla JavaScript or similarly lightweight assets;
+- require no mandatory Node/npm build pipeline, frontend framework, second service, or second
+  container for the first version unless VB-070 demonstrates a real need;
+- preserve the existing Bearer-auth boundary for protected data requests; never inject, return, log,
+  or place `API_KEY` in HTML, JavaScript source, or URLs;
+- settle browser threat boundaries, credential/session handling, same-origin behavior, and logout
+  semantics in VB-070 before implementation;
+- display index state only. Any UI-triggered index mutation requires a separate safety design that
+  preserves stopped-service CLI maintenance and process ownership.
+
+Planned task sequence:
+
+```text
+VB-070 architecture and security design
+   ↓
+VB-071 dashboard shell and authenticated session
+   ↓
+VB-072 overview and health visibility + VB-073 search interface
+   ↓
+VB-074 usability, accessibility, and release hardening
+```
+
+Milestone exit criteria:
+
+- [ ] platform-neutral dashboard architecture and authentication threat model are agreed
+- [ ] one lightweight dashboard ships with the normal VaultBridge application/image
+- [ ] the API and CLI remain independently usable and behaviorally compatible
+- [ ] overview data and search behavior reuse existing backend/domain capabilities
+- [ ] no note editor, account system, general file manager, or live index-rebuild mutation is added
+- [ ] accessibility, privacy-safe rendering, browser smoke tests, and container verification pass
+- [ ] a dashboard-capable VaultBridge image is published and verified before Milestone 9 begins
+
+---
+
+# Milestone 9 — TrueNAS Community App distribution — PLANNED
+
+**Goal:** make the same published, dashboard-capable VaultBridge image installable through the
+TrueNAS Apps catalog with generated configuration and Web Portal integration.
+
+TrueNAS application packaging is a distribution adapter, not the VaultBridge runtime architecture:
+
+```text
+TrueNAS Apps UI
+      |
+      | configuration / storage / port / environment
+      v
+TrueNAS catalog definition
+      |
+      | pulls
+      v
+ghcr.io/mrtrollex/vaultbridge:<released-version>
+      |
+      v
+normal VaultBridge runtime
+      |
+      +-- /api/v1
+      +-- /ui (planned in Milestone 8)
+      +-- /vault
+      +-- semantic data
+```
+
+The core `mrtrollex/VaultBridge` repository owns the application runtime, API, semantic behavior,
+CLI, bundled dashboard, Dockerfile, GHCR image, and generic deployment documentation. The accepted
+upstream Community App definition should be owned by `truenas/apps`. The published image is the
+interface between the repositories. Temporary local packaging/test fixtures may exist for
+reproducibility, but there must be no permanent `VaultBridge-TrueNAS` runtime fork or two
+authoritative catalog definitions. TrueNAS-specific code must not enter core domain services.
+
+Planned task sequence:
+
+```text
+published and verified dashboard-capable VaultBridge image
+   ↓
+VB-080 packaging design
+   ↓
+VB-081 Community App definition
+   ↓
+VB-082 real TrueNAS install/upgrade/portal validation
+   ↓
+VB-083 upstream truenas/apps submission
+```
+
+Milestone exit criteria:
+
+- [ ] packaging consumes a published VaultBridge GHCR image without rebuilding/forking runtime code
+- [ ] storage, identity, secret, port, health, portal, resource, upgrade, and rollback contracts are documented
+- [ ] install, restart, configuration edit, persistence, upgrade, supported rollback, and safe uninstall are verified on real TrueNAS with sanitized evidence
+- [ ] upstream acceptance is claimed only after the `truenas/apps` pull request is merged
+
+---
+
 # Post-1.0 candidates
 
 - pluggable embedding providers
@@ -484,7 +607,6 @@ complete. Milestone 7 is complete; VB-055 remains an optional post-v1 P1 improve
 - read-only mode
 - per-folder access policies
 - multiple vaults
-- web dashboard
 - MCP server adapter
 - webhook/event integrations
 - frontmatter query language
@@ -505,6 +627,15 @@ Do not implement these unless requirements explicitly change:
 - full Obsidian synchronization replacement
 - general-purpose vector database by default
 - distributed/multi-process semantic-index coordination before there is a real need
+- making VaultBridge TrueNAS-only or creating a separate TrueNAS runtime fork
+- requiring the Web Dashboard for API or CLI use
+- turning the dashboard into an Obsidian replacement, graph explorer, WYSIWYG editor, general file
+  manager, multi-user/account administration system, or NAS administration interface
+- returning or embedding configured secrets, or adding a secret-return endpoint
+- exposing live semantic-index rebuild through HTTP without a separate concurrency/safety design
+- requiring Node/npm, a frontend framework, a second UI service/container, an external database, or
+  Kubernetes for the initial dashboard
+- changing Markdown source-of-truth or local-first semantic behavior for platform packaging
 
 ---
 
@@ -546,11 +677,33 @@ OPERATIONS / KNOWLEDGE / DX
 ...
    ↓
 v1.0.0 ✓
+   ↓
+WEB DASHBOARD / OPERATOR EXPERIENCE
+VB-070 ← NEXT
+   ↓
+VB-071
+   ↓
+VB-072 + VB-073
+   ↓
+VB-074
+   ↓
+published/verified dashboard-capable image
+   ↓
+TRUENAS COMMUNITY APP DISTRIBUTION
+VB-080
+   ↓
+VB-081
+   ↓
+VB-082
+   ↓
+VB-083
 ```
 
-`v1.0.0` has shipped. Milestones 4, 5, and 6 retain their open future/P1 work; `VB-023`,
-and other P1/P2 tasks may be scheduled when their prerequisites exist and their value is
-demonstrated. No v1.1 scope is implied.
+`v1.0.0` has shipped. **VB-070 is the next recommended task.** VB-023 remains open P1 retrieval
+work with its requirements unchanged, but it is no longer NEXT. VB-032 and VB-033 remain explicitly
+deferred/optional, and VB-055 remains optional rather than a dashboard prerequisite. The deliberate
+post-v1 execution priority is Milestone 8 followed by a published/verified dashboard-capable image,
+then Milestone 9. This plan does not assign a release version.
 
 ---
 
