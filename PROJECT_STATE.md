@@ -44,6 +44,7 @@ Completed:
 - VB-059 — Align v1.0 version metadata
 - VB-060 — Public repository exposure audit
 - VB-070 — Web Dashboard architecture and security design
+- VB-071 — Dashboard shell and authenticated session
 
 Post-v1 development position:
 
@@ -52,17 +53,22 @@ Post-v1 development position:
 
 Next recommended backlog task:
 
-- **VB-071 — Dashboard shell and authenticated session**
+- **VB-072 — Dashboard overview and health visibility**
 
 Current post-v1 planning position:
 
-- ADR 0003 is accepted and VB-070 is complete; no dashboard runtime, route, or asset exists yet
-- VB-071 through VB-074 remain planned implementation work
-- the accepted design uses canonical `/ui/`, same-origin APIs, an operator-supplied Bearer key in
-  namespaced `sessionStorage` after protected validation, strict CSP/text rendering, and no
-  note/index mutation
-- the current runtime, API contracts, authentication, dependencies, container, and Compose behavior
-  remain unchanged by VB-070
+- ADR 0003 is accepted and VB-071 is complete; a bundled schema-hidden dashboard shell is served at
+  canonical `/ui/` with explicit local assets and no SPA catch-all
+- the shell has accessible Overview, Search, API / Integration, and About navigation; Overview and
+  Search contain only placeholders until VB-072 and VB-073
+- unlock and reload revalidation call the existing protected `GET /api/v1/notes/list?limit=1` route;
+  a validated key is stored only as `vaultbridge.ui.apiKey` in `sessionStorage`, while logout and
+  `401` clear it
+- strict UI-only CSP, `nosniff`, no-referrer headers, same-origin document-relative requests, and
+  text-only dynamic rendering provide the initial browser security boundary
+- existing API contracts, authentication, rate limiting, CLI behavior, dependencies, Dockerfile,
+  and Compose definitions are unchanged by VB-071
+- VB-072 through VB-074 remain planned implementation work; VB-072 is the sole next task
 - no upstream TrueNAS Community App exists yet; Milestone 9 and VB-080 through VB-083 are planned work
 - current TrueNAS support remains the documented Docker/source-built Custom App deployment
 - VB-023 remains open P1 retrieval work with unchanged scope, but it is no longer the current next task
@@ -99,7 +105,7 @@ Current milestones:
 - **Milestone 5 — Operational maturity and security (complete)**
 - **Milestone 6 — Public API and developer experience (complete)**
 - **Milestone 7 — Distribution and `v1.0.0` (complete)**
-- **Milestone 8 — Web Dashboard / operator experience (planned; ADR 0003 accepted, not implemented)**
+- **Milestone 8 — Web Dashboard / operator experience (in progress; shell/session implemented)**
 - **Milestone 9 — TrueNAS Community App distribution (planned; not implemented)**
 
 ## Working production characteristics
@@ -116,6 +122,8 @@ Current milestones:
 - typed runtime settings via `app/core/config.py`
 - standard-library JSON application logging via `app/core/logging.py`
 - context-local HTTP request correlation and latency events via `app/core/observability.py`
+- bundled same-origin `/ui/` dashboard shell with local HTML/CSS/vanilla JavaScript, strict browser
+  security headers, and operator-supplied Bearer-key validation through the existing API
 - required current `API_KEY` plus one optional secret-safe `API_KEY_PREVIOUS` allow a controlled
   two-key rotation window through the shared constant-time legacy/v1 Bearer verifier
 - protected legacy and `/api/v1` traffic has a thread-safe, process-local fixed-window limiter before
@@ -220,6 +228,9 @@ app/cli.py
 
 app/api/
     HTTP routers, legacy/v1 route registration, and API dependencies
+
+app/ui/
+    explicit dashboard document/asset routes and bundled HTML, CSS and vanilla JavaScript shell
 
 app/core/config.py
     typed runtime configuration

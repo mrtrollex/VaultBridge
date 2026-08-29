@@ -33,8 +33,8 @@ developer-experience backlog without changing the completed v1.0 release scope.
 ## Current architecture
 
 ```text
-Client
-(ChatGPT / curl / future CLI / integrations)
+Clients
+(Web Dashboard / ChatGPT / curl / CLI / integrations)
                      |
                      | HTTPS + Bearer token
                      v
@@ -61,6 +61,7 @@ Client
 ```text
 app/main.py                     application construction and dependency wiring
 app/api/                        health, note and search routers
+app/ui/                         bundled dashboard routes, HTML, CSS and vanilla JavaScript
 app/core/config.py              typed runtime configuration
 app/core/logging.py             safe structured application logging
 app/services/vault.py           safe Markdown/vault operations
@@ -483,12 +484,13 @@ complete. Milestone 7 is complete; VB-055 remains an optional post-v1 P1 improve
 
 ---
 
-# Milestone 8 — Web Dashboard / operator experience — PLANNED
+# Milestone 8 — Web Dashboard / operator experience — IN PROGRESS
 
 **Goal:** provide a small first-party browser interface for inspecting and using VaultBridge without
 turning the project into a general knowledge-management frontend.
 
-This milestone is not yet implemented. The planned first-release information architecture is:
+The bundled shell and authenticated browser session are implemented. Overview data and Search
+features remain planned. The first-release information architecture is:
 
 ```text
 Overview
@@ -520,14 +522,16 @@ Implementation direction:
 - display index state only. Any UI-triggered index mutation requires a separate safety design that
   preserves stopped-service CLI maintenance and process ownership.
 
-Planned task sequence:
+Task sequence:
 
 ```text
 VB-070 architecture and security design ✓
    ↓
-VB-071 dashboard shell and authenticated session ← NEXT
+VB-071 dashboard shell and authenticated session ✓
    ↓
-VB-072 overview and health visibility + VB-073 search interface
+VB-072 overview and health visibility ← NEXT
+   ↓
+VB-073 search interface
    ↓
 VB-074 usability, accessibility, and release hardening
 ```
@@ -535,10 +539,11 @@ VB-074 usability, accessibility, and release hardening
 Milestone exit criteria:
 
 - [x] platform-neutral dashboard architecture and authentication threat model are agreed
+- [x] canonical dashboard shell and authenticated `sessionStorage` lifecycle are implemented
 - [ ] one lightweight dashboard ships with the normal VaultBridge application/image
-- [ ] the API and CLI remain independently usable and behaviorally compatible
+- [x] the API and CLI remain independently usable and behaviorally compatible
 - [ ] overview data and search behavior reuse existing backend/domain capabilities
-- [ ] no note editor, account system, general file manager, or live index-rebuild mutation is added
+- [x] no note editor, account system, general file manager, or live index-rebuild mutation is added
 - [ ] accessibility, privacy-safe rendering, browser smoke tests, and container verification pass
 - [ ] a dashboard-capable VaultBridge image is published and verified before Milestone 9 begins
 
@@ -684,9 +689,11 @@ v1.0.0 ✓
 WEB DASHBOARD / OPERATOR EXPERIENCE
 VB-070 ✓
    ↓
-VB-071 ← NEXT
+VB-071 ✓
    ↓
-VB-072 + VB-073
+VB-072 ← NEXT
+   ↓
+VB-073
    ↓
 VB-074
    ↓
@@ -702,8 +709,9 @@ VB-082
 VB-083
 ```
 
-`v1.0.0` has shipped, and ADR 0003 completes the VB-070 design gate without adding dashboard
-runtime code. **VB-071 is the sole next recommended task.** VB-023 remains open P1 retrieval work
+`v1.0.0` has shipped, ADR 0003 completes the VB-070 design gate, and VB-071 adds the dashboard
+shell and authenticated browser session. **VB-072 is the sole next recommended task.** VB-073
+remains planned after it. VB-023 remains open P1 retrieval work
 with its requirements unchanged, but it is not NEXT. VB-032 and VB-033 remain explicitly
 deferred/optional, and VB-055 remains optional rather than a dashboard prerequisite. The deliberate
 post-v1 execution priority is Milestone 8 followed by a published/verified dashboard-capable image,
