@@ -497,32 +497,35 @@ API / Integration
 About
 ```
 
-The Overview may present facts already owned by VaultBridge, including application/vault health,
-semantic lifecycle and availability, note/chunk counts, the last successful full synchronization,
-and existing watcher/indexer state. Search should expose the existing literal and semantic
-related-note behavior without duplicating ranking, filtering, containment, or domain logic.
+The Overview may present facts already exposed by the current public `/health` contract, including
+application/vault health, semantic lifecycle and availability, note/chunk counts, and the last
+successful full synchronization. Current HTTP responses do not expose watcher enabled/running
+state, so the first dashboard must omit it or label it unavailable rather than infer it. Search
+should expose the existing literal and semantic related-note behavior without duplicating ranking,
+filtering, containment, or domain logic.
 
 Implementation direction:
 
-- serve the dashboard from the existing VaultBridge application, repository, production image, and
-  same origin where practical;
+- follow accepted [ADR 0003](docs/adr/0003-web-dashboard-architecture-and-security.md): canonical
+  `/ui/`, explicit `/ui/assets/`, same-origin API calls, no SPA catch-all, and no second service;
 - keep the API independently usable and keep API/CLI behavior unchanged when the UI is unused;
 - prefer small bundled HTML/CSS/vanilla JavaScript or similarly lightweight assets;
 - require no mandatory Node/npm build pipeline, frontend framework, second service, or second
-  container for the first version unless VB-070 demonstrates a real need;
+  container for the first version;
 - preserve the existing Bearer-auth boundary for protected data requests; never inject, return, log,
   or place `API_KEY` in HTML, JavaScript source, or URLs;
-- settle browser threat boundaries, credential/session handling, same-origin behavior, and logout
-  semantics in VB-070 before implementation;
+- retain the operator-supplied Bearer key in namespaced `sessionStorage` only after successful
+  protected API validation; logout and `401` clear it, and strict CSP plus text-only rendering reduce
+  the browser threat surface;
 - display index state only. Any UI-triggered index mutation requires a separate safety design that
   preserves stopped-service CLI maintenance and process ownership.
 
 Planned task sequence:
 
 ```text
-VB-070 architecture and security design
+VB-070 architecture and security design ✓
    ↓
-VB-071 dashboard shell and authenticated session
+VB-071 dashboard shell and authenticated session ← NEXT
    ↓
 VB-072 overview and health visibility + VB-073 search interface
    ↓
@@ -531,7 +534,7 @@ VB-074 usability, accessibility, and release hardening
 
 Milestone exit criteria:
 
-- [ ] platform-neutral dashboard architecture and authentication threat model are agreed
+- [x] platform-neutral dashboard architecture and authentication threat model are agreed
 - [ ] one lightweight dashboard ships with the normal VaultBridge application/image
 - [ ] the API and CLI remain independently usable and behaviorally compatible
 - [ ] overview data and search behavior reuse existing backend/domain capabilities
@@ -679,9 +682,9 @@ OPERATIONS / KNOWLEDGE / DX
 v1.0.0 ✓
    ↓
 WEB DASHBOARD / OPERATOR EXPERIENCE
-VB-070 ← NEXT
+VB-070 ✓
    ↓
-VB-071
+VB-071 ← NEXT
    ↓
 VB-072 + VB-073
    ↓
@@ -699,8 +702,9 @@ VB-082
 VB-083
 ```
 
-`v1.0.0` has shipped. **VB-070 is the next recommended task.** VB-023 remains open P1 retrieval
-work with its requirements unchanged, but it is no longer NEXT. VB-032 and VB-033 remain explicitly
+`v1.0.0` has shipped, and ADR 0003 completes the VB-070 design gate without adding dashboard
+runtime code. **VB-071 is the sole next recommended task.** VB-023 remains open P1 retrieval work
+with its requirements unchanged, but it is not NEXT. VB-032 and VB-033 remain explicitly
 deferred/optional, and VB-055 remains optional rather than a dashboard prerequisite. The deliberate
 post-v1 execution priority is Milestone 8 followed by a published/verified dashboard-capable image,
 then Milestone 9. This plan does not assign a release version.

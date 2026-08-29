@@ -43,6 +43,7 @@ Completed:
 - VB-058 — Fix cross-platform path assertion
 - VB-059 — Align v1.0 version metadata
 - VB-060 — Public repository exposure audit
+- VB-070 — Web Dashboard architecture and security design
 
 Post-v1 development position:
 
@@ -51,11 +52,17 @@ Post-v1 development position:
 
 Next recommended backlog task:
 
-- **VB-070 — Web Dashboard architecture and security design**
+- **VB-071 — Dashboard shell and authenticated session**
 
 Current post-v1 planning position:
 
-- no bundled Web Dashboard exists yet; Milestone 8 and VB-070 through VB-074 are planned work
+- ADR 0003 is accepted and VB-070 is complete; no dashboard runtime, route, or asset exists yet
+- VB-071 through VB-074 remain planned implementation work
+- the accepted design uses canonical `/ui/`, same-origin APIs, an operator-supplied Bearer key in
+  namespaced `sessionStorage` after protected validation, strict CSP/text rendering, and no
+  note/index mutation
+- the current runtime, API contracts, authentication, dependencies, container, and Compose behavior
+  remain unchanged by VB-070
 - no upstream TrueNAS Community App exists yet; Milestone 9 and VB-080 through VB-083 are planned work
 - current TrueNAS support remains the documented Docker/source-built Custom App deployment
 - VB-023 remains open P1 retrieval work with unchanged scope, but it is no longer the current next task
@@ -92,7 +99,7 @@ Current milestones:
 - **Milestone 5 — Operational maturity and security (complete)**
 - **Milestone 6 — Public API and developer experience (complete)**
 - **Milestone 7 — Distribution and `v1.0.0` (complete)**
-- **Milestone 8 — Web Dashboard / operator experience (planned; not implemented)**
+- **Milestone 8 — Web Dashboard / operator experience (planned; ADR 0003 accepted, not implemented)**
 - **Milestone 9 — TrueNAS Community App distribution (planned; not implemented)**
 
 ## Working production characteristics
