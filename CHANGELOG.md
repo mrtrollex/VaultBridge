@@ -14,6 +14,10 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ### Added
 
+- accepted ADR 0003 for the planned Web Dashboard, defining canonical same-origin `/ui/` routing,
+  operator-supplied Bearer-key handling in `sessionStorage`, strict CSP and text-safe rendering,
+  reuse of current health/search contracts, and no note/index mutation; no dashboard runtime is
+  implemented by this documentation change
 - an optional, disabled-by-default cross-platform filesystem watcher using `watchdog`, with safe
   recursive Markdown event interpretation, monotonic debounce/coalescing, and lifecycle integration
   through the existing single semantic indexer

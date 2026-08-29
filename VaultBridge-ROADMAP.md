@@ -2,7 +2,7 @@
 
 > **Historical planning snapshot:** this file preserves the original pre-v1 roadmap. It is not the
 > current planning source. See [`ROADMAP.md`](ROADMAP.md), [`BACKLOG.md`](BACKLOG.md), and
-> [`PROJECT_STATE.md`](PROJECT_STATE.md); the current next recommended task is VB-070.
+> [`PROJECT_STATE.md`](PROJECT_STATE.md); the current next recommended task is VB-071.
 
 > **Project goal:** turn the current working Obsidian ↔ AI bridge into a small, reliable, client-agnostic, self-hosted application that can be shipped publicly on GitHub and deployed with Docker.
 

@@ -304,7 +304,9 @@ vault or index, but they are local filesystem/SQLite readers rather than a remot
 
 This section records post-v1 extension boundaries only. It does not describe current routes, assets,
 container contents, or TrueNAS catalog availability. The current architecture above remains
-authoritative until the corresponding backlog tasks are implemented and verified.
+authoritative until the corresponding backlog tasks are implemented and verified. The accepted
+implementation boundary is recorded in
+[ADR 0003](docs/adr/0003-web-dashboard-architecture-and-security.md).
 
 ### Planned dashboard relationship
 
@@ -336,23 +338,28 @@ Search must reuse existing literal and semantic retrieval behavior rather than d
 filtering, containment, or note verification in UI-specific domain logic. The API and CLI remain
 first-class and independently usable; not using the UI must not change their behavior.
 
-The intended first implementation is served by the existing FastAPI application from the same
-repository, production image, and origin where practical. It should use lightweight bundled assets
-without a mandatory Node/npm pipeline, React/Vue/Svelte dependency, second service, or second
-container unless a later measured requirement and architecture decision justify one. Exact routes,
-files, and session mechanics remain VB-070 design outcomes, not current facts.
+The accepted first implementation will be served by the existing FastAPI application from the same
+repository, production image, and origin. Public `GET`/`HEAD /ui` redirects temporarily to canonical
+`/ui/`; the entry document is at `/ui/`, bundled assets use the explicit `/ui/assets/` namespace,
+and unknown UI paths return `404` rather than an SPA fallback. It uses relative URLs, same-origin API
+calls, and lightweight static HTML/CSS/vanilla JavaScript without a mandatory Node/npm pipeline,
+React/Vue/Svelte dependency, second service, second container, or new frontend dependency. These are
+accepted design decisions, not current runtime facts.
 
 The dashboard must not weaken Bearer authentication. A public shell may contain no embedded
 credential, while every protected data request still authenticates. The configured `API_KEY` must
 never be injected into HTML or JavaScript source, returned by an endpoint, placed in a URL, logged,
-or persisted server-side merely for the UI. VB-070 must resolve browser threat boundaries,
-same-origin behavior, operator-supplied credential retention, logout/session clearing, XSS, and safe
-rendering before implementation. It must not introduce accounts, username/password login, OAuth, or
-a user database for the initial dashboard.
+or persisted server-side merely for the UI. ADR 0003 selects an operator-supplied key held in
+namespaced `sessionStorage` only after successful protected API validation and sent through the
+existing Bearer header. Logout and `401` clear it. Strict CSP/security headers, no third-party
+resources, and text-only rendering of untrusted values form the XSS boundary. The design introduces
+no accounts, username/password login, OAuth, user database, cookie session, or secret-return route.
 
-The initial UI may display semantic-index state. It must not expose a live rebuild/mutation action.
-The stopped-service CLI and existing single-process index ownership remain authoritative. Any future
-HTTP/UI index mutation requires a separate design proving it is safe while the serving process runs.
+The initial UI may display only semantic-index facts already exposed by `/health`. Watcher
+enabled/running state is not exposed by the current HTTP contract and must be omitted or identified
+as unavailable. The UI must not expose a live rebuild/mutation action. The stopped-service CLI and
+existing single-process index ownership remain authoritative. Any future HTTP/UI index mutation
+requires a separate design proving it is safe while the serving process runs.
 
 ### Planned deployment relationship
 

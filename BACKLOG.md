@@ -614,15 +614,25 @@ does not satisfy the separate public anonymous clean-install or release-publicat
 
 ## Web Dashboard / operator experience
 
-### VB-070 — Web Dashboard architecture and security design — P1 ▶
+### VB-070 — Web Dashboard architecture and security design — P1 ✅
 
-**Status:** Planned; next recommended task. Documentation/design only.
+**Status:** Completed on 2026-08-29. Documentation/design only.
 
 **Goal:** define the deliberately small dashboard boundary, routing model, authentication handling,
 first-release information architecture, and reuse of the existing API/domain capabilities before UI
 implementation begins.
 
 **Depends on:** the completed v1.0 application/API/container baseline.
+
+**Accepted decisions:** [ADR 0003](docs/adr/0003-web-dashboard-architecture-and-security.md)
+defines a same-origin dashboard with canonical `/ui/` routing, explicit `/ui/assets/`, no SPA
+catch-all, and an operator-supplied Bearer key retained in namespaced `sessionStorage` only after
+successful protected API validation. Logout and `401` clear the browser session. The dashboard must
+use strict CSP/security headers, render untrusted values as text, load no third-party resources, and
+reuse the current health and search contracts without note/index mutation. The first implementation
+is static HTML/CSS/vanilla JavaScript in the existing application/image, with no new frontend build
+pipeline, framework, service, container, or dependency. Watcher state is not available through the
+current HTTP API and must be omitted or identified as unavailable rather than inferred.
 
 **Acceptance criteria**
 
@@ -639,8 +649,9 @@ implementation begins.
   error rendering;
 - no configured API key is injected into generated HTML or JavaScript source, put in a URL, returned
   by an endpoint, logged, or persisted server-side merely for the dashboard;
-- any considered operator-supplied key model, including session memory or `sessionStorage`, remains
-  a design outcome rather than an assumed final decision until the threats are reviewed;
+- the selected browser model stores an operator-supplied key in namespaced `sessionStorage` only
+  after successful protected validation, sends it only as the existing Bearer header, and clears it
+  on logout or `401`;
 - accessibility, responsive behavior, privacy-safe rendering, and reduced-motion expectations are
   documented for later implementation;
 - index state may be displayed, but note/index mutation is excluded unless separately designed;
@@ -673,9 +684,9 @@ implementation begins.
 - verify that the design changes no endpoint, operation ID, request/response contract, dependency,
   runtime file, container behavior, or release artifact.
 
-### VB-071 — Dashboard shell and authenticated session — P1
+### VB-071 — Dashboard shell and authenticated session — P1 ▶
 
-**Status:** Planned.
+**Status:** Planned; next recommended task.
 
 **Goal:** implement the approved lightweight first-party browser entry point and safe operator
 credential/session flow.
@@ -684,15 +695,17 @@ credential/session flow.
 
 **Acceptance criteria**
 
-- `/ui` or the equivalent route approved by VB-070 serves a responsive dashboard shell from the
-  existing VaultBridge application and production container;
+- public `GET`/`HEAD /ui` returns a `307` redirect to canonical `/ui/`; the entry document and
+  explicit `/ui/assets/` namespace are served by the existing application/container, while unknown
+  UI paths return `404` without an SPA catch-all;
 - Overview, Search, API / Integration, and About navigation follows the agreed first-release scope;
-- credential/session handling implements the VB-070 threat model, including explicit logout/session
-  clearing and safe authentication/error states;
+- credential/session handling implements ADR 0003, including validation through
+  `GET /api/v1/notes/list?limit=1`, namespaced `sessionStorage`, reload revalidation, explicit
+  logout/session clearing, and status-specific `401`/`429`/`503`/network behavior;
 - protected data requests retain the existing Bearer-auth boundary and no secret is embedded in
   assets, HTML, URLs, logs, server responses, or server-side dashboard persistence;
-- bundled assets are lightweight and require no frontend framework/build chain unless VB-070
-  explicitly documented and justified that need;
+- bundled assets are static HTML/CSS and small vanilla JavaScript modules, with no frontend
+  framework, build chain, inline code, remote asset, or new dependency;
 - the API/CLI operate unchanged when the dashboard is disabled or unused;
 - focused tests cover routing, authentication failure, secret non-disclosure, safe rendering, and
   compatibility of existing API routes/operation IDs.
@@ -1004,8 +1017,8 @@ VB-001 ✓
 → VB-059  ✓
 → VB-060  ✓
 → v1.0.0 ✓
-→ VB-070 NEXT
-→ VB-071
+→ VB-070 ✓
+→ VB-071 NEXT
 → VB-072 + VB-073
 → VB-074
 → published/verified dashboard-capable VaultBridge image
@@ -1019,9 +1032,10 @@ VB-057 through VB-060 close the confirmed containment, native-Windows test-porta
 release-version alignment, and repository-exposure-safety blockers. Stable `v1.0.0` and its final
 distribution gates are complete; immutable evidence remains recorded in `docs/RELEASE_CHECKLIST.md`.
 
-VB-070 is the next recommended task and is documentation/design only. VB-023 remains open P1
-retrieval work with unchanged scope, but it is no longer NEXT. VB-032 and VB-033 remain deferred
-optional work. VB-055 remains optional and is not a dashboard prerequisite. Milestone 9 begins only
-after Milestone 8 produces a published and verified dashboard-capable VaultBridge image.
+VB-070 is complete as the accepted documentation/design contract in ADR 0003. VB-071 is the sole
+next recommended task. VB-023 remains open P1 retrieval work with unchanged scope, but it is not
+NEXT. VB-032 and VB-033 remain deferred optional work. VB-055 remains optional and is not a
+dashboard prerequisite. Milestone 9 begins only after Milestone 8 produces a published and verified
+dashboard-capable VaultBridge image.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.
