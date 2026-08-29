@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <title>VaultBridge Dashboard</title>
+    <link rel="stylesheet" href="assets/app.css">
+    <script type="module" src="assets/app.js"></script>
+  </head>
+  <body class="state-checking-session">
+    <a class="skip-link" href="#dashboard-content">Skip to dashboard content</a>
+
+    <header class="app-header">
+      <div class="app-header__identity">
+        <p class="eyebrow">Operator console</p>
+        <h1>VaultBridge</h1>
+        <p class="app-header__summary">Local-first access to your Obsidian knowledge base.</p>
+      </div>
+
+      <div class="session-summary" aria-label="Authentication status">
+        <span id="session-state" class="state-badge">Checking session</span>
+        <button id="logout-button" class="secondary-button" type="button" hidden>Logout</button>
+      </div>
+    </header>
+
+    <nav class="app-navigation" aria-label="Dashboard areas">
+      <button id="nav-overview" class="nav-button" type="button" aria-controls="overview-panel" aria-current="page">
+        Overview
+      </button>
+      <button id="nav-search" class="nav-button" type="button" aria-controls="search-panel" disabled>
+        Search
+      </button>
+      <button id="nav-api" class="nav-button" type="button" aria-controls="api-panel">
+        API / Integration
+      </button>
+      <button id="nav-about" class="nav-button" type="button" aria-controls="about-panel">
+        About
+      </button>
+    </nav>
+
+    <main id="dashboard-content" tabindex="-1">
+      <section class="session-card" aria-labelledby="unlock-heading">
+        <div class="session-copy">
+          <h2 id="unlock-heading">Dashboard access</h2>
+          <p id="checking-session">Protected features remain locked until the saved credential is validated.</p>
+        </div>
+
+        <form id="unlock-form" class="unlock-form" hidden>
+          <div class="field-group">
+            <label for="api-key">API key</label>
+            <input
+              id="api-key"
+              name="api-key"
+              type="password"
+              autocomplete="current-password"
+              autocapitalize="none"
+              spellcheck="false"
+              aria-describedby="api-key-help"
+              required
+            >
+            <p id="api-key-help" class="field-help">Used only for this VaultBridge origin and browser tab session.</p>
+          </div>
+          <button id="unlock-button" class="primary-button" type="submit">Unlock</button>
+        </form>
+
+        <button id="retry-session-button" class="primary-button" type="button" hidden>Retry session validation</button>
+      </section>
+
+      <div id="global-status" class="global-status" role="status" aria-live="polite" aria-atomic="true">
+        Checking for a saved dashboard session.
+      </div>
+
+      <section id="overview-panel" class="dashboard-panel" aria-labelledby="overview-heading">
+        <div class="panel-heading">
+          <p class="eyebrow">Workspace</p>
+          <h2 id="overview-heading">Overview</h2>
+        </div>
+        <div class="placeholder-card">
+          <p>Operational overview will appear here.</p>
+          <p class="muted">Health details are intentionally reserved for VB-072.</p>
+        </div>
+      </section>
+
+      <section id="search-panel" class="dashboard-panel" aria-labelledby="search-heading" hidden>
+        <div class="panel-heading">
+          <p class="eyebrow">Knowledge retrieval</p>
+          <h2 id="search-heading">Search</h2>
+        </div>
+        <div class="placeholder-card">
+          <p id="search-access-state">Unlock the dashboard to access the future search workspace.</p>
+          <p class="muted">Literal and semantic search are intentionally reserved for VB-073.</p>
+        </div>
+      </section>
+
+      <section id="api-panel" class="dashboard-panel" aria-labelledby="api-heading" hidden>
+        <div class="panel-heading">
+          <p class="eyebrow">Client connection</p>
+          <h2 id="api-heading">API / Integration</h2>
+        </div>
+        <div class="information-grid">
+          <div class="information-card">
+            <h3>Application base</h3>
+            <p id="application-base">Derived from this dashboard address.</p>
+          </div>
+          <div class="information-card">
+            <h3>Preferred namespace</h3>
+            <p><code>/api/v1</code></p>
+          </div>
+          <div class="information-card">
+            <h3>Authentication</h3>
+            <p>Bearer API key</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="about-panel" class="dashboard-panel" aria-labelledby="about-heading" hidden>
+        <div class="panel-heading">
+          <p class="eyebrow">Project</p>
+          <h2 id="about-heading">About VaultBridge</h2>
+        </div>
+        <div class="placeholder-card">
+          <p>Self-hosted REST and semantic search API for Obsidian vaults.</p>
+          <p>Markdown remains the source of truth.</p>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

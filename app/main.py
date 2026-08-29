@@ -31,6 +31,7 @@ from app.services.vault import (
     VaultServiceError,
     VaultValidationError,
 )
+from app.ui.router import router as ui_router
 
 APP_TITLE = "VaultBridge"
 APP_VERSION = "1.0.0"
@@ -217,6 +218,7 @@ def create_app(
     application.include_router(health_router)
     application.include_router(notes_router)
     application.include_router(search_router)
+    application.include_router(ui_router)
     return application
 
 

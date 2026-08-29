@@ -684,9 +684,9 @@ current HTTP API and must be omitted or identified as unavailable rather than in
 - verify that the design changes no endpoint, operation ID, request/response contract, dependency,
   runtime file, container behavior, or release artifact.
 
-### VB-071 — Dashboard shell and authenticated session — P1 ▶
+### VB-071 — Dashboard shell and authenticated session — P1 ✅
 
-**Status:** Planned; next recommended task.
+**Status:** Completed on 2026-08-29.
 
 **Goal:** implement the approved lightweight first-party browser entry point and safe operator
 credential/session flow.
@@ -727,9 +727,27 @@ credential/session flow.
   and normal Python/compile checks;
 - verify the production container serves the bundled shell without a second service.
 
-### VB-072 — Dashboard overview and health visibility — P1
+**Implemented behavior**
 
-**Status:** Planned.
+- explicit schema-hidden `GET`/`HEAD` routes serve the canonical `/ui/` document and two known
+  `/ui/assets/` resources; `/ui` redirects with `307`, reverse-proxy `root_path` is preserved, and
+  unknown UI paths return `404` without a catch-all;
+- the bundled semantic HTML/CSS/vanilla JavaScript shell provides responsive Overview, Search,
+  API / Integration, and About navigation with locked, checking, unlocked, and unavailable states;
+- unlock and reload validation reuse `GET /api/v1/notes/list?limit=1`; only a successful response
+  stores the operator-supplied credential under `vaultbridge.ui.apiKey` in `sessionStorage`;
+- one same-origin authenticated fetch helper owns Bearer injection and controlled
+  `401`/`429`/`Retry-After`/`503`/server/network handling; logout clears credentials and protected
+  state, aborts controlled requests, and ignores stale responses;
+- UI documents and assets receive the ADR 0003 CSP, `nosniff`, and no-referrer headers; dynamic
+  browser text uses `textContent`, with no inline/third-party code, Markdown rendering, or remote
+  resource;
+- focused static and HTTP tests plus a real desktop/mobile browser smoke test cover the shell and
+  session lifecycle. Overview data and search behavior remain placeholders for VB-072/VB-073.
+
+### VB-072 — Dashboard overview and health visibility — P1 ▶
+
+**Status:** Planned; next recommended task.
 
 **Goal:** provide a concise operator overview using facts already owned by VaultBridge.
 
@@ -1018,8 +1036,9 @@ VB-001 ✓
 → VB-060  ✓
 → v1.0.0 ✓
 → VB-070 ✓
-→ VB-071 NEXT
-→ VB-072 + VB-073
+→ VB-071 ✓
+→ VB-072 NEXT
+→ VB-073
 → VB-074
 → published/verified dashboard-capable VaultBridge image
 → VB-080
@@ -1032,8 +1051,9 @@ VB-057 through VB-060 close the confirmed containment, native-Windows test-porta
 release-version alignment, and repository-exposure-safety blockers. Stable `v1.0.0` and its final
 distribution gates are complete; immutable evidence remains recorded in `docs/RELEASE_CHECKLIST.md`.
 
-VB-070 is complete as the accepted documentation/design contract in ADR 0003. VB-071 is the sole
-next recommended task. VB-023 remains open P1 retrieval work with unchanged scope, but it is not
+VB-070 is complete as the accepted documentation/design contract in ADR 0003, and VB-071 implements
+the dashboard shell and authenticated session. VB-072 is the sole next recommended task; VB-073
+remains planned after it. VB-023 remains open P1 retrieval work with unchanged scope, but it is not
 NEXT. VB-032 and VB-033 remain deferred optional work. VB-055 remains optional and is not a
 dashboard prerequisite. Milestone 9 begins only after Milestone 8 produces a published and verified
 dashboard-capable VaultBridge image.

@@ -7,12 +7,12 @@ VaultBridge exposes a deliberately small API over an Obsidian Markdown vault. It
 ## Current architecture
 
 ```text
-Client (ChatGPT / curl / future integrations)
+Clients (Web Dashboard / ChatGPT / curl / CLI / integrations)
                     |
                     | HTTPS + Bearer token
                     v
                FastAPI app
-       (`/api/v1` + legacy aliases)
+       (`/ui/` + `/api/v1` + legacy aliases)
               /           \
              /             \
     Vault operations     Semantic search
@@ -76,6 +76,7 @@ non-root runtime identities and overrides the path where the generic deployment 
 app/main.py          application construction, dependency wiring, router registration
 app/cli.py           read-only semantic integrity check and explicit offline rebuild entry point
 app/api/             health, note/search routers, versioned alias registration and HTTP dependencies
+app/ui/              explicit dashboard routes and bundled HTML/CSS/vanilla JavaScript assets
 app/core/config.py   typed environment configuration
 app/core/logging.py  structured VaultBridge application logging
 app/core/observability.py request correlation and HTTP lifecycle timing
@@ -300,25 +301,23 @@ vault or index, but they are local filesystem/SQLite readers rather than a remot
 
 ---
 
-## Planned Web Dashboard and platform packaging — NOT YET IMPLEMENTED
+## Web Dashboard and planned platform packaging
 
-This section records post-v1 extension boundaries only. It does not describe current routes, assets,
-container contents, or TrueNAS catalog availability. The current architecture above remains
-authoritative until the corresponding backlog tasks are implemented and verified. The accepted
-implementation boundary is recorded in
-[ADR 0003](docs/adr/0003-web-dashboard-architecture-and-security.md).
+VB-071 implements the dashboard shell and authenticated session boundary accepted in
+[ADR 0003](docs/adr/0003-web-dashboard-architecture-and-security.md). Overview data, Search features,
+release hardening, and TrueNAS Community App packaging remain later tasks.
 
-### Planned dashboard relationship
+### Current dashboard relationship
 
-VaultBridge remains one universal application in one core repository. The planned Web Dashboard is
-a small first-party browser client bundled with that application, not a separate product and not a
+VaultBridge remains one universal application in one core repository. The Web Dashboard is a small
+first-party browser client bundled with that application, not a separate product and not a
 TrueNAS-specific UI.
 
 ```text
 Browser
    |
    v
-VaultBridge Web Dashboard (planned)
+VaultBridge Web Dashboard (`/ui/`)
    |
    | existing/stable application boundaries
    v
@@ -332,28 +331,27 @@ ChatGPT / curl / scripts / integrations
    +----------------------------------> VaultBridge API
 ```
 
-The first planned dashboard areas are Overview, Search, API / Integration, and About. Overview may
-present operational facts already owned by health, vault, semantic, indexer, and watcher boundaries.
-Search must reuse existing literal and semantic retrieval behavior rather than duplicate ranking,
-filtering, containment, or note verification in UI-specific domain logic. The API and CLI remain
-first-class and independently usable; not using the UI must not change their behavior.
+The current shell contains Overview, Search, API / Integration, and About areas. Overview and Search
+are placeholders: VB-071 does not fetch health data or implement literal/semantic queries. VB-072
+and VB-073 must reuse the existing API/domain owners rather than duplicate health, ranking,
+filtering, containment, or live-note verification in browser code. The API and CLI remain first-class
+and independently usable.
 
-The accepted first implementation will be served by the existing FastAPI application from the same
-repository, production image, and origin. Public `GET`/`HEAD /ui` redirects temporarily to canonical
+The dashboard is served by the existing FastAPI application from the same repository and origin.
+Public `GET`/`HEAD /ui` redirects temporarily to canonical
 `/ui/`; the entry document is at `/ui/`, bundled assets use the explicit `/ui/assets/` namespace,
 and unknown UI paths return `404` rather than an SPA fallback. It uses relative URLs, same-origin API
 calls, and lightweight static HTML/CSS/vanilla JavaScript without a mandatory Node/npm pipeline,
-React/Vue/Svelte dependency, second service, second container, or new frontend dependency. These are
-accepted design decisions, not current runtime facts.
+React/Vue/Svelte dependency, second service, second container, or new frontend dependency. The root
+Dockerfile's existing `COPY app ./app` instruction includes these assets without a Dockerfile change.
 
-The dashboard must not weaken Bearer authentication. A public shell may contain no embedded
-credential, while every protected data request still authenticates. The configured `API_KEY` must
-never be injected into HTML or JavaScript source, returned by an endpoint, placed in a URL, logged,
-or persisted server-side merely for the UI. ADR 0003 selects an operator-supplied key held in
-namespaced `sessionStorage` only after successful protected API validation and sent through the
-existing Bearer header. Logout and `401` clear it. Strict CSP/security headers, no third-party
-resources, and text-only rendering of untrusted values form the XSS boundary. The design introduces
-no accounts, username/password login, OAuth, user database, cookie session, or secret-return route.
+The public shell contains no configured credential. Unlock and reload revalidation call
+`GET /api/v1/notes/list?limit=1`; a successful response allows the submitted key to be stored under
+`vaultbridge.ui.apiKey` in `sessionStorage` and used by one authenticated fetch helper. Logout and
+`401` clear it, while `429`, `503`, and network failures do not misclassify an already stored key.
+The UI receives the ADR 0003 CSP, `nosniff`, and no-referrer headers, loads no third-party resources,
+and renders dynamic strings through text-only DOM APIs. No account, cookie, OAuth, secret-return, or
+dashboard-specific authentication endpoint exists.
 
 The initial UI may display only semantic-index facts already exposed by `/health`. Watcher
 enabled/running state is not exposed by the current HTTP contract and must be omitted or identified
@@ -375,7 +373,7 @@ The normal VaultBridge image is the one distributable application across platfor
              +------------+-------------+
                           |
                      VaultBridge
-                  /api/v1 + planned /ui
+                     /api/v1 + /ui/
 ```
 
 TrueNAS Community App packaging is a configuration/distribution adapter around a published,
@@ -386,7 +384,7 @@ VaultBridge must remain deployable without TrueNAS.
 
 Repository ownership is deliberately separated:
 
-- `mrtrollex/VaultBridge` owns the application runtime, API, semantic behavior, CLI, planned bundled
+- `mrtrollex/VaultBridge` owns the application runtime, API, semantic behavior, CLI, bundled
   dashboard, Dockerfile, GHCR image, and generic deployment documentation;
 - `truenas/apps` should own the accepted upstream TrueNAS Community App definition;
 - `ghcr.io/mrtrollex/vaultbridge:<released-version>` is the interface between those repositories.

@@ -14,10 +14,13 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ### Added
 
+- a bundled, schema-hidden `/ui/` Web Dashboard shell with canonical redirects, explicit local
+  assets, responsive Overview/Search/API/About navigation, authenticated `sessionStorage` lifecycle,
+  centralized Bearer requests and safe status handling, strict CSP/security headers, and no
+  note/index mutation or new frontend/runtime dependency
 - accepted ADR 0003 for the planned Web Dashboard, defining canonical same-origin `/ui/` routing,
   operator-supplied Bearer-key handling in `sessionStorage`, strict CSP and text-safe rendering,
-  reuse of current health/search contracts, and no note/index mutation; no dashboard runtime is
-  implemented by this documentation change
+  reuse of current health/search contracts, and no note/index mutation
 - an optional, disabled-by-default cross-platform filesystem watcher using `watchdog`, with safe
   recursive Markdown event interpretation, monotonic debounce/coalescing, and lifecycle integration
   through the existing single semantic indexer
@@ -36,9 +39,9 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ### Changed
 
-- post-v1 documentation now plans a platform-neutral bundled Web Dashboard followed by a TrueNAS
-  Community App that consumes the normal published VaultBridge image; neither capability is
-  implemented or released by this documentation change
+- post-v1 documentation now records the platform-neutral dashboard shell as implemented while
+  retaining Overview, Search, release hardening, image publication, and TrueNAS Community App
+  packaging as separate future work
 - targeted synchronization now removes derived rows for safely contained missing Markdown paths, so
   external deletes and both sides of renames are processed without a full vault scan
 - related-note suggestions now return only live, contained regular Markdown paths verified through

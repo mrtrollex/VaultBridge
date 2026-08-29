@@ -34,10 +34,11 @@
 > GHCR image, and exact-digest TrueNAS runtime were verified. Current development includes post-v1.0
 > capabilities; see [`ROADMAP.md`](ROADMAP.md) for the current state and historical release scope.
 
-> **Planned, not available yet:** the post-v1 roadmap now prioritizes a small bundled Web Dashboard,
-> followed by TrueNAS Community App catalog packaging around the same published VaultBridge image.
-> Today there is no bundled dashboard or upstream catalog app; the API/CLI and existing documented
-> Docker/TrueNAS Custom App workflows remain the current product.
+> **Current post-v1 development:** the source tree now includes an initial bundled Web Dashboard
+> shell at `/ui/` with operator-supplied API-key unlock and tab-scoped session handling. Overview
+> data and Search features remain planned, and the stable `v1.0.0` image predates this dashboard.
+> There is still no upstream TrueNAS Community App; existing API/CLI and documented Docker/TrueNAS
+> Custom App workflows remain independently usable.
 
 ## Why VaultBridge
 
@@ -95,6 +96,14 @@ The vault is never replaced by the index, and there is no general filesystem end
 - Bearer authentication with operator-controlled API-key rotation
 - process-local rate limiting for protected routes
 - no cloud embedding API or external vector database required
+
+### 🖥️ Web Dashboard shell
+
+- bundled same-origin `/ui/` entry point with no second frontend service
+- accessible Overview, Search, API / Integration, and About navigation
+- API-key validation through the existing protected API and tab-scoped `sessionStorage`
+- strict browser security headers, local assets, and text-only dynamic rendering
+- Overview data and literal/semantic Search remain intentionally pending
 
 ### 🐳 Deployment & operations
 
