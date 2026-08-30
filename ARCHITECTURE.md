@@ -304,9 +304,9 @@ vault or index, but they are local filesystem/SQLite readers rather than a remot
 ## Web Dashboard and planned platform packaging
 
 VB-071 implements the dashboard shell and authenticated session boundary accepted in
-[ADR 0003](docs/adr/0003-web-dashboard-architecture-and-security.md), and VB-072 implements the
-public health-backed Overview. Search features, release hardening, and TrueNAS Community App
-packaging remain later tasks.
+[ADR 0003](docs/adr/0003-web-dashboard-architecture-and-security.md), VB-072 implements the public
+health-backed Overview, and VB-073 implements protected literal and semantic Search. Release
+hardening and TrueNAS Community App packaging remain later tasks.
 
 ### Current dashboard relationship
 
@@ -333,10 +333,11 @@ ChatGPT / curl / scripts / integrations
 ```
 
 The current shell contains Overview, Search, API / Integration, and About areas. Overview
-automatically reads the existing public `GET /health` contract; Search remains a placeholder until
-VB-073. Browser code formats and presents health facts but does not duplicate health, lifecycle,
-counting, ranking, filtering, containment, or live-note verification ownership. The API and CLI
-remain first-class and independently usable.
+automatically reads the existing public `GET /health` contract. Search uses the existing protected
+`POST /api/v1/notes/search` and `POST /api/v1/notes/related` contracts. Browser code formats and
+presents returned facts but does not duplicate health, lifecycle, counting, ranking, filtering,
+containment, thresholding, or live-note verification ownership. The API and CLI remain first-class
+and independently usable.
 
 The dashboard is served by the existing FastAPI application from the same repository and origin.
 Public `GET`/`HEAD /ui` redirects temporarily to canonical
@@ -345,8 +346,9 @@ and unknown UI paths return `404` rather than an SPA fallback. It uses relative 
 calls, and lightweight static HTML/CSS/vanilla JavaScript without a mandatory Node/npm pipeline,
 React/Vue/Svelte dependency, second service, second container, or new frontend dependency. The root
 Dockerfile's existing `COPY app ./app` instruction includes these assets without a Dockerfile change.
-The small browser module boundary keeps shell/session/navigation behavior in `app.js` and public
-health fetching, validation, formatting, and rendering in `overview.js`.
+The small browser module boundary keeps shell/session/navigation behavior and the authenticated
+fetch helper in `app.js`, public health fetching/validation/rendering in `overview.js`, and protected
+search mode/request/lifecycle/result rendering in `search.js`.
 
 The public shell contains no configured credential. Unlock and reload revalidation call
 `GET /api/v1/notes/list?limit=1`; a successful response allows the submitted key to be stored under
@@ -371,6 +373,16 @@ is calculated. Watcher enabled/running state is not exposed by the current HTTP 
 omitted. The UI exposes no live rebuild/mutation action. The stopped-service CLI and existing
 single-process index ownership remain authoritative. Any future HTTP/UI index mutation requires a
 separate design proving it is safe while the serving process runs.
+
+Literal Search sends only `query`, `folder`, and `limit`; Semantic Search sends only `text`,
+`folder`, `limit`, and `min_score`. Returned order is rendered unchanged. Semantic rank is the array
+position, score fields are presentation-formatted without normalization, and null optional fields
+receive text-only fallbacks. Mode changes and newer searches abort/invalidate older controlled
+requests. Search terms and results remain memory-only: they are not stored, placed in URLs, logged
+for UI analytics, or restored on reload. Logout and `401` clear protected form/results; `429`, safe
+validation errors, connectivity errors, and semantic `503` do not invalidate an authenticated
+session. The Search area performs no note reads or mutations and exposes no duplicate or index
+operation.
 
 ### Planned deployment relationship
 

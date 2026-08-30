@@ -65,6 +65,7 @@ def test_known_ui_assets_have_correct_media_types_and_head_support(tmp_path):
         ("/ui/assets/app.css", "text/css"),
         ("/ui/assets/app.js", "text/javascript"),
         ("/ui/assets/overview.js", "text/javascript"),
+        ("/ui/assets/search.js", "text/javascript"),
     ):
         response = client.get(path)
         head = client.head(path)
@@ -129,7 +130,13 @@ def test_ui_routes_are_excluded_from_openapi_contract(tmp_path):
 def test_ui_resources_apply_strict_security_headers(tmp_path):
     client = client_for(tmp_path)
 
-    for path in ("/ui/", "/ui/assets/app.css", "/ui/assets/app.js", "/ui/assets/overview.js"):
+    for path in (
+        "/ui/",
+        "/ui/assets/app.css",
+        "/ui/assets/app.js",
+        "/ui/assets/overview.js",
+        "/ui/assets/search.js",
+    ):
         response = client.get(path)
         assert response.headers["content-security-policy"] == UI_CONTENT_SECURITY_POLICY
         assert response.headers["x-content-type-options"] == "nosniff"
@@ -164,7 +171,13 @@ def test_server_secrets_are_never_rendered_in_ui_resources(tmp_path):
 
     resources = "\n".join(
         client.get(path).text
-        for path in ("/ui/", "/ui/assets/app.css", "/ui/assets/app.js", "/ui/assets/overview.js")
+        for path in (
+            "/ui/",
+            "/ui/assets/app.css",
+            "/ui/assets/app.js",
+            "/ui/assets/overview.js",
+            "/ui/assets/search.js",
+        )
     )
 
     assert current_secret not in resources
@@ -257,6 +270,83 @@ def test_overview_replaces_placeholder_with_accessible_health_cards(tmp_path):
     )
 
 
+def test_search_replaces_placeholder_with_protected_accessible_retrieval_form(tmp_path):
+    html = client_for(tmp_path).get("/ui/").text
+    parser = ShellHTMLParser()
+    parser.feed(html)
+    elements = parser.elements
+
+    assert "future search workspace" not in html
+    assert "reserved for VB-073" not in html
+    assert "Unlock the dashboard to use protected search." in html
+    assert any(
+        tag == "fieldset"
+        and attrs.get("id") == "search-fieldset"
+        and "disabled" in attrs
+        for tag, attrs in elements
+    )
+
+    inputs = {
+        attrs.get("id"): attrs
+        for tag, attrs in elements
+        if tag == "input" and attrs.get("id", "").startswith("search-")
+    }
+    assert inputs["search-mode-literal"]["type"] == "radio"
+    assert inputs["search-mode-literal"]["value"] == "literal"
+    assert inputs["search-mode-literal"]["checked"] is None
+    assert inputs["search-mode-semantic"]["type"] == "radio"
+    assert inputs["search-mode-semantic"]["value"] == "semantic"
+    assert inputs["search-query"]["minlength"] == "1"
+    assert inputs["search-query"]["maxlength"] == "300"
+    assert inputs["search-folder"]["maxlength"] == "500"
+    assert inputs["search-limit"]["min"] == "1"
+    assert inputs["search-limit"]["max"] == "50"
+    assert inputs["search-limit"]["value"] == "10"
+    assert inputs["search-min-score"]["min"] == "-1"
+    assert inputs["search-min-score"]["max"] == "1"
+    assert inputs["search-min-score"]["value"] == "0.28"
+
+    label_targets = {
+        attrs.get("for")
+        for tag, attrs in elements
+        if tag == "label" and attrs.get("for")
+    }
+    assert {
+        "search-query",
+        "search-folder",
+        "search-limit",
+        "search-min-score",
+    } <= label_targets
+    assert any(
+        attrs.get("id") == "semantic-score-field" and "hidden" in attrs
+        for _tag, attrs in elements
+    )
+    assert [
+        attrs.get("aria-live")
+        for _tag, attrs in elements
+        if attrs.get("id") == "search-status"
+    ] == ["polite"]
+
+
+def test_search_ui_excludes_mutation_detail_duplicate_and_index_controls(tmp_path):
+    html = client_for(tmp_path).get("/ui/").text
+    search_panel = html[html.index('<section id="search-panel"') : html.index('<section id="api-panel"')]
+
+    for prohibited in (
+        "View note",
+        "Open in Obsidian",
+        "Create note",
+        "Edit note",
+        "Append",
+        "Delete",
+        "Duplicate",
+        "Rebuild index",
+        "Sync index",
+        "Folder picker",
+    ):
+        assert prohibited.lower() not in search_panel.lower()
+
+
 def test_overview_javascript_uses_public_health_contract_without_auth_or_polling(tmp_path):
     overview_source = client_for(tmp_path).get("/ui/assets/overview.js").text
 
@@ -287,7 +377,7 @@ def test_overview_javascript_uses_public_health_contract_without_auth_or_polling
 
 
 def test_overview_javascript_has_explicit_display_state_and_safe_formatting_contract(tmp_path):
-    overview_source = client_for(tmp_path).get("/ui/assets/overview.js").text
+    overview_source = client_for(tmp_path).get("/ui/assets/overview.js").text.replace("\r\n", "\n")
 
     assert 'if (!health.vault_exists) {\n    return "unavailable";' in overview_source
     assert 'health.semantic_index_state === "indexing"' in overview_source
@@ -388,10 +478,13 @@ def test_public_health_for_overview_requires_no_authorization_and_keeps_contract
 def test_javascript_implements_session_auth_status_and_safe_rendering_contract(tmp_path):
     script = client_for(tmp_path).get("/ui/assets/app.js").text
     overview_script = client_for(tmp_path).get("/ui/assets/overview.js").text
-    all_scripts = f"{script}\n{overview_script}"
+    search_script = client_for(tmp_path).get("/ui/assets/search.js").text
+    all_scripts = f"{script}\n{overview_script}\n{search_script}"
 
     assert 'import { initializeOverview } from "./overview.js"' in script
     assert "initializeOverview(applicationUrl)" in script
+    assert 'import { initializeSearch } from "./search.js"' in script
+    assert "searchController = initializeSearch({" in script
     assert 'const SESSION_STORAGE_KEY = "vaultbridge.ui.apiKey"' in script
     assert "sessionStorage.getItem(SESSION_STORAGE_KEY)" in script
     assert "sessionStorage.setItem(SESSION_STORAGE_KEY, credential)" in script
@@ -424,6 +517,97 @@ def test_javascript_implements_session_auth_status_and_safe_rendering_contract(t
         "console.",
     ):
         assert prohibited not in all_scripts
+
+
+def test_search_javascript_maps_exact_protected_request_contracts_without_reranking(tmp_path):
+    script = client_for(tmp_path).get("/ui/assets/search.js").text
+
+    assert 'path: "api/v1/notes/search"' in script
+    assert 'body: { query: queryInput.value, folder, limit }' in script
+    assert 'path: "api/v1/notes/related"' in script
+    for field_mapping in (
+        "text: queryInput.value",
+        "folder,",
+        "limit,",
+        "min_score: Number(minScoreInput.value)",
+    ):
+        assert field_mapping in script
+    assert 'method: "POST"' in script
+    assert '"Content-Type": "application/json"' in script
+    assert "authenticatedFetch(request.path" in script
+    assert "JSON.stringify(request.body)" in script
+
+    for field in (
+        "result.title",
+        "result.path",
+        "result.heading",
+        "result.snippet",
+        "result.score",
+        "result.semantic_score",
+        "result.lexical_score",
+    ):
+        assert field in script
+    assert "results.forEach((result, index)" in script
+    assert ".sort(" not in script
+    assert "api/v1/notes/read" not in script
+    assert "api/v1/notes/duplicates" not in script
+
+
+def test_search_javascript_has_private_safe_lifecycle_and_error_contract(tmp_path):
+    script = client_for(tmp_path).get("/ui/assets/search.js").text
+
+    assert "document.createElement(" in script
+    assert "textContent" in script
+    assert "replaceChildren()" in script
+    assert "activeController?.abort()" in script
+    assert "generation !== requestGeneration" in script
+    assert "mode !== selectedMode" in script
+    assert 'setStatus("loading"' in script
+    assert 'setStatus("empty"' in script
+    assert 'setStatus("error"' in script
+    assert "submitButton.disabled = true" in script
+    assert "Semantic search is currently unavailable. Literal search remains available." in script
+    assert "Rate limit reached. Retry in" in script
+    assert 'error.kind === "authentication-required"' in script
+    assert "onAuthenticationRequired();" in script
+    assert "No snippet available." in script
+    assert 'value === null ? "Not available"' in script
+    assert "scoreFormatter.format(value)" in script
+    assert "percentage" not in script.lower()
+
+    for prohibited in (
+        "sessionStorage",
+        "localStorage",
+        "indexedDB",
+        "history.",
+        "location.",
+        "URLSearchParams",
+        "window.location",
+        "innerHTML",
+        "outerHTML",
+        "insertAdjacentHTML",
+        "document.write",
+        "setInterval(",
+        "setTimeout(",
+        "console.",
+    ):
+        assert prohibited not in script
+
+
+def test_search_uses_existing_auth_wrapper_and_preserves_session_on_non_auth_errors(tmp_path):
+    app_script = client_for(tmp_path).get("/ui/assets/app.js").text
+    search_script = client_for(tmp_path).get("/ui/assets/search.js").text
+
+    assert "Authorization" not in search_script
+    assert "authenticatedFetch" in search_script
+    assert 'headers.set("Authorization", `Bearer ${credential}`)' in app_script
+    assert "callerSignal?.addEventListener" in app_script
+    assert "callerSignal?.removeEventListener" in app_script
+    assert 'error.kind === "authentication-required"' in search_script
+    assert 'error.kind === "rate-limited"' in search_script
+    assert 'error.kind === "service-unavailable"' in search_script
+    assert "onAuthenticationRequired();" in search_script
+    assert "clearCredentialState()" not in search_script
 
 
 def test_unlock_probe_reuses_existing_authentication_without_a_ui_auth_endpoint(tmp_path):

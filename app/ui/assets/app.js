@@ -1,4 +1,5 @@
 import { initializeOverview } from "./overview.js";
+import { initializeSearch } from "./search.js";
 
 const SESSION_STORAGE_KEY = "vaultbridge.ui.apiKey";
 const SESSION_STATES = ["checking-session", "locked", "unlocked", "unavailable"];
@@ -14,7 +15,6 @@ const logoutButton = document.querySelector("#logout-button");
 const retrySessionButton = document.querySelector("#retry-session-button");
 const globalStatus = document.querySelector("#global-status");
 const applicationBase = document.querySelector("#application-base");
-const searchAccessState = document.querySelector("#search-access-state");
 const searchNavigationButton = document.querySelector("#nav-search");
 
 const navigation = new Map([
@@ -26,6 +26,7 @@ const navigation = new Map([
 
 let activeCredential = null;
 let requestGeneration = 0;
+let searchController = null;
 const activeRequests = new Set();
 
 class ProtectedRequestError extends Error {
@@ -100,7 +101,6 @@ function setSessionState(state, message, hasStoredCredential = false) {
   sessionCard.hidden = unlocked;
   checkingSession.hidden = !checking;
   logoutButton.hidden = !unlocked;
-  searchNavigationButton.disabled = !unlocked;
   retrySessionButton.hidden = state !== "unavailable" || !hasStoredCredential;
   unlockForm.hidden = checking || unlocked || (state === "unavailable" && hasStoredCredential);
 
@@ -112,16 +112,7 @@ function setSessionState(state, message, hasStoredCredential = false) {
   };
   setText(sessionState, labels[state]);
   setText(globalStatus, message);
-  setText(
-    searchAccessState,
-    unlocked
-      ? "Search workspace access is ready; the feature arrives in VB-073."
-      : "Unlock the dashboard to access the future search workspace.",
-  );
-
-  if (!unlocked && searchNavigationButton.getAttribute("aria-current") === "page") {
-    selectPanel(document.querySelector("#nav-overview"));
-  }
+  searchController?.setUnlocked(unlocked);
 }
 
 function invalidateProtectedRequests() {
@@ -148,7 +139,11 @@ function parseRetryAfter(response) {
 }
 
 async function authenticatedFetch(relativePath, options = {}) {
-  const { credential: pendingCredential = null, ...fetchOptions } = options;
+  const {
+    credential: pendingCredential = null,
+    signal: callerSignal = null,
+    ...fetchOptions
+  } = options;
   const storedCredential = readStoredCredential();
   const credential = pendingCredential ?? (
     storedCredential.available && storedCredential.value === activeCredential
@@ -162,6 +157,12 @@ async function authenticatedFetch(relativePath, options = {}) {
   const headers = new Headers(fetchOptions.headers || {});
   headers.set("Authorization", `Bearer ${credential}`);
   const controller = new AbortController();
+  const abortFromCaller = () => controller.abort();
+  if (callerSignal?.aborted) {
+    controller.abort();
+  } else {
+    callerSignal?.addEventListener("abort", abortFromCaller, { once: true });
+  }
   const generation = requestGeneration;
   activeRequests.add(controller);
 
@@ -178,6 +179,7 @@ async function authenticatedFetch(relativePath, options = {}) {
     }
     throw new ProtectedRequestError("network");
   } finally {
+    callerSignal?.removeEventListener("abort", abortFromCaller);
     activeRequests.delete(controller);
   }
 
@@ -314,6 +316,13 @@ logoutButton.addEventListener("click", logout);
 
 setText(applicationBase, applicationUrl("").href);
 initializeOverview(applicationUrl);
+searchController = initializeSearch({
+  authenticatedFetch,
+  onAuthenticationRequired: () => {
+    setSessionState("locked", "Authentication required");
+    apiKeyInput.focus();
+  },
+});
 const initialCredential = readStoredCredential();
 if (!initialCredential.available) {
   setSessionState(
