@@ -797,9 +797,9 @@ credential/session flow.
 - a small dependency-free ES-module split keeps session/auth/navigation ownership in `app.js` and
   public health fetching/rendering ownership in `overview.js` without a build step.
 
-### VB-073 — Dashboard search interface — P1 ▶
+### VB-073 — Dashboard search interface — P1 ✅
 
-**Status:** Planned; next recommended task.
+**Status:** Completed on 2026-08-30.
 
 **Goal:** provide browser access to existing literal and semantic retrieval behavior without a
 second search implementation.
@@ -833,9 +833,26 @@ second search implementation.
 - focused API/domain-reuse and browser tests covering literal/semantic results, auth, empty/error
   states, safe rendering, ordering, and path filtering.
 
-### VB-074 — Dashboard usability, accessibility and release hardening — P1
+**Implemented behavior**
 
-**Status:** Planned.
+- the protected Search area exposes accessible Literal and Semantic modes backed directly by
+  `POST /api/v1/notes/search` and `POST /api/v1/notes/related`, with request fields and HTML input
+  limits matching the current Pydantic contracts;
+- result cards preserve server order, render only existing response fields, show semantic rank and
+  score components without recalculation, and handle null heading/snippet/score values safely;
+- Search reuses the VB-071 Bearer/session helper, clears protected form/results on logout or `401`,
+  retains authentication for `429`, validation failures, network failures, and semantic `503`, and
+  aborts/invalidate stale UI-controlled requests;
+- query, folder, results, snippets, paths, and scores remain in memory only and never enter browser
+  storage, URLs, history, analytics, or telemetry;
+- `search.js` owns mode, request, lifecycle, and text-only result rendering while `app.js` retains
+  session/auth/navigation ownership and `overview.js` retains public `/health` ownership;
+- the interface remains retrieval-only and adds no note read/mutation, duplicate workflow, index
+  mutation, backend search/ranking change, API endpoint, dependency, or TrueNAS-specific behavior.
+
+### VB-074 — Dashboard usability, accessibility and release hardening — P1 ▶
+
+**Status:** Planned; next recommended task.
 
 **Goal:** harden the completed dashboard for supported browsers and the normal production image
 without declaring a release version in advance.
@@ -1056,8 +1073,8 @@ VB-001 ✓
 → VB-070 ✓
 → VB-071 ✓
 → VB-072 ✓
-→ VB-073 NEXT
-→ VB-074
+→ VB-073 ✓
+→ VB-074 NEXT
 → published/verified dashboard-capable VaultBridge image
 → VB-080
 → VB-081
@@ -1070,8 +1087,9 @@ release-version alignment, and repository-exposure-safety blockers. Stable `v1.0
 distribution gates are complete; immutable evidence remains recorded in `docs/RELEASE_CHECKLIST.md`.
 
 VB-070 is complete as the accepted documentation/design contract, VB-071 implements the dashboard
-shell and authenticated session, and VB-072 adds the public health-backed Overview. VB-073 is the
-sole next recommended task. VB-023 remains open P1 retrieval work with unchanged scope, but it is not
+shell and authenticated session, VB-072 adds the public health-backed Overview, and VB-073 adds the
+protected literal/semantic Search interface. VB-074 is the sole next recommended task. VB-023
+remains open P1 retrieval work with unchanged scope, but it is not
 NEXT. VB-032 and VB-033 remain deferred optional work. VB-055 remains optional and is not a
 dashboard prerequisite. Milestone 9 begins only after Milestone 8 produces a published and verified
 dashboard-capable VaultBridge image.

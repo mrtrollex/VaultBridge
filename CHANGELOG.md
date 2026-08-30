@@ -14,6 +14,11 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ### Added
 
+- a protected dashboard Search area with accessible Literal and Semantic modes backed directly by
+  the existing `/api/v1/notes/search` and `/api/v1/notes/related` contracts; server-order result
+  cards, semantic score visibility, null-safe text rendering, in-memory-only queries/results,
+  abort/stale-response control, and session-safe `401`/`429`/`503`/validation/network states without
+  backend ranking, API, dependency, note/index mutation, or persistence changes
 - a public `/health`-backed dashboard Overview with compact application, vault, semantic-index, and
   background-indexer cards; deterministic Ready/Indexing/Degraded/Unavailable presentation;
   locale-safe counts and timestamps; manual refresh; and explicit loading, malformed, and unavailable
@@ -43,9 +48,9 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ### Changed
 
-- post-v1 documentation now records the platform-neutral dashboard shell, session, and Overview as
-  implemented while retaining Search, release hardening, image publication, and TrueNAS Community
-  App packaging as separate future work
+- post-v1 documentation now records the platform-neutral dashboard shell, session, Overview, and
+  protected literal/semantic Search as implemented while retaining release hardening, image
+  publication, and TrueNAS Community App packaging as separate future work
 - targeted synchronization now removes derived rows for safely contained missing Markdown paths, so
   external deletes and both sides of renames are processed without a full vault scan
 - related-note suggestions now return only live, contained regular Markdown paths verified through

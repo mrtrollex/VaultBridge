@@ -36,7 +36,8 @@
 
 > **Current post-v1 development:** the source tree now includes a bundled Web Dashboard at `/ui/`
 > with a public health-backed Overview, operator-supplied API-key unlock, and tab-scoped session
-> handling. Search remains planned, and the stable `v1.0.0` image predates this dashboard.
+> handling plus protected literal and semantic Search. The stable `v1.0.0` image predates this
+> dashboard.
 > There is still no upstream TrueNAS Community App; existing API/CLI and documented Docker/TrueNAS
 > Custom App workflows remain independently usable.
 
@@ -105,7 +106,8 @@ The vault is never replaced by the index, and there is no general filesystem end
   loading/unavailable states
 - API-key validation through the existing protected API and tab-scoped `sessionStorage`
 - strict browser security headers, local assets, and text-only dynamic rendering
-- literal/semantic Search remains intentionally pending
+- protected literal and semantic Search using existing backend ranking and read-only result fields,
+  with no query/history persistence
 
 ### 🐳 Deployment & operations
 
