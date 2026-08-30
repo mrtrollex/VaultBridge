@@ -743,11 +743,12 @@ credential/session flow.
   browser text uses `textContent`, with no inline/third-party code, Markdown rendering, or remote
   resource;
 - focused static and HTTP tests plus a real desktop/mobile browser smoke test cover the shell and
-  session lifecycle. Overview data and search behavior remain placeholders for VB-072/VB-073.
+  session lifecycle. At VB-071 completion, Overview data and search behavior remained placeholders
+  for VB-072/VB-073.
 
-### VB-072 — Dashboard overview and health visibility — P1 ▶
+### VB-072 — Dashboard overview and health visibility — P1 ✅
 
-**Status:** Planned; next recommended task.
+**Status:** Completed on 2026-08-30.
 
 **Goal:** provide a concise operator overview using facts already owned by VaultBridge.
 
@@ -779,9 +780,26 @@ credential/session flow.
 
 - service/API reuse tests, browser rendering/smoke tests, accessibility checks, and container-path verification.
 
-### VB-073 — Dashboard search interface — P1
+**Implemented behavior**
 
-**Status:** Planned.
+- the Overview automatically reads the existing public same-origin `GET /health` contract without
+  sending the dashboard Bearer credential and remains usable while locked, unlocked, or logged out;
+- compact Overall status, Vault, Semantic index, and Background indexing cards expose only the
+  existing health facts, with lifecycle state and semantic-search availability kept separate;
+- the display-only overall label is deterministically Ready, Indexing, Degraded, or Unavailable,
+  while every underlying health fact remains visible and no backend health calculation is replaced;
+- counts use locale-aware non-negative integer formatting, last successful sync uses locale-aware
+  date/time formatting with a semantic `datetime` value, and null or invalid timestamps remain safe;
+- initial loading, manual refresh, network/HTTP unavailability, and malformed-response states are
+  explicit, announced without focus stealing, and never render response bodies or raw exceptions;
+- the responsive read-only UI adds no polling, watcher inference, maintenance control, external
+  resource, frontend dependency, API/auth change, or TrueNAS-specific behavior.
+- a small dependency-free ES-module split keeps session/auth/navigation ownership in `app.js` and
+  public health fetching/rendering ownership in `overview.js` without a build step.
+
+### VB-073 — Dashboard search interface — P1 ▶
+
+**Status:** Planned; next recommended task.
 
 **Goal:** provide browser access to existing literal and semantic retrieval behavior without a
 second search implementation.
@@ -1037,8 +1055,8 @@ VB-001 ✓
 → v1.0.0 ✓
 → VB-070 ✓
 → VB-071 ✓
-→ VB-072 NEXT
-→ VB-073
+→ VB-072 ✓
+→ VB-073 NEXT
 → VB-074
 → published/verified dashboard-capable VaultBridge image
 → VB-080
@@ -1051,9 +1069,9 @@ VB-057 through VB-060 close the confirmed containment, native-Windows test-porta
 release-version alignment, and repository-exposure-safety blockers. Stable `v1.0.0` and its final
 distribution gates are complete; immutable evidence remains recorded in `docs/RELEASE_CHECKLIST.md`.
 
-VB-070 is complete as the accepted documentation/design contract in ADR 0003, and VB-071 implements
-the dashboard shell and authenticated session. VB-072 is the sole next recommended task; VB-073
-remains planned after it. VB-023 remains open P1 retrieval work with unchanged scope, but it is not
+VB-070 is complete as the accepted documentation/design contract, VB-071 implements the dashboard
+shell and authenticated session, and VB-072 adds the public health-backed Overview. VB-073 is the
+sole next recommended task. VB-023 remains open P1 retrieval work with unchanged scope, but it is not
 NEXT. VB-032 and VB-033 remain deferred optional work. VB-055 remains optional and is not a
 dashboard prerequisite. Milestone 9 begins only after Milestone 8 produces a published and verified
 dashboard-capable VaultBridge image.

@@ -4,7 +4,7 @@ This document is the current factual snapshot for future Codex sessions. It shou
 
 ## Baseline date
 
-2026-08-29
+2026-08-30
 
 ## Current development position
 
@@ -45,6 +45,7 @@ Completed:
 - VB-060 — Public repository exposure audit
 - VB-070 — Web Dashboard architecture and security design
 - VB-071 — Dashboard shell and authenticated session
+- VB-072 — Dashboard overview and health visibility
 
 Post-v1 development position:
 
@@ -53,22 +54,27 @@ Post-v1 development position:
 
 Next recommended backlog task:
 
-- **VB-072 — Dashboard overview and health visibility**
+- **VB-073 — Dashboard search interface**
 
 Current post-v1 planning position:
 
 - ADR 0003 is accepted and VB-071 is complete; a bundled schema-hidden dashboard shell is served at
   canonical `/ui/` with explicit local assets and no SPA catch-all
-- the shell has accessible Overview, Search, API / Integration, and About navigation; Overview and
-  Search contain only placeholders until VB-072 and VB-073
+- the shell has accessible Overview, Search, API / Integration, and About navigation; Overview now
+  loads the existing public `/health` facts automatically, while Search remains a VB-073 placeholder
+- Overall status, Vault, Semantic index, and Background indexing cards distinguish lifecycle state
+  from search availability, format counts/timestamps safely, and provide manual refresh plus explicit
+  loading, unavailable, and malformed-response states without polling or maintenance controls
+- public Overview requests never send the dashboard Bearer credential and remain independent of
+  locked, unlocked, invalid-key, and logout session states
 - unlock and reload revalidation call the existing protected `GET /api/v1/notes/list?limit=1` route;
   a validated key is stored only as `vaultbridge.ui.apiKey` in `sessionStorage`, while logout and
   `401` clear it
 - strict UI-only CSP, `nosniff`, no-referrer headers, same-origin document-relative requests, and
   text-only dynamic rendering provide the initial browser security boundary
 - existing API contracts, authentication, rate limiting, CLI behavior, dependencies, Dockerfile,
-  and Compose definitions are unchanged by VB-071
-- VB-072 through VB-074 remain planned implementation work; VB-072 is the sole next task
+  and Compose definitions are unchanged by dashboard work through VB-072
+- VB-073 and VB-074 remain planned implementation work; VB-073 is the sole next task
 - no upstream TrueNAS Community App exists yet; Milestone 9 and VB-080 through VB-083 are planned work
 - current TrueNAS support remains the documented Docker/source-built Custom App deployment
 - VB-023 remains open P1 retrieval work with unchanged scope, but it is no longer the current next task
@@ -105,7 +111,7 @@ Current milestones:
 - **Milestone 5 — Operational maturity and security (complete)**
 - **Milestone 6 — Public API and developer experience (complete)**
 - **Milestone 7 — Distribution and `v1.0.0` (complete)**
-- **Milestone 8 — Web Dashboard / operator experience (in progress; shell/session implemented)**
+- **Milestone 8 — Web Dashboard / operator experience (in progress; shell/session/Overview implemented)**
 - **Milestone 9 — TrueNAS Community App distribution (planned; not implemented)**
 
 ## Working production characteristics
@@ -122,8 +128,9 @@ Current milestones:
 - typed runtime settings via `app/core/config.py`
 - standard-library JSON application logging via `app/core/logging.py`
 - context-local HTTP request correlation and latency events via `app/core/observability.py`
-- bundled same-origin `/ui/` dashboard shell with local HTML/CSS/vanilla JavaScript, strict browser
-  security headers, and operator-supplied Bearer-key validation through the existing API
+- bundled same-origin `/ui/` dashboard with local HTML/CSS/vanilla JavaScript, a public health-backed
+  read-only Overview, strict browser security headers, and operator-supplied Bearer-key validation
+  through the existing protected API
 - required current `API_KEY` plus one optional secret-safe `API_KEY_PREVIOUS` allow a controlled
   two-key rotation window through the shared constant-time legacy/v1 Bearer verifier
 - protected legacy and `/api/v1` traffic has a thread-safe, process-local fixed-window limiter before
@@ -231,6 +238,7 @@ app/api/
 
 app/ui/
     explicit dashboard document/asset routes and bundled HTML, CSS and vanilla JavaScript shell
+    with `app.js` session/navigation ownership and `overview.js` public health presentation
 
 app/core/config.py
     typed runtime configuration

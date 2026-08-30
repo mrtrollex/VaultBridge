@@ -489,8 +489,8 @@ complete. Milestone 7 is complete; VB-055 remains an optional post-v1 P1 improve
 **Goal:** provide a small first-party browser interface for inspecting and using VaultBridge without
 turning the project into a general knowledge-management frontend.
 
-The bundled shell and authenticated browser session are implemented. Overview data and Search
-features remain planned. The first-release information architecture is:
+The bundled shell, authenticated browser session, and public health-backed Overview are implemented.
+Search and final hardening remain planned. The first-release information architecture is:
 
 ```text
 Overview
@@ -499,7 +499,7 @@ API / Integration
 About
 ```
 
-The Overview may present facts already exposed by the current public `/health` contract, including
+The Overview presents facts already exposed by the current public `/health` contract, including
 application/vault health, semantic lifecycle and availability, note/chunk counts, and the last
 successful full synchronization. Current HTTP responses do not expose watcher enabled/running
 state, so the first dashboard must omit it or label it unavailable rather than infer it. Search
@@ -529,9 +529,9 @@ VB-070 architecture and security design ✓
    ↓
 VB-071 dashboard shell and authenticated session ✓
    ↓
-VB-072 overview and health visibility ← NEXT
+VB-072 overview and health visibility ✓
    ↓
-VB-073 search interface
+VB-073 search interface ← NEXT
    ↓
 VB-074 usability, accessibility, and release hardening
 ```
@@ -542,7 +542,8 @@ Milestone exit criteria:
 - [x] canonical dashboard shell and authenticated `sessionStorage` lifecycle are implemented
 - [ ] one lightweight dashboard ships with the normal VaultBridge application/image
 - [x] the API and CLI remain independently usable and behaviorally compatible
-- [ ] overview data and search behavior reuse existing backend/domain capabilities
+- [x] overview data reuses the existing public health contract without duplicating domain logic
+- [ ] search behavior reuses existing backend/domain capabilities
 - [x] no note editor, account system, general file manager, or live index-rebuild mutation is added
 - [ ] accessibility, privacy-safe rendering, browser smoke tests, and container verification pass
 - [ ] a dashboard-capable VaultBridge image is published and verified before Milestone 9 begins
@@ -691,9 +692,9 @@ VB-070 ✓
    ↓
 VB-071 ✓
    ↓
-VB-072 ← NEXT
+VB-072 ✓
    ↓
-VB-073
+VB-073 ← NEXT
    ↓
 VB-074
    ↓
@@ -709,9 +710,9 @@ VB-082
 VB-083
 ```
 
-`v1.0.0` has shipped, ADR 0003 completes the VB-070 design gate, and VB-071 adds the dashboard
-shell and authenticated browser session. **VB-072 is the sole next recommended task.** VB-073
-remains planned after it. VB-023 remains open P1 retrieval work
+`v1.0.0` has shipped, ADR 0003 completes the VB-070 design gate, VB-071 adds the dashboard shell and
+authenticated browser session, and VB-072 adds the public health-backed Overview. **VB-073 is the
+sole next recommended task.** VB-023 remains open P1 retrieval work
 with its requirements unchanged, but it is not NEXT. VB-032 and VB-033 remain explicitly
 deferred/optional, and VB-055 remains optional rather than a dashboard prerequisite. The deliberate
 post-v1 execution priority is Milestone 8 followed by a published/verified dashboard-capable image,

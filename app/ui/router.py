@@ -63,3 +63,12 @@ def script() -> FileResponse:
         media_type="text/javascript",
         headers=UI_SECURITY_HEADERS,
     )
+
+
+@router.api_route("/ui/assets/overview.js", methods=["GET", "HEAD"], name="ui_overview_script")
+def overview_script() -> FileResponse:
+    return FileResponse(
+        _ASSET_ROOT / "overview.js",
+        media_type="text/javascript",
+        headers=UI_SECURITY_HEADERS,
+    )

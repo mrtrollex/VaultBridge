@@ -72,13 +72,95 @@
       </div>
 
       <section id="overview-panel" class="dashboard-panel" aria-labelledby="overview-heading">
-        <div class="panel-heading">
-          <p class="eyebrow">Workspace</p>
-          <h2 id="overview-heading">Overview</h2>
+        <div class="panel-heading overview-heading">
+          <div>
+            <p class="eyebrow">Workspace</p>
+            <h2 id="overview-heading">VaultBridge Overview</h2>
+          </div>
+          <button id="refresh-overview-button" class="secondary-button" type="button" disabled>
+            Refresh
+          </button>
         </div>
-        <div class="placeholder-card">
-          <p>Operational overview will appear here.</p>
-          <p class="muted">Health details are intentionally reserved for VB-072.</p>
+
+        <div
+          id="overview-update-status"
+          class="overview-update-status"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          Loading health information.
+        </div>
+
+        <div id="overview-content" class="overview-grid" aria-busy="true" hidden>
+          <section class="overview-card overview-card--overall" aria-labelledby="overall-status-heading">
+            <h3 id="overall-status-heading">Overall status</h3>
+            <p id="overall-status" class="overview-summary" data-overview-state="loading">Loading</p>
+            <dl class="status-list">
+              <div>
+                <dt>Application health</dt>
+                <dd id="application-health">Not available</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section class="overview-card overview-card--vault" aria-labelledby="vault-status-heading">
+            <h3 id="vault-status-heading">Vault</h3>
+            <dl class="status-list">
+              <div>
+                <dt>Available</dt>
+                <dd id="vault-available">Not available</dd>
+              </div>
+              <div>
+                <dt>Notes</dt>
+                <dd id="vault-notes">Not available</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section class="overview-card overview-card--semantic" aria-labelledby="semantic-status-heading">
+            <h3 id="semantic-status-heading">Semantic index</h3>
+            <dl class="status-list">
+              <div>
+                <dt>State</dt>
+                <dd id="semantic-index-state">Not available</dd>
+              </div>
+              <div>
+                <dt>Ready</dt>
+                <dd id="semantic-index-ready">Not available</dd>
+              </div>
+              <div>
+                <dt>Search</dt>
+                <dd id="semantic-search-available">Not available</dd>
+              </div>
+              <div>
+                <dt>Indexed notes</dt>
+                <dd id="indexed-notes">Not available</dd>
+              </div>
+              <div>
+                <dt>Chunks</dt>
+                <dd id="semantic-chunks">Not available</dd>
+              </div>
+              <div>
+                <dt>Last successful sync</dt>
+                <dd><time id="last-successful-sync">Not available</time></dd>
+              </div>
+            </dl>
+          </section>
+
+          <section class="overview-card overview-card--indexer" aria-labelledby="indexer-status-heading">
+            <h3 id="indexer-status-heading">Background indexing</h3>
+            <dl class="status-list">
+              <div>
+                <dt>Background indexer</dt>
+                <dd id="semantic-indexer-running">Not available</dd>
+              </div>
+              <div>
+                <dt>Full sync required</dt>
+                <dd id="full-sync-required">Not available</dd>
+              </div>
+            </dl>
+          </section>
         </div>
       </section>
 

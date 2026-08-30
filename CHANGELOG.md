@@ -14,6 +14,10 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ### Added
 
+- a public `/health`-backed dashboard Overview with compact application, vault, semantic-index, and
+  background-indexer cards; deterministic Ready/Indexing/Degraded/Unavailable presentation;
+  locale-safe counts and timestamps; manual refresh; and explicit loading, malformed, and unavailable
+  states without polling, authentication coupling, API changes, or maintenance controls
 - a bundled, schema-hidden `/ui/` Web Dashboard shell with canonical redirects, explicit local
   assets, responsive Overview/Search/API/About navigation, authenticated `sessionStorage` lifecycle,
   centralized Bearer requests and safe status handling, strict CSP/security headers, and no
@@ -39,9 +43,9 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ### Changed
 
-- post-v1 documentation now records the platform-neutral dashboard shell as implemented while
-  retaining Overview, Search, release hardening, image publication, and TrueNAS Community App
-  packaging as separate future work
+- post-v1 documentation now records the platform-neutral dashboard shell, session, and Overview as
+  implemented while retaining Search, release hardening, image publication, and TrueNAS Community
+  App packaging as separate future work
 - targeted synchronization now removes derived rows for safely contained missing Markdown paths, so
   external deletes and both sides of renames are processed without a full vault scan
 - related-note suggestions now return only live, contained regular Markdown paths verified through
