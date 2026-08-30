@@ -64,6 +64,7 @@ def test_known_ui_assets_have_correct_media_types_and_head_support(tmp_path):
     for path, media_type in (
         ("/ui/assets/app.css", "text/css"),
         ("/ui/assets/app.js", "text/javascript"),
+        ("/ui/assets/overview.js", "text/javascript"),
     ):
         response = client.get(path)
         head = client.head(path)
@@ -128,7 +129,7 @@ def test_ui_routes_are_excluded_from_openapi_contract(tmp_path):
 def test_ui_resources_apply_strict_security_headers(tmp_path):
     client = client_for(tmp_path)
 
-    for path in ("/ui/", "/ui/assets/app.css", "/ui/assets/app.js"):
+    for path in ("/ui/", "/ui/assets/app.css", "/ui/assets/app.js", "/ui/assets/overview.js"):
         response = client.get(path)
         assert response.headers["content-security-policy"] == UI_CONTENT_SECURITY_POLICY
         assert response.headers["x-content-type-options"] == "nosniff"
@@ -163,7 +164,7 @@ def test_server_secrets_are_never_rendered_in_ui_resources(tmp_path):
 
     resources = "\n".join(
         client.get(path).text
-        for path in ("/ui/", "/ui/assets/app.css", "/ui/assets/app.js")
+        for path in ("/ui/", "/ui/assets/app.css", "/ui/assets/app.js", "/ui/assets/overview.js")
     )
 
     assert current_secret not in resources
@@ -201,9 +202,196 @@ def test_html_shell_is_semantic_accessible_and_uses_only_local_assets(tmp_path):
     assert "http://" not in html
 
 
+def test_overview_replaces_placeholder_with_accessible_health_cards(tmp_path):
+    html = client_for(tmp_path).get("/ui/").text
+    parser = ShellHTMLParser()
+    parser.feed(html)
+    elements = parser.elements
+
+    assert "Operational overview will appear here." not in html
+    assert "Health details are intentionally reserved for VB-072." not in html
+    assert "VaultBridge Overview" in html
+    for heading in ("Overall status", "Vault", "Semantic index", "Background indexing"):
+        assert f">{heading}<" in html
+    for label in (
+        "Application health",
+        "Available",
+        "Notes",
+        "State",
+        "Ready",
+        "Search",
+        "Indexed notes",
+        "Chunks",
+        "Last successful sync",
+        "Background indexer",
+        "Full sync required",
+    ):
+        assert f">{label}<" in html
+
+    refresh_buttons = [
+        attrs
+        for tag, attrs in elements
+        if tag == "button" and attrs.get("id") == "refresh-overview-button"
+    ]
+    assert refresh_buttons == [
+        {
+            "id": "refresh-overview-button",
+            "class": "secondary-button",
+            "type": "button",
+            "disabled": None,
+        }
+    ]
+    assert [
+        attrs.get("aria-live")
+        for _tag, attrs in elements
+        if attrs.get("id") == "overview-update-status"
+    ] == ["polite"]
+    assert [
+        attrs.get("aria-busy")
+        for _tag, attrs in elements
+        if attrs.get("id") == "overview-content"
+    ] == ["true"]
+    assert any(
+        tag == "time" and attrs.get("id") == "last-successful-sync"
+        for tag, attrs in elements
+    )
+
+
+def test_overview_javascript_uses_public_health_contract_without_auth_or_polling(tmp_path):
+    overview_source = client_for(tmp_path).get("/ui/assets/overview.js").text
+
+    assert 'fetch(applicationUrl("health")' in overview_source
+    assert 'method: "GET"' in overview_source
+    assert "Authorization" not in overview_source
+    assert "authenticatedFetch" not in overview_source
+    assert "sessionStorage" not in overview_source
+    assert "setInterval(" not in overview_source
+    assert "setTimeout(" not in overview_source
+    assert 'refreshOverviewButton.addEventListener("click"' in overview_source
+    assert "void loadOverview(applicationUrl);" in overview_source
+
+    for field in (
+        "ok",
+        "vault_exists",
+        "semantic_index_ready",
+        "semantic_index_state",
+        "semantic_search_available",
+        "semantic_indexer_running",
+        "full_sync_required",
+        "indexed_notes",
+        "semantic_chunks",
+        "vault_notes",
+        "last_successful_sync",
+    ):
+        assert field in overview_source
+
+
+def test_overview_javascript_has_explicit_display_state_and_safe_formatting_contract(tmp_path):
+    overview_source = client_for(tmp_path).get("/ui/assets/overview.js").text
+
+    assert 'if (!health.vault_exists) {\n    return "unavailable";' in overview_source
+    assert 'health.semantic_index_state === "indexing"' in overview_source
+    assert "health.ok" in overview_source
+    assert "health.semantic_search_available" in overview_source
+    assert 'health.semantic_index_state === "ready"' in overview_source
+    assert 'return "degraded";' in overview_source
+    assert 'ready: "Ready"' in overview_source
+    assert 'indexing: "Indexing"' in overview_source
+    assert 'degraded: "Degraded"' in overview_source
+    assert 'unavailable: "Unavailable"' in overview_source
+
+    assert "new Intl.NumberFormat()" in overview_source
+    assert "countFormatter.format(health.vault_notes)" in overview_source
+    assert "countFormatter.format(health.indexed_notes)" in overview_source
+    assert "countFormatter.format(health.semantic_chunks)" in overview_source
+    assert "percentage" not in overview_source.lower()
+    assert "progress" not in overview_source.lower()
+
+    assert 'setText(lastSuccessfulSync, "Never")' in overview_source
+    assert 'setText(lastSuccessfulSync, "Not available")' in overview_source
+    assert 'lastSuccessfulSync.setAttribute("datetime", value)' in overview_source
+    assert (
+        'setText(semanticIndexState, displayIndexState(health.semantic_index_state))'
+        in overview_source
+    )
+    assert "health.semantic_search_available" in overview_source
+
+
+def test_overview_javascript_has_loading_malformed_and_unavailable_states(tmp_path):
+    script = client_for(tmp_path).get("/ui/assets/overview.js").text
+
+    assert 'setText(overviewUpdateStatus, "Loading health information.")' in script
+    assert 'setOverviewError("malformed")' in script
+    assert 'setOverviewError("unavailable")' in script
+    assert "VaultBridge returned unexpected health information. Try refreshing." in script
+    assert "Health information is unavailable. Check the connection and try again." in script
+    assert 'overviewContent.setAttribute("aria-busy", "true")' in script
+    assert 'overviewContent.setAttribute("aria-busy", "false")' in script
+    assert "refreshOverviewButton.disabled = true" in script
+    assert "refreshOverviewButton.disabled = false" in script
+    assert 'overallStatus.dataset.overviewState = "unavailable"' in script
+    assert 'setText(overallStatus, "Unavailable")' in script
+    assert "resetHealthValues();" in script
+    assert ".focus()" not in script[
+        script.index("async function loadOverview") : script.index("export function initializeOverview")
+    ]
+
+
+def test_overview_is_read_only_and_does_not_invent_unsupported_operator_facts(tmp_path):
+    resources = "\n".join(
+        client_for(tmp_path).get(path).text
+        for path in ("/ui/", "/ui/assets/app.js", "/ui/assets/overview.js")
+    )
+
+    for prohibited in (
+        "Force sync",
+        "Rebuild index",
+        "Delete index",
+        "Repair index",
+        "Watcher running",
+        "Watcher enabled",
+        "Queue size",
+        "TrueNAS state",
+        "NAS health",
+        "Progress bar",
+    ):
+        assert prohibited.lower() not in resources.lower()
+
+
+def test_public_health_for_overview_requires_no_authorization_and_keeps_contract(tmp_path):
+    client = client_for(tmp_path, api_key="dashboard-secret")
+
+    response = client.get("/health")
+    invalid_key_response = client.get(
+        "/health",
+        headers={"Authorization": "Bearer definitely-invalid"},
+    )
+
+    assert response.status_code == 200
+    assert invalid_key_response.status_code == 200
+    assert set(response.json()) == {
+        "ok",
+        "vault_exists",
+        "semantic_index_ready",
+        "semantic_index_state",
+        "semantic_search_available",
+        "semantic_indexer_running",
+        "full_sync_required",
+        "indexed_notes",
+        "semantic_chunks",
+        "vault_notes",
+        "last_successful_sync",
+    }
+    assert invalid_key_response.json() == response.json()
+
+
 def test_javascript_implements_session_auth_status_and_safe_rendering_contract(tmp_path):
     script = client_for(tmp_path).get("/ui/assets/app.js").text
+    overview_script = client_for(tmp_path).get("/ui/assets/overview.js").text
+    all_scripts = f"{script}\n{overview_script}"
 
+    assert 'import { initializeOverview } from "./overview.js"' in script
+    assert "initializeOverview(applicationUrl)" in script
     assert 'const SESSION_STORAGE_KEY = "vaultbridge.ui.apiKey"' in script
     assert "sessionStorage.getItem(SESSION_STORAGE_KEY)" in script
     assert "sessionStorage.setItem(SESSION_STORAGE_KEY, credential)" in script
@@ -220,7 +408,7 @@ def test_javascript_implements_session_auth_status_and_safe_rendering_contract(t
     assert "controller.abort()" in script
     assert "event.preventDefault()" in script
     assert "response.body.cancel()" in script
-    assert "textContent" in script
+    assert "textContent" in all_scripts
 
     for prohibited in (
         "localStorage",
@@ -235,7 +423,7 @@ def test_javascript_implements_session_auth_status_and_safe_rendering_contract(t
         "setInterval(",
         "console.",
     ):
-        assert prohibited not in script
+        assert prohibited not in all_scripts
 
 
 def test_unlock_probe_reuses_existing_authentication_without_a_ui_auth_endpoint(tmp_path):

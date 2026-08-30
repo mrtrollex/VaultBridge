@@ -1,3 +1,5 @@
+import { initializeOverview } from "./overview.js";
+
 const SESSION_STORAGE_KEY = "vaultbridge.ui.apiKey";
 const SESSION_STATES = ["checking-session", "locked", "unlocked", "unavailable"];
 
@@ -311,6 +313,7 @@ retrySessionButton.addEventListener("click", () => {
 logoutButton.addEventListener("click", logout);
 
 setText(applicationBase, applicationUrl("").href);
+initializeOverview(applicationUrl);
 const initialCredential = readStoredCredential();
 if (!initialCredential.available) {
   setSessionState(

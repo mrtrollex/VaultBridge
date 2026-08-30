@@ -304,8 +304,9 @@ vault or index, but they are local filesystem/SQLite readers rather than a remot
 ## Web Dashboard and planned platform packaging
 
 VB-071 implements the dashboard shell and authenticated session boundary accepted in
-[ADR 0003](docs/adr/0003-web-dashboard-architecture-and-security.md). Overview data, Search features,
-release hardening, and TrueNAS Community App packaging remain later tasks.
+[ADR 0003](docs/adr/0003-web-dashboard-architecture-and-security.md), and VB-072 implements the
+public health-backed Overview. Search features, release hardening, and TrueNAS Community App
+packaging remain later tasks.
 
 ### Current dashboard relationship
 
@@ -331,11 +332,11 @@ ChatGPT / curl / scripts / integrations
    +----------------------------------> VaultBridge API
 ```
 
-The current shell contains Overview, Search, API / Integration, and About areas. Overview and Search
-are placeholders: VB-071 does not fetch health data or implement literal/semantic queries. VB-072
-and VB-073 must reuse the existing API/domain owners rather than duplicate health, ranking,
-filtering, containment, or live-note verification in browser code. The API and CLI remain first-class
-and independently usable.
+The current shell contains Overview, Search, API / Integration, and About areas. Overview
+automatically reads the existing public `GET /health` contract; Search remains a placeholder until
+VB-073. Browser code formats and presents health facts but does not duplicate health, lifecycle,
+counting, ranking, filtering, containment, or live-note verification ownership. The API and CLI
+remain first-class and independently usable.
 
 The dashboard is served by the existing FastAPI application from the same repository and origin.
 Public `GET`/`HEAD /ui` redirects temporarily to canonical
@@ -344,6 +345,8 @@ and unknown UI paths return `404` rather than an SPA fallback. It uses relative 
 calls, and lightweight static HTML/CSS/vanilla JavaScript without a mandatory Node/npm pipeline,
 React/Vue/Svelte dependency, second service, second container, or new frontend dependency. The root
 Dockerfile's existing `COPY app ./app` instruction includes these assets without a Dockerfile change.
+The small browser module boundary keeps shell/session/navigation behavior in `app.js` and public
+health fetching, validation, formatting, and rendering in `overview.js`.
 
 The public shell contains no configured credential. Unlock and reload revalidation call
 `GET /api/v1/notes/list?limit=1`; a successful response allows the submitted key to be stored under
@@ -353,11 +356,21 @@ The UI receives the ADR 0003 CSP, `nosniff`, and no-referrer headers, loads no t
 and renders dynamic strings through text-only DOM APIs. No account, cookie, OAuth, secret-return, or
 dashboard-specific authentication endpoint exists.
 
-The initial UI may display only semantic-index facts already exposed by `/health`. Watcher
-enabled/running state is not exposed by the current HTTP contract and must be omitted or identified
-as unavailable. The UI must not expose a live rebuild/mutation action. The stopped-service CLI and
-existing single-process index ownership remain authoritative. Any future HTTP/UI index mutation
-requires a separate design proving it is safe while the serving process runs.
+The Overview displays only facts already exposed by `/health`: application/vault status, semantic
+lifecycle/readiness/search availability, vault/index/chunk counts, last successful full sync,
+process-local indexer running state, and full-sync recovery debt. Its display-only overall status is
+Ready when the vault and a ready searchable index are healthy, Indexing when the lifecycle state is
+`indexing`, Unavailable when health cannot be fetched or the vault is missing, and Degraded for the
+remaining responding states. Lifecycle and search availability remain separate factual rows.
+
+The same-origin health request is deliberately public and never receives the stored dashboard
+Bearer credential. Initial load and manual refresh provide explicit loading, malformed-response,
+and unavailable states without polling, WebSocket, SSE, or changes to authentication state. Counts
+and timestamps are presentation-formatted only; no inferred percentage or synchronization progress
+is calculated. Watcher enabled/running state is not exposed by the current HTTP contract and is
+omitted. The UI exposes no live rebuild/mutation action. The stopped-service CLI and existing
+single-process index ownership remain authoritative. Any future HTTP/UI index mutation requires a
+separate design proving it is safe while the serving process runs.
 
 ### Planned deployment relationship
 

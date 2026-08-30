@@ -34,9 +34,9 @@
 > GHCR image, and exact-digest TrueNAS runtime were verified. Current development includes post-v1.0
 > capabilities; see [`ROADMAP.md`](ROADMAP.md) for the current state and historical release scope.
 
-> **Current post-v1 development:** the source tree now includes an initial bundled Web Dashboard
-> shell at `/ui/` with operator-supplied API-key unlock and tab-scoped session handling. Overview
-> data and Search features remain planned, and the stable `v1.0.0` image predates this dashboard.
+> **Current post-v1 development:** the source tree now includes a bundled Web Dashboard at `/ui/`
+> with a public health-backed Overview, operator-supplied API-key unlock, and tab-scoped session
+> handling. Search remains planned, and the stable `v1.0.0` image predates this dashboard.
 > There is still no upstream TrueNAS Community App; existing API/CLI and documented Docker/TrueNAS
 > Custom App workflows remain independently usable.
 
@@ -101,9 +101,11 @@ The vault is never replaced by the index, and there is no general filesystem end
 
 - bundled same-origin `/ui/` entry point with no second frontend service
 - accessible Overview, Search, API / Integration, and About navigation
+- read-only Overview using the existing public `/health` facts, with manual refresh and explicit
+  loading/unavailable states
 - API-key validation through the existing protected API and tab-scoped `sessionStorage`
 - strict browser security headers, local assets, and text-only dynamic rendering
-- Overview data and literal/semantic Search remain intentionally pending
+- literal/semantic Search remains intentionally pending
 
 ### 🐳 Deployment & operations
 
