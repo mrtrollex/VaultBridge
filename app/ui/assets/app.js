@@ -127,6 +127,15 @@ function clearCredentialState() {
   removeStoredCredential();
   activeCredential = null;
   apiKeyInput.value = "";
+  apiKeyInput.removeAttribute("aria-invalid");
+}
+
+function setApiKeyInvalid(invalid) {
+  if (invalid) {
+    apiKeyInput.setAttribute("aria-invalid", "true");
+  } else {
+    apiKeyInput.removeAttribute("aria-invalid");
+  }
 }
 
 function parseRetryAfter(response) {
@@ -233,7 +242,7 @@ function messageForRequestError(error) {
   return "VaultBridge returned an unexpected response.";
 }
 
-async function validateCredential(credential, restoreSession) {
+async function validateCredential(credential, restoreSession, focusAfterSuccess) {
   try {
     const response = await authenticatedFetch("api/v1/notes/list?limit=1", { credential });
     if (response.body !== null) {
@@ -251,8 +260,11 @@ async function validateCredential(credential, restoreSession) {
 
     activeCredential = credential;
     apiKeyInput.value = "";
+    setApiKeyInvalid(false);
     setSessionState("unlocked", "Authentication successful. Protected requests are available.");
-    logoutButton.focus();
+    if (focusAfterSuccess) {
+      logoutButton.focus();
+    }
   } catch (error) {
     if (error instanceof StaleRequestError) {
       return;
@@ -266,6 +278,7 @@ async function validateCredential(credential, restoreSession) {
     const nextState = retainedCredential || error.kind !== "authentication-required"
       ? "unavailable"
       : "locked";
+    setApiKeyInvalid(error.kind === "authentication-required" && !retainedCredential);
     setSessionState(nextState, messageForRequestError(error), retainedCredential);
     if (!retainedCredential) {
       apiKeyInput.focus();
@@ -291,14 +304,18 @@ unlockForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const credential = apiKeyInput.value;
   if (!credential) {
+    setApiKeyInvalid(true);
     setSessionState("locked", "Enter an API key to continue.");
     apiKeyInput.focus();
     return;
   }
   unlockButton.disabled = true;
+  setApiKeyInvalid(false);
   setSessionState("checking-session", "Validating the API key.");
-  void validateCredential(credential, false);
+  void validateCredential(credential, false, true);
 });
+
+apiKeyInput.addEventListener("input", () => setApiKeyInvalid(false));
 
 retrySessionButton.addEventListener("click", () => {
   const storedCredential = readStoredCredential();
@@ -309,7 +326,7 @@ retrySessionButton.addEventListener("click", () => {
   }
   retrySessionButton.disabled = true;
   setSessionState("checking-session", "Revalidating the saved session.");
-  void validateCredential(storedCredential.value, true);
+  void validateCredential(storedCredential.value, true, true);
 });
 
 logoutButton.addEventListener("click", logout);
@@ -332,5 +349,5 @@ if (!initialCredential.available) {
 } else if (initialCredential.value === null) {
   setSessionState("locked", "Enter an API key to unlock protected features.");
 } else {
-  void validateCredential(initialCredential.value, true);
+  void validateCredential(initialCredential.value, true, false);
 }

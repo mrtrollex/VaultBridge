@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from html.parser import HTMLParser
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
@@ -75,6 +76,14 @@ def test_known_ui_assets_have_correct_media_types_and_head_support(tmp_path):
         assert response.content
         assert head.content == b""
         assert head.headers["content-length"] == response.headers["content-length"]
+
+
+def test_ui_asset_route_inventory_matches_bundled_files(tmp_path):
+    asset_names = {path.name for path in (Path("app/ui/assets")).iterdir() if path.is_file()}
+
+    assert asset_names == {"app.css", "app.js", "overview.js", "search.js"}
+    client = client_for(tmp_path)
+    assert all(client.get(f"/ui/assets/{name}").status_code == 200 for name in asset_names)
 
 
 def test_unknown_ui_paths_assets_and_methods_do_not_fall_back_to_html(tmp_path):
@@ -199,6 +208,9 @@ def test_html_shell_is_semantic_accessible_and_uses_only_local_assets(tmp_path):
         "password"
     ]
     assert [attrs.get("aria-live") for tag, attrs in elements if attrs.get("id") == "global-status"] == ["polite"]
+    api_key = next(attrs for tag, attrs in elements if tag == "input" and attrs.get("id") == "api-key")
+    assert api_key["aria-describedby"] == "api-key-help"
+    assert api_key["aria-errormessage"] == "global-status"
     assert {
         attrs.get("id")
         for tag, attrs in elements
@@ -298,13 +310,16 @@ def test_search_replaces_placeholder_with_protected_accessible_retrieval_form(tm
     assert inputs["search-mode-semantic"]["value"] == "semantic"
     assert inputs["search-query"]["minlength"] == "1"
     assert inputs["search-query"]["maxlength"] == "300"
+    assert inputs["search-query"]["aria-describedby"] == "search-query-help"
     assert inputs["search-folder"]["maxlength"] == "500"
+    assert inputs["search-folder"]["aria-describedby"] == "search-folder-help"
     assert inputs["search-limit"]["min"] == "1"
     assert inputs["search-limit"]["max"] == "50"
     assert inputs["search-limit"]["value"] == "10"
     assert inputs["search-min-score"]["min"] == "-1"
     assert inputs["search-min-score"]["max"] == "1"
     assert inputs["search-min-score"]["value"] == "0.28"
+    assert inputs["search-min-score"]["aria-describedby"] == "search-min-score-help"
 
     label_targets = {
         attrs.get("for")
@@ -422,6 +437,10 @@ def test_overview_javascript_has_loading_malformed_and_unavailable_states(tmp_pa
     assert 'overallStatus.dataset.overviewState = "unavailable"' in script
     assert 'setText(overallStatus, "Unavailable")' in script
     assert "resetHealthValues();" in script
+    assert "activeController?.abort()" in script
+    assert "const generation = ++requestGeneration" in script
+    assert "generation !== requestGeneration" in script
+    assert "signal: controller.signal" in script
     assert ".focus()" not in script[
         script.index("async function loadOverview") : script.index("export function initializeOverview")
     ]
@@ -515,8 +534,23 @@ def test_javascript_implements_session_auth_status_and_safe_rendering_contract(t
         "setTimeout(",
         "setInterval(",
         "console.",
+        "document.cookie",
+        "serviceWorker",
+        "caches.",
     ):
         assert prohibited not in all_scripts
+
+
+def test_session_focus_management_distinguishes_actions_from_reload(tmp_path):
+    script = client_for(tmp_path).get("/ui/assets/app.js").text
+
+    assert "if (focusAfterSuccess)" in script
+    assert "logoutButton.focus();" in script
+    assert "void validateCredential(credential, false, true);" in script
+    assert "void validateCredential(storedCredential.value, true, true);" in script
+    assert "void validateCredential(initialCredential.value, true, false);" in script
+    assert 'apiKeyInput.setAttribute("aria-invalid", "true")' in script
+    assert 'apiKeyInput.removeAttribute("aria-invalid")' in script
 
 
 def test_search_javascript_maps_exact_protected_request_contracts_without_reranking(tmp_path):
@@ -551,6 +585,9 @@ def test_search_javascript_maps_exact_protected_request_contracts_without_rerank
     assert ".sort(" not in script
     assert "api/v1/notes/read" not in script
     assert "api/v1/notes/duplicates" not in script
+    assert '["Combined score", result.score]' in script
+    assert '["Semantic score", result.semantic_score]' in script
+    assert '["Lexical score", result.lexical_score]' in script
 
 
 def test_search_javascript_has_private_safe_lifecycle_and_error_contract(tmp_path):
@@ -630,3 +667,137 @@ def test_unlock_probe_reuses_existing_authentication_without_a_ui_auth_endpoint(
         headers={"Authorization": "Bearer test-previous-secret"},
     ).status_code == 200
     assert client.post("/ui/auth").status_code == 404
+
+
+def test_ui_css_has_narrow_reflow_long_content_focus_and_reduced_motion_contract(tmp_path):
+    css = client_for(tmp_path).get("/ui/assets/app.css").text
+
+    assert "@media (max-width: 46rem)" in css
+    assert "flex-wrap: wrap" in css
+    assert "overflow-x: visible" in css
+    assert "overflow-wrap: anywhere" in css
+    assert "grid-template-columns: 1fr" in css
+    assert "button:focus-visible" in css
+    assert "input:focus-visible" in css
+    assert "@media (prefers-reduced-motion: reduce)" in css
+    reduced_motion = css[css.index("@media (prefers-reduced-motion: reduce)") :]
+    assert "animation: none" in reduced_motion
+    assert "transition: none" in reduced_motion
+
+
+def test_ui_resources_exclude_remote_dependencies_truenas_behavior_and_mutation_controls(tmp_path):
+    client = client_for(tmp_path)
+    resources = {
+        path: client.get(path).text
+        for path in (
+            "/ui/",
+            "/ui/assets/app.css",
+            "/ui/assets/app.js",
+            "/ui/assets/overview.js",
+            "/ui/assets/search.js",
+        )
+    }
+    combined = "\n".join(resources.values())
+
+    assert not re.search(r"(?:src|href)=[\"'](?:https?:)?//", resources["/ui/"], re.IGNORECASE)
+    assert not re.search(r"@import\s|url\(\s*[\"']?(?:https?:)?//", resources["/ui/assets/app.css"], re.IGNORECASE)
+    for prohibited in (
+        "Create note",
+        "Append note",
+        "Edit note",
+        "Delete note",
+        "Rebuild index",
+        "Sync index",
+        "TrueNAS",
+        "NAS statistics",
+        "Watcher control",
+    ):
+        assert prohibited.casefold() not in combined.casefold()
+
+
+def test_ui_preserves_exact_api_operation_id_contract(tmp_path):
+    schema = client_for(tmp_path).app.openapi()
+    actual = {
+        (method.upper(), path, operation["operationId"])
+        for path, methods in schema["paths"].items()
+        for method, operation in methods.items()
+    }
+    assert actual == {
+        ("GET", "/health", "healthCheck"),
+        ("GET", "/health/live", "livenessCheck"),
+        ("GET", "/health/ready", "readinessCheck"),
+        ("POST", "/notes", "createNote"),
+        ("POST", "/notes/append", "appendNote"),
+        ("GET", "/notes/read", "readNote"),
+        ("POST", "/notes/search", "searchNotes"),
+        ("POST", "/notes/related", "findRelatedNotes"),
+        ("POST", "/notes/duplicates", "findDuplicateCandidates"),
+        ("GET", "/notes/list", "listNotes"),
+        ("POST", "/api/v1/notes", "createNoteV1"),
+        ("POST", "/api/v1/notes/append", "appendNoteV1"),
+        ("GET", "/api/v1/notes/read", "readNoteV1"),
+        ("POST", "/api/v1/notes/search", "searchNotesV1"),
+        ("POST", "/api/v1/notes/related", "findRelatedNotesV1"),
+        ("POST", "/api/v1/notes/duplicates", "findDuplicateCandidatesV1"),
+        ("GET", "/api/v1/notes/list", "listNotesV1"),
+    }
+
+
+def test_dashboard_palette_meets_text_component_and_focus_contrast_baseline(tmp_path):
+    css = client_for(tmp_path).get("/ui/assets/app.css").text
+
+    def luminance(hex_color: str) -> float:
+        channels = [int(hex_color[index : index + 2], 16) / 255 for index in (1, 3, 5)]
+        linear = [
+            channel / 12.92
+            if channel <= 0.04045
+            else ((channel + 0.055) / 1.055) ** 2.4
+            for channel in channels
+        ]
+        return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+    def contrast(foreground: str, background: str) -> float:
+        lighter, darker = sorted(
+            (luminance(foreground), luminance(background)),
+            reverse=True,
+        )
+        return (lighter + 0.05) / (darker + 0.05)
+
+    expected_variables = {
+        "#f3f5f6",
+        "#ffffff",
+        "#172126",
+        "#53646c",
+        "#176b68",
+        "#0d514f",
+        "#c94911",
+        "#72551c",
+        "#a53636",
+        "#101719",
+        "#182225",
+        "#edf3f4",
+        "#adbdc2",
+        "#61c5bd",
+        "#9ce1dc",
+        "#ff9b70",
+        "#e8c676",
+        "#ff9999",
+    }
+    assert expected_variables <= set(re.findall(r"#[0-9a-fA-F]{6}", css))
+
+    for foreground, background in (
+        ("#172126", "#f3f5f6"),
+        ("#53646c", "#f3f5f6"),
+        ("#176b68", "#ffffff"),
+        ("#72551c", "#ffffff"),
+        ("#a53636", "#ffffff"),
+        ("#edf3f4", "#101719"),
+        ("#adbdc2", "#101719"),
+        ("#61c5bd", "#182225"),
+        ("#e8c676", "#182225"),
+        ("#ff9999", "#182225"),
+    ):
+        assert contrast(foreground, background) >= 4.5
+
+    for focus, surface in (("#c94911", "#ffffff"), ("#ff9b70", "#182225")):
+        assert contrast(focus, surface) >= 3

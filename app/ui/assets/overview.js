@@ -20,6 +20,8 @@ const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
   timeStyle: "medium",
 });
 const HEALTH_INDEX_STATES = ["uninitialized", "indexing", "ready", "error"];
+let requestGeneration = 0;
+let activeController = null;
 
 function setText(element, value) {
   element.textContent = String(value);
@@ -160,12 +162,20 @@ function setOverviewError(kind) {
 }
 
 async function loadOverview(applicationUrl) {
+  activeController?.abort();
+  const generation = ++requestGeneration;
+  const controller = new AbortController();
+  activeController = controller;
   setOverviewLoading();
   try {
     const response = await fetch(applicationUrl("health"), {
       method: "GET",
       headers: { Accept: "application/json" },
+      signal: controller.signal,
     });
+    if (generation !== requestGeneration) {
+      return;
+    }
     if (!response.ok) {
       setOverviewError("unavailable");
       return;
@@ -175,7 +185,13 @@ async function loadOverview(applicationUrl) {
     try {
       health = await response.json();
     } catch {
+      if (generation !== requestGeneration) {
+        return;
+      }
       setOverviewError("malformed");
+      return;
+    }
+    if (generation !== requestGeneration) {
       return;
     }
     if (!isHealthPayload(health)) {
@@ -183,10 +199,16 @@ async function loadOverview(applicationUrl) {
       return;
     }
     renderHealth(health);
-  } catch {
+  } catch (error) {
+    if (generation !== requestGeneration || error.name === "AbortError") {
+      return;
+    }
     setOverviewError("unavailable");
   } finally {
-    refreshOverviewButton.disabled = false;
+    if (generation === requestGeneration) {
+      activeController = null;
+      refreshOverviewButton.disabled = false;
+    }
   }
 }
 

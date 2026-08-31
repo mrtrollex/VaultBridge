@@ -132,9 +132,9 @@ function appendSemanticScores(card, result) {
   const scores = document.createElement("dl");
   scores.className = "search-result__scores";
   for (const [label, value] of [
-    ["Score", result.score],
-    ["Semantic", result.semantic_score],
-    ["Lexical", result.lexical_score],
+    ["Combined score", result.score],
+    ["Semantic score", result.semantic_score],
+    ["Lexical score", result.lexical_score],
   ]) {
     const score = document.createElement("div");
     appendTextElement(score, "dt", "", label);

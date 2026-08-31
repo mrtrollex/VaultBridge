@@ -305,8 +305,10 @@ vault or index, but they are local filesystem/SQLite readers rather than a remot
 
 VB-071 implements the dashboard shell and authenticated session boundary accepted in
 [ADR 0003](docs/adr/0003-web-dashboard-architecture-and-security.md), VB-072 implements the public
-health-backed Overview, and VB-073 implements protected literal and semantic Search. Release
-hardening and TrueNAS Community App packaging remain later tasks.
+health-backed Overview, VB-073 implements protected literal and semantic Search, and VB-074
+completes usability, accessibility, privacy, browser, and normal-image hardening. Publishing and
+verifying that dashboard-capable image (VB-075) and TrueNAS Community App packaging remain later
+distribution tasks.
 
 ### Current dashboard relationship
 

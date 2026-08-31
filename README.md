@@ -98,7 +98,7 @@ The vault is never replaced by the index, and there is no general filesystem end
 - process-local rate limiting for protected routes
 - no cloud embedding API or external vector database required
 
-### 🖥️ Web Dashboard shell
+### 🖥️ Web Dashboard
 
 - bundled same-origin `/ui/` entry point with no second frontend service
 - accessible Overview, Search, API / Integration, and About navigation
@@ -108,6 +108,19 @@ The vault is never replaced by the index, and there is no general filesystem end
 - strict browser security headers, local assets, and text-only dynamic rendering
 - protected literal and semantic Search using existing backend ranking and read-only result fields,
   with no query/history persistence
+- retrieval-only operator visibility: no note editor, index-maintenance controls, account system,
+  or TrueNAS-specific behavior
+
+Open the dashboard from the same VaultBridge origin at `/ui/`. The browser session uses an
+operator-supplied existing API key and stores it only in namespaced `sessionStorage` after the
+protected API validates it. Logout and an authentication failure clear protected form and result
+state; the public Overview remains available.
+
+The dashboard targets current evergreen browsers with support for ES modules, `fetch`,
+`AbortController`, `sessionStorage`, `URL`, and `Intl.NumberFormat`. This is a modest
+standards-based compatibility statement, not a claim that every browser/version has been tested.
+Actual browser and production-image evidence is tracked separately in
+[`docs/DASHBOARD_RELEASE_CHECKLIST.md`](docs/DASHBOARD_RELEASE_CHECKLIST.md).
 
 ### 🐳 Deployment & operations
 

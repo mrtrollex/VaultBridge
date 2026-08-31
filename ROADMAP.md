@@ -15,10 +15,10 @@
 9. **Derived semantic data.** The semantic index must always be rebuildable from the Markdown vault.
 10. **Platform-neutral core.** VaultBridge runtime behavior must not depend on TrueNAS. Platform
     packaging may configure and launch the application, but it must not fork domain behavior.
-11. **Bundled operator UI, API-first architecture.** The planned Web Dashboard is another
+11. **Bundled operator UI, API-first architecture.** The Web Dashboard is another
     first-party client of stable VaultBridge capabilities, not a replacement for the API or CLI.
     AI clients, scripts, and other integrations remain first-class.
-12. **One distributable application.** The planned dashboard should ship in the normal VaultBridge
+12. **One distributable application.** The dashboard ships in the normal VaultBridge
     production image. A second UI service/container requires a measured future need and an explicit
     architecture decision.
 
@@ -484,14 +484,14 @@ complete. Milestone 7 is complete; VB-055 remains an optional post-v1 P1 improve
 
 ---
 
-# Milestone 8 — Web Dashboard / operator experience — IN PROGRESS
+# Milestone 8 — Web Dashboard / operator experience — COMPLETE
 
 **Goal:** provide a small first-party browser interface for inspecting and using VaultBridge without
 turning the project into a general knowledge-management frontend.
 
-The bundled shell, authenticated browser session, public health-backed Overview, and protected
-literal/semantic Search interface are implemented. Final hardening remains planned. The
-first-release information architecture is:
+The bundled shell, authenticated browser session, public health-backed Overview, protected
+literal/semantic Search interface, and final usability/accessibility/release hardening are complete.
+The first-release information architecture is:
 
 ```text
 Overview
@@ -534,20 +534,24 @@ VB-072 overview and health visibility ✓
    ↓
 VB-073 search interface ✓
    ↓
-VB-074 usability, accessibility, and release hardening ← NEXT
+VB-074 usability, accessibility, and release hardening ✓
 ```
 
 Milestone exit criteria:
 
 - [x] platform-neutral dashboard architecture and authentication threat model are agreed
 - [x] canonical dashboard shell and authenticated `sessionStorage` lifecycle are implemented
-- [ ] one lightweight dashboard ships with the normal VaultBridge application/image
+- [x] one lightweight dashboard is bundled with and verified in the normal VaultBridge
+  application/image
 - [x] the API and CLI remain independently usable and behaviorally compatible
 - [x] overview data reuses the existing public health contract without duplicating domain logic
 - [x] search behavior reuses existing backend/domain capabilities
 - [x] no note editor, account system, general file manager, or live index-rebuild mutation is added
-- [ ] accessibility, privacy-safe rendering, browser smoke tests, and container verification pass
-- [ ] a dashboard-capable VaultBridge image is published and verified before Milestone 9 begins
+- [x] accessibility, privacy-safe rendering, browser smoke tests, and container verification pass
+
+The remaining transition gate before Milestone 9 is VB-075: publish and verify a dashboard-capable
+VaultBridge image. This is distribution work after the completed Milestone 8 implementation and
+hardening; no release version is assigned here.
 
 ---
 
@@ -573,7 +577,7 @@ ghcr.io/mrtrollex/vaultbridge:<released-version>
 normal VaultBridge runtime
       |
       +-- /api/v1
-      +-- /ui (planned in Milestone 8)
+      +-- /ui (bundled dashboard completed in Milestone 8)
       +-- /vault
       +-- semantic data
 ```
@@ -697,9 +701,9 @@ VB-072 ✓
    ↓
 VB-073 ✓
    ↓
-VB-074 ← NEXT
+VB-074 ✓
    ↓
-published/verified dashboard-capable image
+VB-075 ← NEXT
    ↓
 TRUENAS COMMUNITY APP DISTRIBUTION
 VB-080
@@ -711,14 +715,13 @@ VB-082
 VB-083
 ```
 
-`v1.0.0` has shipped, ADR 0003 completes the VB-070 design gate, VB-071 adds the dashboard shell and
-authenticated browser session, VB-072 adds the public health-backed Overview, and VB-073 adds the
-protected literal/semantic Search interface. **VB-074 is the sole next recommended task.** VB-023
-remains open P1 retrieval work
-with its requirements unchanged, but it is not NEXT. VB-032 and VB-033 remain explicitly
-deferred/optional, and VB-055 remains optional rather than a dashboard prerequisite. The deliberate
-post-v1 execution priority is Milestone 8 followed by a published/verified dashboard-capable image,
-then Milestone 9. This plan does not assign a release version.
+`v1.0.0` has shipped, and VB-070 through VB-074 complete Milestone 8's dashboard design,
+shell/session, Overview, Search, and final hardening. **VB-075 is the sole next recommended task**
+and owns publication plus verification of the normal dashboard-capable image required by VB-080.
+VB-023 remains open P1 retrieval work with its requirements unchanged, but it is not NEXT. VB-032
+and VB-033 remain explicitly deferred/optional, and VB-055 remains optional rather than a dashboard
+prerequisite. Milestone 9 begins only after VB-075 passes. This plan does not assign a release
+version.
 
 ---
 

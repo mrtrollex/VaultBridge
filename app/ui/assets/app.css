@@ -27,6 +27,7 @@ html {
 }
 
 body {
+  min-width: 0;
   max-width: 74rem;
   min-height: 100vh;
   margin: 0 auto;
@@ -275,6 +276,7 @@ input {
   background: var(--surface-subtle);
   border-left: 0.3rem solid var(--border);
   border-radius: 0.35rem;
+  overflow-wrap: anywhere;
 }
 
 .state-unlocked .global-status {
@@ -311,6 +313,7 @@ input {
   background: var(--surface-subtle);
   border-left: 0.3rem solid var(--border);
   border-radius: 0.35rem;
+  overflow-wrap: anywhere;
 }
 
 .search-access-state,
@@ -322,6 +325,7 @@ input {
   background: var(--surface-subtle);
   border-left: 0.3rem solid var(--border);
   border-radius: 0.35rem;
+  overflow-wrap: anywhere;
 }
 
 .search-access-state {
@@ -608,6 +612,7 @@ input {
   background: var(--background);
   border: 1px solid var(--border);
   border-radius: 0.65rem;
+  overflow-wrap: anywhere;
 }
 
 .information-grid {
@@ -656,6 +661,17 @@ code {
 
   .session-summary {
     justify-content: space-between;
+  }
+
+  .app-navigation {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+
+  .nav-button {
+    flex: 1 1 calc(50% - 0.25rem);
+    min-width: 0;
+    white-space: normal;
   }
 
   .unlock-form,
@@ -712,5 +728,14 @@ code {
   button,
   input {
     transition: background-color 120ms ease, border-color 120ms ease, transform 120ms ease;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skip-link,
+  button,
+  input {
+    animation: none;
+    transition: none;
   }
 }
