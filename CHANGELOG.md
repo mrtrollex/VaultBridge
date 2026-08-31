@@ -8,12 +8,20 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ### Fixed
 
+- dashboard hardening improves restored-session focus behavior, API-key error association, input
+  instructions, explicit semantic score labels, stale Overview request suppression, narrow/mobile
+  navigation reflow, long-content wrapping, focus/contrast regression coverage, and explicit
+  reduced-motion handling without adding dashboard features or changing API behavior
 - Docker clean installations now give FastEmbed/Hugging Face a predictable writable `HF_HOME`
   inside the existing derived semantic-data mount, preserving generic `PUID:PGID` and TrueNAS
   `568:568` non-root execution
 
 ### Added
 
+- completed dashboard release-readiness evidence covering automated regressions, a real Chrome
+  usability/accessibility/privacy audit, and a disposable TrueNAS normal-image gate for bundled
+  assets, API/CLI compatibility, authenticated retrieval, semantic startup, safe logs, restart
+  persistence, clean stop, and cleanup; no release version or published image is claimed
 - a protected dashboard Search area with accessible Literal and Semantic modes backed directly by
   the existing `/api/v1/notes/search` and `/api/v1/notes/related` contracts; server-order result
   cards, semantic score visibility, null-safe text rendering, in-memory-only queries/results,

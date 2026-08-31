@@ -4,7 +4,7 @@ This document is the current factual snapshot for future Codex sessions. It shou
 
 ## Baseline date
 
-2026-08-30
+2026-08-31
 
 ## Current development position
 
@@ -47,6 +47,7 @@ Completed:
 - VB-071 — Dashboard shell and authenticated session
 - VB-072 — Dashboard overview and health visibility
 - VB-073 — Dashboard search interface
+- VB-074 — Dashboard usability, accessibility and release hardening
 
 Post-v1 development position:
 
@@ -55,7 +56,7 @@ Post-v1 development position:
 
 Next recommended backlog task:
 
-- **VB-074 — Dashboard usability, accessibility and release hardening**
+- **VB-075 — Publish and verify dashboard-capable VaultBridge image**
 
 Current post-v1 planning position:
 
@@ -78,9 +79,18 @@ Current post-v1 planning position:
   frontend ranking/filtering, note read/mutation, duplicate workflow, or index mutation
 - queries, folders, results, snippets, paths, and scores are not persisted or placed in URLs;
   logout and `401` clear form/results, while `429` and semantic `503` retain the validated session
+- VB-074 hardens keyboard/focus behavior, error associations, score labels, stale-request handling,
+  responsive reflow, long-content wrapping, contrast coverage, and reduced-motion behavior without
+  adding editing/index mutation or TrueNAS-specific UI behavior
+- local automated checks and a real Chrome audit passed with disposable synthetic data; connected
+  Chrome screenshot capture remained unavailable, so no screenshot artifact is claimed
+- the normal Dockerfile image passed the disposable TrueNAS Phase B gate for health, bundled assets
+  and headers, authenticated literal/semantic retrieval, CLI, safe logs, restart persistence, clean
+  stop, and complete cleanup without touching production data or services
 - existing API contracts, authentication, rate limiting, CLI behavior, dependencies, Dockerfile,
-  and Compose definitions are unchanged by dashboard work through VB-073
-- VB-074 remains planned implementation work and is the sole next task
+  and Compose definitions are unchanged by dashboard work through VB-074
+- Milestone 8 is complete; VB-075 is the sole next task and owns the missing published/verified
+  dashboard-capable image required before VB-080
 - no upstream TrueNAS Community App exists yet; Milestone 9 and VB-080 through VB-083 are planned work
 - current TrueNAS support remains the documented Docker/source-built Custom App deployment
 - VB-023 remains open P1 retrieval work with unchanged scope, but it is no longer the current next task
@@ -117,7 +127,7 @@ Current milestones:
 - **Milestone 5 — Operational maturity and security (complete)**
 - **Milestone 6 — Public API and developer experience (complete)**
 - **Milestone 7 — Distribution and `v1.0.0` (complete)**
-- **Milestone 8 — Web Dashboard / operator experience (in progress; shell/session/Overview/Search implemented)**
+- **Milestone 8 — Web Dashboard / operator experience (complete)**
 - **Milestone 9 — TrueNAS Community App distribution (planned; not implemented)**
 
 ## Working production characteristics

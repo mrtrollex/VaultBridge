@@ -850,9 +850,9 @@ second search implementation.
 - the interface remains retrieval-only and adds no note read/mutation, duplicate workflow, index
   mutation, backend search/ranking change, API endpoint, dependency, or TrueNAS-specific behavior.
 
-### VB-074 — Dashboard usability, accessibility and release hardening — P1 ▶
+### VB-074 — Dashboard usability, accessibility and release hardening — P1 ✅
 
-**Status:** Planned; next recommended task.
+**Status:** Completed on 2026-08-31.
 
 **Goal:** harden the completed dashboard for supported browsers and the normal production image
 without declaring a release version in advance.
@@ -887,6 +887,58 @@ without declaring a release version in advance.
 
 - accessibility review, responsive/browser smoke suite, reduced-motion checks, Python/API regression
   checks, container build/startup/runtime checks, and documentation consistency review.
+
+**Implemented behavior and evidence**
+
+- keyboard focus/session handling, error associations, explicit score labels, stale-request
+  suppression, narrow/mobile reflow, long-content wrapping, contrast coverage, and reduced-motion
+  behavior are hardened without changing API or runtime contracts;
+- focused static/HTTP coverage and a real Chrome audit verify keyboard, responsive, privacy-safe,
+  injection-safe, session/error, and latest-request behavior with disposable synthetic data;
+- the normal Dockerfile image passed a disposable TrueNAS production-image gate covering liveness,
+  rich health, dashboard assets and security headers, authenticated literal and semantic retrieval,
+  CLI availability, safe logs, restart persistence, clean stop, and complete disposable cleanup;
+- screenshot capture remained unavailable after repeated connected-Chrome timeouts, so no screenshot
+  artifact is claimed or fabricated; rendered Chrome inspection still passed;
+- no release version, tag, GitHub Release, or dashboard-capable GHCR image was created by VB-074.
+
+### VB-075 — Publish and verify dashboard-capable VaultBridge image — P1 ▶
+
+**Status:** Planned; next recommended task.
+
+**Goal:** publish and verify the normal VaultBridge image containing the completed bundled Web
+Dashboard so downstream packaging can consume an immutable dashboard-capable artifact.
+
+**Depends on:** VB-074.
+
+**Acceptance criteria**
+
+- make an explicit release/version decision from the completed source without preassigning a version
+  in this backlog item;
+- require successful source/CI release gates on the exact release commit before publication;
+- publish through the existing release-triggered GHCR workflow without changing the normal
+  Dockerfile, API, CLI, dashboard, semantic behavior, mounts, or single-image architecture;
+- verify the public package, exact tag, immutable digest, OCI source/revision/version/license
+  metadata, intended platform, and anonymous pull;
+- run the exact published image against disposable vault/data and verify dashboard assets, health,
+  authenticated API behavior, literal and semantic retrieval, CLI availability, safe logs, restart
+  persistence, clean stop, and cleanup;
+- record sanitized release, workflow, tag, digest, platform, and runtime evidence for VB-080.
+
+**Out of scope**
+
+- TrueNAS Community App design/implementation, a runtime/UI fork, unrelated application behavior,
+  multi-architecture expansion, or use of production vaults, credentials, ports, or derived data.
+
+**Safety/privacy constraints**
+
+- use disposable synthetic data and never expose API keys, resolved environments, private paths,
+  vault content, queries, or credentials in logs or published evidence.
+
+**Validation expectations**
+
+- exact-source CI and release workflow PASS, GHCR tag/digest/metadata verification, anonymous pull,
+  and a disposable exact-image TrueNAS runtime gate with sanitized recorded evidence.
 
 ---
 
@@ -1074,8 +1126,8 @@ VB-001 ✓
 → VB-071 ✓
 → VB-072 ✓
 → VB-073 ✓
-→ VB-074 NEXT
-→ published/verified dashboard-capable VaultBridge image
+→ VB-074 ✓
+→ VB-075 NEXT
 → VB-080
 → VB-081
 → VB-082
@@ -1086,12 +1138,12 @@ VB-057 through VB-060 close the confirmed containment, native-Windows test-porta
 release-version alignment, and repository-exposure-safety blockers. Stable `v1.0.0` and its final
 distribution gates are complete; immutable evidence remains recorded in `docs/RELEASE_CHECKLIST.md`.
 
-VB-070 is complete as the accepted documentation/design contract, VB-071 implements the dashboard
-shell and authenticated session, VB-072 adds the public health-backed Overview, and VB-073 adds the
-protected literal/semantic Search interface. VB-074 is the sole next recommended task. VB-023
-remains open P1 retrieval work with unchanged scope, but it is not
-NEXT. VB-032 and VB-033 remain deferred optional work. VB-055 remains optional and is not a
-dashboard prerequisite. Milestone 9 begins only after Milestone 8 produces a published and verified
-dashboard-capable VaultBridge image.
+VB-070 through VB-074 complete the bundled Web Dashboard architecture, shell/session, public
+health-backed Overview, protected literal/semantic Search, and final usability/accessibility/image
+hardening. VB-075 is the sole next recommended task and owns publication plus verification of the
+dashboard-capable image required by VB-080. VB-023 remains open P1 retrieval work with unchanged
+scope, but it is not NEXT. VB-032 and VB-033 remain deferred optional work. VB-055 remains optional
+and is not a dashboard prerequisite. Milestone 9 begins only after VB-075 supplies the published and
+verified dashboard-capable VaultBridge image.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

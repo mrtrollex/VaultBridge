@@ -57,6 +57,7 @@
               autocapitalize="none"
               spellcheck="false"
               aria-describedby="api-key-help"
+              aria-errormessage="global-status"
               required
             >
             <p id="api-key-help" class="field-help">Used only for this VaultBridge origin and browser tab session.</p>
@@ -200,6 +201,7 @@
                   minlength="1"
                   maxlength="300"
                   autocomplete="off"
+                  aria-describedby="search-query-help"
                   required
                 >
                 <p id="search-query-help" class="field-help">Search note titles and contents literally.</p>
@@ -214,8 +216,9 @@
                   maxlength="500"
                   autocomplete="off"
                   spellcheck="false"
+                  aria-describedby="search-folder-help"
                 >
-                <p class="field-help">Vault-relative folder path.</p>
+                <p id="search-folder-help" class="field-help">Vault-relative folder path.</p>
               </div>
 
               <div class="field-group search-field--number">
@@ -233,9 +236,12 @@
                   max="1"
                   step="0.01"
                   value="0.28"
+                  aria-describedby="search-min-score-help"
                   required
                 >
-                <p class="field-help">Applied by the existing semantic API before results are returned.</p>
+                <p id="search-min-score-help" class="field-help">
+                  Applied by the existing semantic API before results are returned.
+                </p>
               </div>
             </div>
 
