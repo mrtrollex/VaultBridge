@@ -67,6 +67,7 @@ def test_known_ui_assets_have_correct_media_types_and_head_support(tmp_path):
         ("/ui/assets/app.js", "text/javascript"),
         ("/ui/assets/overview.js", "text/javascript"),
         ("/ui/assets/search.js", "text/javascript"),
+        ("/ui/assets/vaultbridge-logo.webp", "image/webp"),
     ):
         response = client.get(path)
         head = client.head(path)
@@ -81,7 +82,13 @@ def test_known_ui_assets_have_correct_media_types_and_head_support(tmp_path):
 def test_ui_asset_route_inventory_matches_bundled_files(tmp_path):
     asset_names = {path.name for path in (Path("app/ui/assets")).iterdir() if path.is_file()}
 
-    assert asset_names == {"app.css", "app.js", "overview.js", "search.js"}
+    assert asset_names == {
+        "app.css",
+        "app.js",
+        "overview.js",
+        "search.js",
+        "vaultbridge-logo.webp",
+    }
     client = client_for(tmp_path)
     assert all(client.get(f"/ui/assets/{name}").status_code == 200 for name in asset_names)
 
@@ -145,6 +152,7 @@ def test_ui_resources_apply_strict_security_headers(tmp_path):
         "/ui/assets/app.js",
         "/ui/assets/overview.js",
         "/ui/assets/search.js",
+        "/ui/assets/vaultbridge-logo.webp",
     ):
         response = client.get(path)
         assert response.headers["content-security-policy"] == UI_CONTENT_SECURITY_POLICY
@@ -208,6 +216,8 @@ def test_html_shell_is_semantic_accessible_and_uses_only_local_assets(tmp_path):
         "password"
     ]
     assert [attrs.get("aria-live") for tag, attrs in elements if attrs.get("id") == "global-status"] == ["polite"]
+    assert ">Restoring protected access<" in html
+    assert "Checking for a saved dashboard session." in html
     api_key = next(attrs for tag, attrs in elements if tag == "input" and attrs.get("id") == "api-key")
     assert api_key["aria-describedby"] == "api-key-help"
     assert api_key["aria-errormessage"] == "global-status"
@@ -235,18 +245,20 @@ def test_overview_replaces_placeholder_with_accessible_health_cards(tmp_path):
 
     assert "Operational overview will appear here." not in html
     assert "Health details are intentionally reserved for VB-072." not in html
-    assert "VaultBridge Overview" in html
-    for heading in ("Overall status", "Vault", "Semantic index", "Background indexing"):
+    assert "Operator console" not in html
+    assert "VaultBridge Overview" not in html
+    assert "Overview" in html
+    for heading in ("Overall status", "Knowledge index", "Vault", "Semantic lifecycle", "Background indexing"):
         assert f">{heading}<" in html
     for label in (
         "Application health",
         "Available",
-        "Notes",
+        "Vault notes",
         "State",
         "Ready",
         "Search",
         "Indexed notes",
-        "Chunks",
+        "Semantic chunks",
         "Last successful sync",
         "Background indexer",
         "Full sync required",
@@ -290,7 +302,10 @@ def test_search_replaces_placeholder_with_protected_accessible_retrieval_form(tm
 
     assert "future search workspace" not in html
     assert "reserved for VB-073" not in html
-    assert "Unlock the dashboard to use protected search." in html
+    assert "Protected search is unavailable while access is checked." in html
+    assert "Checking protected access…" in html
+    assert 'data-search-state="checking"' in html
+    assert "Ready to search." not in html
     assert any(
         tag == "fieldset"
         and attrs.get("id") == "search-fieldset"
@@ -341,6 +356,33 @@ def test_search_replaces_placeholder_with_protected_accessible_retrieval_form(tm
         for _tag, attrs in elements
         if attrs.get("id") == "search-status"
     ] == ["polite"]
+
+
+def test_section_headings_share_vertical_accent_title_structure(tmp_path):
+    html = client_for(tmp_path).get("/ui/").text
+
+    assert html.count('class="panel-heading__title"') == 4
+    for eyebrow, heading in (
+        ("Workspace", "Overview"),
+        ("Knowledge retrieval", "Search"),
+        ("Client connection", "API / Integration"),
+        ("Project", "About VaultBridge"),
+    ):
+        assert f'<p class="eyebrow">{eyebrow}</p>' in html
+        assert f">{heading}</h2>" in html
+
+
+def test_product_polish_uses_reference_and_principle_structures(tmp_path):
+    html = client_for(tmp_path).get("/ui/").text
+
+    assert 'class="integration-reference"' in html
+    assert 'class="information-grid"' not in html
+    assert 'class="principles-grid"' in html
+    for principle in ("Local first", "API first", "Self hosted", "Deliberately small"):
+        assert f">{principle}<" in html
+    assert "Markdown remains the source of truth" in html
+    assert "local embeddings by default" in html
+    assert "ChatGPT" not in html
 
 
 def test_search_ui_excludes_mutation_detail_duplicate_and_index_controls(tmp_path):
@@ -504,6 +546,9 @@ def test_javascript_implements_session_auth_status_and_safe_rendering_contract(t
     assert "initializeOverview(applicationUrl)" in script
     assert 'import { initializeSearch } from "./search.js"' in script
     assert "searchController = initializeSearch({" in script
+    assert "searchController?.setAccessState(state)" in script
+    assert 'const unlockHeading = document.querySelector("#unlock-heading")' in script
+    assert 'checking && hasStoredCredential ? "Restoring protected access" : "Unlock protected features"' in script
     assert 'const SESSION_STORAGE_KEY = "vaultbridge.ui.apiKey"' in script
     assert "sessionStorage.getItem(SESSION_STORAGE_KEY)" in script
     assert "sessionStorage.setItem(SESSION_STORAGE_KEY, credential)" in script
@@ -549,6 +594,7 @@ def test_session_focus_management_distinguishes_actions_from_reload(tmp_path):
     assert "void validateCredential(credential, false, true);" in script
     assert "void validateCredential(storedCredential.value, true, true);" in script
     assert "void validateCredential(initialCredential.value, true, false);" in script
+    assert 'setSessionState("checking-session", "Revalidating the saved session.", true);' in script
     assert 'apiKeyInput.setAttribute("aria-invalid", "true")' in script
     assert 'apiKeyInput.removeAttribute("aria-invalid")' in script
 
@@ -602,6 +648,15 @@ def test_search_javascript_has_private_safe_lifecycle_and_error_contract(tmp_pat
     assert 'setStatus("loading"' in script
     assert 'setStatus("empty"' in script
     assert 'setStatus("error"' in script
+    assert 'let accessState = "checking-session"' in script
+    assert 'setAccessState(value)' in script
+    assert 'setStatus("checking", "Checking protected access…")' in script
+    assert 'setStatus("locked", "", false)' in script
+    assert 'searchStatus.hidden = !visible' in script
+    assert "Search is locked." not in script
+    assert 'setStatus("idle", "Ready to search.")' in script
+    assert 'setText(searchAccessState, "Protected search is unavailable while access is checked.")' in script
+    assert 'setText(searchAccessState, "Protected search requires unlock.")' in script
     assert "submitButton.disabled = true" in script
     assert "Semantic search is currently unavailable. Literal search remains available." in script
     assert "Rate limit reached. Retry in" in script
@@ -677,8 +732,16 @@ def test_ui_css_has_narrow_reflow_long_content_focus_and_reduced_motion_contract
     assert "overflow-x: visible" in css
     assert "overflow-wrap: anywhere" in css
     assert "grid-template-columns: 1fr" in css
+    panel_heading = css[css.index(".panel-heading {") : css.index(".panel-heading::before")]
+    assert "grid-template-columns: 0.2rem minmax(0, 1fr)" in panel_heading
+    assert "align-items: center" in panel_heading
+    assert "column-gap: 0.75rem" in panel_heading
+    panel_heading_rule = css[css.index(".panel-heading::before") : css.index(".panel-heading__title")]
+    assert "width: 0.2rem" in panel_heading_rule
+    assert "height: 2.25rem" in panel_heading_rule
     assert "button:focus-visible" in css
     assert "input:focus-visible" in css
+    assert "999px" not in css
     assert "@media (prefers-reduced-motion: reduce)" in css
     reduced_motion = css[css.index("@media (prefers-reduced-motion: reduce)") :]
     assert "animation: none" in reduced_motion
@@ -764,40 +827,38 @@ def test_dashboard_palette_meets_text_component_and_focus_contrast_baseline(tmp_
         return (lighter + 0.05) / (darker + 0.05)
 
     expected_variables = {
-        "#f3f5f6",
-        "#ffffff",
-        "#172126",
-        "#53646c",
-        "#176b68",
-        "#0d514f",
-        "#c94911",
-        "#72551c",
-        "#a53636",
-        "#101719",
-        "#182225",
-        "#edf3f4",
-        "#adbdc2",
-        "#61c5bd",
-        "#9ce1dc",
-        "#ff9b70",
-        "#e8c676",
-        "#ff9999",
+        "#07101b",
+        "#0b1725",
+        "#0f1d2c",
+        "#142436",
+        "#26394e",
+        "#415a74",
+        "#77a5d4",
+        "#94b8dc",
+        "#5b83ae",
+        "#f1f4f7",
+        "#d9e0e8",
+        "#98a8ba",
+        "#a7caf0",
+        "#789f91",
+        "#d9bb72",
+        "#e38d9a",
+        "#84b3dd",
     }
     assert expected_variables <= set(re.findall(r"#[0-9a-fA-F]{6}", css))
 
     for foreground, background in (
-        ("#172126", "#f3f5f6"),
-        ("#53646c", "#f3f5f6"),
-        ("#176b68", "#ffffff"),
-        ("#72551c", "#ffffff"),
-        ("#a53636", "#ffffff"),
-        ("#edf3f4", "#101719"),
-        ("#adbdc2", "#101719"),
-        ("#61c5bd", "#182225"),
-        ("#e8c676", "#182225"),
-        ("#ff9999", "#182225"),
+        ("#d9e0e8", "#07101b"),
+        ("#98a8ba", "#07101b"),
+        ("#f1f4f7", "#0b1725"),
+        ("#77a5d4", "#0b1725"),
+        ("#789f91", "#0b1725"),
+        ("#d9bb72", "#0b1725"),
+        ("#e38d9a", "#0b1725"),
+        ("#84b3dd", "#0b1725"),
+        ("#07101b", "#77a5d4"),
     ):
         assert contrast(foreground, background) >= 4.5
 
-    for focus, surface in (("#c94911", "#ffffff"), ("#ff9b70", "#182225")):
+    for focus, surface in (("#a7caf0", "#07101b"), ("#a7caf0", "#0b1725")):
         assert contrast(focus, surface) >= 3

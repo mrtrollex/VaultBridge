@@ -27,6 +27,14 @@ function setText(element, value) {
   element.textContent = String(value);
 }
 
+function setStatusTone(element, tone) {
+  if (tone === null) {
+    delete element.dataset.statusTone;
+    return;
+  }
+  element.dataset.statusTone = tone;
+}
+
 function isHealthPayload(value) {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     return false;
@@ -102,13 +110,26 @@ function renderHealth(health) {
   overallStatus.dataset.overviewState = overviewState;
   setText(overallStatus, overviewLabels[overviewState]);
   setText(applicationHealth, displayBoolean(health.ok, "Healthy", "Not healthy"));
+  setStatusTone(applicationHealth, health.ok ? "success" : "error");
   setText(vaultAvailable, displayBoolean(health.vault_exists, "Yes", "No"));
+  setStatusTone(vaultAvailable, health.vault_exists ? "success" : "error");
   setText(vaultNotes, countFormatter.format(health.vault_notes));
   setText(semanticIndexState, displayIndexState(health.semantic_index_state));
+  setStatusTone(semanticIndexState, {
+    ready: "success",
+    indexing: "info",
+    uninitialized: "warning",
+    error: "error",
+  }[health.semantic_index_state]);
   setText(semanticIndexReady, displayBoolean(health.semantic_index_ready, "Yes", "No"));
+  setStatusTone(semanticIndexReady, health.semantic_index_ready ? "success" : "warning");
   setText(
     semanticSearchAvailable,
     displayBoolean(health.semantic_search_available, "Available", "Unavailable"),
+  );
+  setStatusTone(
+    semanticSearchAvailable,
+    health.semantic_search_available ? "success" : "error",
   );
   setText(indexedNotes, countFormatter.format(health.indexed_notes));
   setText(semanticChunks, countFormatter.format(health.semantic_chunks));
@@ -117,7 +138,9 @@ function renderHealth(health) {
     semanticIndexerRunning,
     displayBoolean(health.semantic_indexer_running, "Running", "Stopped"),
   );
+  setStatusTone(semanticIndexerRunning, health.semantic_indexer_running ? "info" : null);
   setText(fullSyncRequired, displayBoolean(health.full_sync_required, "Yes", "No"));
+  setStatusTone(fullSyncRequired, health.full_sync_required ? "warning" : "success");
 
   overviewContent.hidden = false;
   overviewContent.setAttribute("aria-busy", "false");
@@ -146,6 +169,7 @@ function resetHealthValues() {
     fullSyncRequired,
   ]) {
     setText(element, "Not available");
+    setStatusTone(element, null);
   }
   lastSuccessfulSync.removeAttribute("datetime");
   setText(lastSuccessfulSync, "Not available");

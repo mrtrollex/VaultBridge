@@ -20,6 +20,7 @@ const scoreFormatter = new Intl.NumberFormat(undefined, {
 
 let authenticatedFetch;
 let onAuthenticationRequired;
+let accessState = "checking-session";
 let unlocked = false;
 let selectedMode = "literal";
 let requestGeneration = 0;
@@ -50,9 +51,32 @@ function abortActiveSearch() {
   submitButton.disabled = !unlocked;
 }
 
-function setStatus(state, message) {
+function setStatus(state, message, visible = true) {
+  searchStatus.hidden = !visible;
   searchStatus.dataset.searchState = state;
   setText(searchStatus, message);
+}
+
+function renderAccessState() {
+  if (accessState === "unlocked") {
+    searchAccessState.hidden = true;
+    setStatus("idle", "Ready to search.");
+    return;
+  }
+
+  searchAccessState.hidden = false;
+  if (accessState === "checking-session") {
+    setText(searchAccessState, "Protected search is unavailable while access is checked.");
+    setStatus("checking", "Checking protected access…");
+    return;
+  }
+  if (accessState === "unavailable") {
+    setText(searchAccessState, "Protected search is temporarily unavailable.");
+    setStatus("error", "Protected access could not be confirmed.");
+    return;
+  }
+  setText(searchAccessState, "Protected search requires unlock.");
+  setStatus("locked", "", false);
 }
 
 function resetProtectedState() {
@@ -83,7 +107,7 @@ function switchMode(mode) {
   abortActiveSearch();
   clearResults();
   applyMode(mode);
-  setStatus(unlocked ? "idle" : "locked", unlocked ? "Ready to search." : "Search is locked.");
+  renderAccessState();
 }
 
 function isObject(value) {
@@ -155,17 +179,16 @@ function renderResult(result, mode, index) {
   }
   appendTextElement(heading, "h3", "", result.title);
   item.appendChild(heading);
-  appendTextElement(item, "p", "search-result__path", result.path);
-
-  if (mode === "semantic" && result.heading) {
-    appendTextElement(item, "p", "search-result__context", `Heading: ${result.heading}`);
-  }
   appendTextElement(
     item,
     "p",
     result.snippet ? "search-result__snippet" : "search-result__snippet muted",
     result.snippet || "No snippet available.",
   );
+  if (mode === "semantic" && result.heading) {
+    appendTextElement(item, "p", "search-result__context", `Heading: ${result.heading}`);
+  }
+  appendTextElement(item, "p", "search-result__path", result.path);
 
   if (mode === "semantic") {
     appendSemanticScores(item, result);
@@ -304,18 +327,16 @@ export function initializeSearch(options) {
   onAuthenticationRequired = options.onAuthenticationRequired;
   applyMode("literal");
   return {
-    setUnlocked(value) {
-      unlocked = value;
+    setAccessState(value) {
+      accessState = value;
+      unlocked = accessState === "unlocked";
       searchFieldset.disabled = !unlocked;
       if (!unlocked) {
         resetProtectedState();
-        setText(searchAccessState, "Unlock the dashboard to use protected search.");
-        setStatus("locked", "Search is locked.");
-        return;
+      } else {
+        submitButton.disabled = false;
       }
-      submitButton.disabled = false;
-      setText(searchAccessState, "Protected search is ready.");
-      setStatus("idle", "Ready to search.");
+      renderAccessState();
     },
   };
 }

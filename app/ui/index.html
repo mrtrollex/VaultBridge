@@ -12,10 +12,20 @@
     <a class="skip-link" href="#dashboard-content">Skip to dashboard content</a>
 
     <header class="app-header">
-      <div class="app-header__identity">
-        <p class="eyebrow">Operator console</p>
-        <h1>VaultBridge</h1>
-        <p class="app-header__summary">Local-first access to your Obsidian knowledge base.</p>
+      <div class="app-header__brand">
+        <span class="brand-mark" aria-hidden="true">
+          <img
+            class="brand-mark__image"
+            src="assets/vaultbridge-logo.webp"
+            alt=""
+            width="800"
+            height="800"
+          >
+        </span>
+        <div class="app-header__identity">
+          <h1>VaultBridge</h1>
+          <p class="app-header__summary">Local-first access to your Obsidian knowledge base.</p>
+        </div>
       </div>
 
       <div class="session-summary" aria-label="Authentication status">
@@ -26,24 +36,31 @@
 
     <nav class="app-navigation" aria-label="Dashboard areas">
       <button id="nav-overview" class="nav-button" type="button" aria-controls="overview-panel" aria-current="page">
-        Overview
+        <span class="nav-button__index" aria-hidden="true">01</span>
+        <span>Overview</span>
       </button>
       <button id="nav-search" class="nav-button" type="button" aria-controls="search-panel">
-        Search
+        <span class="nav-button__index" aria-hidden="true">02</span>
+        <span>Search</span>
       </button>
       <button id="nav-api" class="nav-button" type="button" aria-controls="api-panel">
-        API / Integration
+        <span class="nav-button__index" aria-hidden="true">03</span>
+        <span>API / Integration</span>
       </button>
       <button id="nav-about" class="nav-button" type="button" aria-controls="about-panel">
-        About
+        <span class="nav-button__index" aria-hidden="true">04</span>
+        <span>About</span>
       </button>
     </nav>
 
     <main id="dashboard-content" tabindex="-1">
       <section class="session-card" aria-labelledby="unlock-heading">
         <div class="session-copy">
-          <h2 id="unlock-heading">Dashboard access</h2>
-          <p id="checking-session">Protected features remain locked until the saved credential is validated.</p>
+          <p class="eyebrow">Protected access</p>
+          <h2 id="unlock-heading">Restoring protected access</h2>
+          <div id="global-status" class="global-status" role="status" aria-live="polite" aria-atomic="true">
+            Checking for a saved dashboard session.
+          </div>
         </div>
 
         <form id="unlock-form" class="unlock-form" hidden>
@@ -68,15 +85,11 @@
         <button id="retry-session-button" class="primary-button" type="button" hidden>Retry session validation</button>
       </section>
 
-      <div id="global-status" class="global-status" role="status" aria-live="polite" aria-atomic="true">
-        Checking for a saved dashboard session.
-      </div>
-
       <section id="overview-panel" class="dashboard-panel" aria-labelledby="overview-heading">
         <div class="panel-heading overview-heading">
-          <div>
+          <div class="panel-heading__title">
             <p class="eyebrow">Workspace</p>
-            <h2 id="overview-heading">VaultBridge Overview</h2>
+            <h2 id="overview-heading">Overview</h2>
           </div>
           <button id="refresh-overview-button" class="secondary-button" type="button" disabled>
             Refresh
@@ -105,92 +118,88 @@
             </dl>
           </section>
 
-          <section class="overview-card overview-card--vault" aria-labelledby="vault-status-heading">
-            <h3 id="vault-status-heading">Vault</h3>
-            <dl class="status-list">
-              <div>
-                <dt>Available</dt>
-                <dd id="vault-available">Not available</dd>
-              </div>
-              <div>
-                <dt>Notes</dt>
-                <dd id="vault-notes">Not available</dd>
-              </div>
-            </dl>
-          </section>
-
-          <section class="overview-card overview-card--semantic" aria-labelledby="semantic-status-heading">
-            <h3 id="semantic-status-heading">Semantic index</h3>
-            <dl class="status-list">
-              <div>
-                <dt>State</dt>
-                <dd id="semantic-index-state">Not available</dd>
-              </div>
-              <div>
-                <dt>Ready</dt>
-                <dd id="semantic-index-ready">Not available</dd>
-              </div>
-              <div>
-                <dt>Search</dt>
-                <dd id="semantic-search-available">Not available</dd>
-              </div>
+          <section class="overview-card overview-card--metrics" aria-labelledby="knowledge-metrics-heading">
+            <h3 id="knowledge-metrics-heading">Knowledge index</h3>
+            <dl class="metric-list">
               <div>
                 <dt>Indexed notes</dt>
                 <dd id="indexed-notes">Not available</dd>
               </div>
               <div>
-                <dt>Chunks</dt>
+                <dt>Semantic chunks</dt>
                 <dd id="semantic-chunks">Not available</dd>
               </div>
-              <div>
+              <div class="metric-list__sync">
                 <dt>Last successful sync</dt>
                 <dd><time id="last-successful-sync">Not available</time></dd>
               </div>
             </dl>
           </section>
 
-          <section class="overview-card overview-card--indexer" aria-labelledby="indexer-status-heading">
-            <h3 id="indexer-status-heading">Background indexing</h3>
-            <dl class="status-list">
-              <div>
-                <dt>Background indexer</dt>
-                <dd id="semantic-indexer-running">Not available</dd>
-              </div>
-              <div>
-                <dt>Full sync required</dt>
-                <dd id="full-sync-required">Not available</dd>
-              </div>
-            </dl>
-          </section>
+          <div class="overview-secondary" aria-label="Technical health details">
+            <section class="overview-card overview-card--vault" aria-labelledby="vault-status-heading">
+              <h3 id="vault-status-heading">Vault</h3>
+              <dl class="status-list status-list--technical">
+                <div>
+                  <dt>Available</dt>
+                  <dd id="vault-available">Not available</dd>
+                </div>
+                <div>
+                  <dt>Vault notes</dt>
+                  <dd id="vault-notes">Not available</dd>
+                </div>
+              </dl>
+            </section>
+
+            <section class="overview-card overview-card--semantic" aria-labelledby="semantic-status-heading">
+              <h3 id="semantic-status-heading">Semantic lifecycle</h3>
+              <dl class="status-list status-list--technical">
+                <div>
+                  <dt>State</dt>
+                  <dd id="semantic-index-state">Not available</dd>
+                </div>
+                <div>
+                  <dt>Ready</dt>
+                  <dd id="semantic-index-ready">Not available</dd>
+                </div>
+                <div>
+                  <dt>Search</dt>
+                  <dd id="semantic-search-available">Not available</dd>
+                </div>
+              </dl>
+            </section>
+
+            <section class="overview-card overview-card--indexer" aria-labelledby="indexer-status-heading">
+              <h3 id="indexer-status-heading">Background indexing</h3>
+              <dl class="status-list status-list--technical">
+                <div>
+                  <dt>Background indexer</dt>
+                  <dd id="semantic-indexer-running">Not available</dd>
+                </div>
+                <div>
+                  <dt>Full sync required</dt>
+                  <dd id="full-sync-required">Not available</dd>
+                </div>
+              </dl>
+            </section>
+          </div>
         </div>
       </section>
 
       <section id="search-panel" class="dashboard-panel" aria-labelledby="search-heading" hidden>
         <div class="panel-heading">
-          <p class="eyebrow">Knowledge retrieval</p>
-          <h2 id="search-heading">Search</h2>
+          <div class="panel-heading__title">
+            <p class="eyebrow">Knowledge retrieval</p>
+            <h2 id="search-heading">Search</h2>
+          </div>
         </div>
 
         <p id="search-access-state" class="search-access-state">
-          Unlock the dashboard to use protected search.
+          Protected search is unavailable while access is checked.
         </p>
 
         <form id="search-form" class="search-form">
           <fieldset id="search-fieldset" class="search-fieldset" disabled>
-            <fieldset class="search-mode-group">
-              <legend>Search mode</legend>
-              <div class="search-mode-selector">
-                <label>
-                  <input id="search-mode-literal" type="radio" name="search-mode" value="literal" checked>
-                  <span>Literal</span>
-                </label>
-                <label>
-                  <input id="search-mode-semantic" type="radio" name="search-mode" value="semantic">
-                  <span>Semantic</span>
-                </label>
-              </div>
-            </fieldset>
-
             <div class="search-fields">
               <div class="field-group search-field--query">
                 <label for="search-query">Query</label>
@@ -207,41 +216,59 @@
                 <p id="search-query-help" class="field-help">Search note titles and contents literally.</p>
               </div>
 
-              <div class="field-group">
-                <label for="search-folder">Folder <span class="muted">(optional)</span></label>
-                <input
-                  id="search-folder"
-                  name="folder"
-                  type="text"
-                  maxlength="500"
-                  autocomplete="off"
-                  spellcheck="false"
-                  aria-describedby="search-folder-help"
-                >
-                <p id="search-folder-help" class="field-help">Vault-relative folder path.</p>
-              </div>
+              <div class="search-controls">
+                <fieldset class="search-mode-group">
+                  <legend>Search mode</legend>
+                  <div class="search-mode-selector">
+                    <label>
+                      <input id="search-mode-literal" type="radio" name="search-mode" value="literal" checked>
+                      <span>Literal</span>
+                    </label>
+                    <label>
+                      <input id="search-mode-semantic" type="radio" name="search-mode" value="semantic">
+                      <span>Semantic</span>
+                    </label>
+                  </div>
+                </fieldset>
 
-              <div class="field-group search-field--number">
-                <label for="search-limit">Limit</label>
-                <input id="search-limit" name="limit" type="number" min="1" max="50" value="10" required>
-              </div>
+                <div class="search-refinements" aria-label="Optional search refinements">
+                  <div class="field-group">
+                    <label for="search-folder">Folder <span class="muted">(optional)</span></label>
+                    <input
+                      id="search-folder"
+                      name="folder"
+                      type="text"
+                      maxlength="500"
+                      autocomplete="off"
+                      spellcheck="false"
+                      aria-describedby="search-folder-help"
+                    >
+                    <p id="search-folder-help" class="field-help">Vault-relative folder path.</p>
+                  </div>
 
-              <div id="semantic-score-field" class="field-group search-field--number" hidden>
-                <label for="search-min-score">Minimum semantic score</label>
-                <input
-                  id="search-min-score"
-                  name="min-score"
-                  type="number"
-                  min="-1"
-                  max="1"
-                  step="0.01"
-                  value="0.28"
-                  aria-describedby="search-min-score-help"
-                  required
-                >
-                <p id="search-min-score-help" class="field-help">
-                  Applied by the existing semantic API before results are returned.
-                </p>
+                  <div class="field-group search-field--number">
+                    <label for="search-limit">Limit</label>
+                    <input id="search-limit" name="limit" type="number" min="1" max="50" value="10" required>
+                  </div>
+
+                  <div id="semantic-score-field" class="field-group search-field--number" hidden>
+                    <label for="search-min-score">Minimum semantic score</label>
+                    <input
+                      id="search-min-score"
+                      name="min-score"
+                      type="number"
+                      min="-1"
+                      max="1"
+                      step="0.01"
+                      value="0.28"
+                      aria-describedby="search-min-score-help"
+                      required
+                    >
+                    <p id="search-min-score-help" class="field-help">
+                      Applied by the existing semantic API before results are returned.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -252,44 +279,71 @@
         <div
           id="search-status"
           class="search-status"
+          data-search-state="checking"
           role="status"
           aria-live="polite"
           aria-atomic="true"
         >
-          Search is locked.
+          Checking protected access…
         </div>
         <ol id="search-results" class="search-results" aria-label="Search results"></ol>
       </section>
 
       <section id="api-panel" class="dashboard-panel" aria-labelledby="api-heading" hidden>
         <div class="panel-heading">
-          <p class="eyebrow">Client connection</p>
-          <h2 id="api-heading">API / Integration</h2>
-        </div>
-        <div class="information-grid">
-          <div class="information-card">
-            <h3>Application base</h3>
-            <p id="application-base">Derived from this dashboard address.</p>
-          </div>
-          <div class="information-card">
-            <h3>Preferred namespace</h3>
-            <p><code>/api/v1</code></p>
-          </div>
-          <div class="information-card">
-            <h3>Authentication</h3>
-            <p>Bearer API key</p>
+          <div class="panel-heading__title">
+            <p class="eyebrow">Client connection</p>
+            <h2 id="api-heading">API / Integration</h2>
           </div>
         </div>
+        <dl class="integration-reference">
+          <div>
+            <dt>Application base</dt>
+            <dd id="application-base">Derived from this dashboard address.</dd>
+          </div>
+          <div>
+            <dt>Preferred namespace</dt>
+            <dd><code>/api/v1</code></dd>
+          </div>
+          <div>
+            <dt>Authentication</dt>
+            <dd>Bearer API key</dd>
+          </div>
+        </dl>
       </section>
 
       <section id="about-panel" class="dashboard-panel" aria-labelledby="about-heading" hidden>
         <div class="panel-heading">
-          <p class="eyebrow">Project</p>
-          <h2 id="about-heading">About VaultBridge</h2>
+          <div class="panel-heading__title">
+            <p class="eyebrow">Project</p>
+            <h2 id="about-heading">About VaultBridge</h2>
+          </div>
         </div>
-        <div class="placeholder-card">
-          <p>Self-hosted REST and semantic search API for Obsidian vaults.</p>
-          <p>Markdown remains the source of truth.</p>
+        <div class="about-introduction">
+          <p>VaultBridge is a self-hosted REST and semantic retrieval bridge for Obsidian vaults.</p>
+          <p>It keeps durable knowledge in Markdown while giving trusted clients a small, stable access layer.</p>
+        </div>
+        <div class="principles-grid">
+          <section>
+            <p class="eyebrow">Local first</p>
+            <h3>Your vault stays usable on its own.</h3>
+            <p>Markdown remains the source of truth, and semantic data can be rebuilt from it.</p>
+          </section>
+          <section>
+            <p class="eyebrow">API first</p>
+            <h3>One interface, many clients.</h3>
+            <p>The dashboard, scripts, AI clients, and other integrations use the same protected API.</p>
+          </section>
+          <section>
+            <p class="eyebrow">Self hosted</p>
+            <h3>Knowledge stays under operator control.</h3>
+            <p>VaultBridge runs beside the vault and uses local embeddings by default.</p>
+          </section>
+          <section>
+            <p class="eyebrow">Deliberately small</p>
+            <h3>Access without replacing Obsidian.</h3>
+            <p>Retrieval and safe note operations extend the vault without turning it into a proprietary store.</p>
+          </section>
         </div>
       </section>
     </main>

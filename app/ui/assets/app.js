@@ -7,7 +7,7 @@ const SESSION_STATES = ["checking-session", "locked", "unlocked", "unavailable"]
 const body = document.body;
 const sessionCard = document.querySelector(".session-card");
 const sessionState = document.querySelector("#session-state");
-const checkingSession = document.querySelector("#checking-session");
+const unlockHeading = document.querySelector("#unlock-heading");
 const unlockForm = document.querySelector("#unlock-form");
 const apiKeyInput = document.querySelector("#api-key");
 const unlockButton = document.querySelector("#unlock-button");
@@ -99,7 +99,6 @@ function setSessionState(state, message, hasStoredCredential = false) {
   const unlocked = state === "unlocked";
   const checking = state === "checking-session";
   sessionCard.hidden = unlocked;
-  checkingSession.hidden = !checking;
   logoutButton.hidden = !unlocked;
   retrySessionButton.hidden = state !== "unavailable" || !hasStoredCredential;
   unlockForm.hidden = checking || unlocked || (state === "unavailable" && hasStoredCredential);
@@ -111,8 +110,12 @@ function setSessionState(state, message, hasStoredCredential = false) {
     unavailable: "Unavailable",
   };
   setText(sessionState, labels[state]);
+  setText(
+    unlockHeading,
+    checking && hasStoredCredential ? "Restoring protected access" : "Unlock protected features",
+  );
   setText(globalStatus, message);
-  searchController?.setUnlocked(unlocked);
+  searchController?.setAccessState(state);
 }
 
 function invalidateProtectedRequests() {
@@ -325,7 +328,7 @@ retrySessionButton.addEventListener("click", () => {
     return;
   }
   retrySessionButton.disabled = true;
-  setSessionState("checking-session", "Revalidating the saved session.");
+  setSessionState("checking-session", "Revalidating the saved session.", true);
   void validateCredential(storedCredential.value, true, true);
 });
 
