@@ -29,7 +29,7 @@
       </div>
 
       <div class="session-summary" aria-label="Authentication status">
-        <span id="session-state" class="state-badge">Checking session</span>
+        <span id="session-state" class="state-badge">CHECKING SESSION</span>
         <button id="logout-button" class="secondary-button" type="button" hidden>Logout</button>
       </div>
     </header>
@@ -54,37 +54,6 @@
     </nav>
 
     <main id="dashboard-content" tabindex="-1">
-      <section class="session-card" aria-labelledby="unlock-heading">
-        <div class="session-copy">
-          <p class="eyebrow">Protected access</p>
-          <h2 id="unlock-heading">Restoring protected access</h2>
-          <div id="global-status" class="global-status" role="status" aria-live="polite" aria-atomic="true">
-            Checking for a saved dashboard session.
-          </div>
-        </div>
-
-        <form id="unlock-form" class="unlock-form" hidden>
-          <div class="field-group">
-            <label for="api-key">API key</label>
-            <input
-              id="api-key"
-              name="api-key"
-              type="password"
-              autocomplete="current-password"
-              autocapitalize="none"
-              spellcheck="false"
-              aria-describedby="api-key-help"
-              aria-errormessage="global-status"
-              required
-            >
-            <p id="api-key-help" class="field-help">Used only for this VaultBridge origin and browser tab session.</p>
-          </div>
-          <button id="unlock-button" class="primary-button" type="submit">Unlock</button>
-        </form>
-
-        <button id="retry-session-button" class="primary-button" type="button" hidden>Retry session validation</button>
-      </section>
-
       <section id="overview-panel" class="dashboard-panel" aria-labelledby="overview-heading">
         <div class="panel-heading overview-heading">
           <div class="panel-heading__title">
@@ -194,13 +163,17 @@
           </div>
         </div>
 
-        <p id="search-access-state" class="search-access-state">
-          Protected search is unavailable while access is checked.
-        </p>
+        <div id="search-workspace">
+          <div id="search-access-state" class="search-access-state">
+            <p id="search-access-message">Checking protected access…</p>
+            <button id="search-access-action" class="inline-action" type="button" hidden>
+              Unlock in API / Integration →
+            </button>
+          </div>
 
-        <form id="search-form" class="search-form">
-          <fieldset id="search-fieldset" class="search-fieldset" disabled>
-            <div class="search-fields">
+          <form id="search-form" class="search-form">
+            <fieldset id="search-fieldset" class="search-fieldset" disabled>
+              <div class="search-fields">
               <div class="field-group search-field--query">
                 <label for="search-query">Query</label>
                 <input
@@ -270,23 +243,48 @@
                   </div>
                 </div>
               </div>
-            </div>
+              </div>
 
-            <button id="search-submit" class="primary-button" type="submit">Search notes</button>
-          </fieldset>
-        </form>
+              <button id="search-submit" class="primary-button" type="submit">Search notes</button>
+            </fieldset>
+          </form>
 
-        <div
-          id="search-status"
-          class="search-status"
-          data-search-state="checking"
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
-        >
-          Checking protected access…
+          <div
+            id="search-status"
+            class="search-status"
+            data-search-state="checking"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            hidden
+          ></div>
+          <ol id="search-results" class="search-results" aria-label="Search results"></ol>
         </div>
-        <ol id="search-results" class="search-results" aria-label="Search results"></ol>
+
+        <section
+          id="note-reader"
+          class="note-reader"
+          aria-labelledby="note-reader-title"
+          tabindex="-1"
+          hidden
+        >
+          <button id="note-reader-back" class="secondary-button note-reader__back" type="button">
+            ← Back to results
+          </button>
+          <header class="note-reader__header">
+            <p class="eyebrow">Read-only note</p>
+            <h3 id="note-reader-title">Note</h3>
+            <p id="note-reader-path" class="note-reader__path"></p>
+          </header>
+          <div
+            id="note-reader-status"
+            class="note-reader__status"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          ></div>
+          <pre id="note-reader-content" class="note-reader__content" hidden></pre>
+        </section>
       </section>
 
       <section id="api-panel" class="dashboard-panel" aria-labelledby="api-heading" hidden>
@@ -296,6 +294,48 @@
             <h2 id="api-heading">API / Integration</h2>
           </div>
         </div>
+
+        <section class="session-card" aria-labelledby="unlock-heading">
+          <div class="session-copy">
+            <p class="eyebrow">Protected access</p>
+            <h3 id="unlock-heading">Restoring protected access</h3>
+            <div id="global-status" class="global-status" role="status" aria-live="polite" aria-atomic="true">
+              Checking for a saved dashboard session.
+            </div>
+          </div>
+
+          <form id="unlock-form" class="unlock-form" hidden>
+            <div class="field-group">
+              <label for="api-key">API key</label>
+              <input
+                id="api-key"
+                name="api-key"
+                type="password"
+                autocomplete="current-password"
+                autocapitalize="none"
+                spellcheck="false"
+                aria-describedby="api-key-help"
+                aria-errormessage="global-status"
+                required
+              >
+              <p id="api-key-help" class="field-help">
+                Used only for this VaultBridge origin and browser-tab session.
+              </p>
+            </div>
+            <button id="unlock-button" class="primary-button" type="submit">Unlock</button>
+          </form>
+
+          <button id="retry-session-button" class="primary-button" type="button" hidden>
+            Retry session validation
+          </button>
+
+          <div id="authenticated-session" class="authenticated-session" hidden>
+            <span>Protected requests are available for this browser-tab session.</span>
+            <button id="api-logout-button" class="secondary-button" type="button">Logout</button>
+          </div>
+        </section>
+
+        <h3 class="integration-reference-heading">Connection reference</h3>
         <dl class="integration-reference">
           <div>
             <dt>Application base</dt>

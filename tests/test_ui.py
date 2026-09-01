@@ -227,6 +227,16 @@ def test_html_shell_is_semantic_accessible_and_uses_only_local_assets(tmp_path):
         if tag == "section"
     } >= {"overview-panel", "search-panel", "api-panel", "about-panel"}
 
+    overview_panel = html[html.index('<section id="overview-panel"') : html.index('<section id="search-panel"')]
+    search_panel = html[html.index('<section id="search-panel"') : html.index('<section id="api-panel"')]
+    api_panel = html[html.index('<section id="api-panel"') : html.index('<section id="about-panel"')]
+    about_panel = html[html.index('<section id="about-panel"') :]
+    assert 'id="api-key"' not in overview_panel
+    assert 'id="api-key"' not in search_panel
+    assert 'id="api-key"' in api_panel
+    assert 'id="api-key"' not in about_panel
+    assert api_panel.count('id="api-key"') == 1
+
     scripts = [attrs for tag, attrs in elements if tag == "script"]
     stylesheets = [attrs for tag, attrs in elements if tag == "link" and attrs.get("rel") == "stylesheet"]
     assert scripts == [{"type": "module", "src": "assets/app.js"}]
@@ -302,7 +312,6 @@ def test_search_replaces_placeholder_with_protected_accessible_retrieval_form(tm
 
     assert "future search workspace" not in html
     assert "reserved for VB-073" not in html
-    assert "Protected search is unavailable while access is checked." in html
     assert "Checking protected access…" in html
     assert 'data-search-state="checking"' in html
     assert "Ready to search." not in html
@@ -356,6 +365,11 @@ def test_search_replaces_placeholder_with_protected_accessible_retrieval_form(tm
         for _tag, attrs in elements
         if attrs.get("id") == "search-status"
     ] == ["polite"]
+    assert 'id="search-access-action"' in html
+    assert "Unlock in API / Integration →" in html
+    assert 'id="note-reader"' in html
+    assert 'id="note-reader-back"' in html
+    assert 'id="note-reader-content"' in html
 
 
 def test_section_headings_share_vertical_accent_title_structure(tmp_path):
@@ -370,6 +384,28 @@ def test_section_headings_share_vertical_accent_title_structure(tmp_path):
     ):
         assert f'<p class="eyebrow">{eyebrow}</p>' in html
         assert f">{heading}</h2>" in html
+
+
+def test_session_badge_and_api_only_unlock_share_one_state_model(tmp_path):
+    client = client_for(tmp_path)
+    html = client.get("/ui/").text
+    script = client.get("/ui/assets/app.js").text
+    css = client.get("/ui/assets/app.css").text
+
+    assert html.count('id="session-state"') == 1
+    assert html.count('id="api-key"') == 1
+    assert html.index('id="api-panel"') < html.index('id="api-key"') < html.index('id="about-panel"')
+    assert '"checking-session": "CHECKING SESSION"' in script
+    assert 'locked: "LOCKED"' in script
+    assert 'unlocked: "UNLOCKED"' in script
+    assert "Ready — unlocked" not in script
+    assert "sessionCard.dataset.sessionState = state" in script
+    assert "authenticatedSession.hidden = !unlocked" in script
+    assert "unlockForm.hidden = checking || unlocked" in script
+    assert 'const apiLogoutButton = document.querySelector("#api-logout-button")' in script
+    assert 'min-width: 10.75rem' in css
+    assert ".state-unlocked .state-badge" in css
+    assert "color: var(--success)" in css
 
 
 def test_product_polish_uses_reference_and_principle_structures(tmp_path):
@@ -547,8 +583,14 @@ def test_javascript_implements_session_auth_status_and_safe_rendering_contract(t
     assert 'import { initializeSearch } from "./search.js"' in script
     assert "searchController = initializeSearch({" in script
     assert "searchController?.setAccessState(state)" in script
+    assert "searchController?.deactivate()" in script
     assert 'const unlockHeading = document.querySelector("#unlock-heading")' in script
-    assert 'checking && hasStoredCredential ? "Restoring protected access" : "Unlock protected features"' in script
+    assert '? "Restoring protected access"' in script
+    assert ': "Unlock protected features"' in script
+    assert '"checking-session": "CHECKING SESSION"' in script
+    assert 'locked: "LOCKED"' in script
+    assert 'unlocked: "UNLOCKED"' in script
+    assert "Ready — unlocked" not in script
     assert 'const SESSION_STORAGE_KEY = "vaultbridge.ui.apiKey"' in script
     assert "sessionStorage.getItem(SESSION_STORAGE_KEY)" in script
     assert "sessionStorage.setItem(SESSION_STORAGE_KEY, credential)" in script
@@ -629,7 +671,8 @@ def test_search_javascript_maps_exact_protected_request_contracts_without_rerank
         assert field in script
     assert "results.forEach((result, index)" in script
     assert ".sort(" not in script
-    assert "api/v1/notes/read" not in script
+    assert '`api/v1/notes/read?path=${encodeURIComponent(result.path)}`' in script
+    assert '{ method: "GET", headers: { Accept: "application/json" }, signal: controller.signal }' in script
     assert "api/v1/notes/duplicates" not in script
     assert '["Combined score", result.score]' in script
     assert '["Semantic score", result.semantic_score]' in script
@@ -650,13 +693,13 @@ def test_search_javascript_has_private_safe_lifecycle_and_error_contract(tmp_pat
     assert 'setStatus("error"' in script
     assert 'let accessState = "checking-session"' in script
     assert 'setAccessState(value)' in script
-    assert 'setStatus("checking", "Checking protected access…")' in script
-    assert 'setStatus("locked", "", false)' in script
+    assert 'setText(searchAccessMessage, "Checking protected access…")' in script
+    assert 'setStatus(accessState === "checking-session" ? "checking" : "locked", "", false)' in script
     assert 'searchStatus.hidden = !visible' in script
     assert "Search is locked." not in script
     assert 'setStatus("idle", "Ready to search.")' in script
-    assert 'setText(searchAccessState, "Protected search is unavailable while access is checked.")' in script
-    assert 'setText(searchAccessState, "Protected search requires unlock.")' in script
+    assert 'setText(searchAccessMessage, "Protected search requires unlock.")' in script
+    assert 'setText(searchAccessAction, "Unlock in API / Integration →")' in script
     assert "submitButton.disabled = true" in script
     assert "Semantic search is currently unavailable. Literal search remains available." in script
     assert "Rate limit reached. Retry in" in script
@@ -682,6 +725,57 @@ def test_search_javascript_has_private_safe_lifecycle_and_error_contract(tmp_pat
         "setInterval(",
         "setTimeout(",
         "console.",
+    ):
+        assert prohibited not in script
+
+
+def test_note_reader_uses_existing_read_endpoint_and_text_only_lifecycle(tmp_path):
+    client = client_for(tmp_path)
+    script = client.get("/ui/assets/search.js").text
+    app_script = client.get("/ui/assets/app.js").text
+    hostile_content = "# Safe title\n\n<script>alert(1)</script>\n<img src=x onerror=alert(2)>"
+    (tmp_path / "Hostile.md").write_text(hostile_content, encoding="utf-8")
+
+    response = client.get(
+        "/api/v1/notes/read",
+        params={"path": "Hostile.md"},
+        headers={"Authorization": "Bearer test-secret"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"path": "Hostile.md", "content": hostile_content}
+    assert '`api/v1/notes/read?path=${encodeURIComponent(result.path)}`' in script
+    assert 'openButton.type = "button"' in script
+    assert 'openButton.addEventListener("click"' in script
+    assert 'setText(noteReaderContent, payload.content)' in script
+    assert "noteReaderContent.hidden = false" in script
+    assert 'setReaderStatus("loading", "Loading complete note…")' in script
+    assert 'setReaderStatus("ready", "Complete note loaded.")' in script
+    assert 'error.kind === "not-found"' in script
+    assert 'error.kind === "rate-limited"' in script
+    assert 'error.kind === "network"' in script
+    assert 'response.status === 404' in app_script
+    assert "activeNoteController?.abort()" in script
+    assert "generation !== noteRequestGeneration" in script
+    assert "!unlocked || noteReader.hidden" in script
+    assert 'error.kind === "authentication-required"' in script
+    assert "onAuthenticationRequired();" in script
+    assert 'noteReaderBack.addEventListener("click"' in script
+    assert "showSearchWorkspace(true)" in script
+    assert "focusTarget?.isConnected" in script
+    assert "focusTarget.focus()" in script
+    assert "resetProtectedState();" in script
+    assert "showSearchWorkspace(false)" in script
+
+    for prohibited in (
+        "innerHTML",
+        "outerHTML",
+        "insertAdjacentHTML",
+        "document.write",
+        "localStorage",
+        "indexedDB",
+        "history.",
+        "URLSearchParams",
     ):
         assert prohibited not in script
 
