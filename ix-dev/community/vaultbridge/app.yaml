@@ -1,0 +1,33 @@
+app_version: unreleased
+capabilities: []
+categories:
+  - productivity
+changelog_url: https://github.com/mrtrollex/VaultBridge/releases
+description: Self-hosted REST and semantic search bridge for Obsidian Markdown vaults.
+home: https://github.com/mrtrollex/VaultBridge
+host_mounts: []
+icon: https://raw.githubusercontent.com/mrtrollex/VaultBridge/8c4a2c4beb1029e0a93575955aa8c76bf249e341/docs/assets/vaultbridge-logo.webp
+keywords:
+  - obsidian
+  - markdown
+  - notes
+  - semantic-search
+lib_version: 2.3.11
+lib_version_hash: ""
+maintainers:
+  - email: dev@truenas.com
+    name: truenas
+    url: https://www.truenas.com/
+name: vaultbridge
+run_as_context:
+  - description: Container [vaultbridge] can run as any non-root user and group.
+    gid: 568
+    group_name: Host group is [apps]
+    uid: 568
+    user_name: Host user is [apps]
+screenshots: []
+sources:
+  - https://github.com/mrtrollex/VaultBridge
+title: VaultBridge
+train: community
+version: 1.0.0

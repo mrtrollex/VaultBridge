@@ -549,10 +549,10 @@ Milestone exit criteria:
 - [x] no note editor, account system, general file manager, or live index-rebuild mutation is added
 - [x] accessibility, privacy-safe rendering, browser smoke tests, and container verification pass
 
-The remaining implementation gate for Milestone 9 is VB-075: publish and verify a dashboard-capable
-VaultBridge image. The version-neutral VB-080 packaging design may proceed independently, but no
-catalog definition or runtime validation may select an unpublished image; no release version is
-assigned here.
+The remaining release gate for Milestone 9 is VB-075: publish and verify a dashboard-capable
+VaultBridge image. VB-080 defines the version-neutral packaging contract and VB-081 now stages the
+release-neutral catalog source plus static render fixtures. The production image pin and runtime
+validation still may not select an unpublished image; no release version is assigned here.
 
 ---
 
@@ -597,7 +597,7 @@ VB-080 packaging design ✓
    +
 published and verified dashboard-capable VaultBridge image (VB-075)
    ↓
-VB-081 Community App definition
+VB-081 Community App definition (release-neutral source staged; final image pin pending)
    ↓
 VB-082 real TrueNAS install/upgrade/portal validation
    ↓
@@ -607,6 +607,8 @@ VB-083 upstream truenas/apps submission
 Milestone exit criteria:
 
 - [ ] packaging consumes a published VaultBridge GHCR image without rebuilding/forking runtime code
+- [x] release-neutral metadata, questions, Compose template, and focused fixtures statically render
+  through the current upstream library without changing VaultBridge runtime code
 - [x] storage, identity, secret, port, health, portal, resource, upgrade, and rollback contracts are
   documented in [`docs/TRUENAS_COMMUNITY_APP_DESIGN.md`](docs/TRUENAS_COMMUNITY_APP_DESIGN.md)
 - [ ] install, restart, configuration edit, persistence, upgrade, supported rollback, and safe uninstall are verified on real TrueNAS with sanitized evidence
@@ -718,14 +720,15 @@ VB-083
 ```
 
 `v1.0.0` has shipped, and VB-070 through VB-074 complete Milestone 8's dashboard design,
-shell/session, Overview, Search, and final hardening. VB-080 now completes the version-neutral
-Community App packaging design without implementing or publishing it. **VB-075 remains the sole next
-recommended task** and owns publication plus verification of the normal dashboard-capable image
-required before VB-081 implementation and VB-082 runtime validation.
+shell/session, Overview, Search, and final hardening. VB-080 completes the version-neutral Community
+App packaging design, and VB-081 now stages the release-neutral definition and focused render
+fixtures without selecting or publishing an image. **VB-075 remains the sole next recommended
+task** and owns publication plus verification of the normal dashboard-capable image required to
+finalize VB-081's production image metadata and begin VB-082 runtime validation.
 VB-023 remains open P1 retrieval work with its requirements unchanged, but it is not NEXT. VB-032
 and VB-033 remain explicitly deferred/optional, and VB-055 remains optional rather than a dashboard
-prerequisite. Milestone 9 design has begun, but implementation remains gated on VB-075. This plan
-does not assign a release version.
+prerequisite. Milestone 9 definition work has begun, but release finalization and live validation
+remain gated on VB-075. This plan does not assign a release version.
 
 ---
 

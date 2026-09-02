@@ -12,9 +12,10 @@ Versioned GHCR images are an additional distribution artifact. VB-054 does not m
 this known-working TrueNAS source-build deployment.
 
 > **Current availability:** this guide remains the supported Docker/source-built TrueNAS Custom App
-> path. Native TrueNAS Community App catalog packaging and Web Portal integration are planned future
-> work after a bundled VaultBridge Web Dashboard is implemented, released, and verified. VaultBridge
-> is not currently available as an upstream catalog app; do not search Discover Apps for it yet.
+> path. A release-gated Community App definition is being developed under
+> `ix-dev/community/vaultbridge/`, but it has not been submitted or accepted upstream and does not
+> replace this workflow. VaultBridge is not currently available as an upstream catalog app; do not
+> search Discover Apps for it yet.
 
 The installation intentionally retains older identifiers. `ObsidianChatGPT*`, `obsidian-api`, and
 `obsidian-chatgpt` are compatibility names from the working installation, not the public product
