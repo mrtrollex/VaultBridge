@@ -471,8 +471,10 @@ the disposable key, resolved container environment, or a resolved Compose config
 - VB-074 and Milestone 8 are complete based on the combined automated, real-Chrome, and disposable
   TrueNAS evidence recorded here.
 - VaultBridge `v1.1.0` is published and its exact OCI digest is anonymously pullable; VB-081 now pins
-  exact tag `1.1.0`. The full published-image functional gate below remains unevidenced, and VB-082
-  runtime lifecycle validation has not started. This checklist does not create or publish a release.
+  exact tag `1.1.0`. The full published-image functional gate below remains unevidenced. VB-082 is
+  separately in progress / partial validation, with a custom-YAML core runtime/API/UI PASS record and
+  required lifecycle/negative/upgrade/uninstall gates still open. This checklist does not create or
+  publish a release.
 
 ## VB-075 open functional gate: exact published `v1.1.0` dashboard image
 
@@ -568,5 +570,8 @@ or note content, or absolute host path.
 
 Passing this VB-075 exact-image gate completes the remaining functional release evidence. VB-081's
 source image/app metadata is finalized, but official generated/deployable validation remains open.
-VB-082 must separately verify the Community App install/edit/portal/upgrade/rollback/uninstall
-lifecycle on real TrueNAS.
+VB-082 separately records a partial TrueNAS `25.10.6` custom-YAML core runtime/API/UI validation in
+[`TRUENAS_COMMUNITY_APP_DESIGN.md`](TRUENAS_COMMUNITY_APP_DESIGN.md#vb-082-partial-validation-record--2026-09-02).
+That evidence does not prove catalog form/Portal behavior and does not complete the required
+install/edit/upgrade/rollback/uninstall lifecycle. VB-083 remains blocked, and no upstream submission
+has been performed.

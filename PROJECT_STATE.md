@@ -102,8 +102,16 @@ Current post-v1 planning position:
   data fixtures that inherit the released image map with synthetic credentials and paths
 - current upstream `truenas/apps` commit `354e87006de2f49a8a2cd655bce857984a7bd247` still uses library
   `2.3.11`, repository-plus-tag images, and initial package `version: 1.0.0`
-- official Docker-backed rendering/deployment, generated library/hash/catalog artifacts, the final
-  TrueNAS CDN icon URL, and live TrueNAS lifecycle evidence remain open
+- official Docker-backed rendering/deployment, generated library/hash/catalog artifacts, and the final
+  TrueNAS CDN icon URL remain open under VB-081
+- VB-082 is in progress / partial validation: a fresh TrueNAS `25.10.6` custom-YAML install of the
+  exact `v1.1.0` OCI index validated the core runtime/API/UI path; restart/persistence and watcher
+  disabled/enabled behavior are **OPERATOR-CONFIRMED PASS** without retained raw command output
+- VB-082 rotation, port edit/collision, permission-negative, upgrade, rollback, uninstall, ixVolume,
+  and real catalog question/edit/Portal gates remain open; custom-YAML Portal-button absence is
+  **REQUIRES UPSTREAM VERIFICATION**, not a VaultBridge failure
+- the disposable VB-082 API key was exposed during testing and must never be reused outside that
+  disposable environment
 - no upstream TrueNAS Community App exists yet; no submission, merge, or Discover availability is claimed
 - current TrueNAS support remains the documented Docker/source-built Custom App deployment
 - VB-023 remains open P1 retrieval work with unchanged scope, but it is no longer the current next task
@@ -123,9 +131,11 @@ Current `v1.1.0` release status:
   source/revision/version/license labels matched the supplied evidence
 - VB-075 remains incomplete because separate exact-source CI job evidence and its full exact-image
   dashboard/API/CLI/semantic/persistence/safe-log/cleanup runtime gate were not supplied
-- VB-082 has not started; no real TrueNAS Community App lifecycle validation has run
-- VB-083 remains blocked on successful VB-082; no upstream pull request, acceptance, or Discover
-  availability exists
+- VB-082 is in progress / partial validation; captured evidence proves the custom-YAML core
+  runtime/API/UI path, while required lifecycle, negative, upgrade, uninstall, and real catalog UI
+  gates remain deferred
+- VB-083 remains blocked on completion of the required VB-082 gates; no upstream pull request,
+  acceptance, or Discover availability exists
 
 Current v1.0 release status:
 
@@ -158,7 +168,7 @@ Current milestones:
 - **Milestone 6 — Public API and developer experience (complete)**
 - **Milestone 7 — Distribution and `v1.0.0` (complete)**
 - **Milestone 8 — Web Dashboard / operator experience (complete)**
-- **Milestone 9 — TrueNAS Community App distribution (in progress; production image pinned, official package/live gates open)**
+- **Milestone 9 — TrueNAS Community App distribution (in progress; production image pinned, VB-082 partially validated, official package/remaining live gates open)**
 
 ## Working production characteristics
 
