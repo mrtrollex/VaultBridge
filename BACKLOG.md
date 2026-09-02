@@ -995,11 +995,18 @@ packaging design.
 
 ### VB-081 — Implement TrueNAS Community App definition — P1
 
-**Status:** Planned.
+**Status:** In progress as of 2026-09-02. The release-neutral definition, install questions,
+Compose template, documentation, and three focused render fixtures are implemented under
+`ix-dev/community/vaultbridge/`. Current upstream source/schema/question/template validation and
+focused render-invariant checks pass with a fixture-only development image. The production
+`images` map, matching released `app_version`, final generated library/hash/catalog metadata, and
+deployable-image validation remain blocked on VB-075; live TrueNAS lifecycle validation remains
+VB-082. No upstream submission or Discover availability is claimed.
 
 **Goal:** create the catalog packaging approved by VB-080 using current TrueNAS Community App conventions.
 
-**Depends on:** VB-080 plus a published and verified dashboard-capable VaultBridge image.
+**Depends on:** VB-080. Final production image pinning and deployable-definition validation also
+depend on a published and verified dashboard-capable VaultBridge image from VB-075.
 
 **Acceptance criteria**
 

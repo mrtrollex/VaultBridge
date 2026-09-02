@@ -1,0 +1,48 @@
+# Development-only images for static VB-081 rendering. The VaultBridge tag is
+# intentionally not a released or deployable version and must never be submitted.
+images:
+  image:
+    repository: ghcr.io/mrtrollex/vaultbridge
+    tag: 0.0.0-vb081-development-placeholder
+  container_utils_image:
+    repository: ixsystems/container-utils
+    tag: 1.0.2
+
+vaultbridge:
+  api_key: vb081-development-placeholder-not-a-secret
+  api_key_previous: ""
+  watch_enabled: false
+  watch_debounce_seconds: 1
+
+run_as:
+  user: 568
+  group: 568
+
+network:
+  web_port:
+    bind_mode: published
+    port_number: 8765
+    host_ips: []
+  networks: []
+
+storage:
+  vault:
+    type: host_path
+    read_only: false
+    host_path_config:
+      acl_enable: false
+      auto_permissions: false
+      path: /opt/tests/mnt/vaultbridge/vault
+  data:
+    type: host_path
+    host_path_config:
+      acl_enable: false
+      auto_permissions: false
+      path: /opt/tests/mnt/vaultbridge/data-host-path
+
+labels: []
+
+resources:
+  limits:
+    cpus: 2
+    memory: 4096

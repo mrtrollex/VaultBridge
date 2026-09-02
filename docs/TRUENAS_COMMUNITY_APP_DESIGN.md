@@ -2,7 +2,7 @@
 
 **Backlog item:** VB-080
 
-**Status:** Accepted design; packaging is not implemented
+**Status:** Accepted design; VB-081 release-neutral packaging source is staged, not released or submitted
 
 **Decision date:** 2026-09-02
 
@@ -566,8 +566,9 @@ VB-080 is complete when this design is accepted and repository status records it
 remain open and block later claims:
 
 - no dashboard-capable release version is selected or published by this task;
-- no `ix-dev/community/vaultbridge/` definition exists yet;
-- no current-schema render/deploy tests have been run for a VaultBridge definition;
+- the staged `ix-dev/community/vaultbridge/` definition still lacks a production release image pin;
+- current-schema source and fixture render checks pass, but no deploy test has run against a
+  published dashboard-capable VaultBridge image;
 - no real Community App wizard, install, edit, portal, upgrade, rollback, or uninstall has been
   verified;
 - VaultBridge is not present in the upstream TrueNAS Apps catalog or Discover page.
