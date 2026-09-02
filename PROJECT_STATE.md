@@ -55,9 +55,9 @@ Post-v1 development position:
 - stable `v1.0.0` is released and all v1.0 release gates are complete
 - optional and future backlog work continues independently of the completed v1.0 release
 
-Next recommended backlog task:
+Current release task:
 
-- **VB-075 — Publish and verify dashboard-capable VaultBridge image**
+- **VB-075 — Prepare, publish, and verify the dashboard-capable VaultBridge `v1.1.0` image**
 
 Current post-v1 planning position:
 
@@ -77,7 +77,10 @@ Current post-v1 planning position:
 - strict UI-only CSP, `nosniff`, no-referrer headers, same-origin document-relative requests, and
   text-only dynamic rendering provide the initial browser security boundary
 - Literal and Semantic modes preserve backend order and existing result fields; Search adds no
-  frontend ranking/filtering, note read/mutation, duplicate workflow, or index mutation
+  frontend ranking/filtering, duplicate workflow, or index mutation
+- search results can open the complete note through the existing protected `/api/v1/notes/read`
+  route in a safe read-only text viewer; stale note reads are suppressed, focus returns to the
+  originating result, and logout or `401` clears protected note content
 - queries, folders, results, snippets, paths, and scores are not persisted or placed in URLs;
   logout and `401` clear form/results, while `429` and semantic `503` retain the validated session
 - VB-074 hardens keyboard/focus behavior, error associations, score labels, stale-request handling,
@@ -90,15 +93,16 @@ Current post-v1 planning position:
   stop, and complete cleanup without touching production data or services
 - existing API contracts, authentication, rate limiting, CLI behavior, dependencies, Dockerfile,
   and Compose definitions are unchanged by dashboard work through VB-074
-- Milestone 8 is complete; VB-075 remains the sole next task and owns the missing published/verified
-  dashboard-capable image required to finalize VB-081 and begin VB-082 runtime validation
+- Milestone 8 is complete; VB-075 is in progress for `v1.1.0` release preparation and owns the
+  missing published/verified dashboard-capable image required to finalize VB-081 production
+  metadata and begin VB-082 runtime validation
 - VB-080 is complete as a version-neutral packaging design in
   `docs/TRUENAS_COMMUNITY_APP_DESIGN.md`, based on current `truenas/apps` contributor conventions;
   it did not implement a catalog definition, select a release, or perform publication
-- VB-081 is in progress: `ix-dev/community/vaultbridge/` now contains release-neutral metadata,
-  questions, the Compose template, documentation, and basic/watcher/host-path-data render fixtures;
-  current upstream source validation and focused render-invariant checks pass with a clearly marked
-  fixture-only development image
+- VB-081 release-neutral/static implementation is complete: `ix-dev/community/vaultbridge/` contains
+  metadata, questions, the Compose template, documentation, and basic/watcher/host-path-data render
+  fixtures; current upstream source validation and focused render-invariant checks pass with a
+  clearly marked fixture-only development image
 - the production image tag, matching `app_version`, final generated upstream artifacts, full
   deployable-image validation, and live TrueNAS lifecycle evidence remain blocked on VB-075/VB-082
 - no upstream TrueNAS Community App exists yet; no submission, merge, or Discover availability is claimed
@@ -106,6 +110,24 @@ Current post-v1 planning position:
 - VB-023 remains open P1 retrieval work with unchanged scope, but it is no longer the current next task
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
+
+Current `v1.1.0` release-preparation status:
+
+- `v1.1.0` is selected as a backward-compatible feature release after `v1.0.0`; package and FastAPI
+  metadata are aligned to `1.1.0`, and the changelog date remains `TBD`
+- release-preparation base: `ca58de1426d2b83e040f882f09757d60e968a6aa`; stable `v1.0.0` source:
+  `1a430996c9db331f448339d233e940d7aa7b3b6d`; current history contains 35 commits, including 16
+  first-parent commits, after `v1.0.0`
+- the reviewable release-candidate working tree is not yet an exact release commit; exact-source CI,
+  tag `v1.1.0`, GitHub Release, GHCR aliases/digests/labels, anonymous pull, and immutable-image
+  TrueNAS verification remain pending and are not claimed
+- the staged TrueNAS definition deliberately remains release-gated: `app_version` stays
+  `unreleased`, no production `images` map exists, and static fixtures keep their explicit
+  development-only placeholder until the published image is verified
+- VB-082 remains blocked on the published immutable image and production-finalized definition; no
+  real TrueNAS Community App lifecycle validation has run
+- VB-083 remains blocked on successful VB-082; no upstream pull request, acceptance, or Discover
+  availability exists
 
 Current v1.0 release status:
 
@@ -143,7 +165,8 @@ Current milestones:
 ## Working production characteristics
 
 - FastAPI application
-- package and FastAPI application metadata aligned to the stable target `1.0.0`
+- package and FastAPI application metadata aligned to the proposed `v1.1.0` release target; the
+  exact release commit, tag, and published artifact do not exist yet
 - tracked source and reachable remote branch history passed the VB-060 public-exposure audit
 - public GitHub source was anonymously cloned and clean-built on TrueNAS SCALE / Linux amd64 with
   Docker Engine 28.3.1 using a disposable empty vault and isolated port `8876`
