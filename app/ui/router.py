@@ -81,3 +81,16 @@ def search_script() -> FileResponse:
         media_type="text/javascript",
         headers=UI_SECURITY_HEADERS,
     )
+
+
+@router.api_route(
+    "/ui/assets/vaultbridge-logo.webp",
+    methods=["GET", "HEAD"],
+    name="ui_brand_logo",
+)
+def brand_logo() -> FileResponse:
+    return FileResponse(
+        _ASSET_ROOT / "vaultbridge-logo.webp",
+        media_type="image/webp",
+        headers=UI_SECURITY_HEADERS,
+    )

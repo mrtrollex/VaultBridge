@@ -4,7 +4,7 @@ This document is the current factual snapshot for future Codex sessions. It shou
 
 ## Baseline date
 
-2026-08-31
+2026-09-02
 
 ## Current development position
 
@@ -48,6 +48,7 @@ Completed:
 - VB-072 — Dashboard overview and health visibility
 - VB-073 — Dashboard search interface
 - VB-074 — Dashboard usability, accessibility and release hardening
+- VB-080 — TrueNAS Community App packaging design
 
 Post-v1 development position:
 
@@ -89,9 +90,13 @@ Current post-v1 planning position:
   stop, and complete cleanup without touching production data or services
 - existing API contracts, authentication, rate limiting, CLI behavior, dependencies, Dockerfile,
   and Compose definitions are unchanged by dashboard work through VB-074
-- Milestone 8 is complete; VB-075 is the sole next task and owns the missing published/verified
-  dashboard-capable image required before VB-080
-- no upstream TrueNAS Community App exists yet; Milestone 9 and VB-080 through VB-083 are planned work
+- Milestone 8 is complete; VB-075 remains the sole next task and owns the missing published/verified
+  dashboard-capable image required before VB-081 implementation and VB-082 runtime validation
+- VB-080 is complete as a version-neutral packaging design in
+  `docs/TRUENAS_COMMUNITY_APP_DESIGN.md`, based on current `truenas/apps` contributor conventions;
+  it did not implement a catalog definition, select a release, or perform publication
+- no upstream TrueNAS Community App exists yet; Milestone 9 implementation and VB-081 through VB-083
+  remain planned work
 - current TrueNAS support remains the documented Docker/source-built Custom App deployment
 - VB-023 remains open P1 retrieval work with unchanged scope, but it is no longer the current next task
 - VB-032 and VB-033 remain deferred optional future work
@@ -128,7 +133,7 @@ Current milestones:
 - **Milestone 6 — Public API and developer experience (complete)**
 - **Milestone 7 — Distribution and `v1.0.0` (complete)**
 - **Milestone 8 — Web Dashboard / operator experience (complete)**
-- **Milestone 9 — TrueNAS Community App distribution (planned; not implemented)**
+- **Milestone 9 — TrueNAS Community App distribution (in progress; design complete, not implemented)**
 
 ## Working production characteristics
 

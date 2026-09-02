@@ -7,15 +7,18 @@ const SESSION_STATES = ["checking-session", "locked", "unlocked", "unavailable"]
 const body = document.body;
 const sessionCard = document.querySelector(".session-card");
 const sessionState = document.querySelector("#session-state");
-const checkingSession = document.querySelector("#checking-session");
+const unlockHeading = document.querySelector("#unlock-heading");
 const unlockForm = document.querySelector("#unlock-form");
 const apiKeyInput = document.querySelector("#api-key");
 const unlockButton = document.querySelector("#unlock-button");
 const logoutButton = document.querySelector("#logout-button");
+const apiLogoutButton = document.querySelector("#api-logout-button");
+const authenticatedSession = document.querySelector("#authenticated-session");
 const retrySessionButton = document.querySelector("#retry-session-button");
 const globalStatus = document.querySelector("#global-status");
 const applicationBase = document.querySelector("#application-base");
 const searchNavigationButton = document.querySelector("#nav-search");
+const apiNavigationButton = document.querySelector("#nav-api");
 
 const navigation = new Map([
   [document.querySelector("#nav-overview"), document.querySelector("#overview-panel")],
@@ -79,6 +82,9 @@ function removeStoredCredential() {
 }
 
 function selectPanel(selectedButton) {
+  if (selectedButton !== searchNavigationButton) {
+    searchController?.deactivate();
+  }
   for (const [button, panel] of navigation) {
     const isSelected = button === selectedButton;
     panel.hidden = !isSelected;
@@ -90,6 +96,15 @@ function selectPanel(selectedButton) {
   }
 }
 
+function showApiPanel(focusApiKey = false) {
+  selectPanel(apiNavigationButton);
+  if (focusApiKey && !unlockForm.hidden) {
+    apiKeyInput.focus();
+  } else if (focusApiKey) {
+    apiNavigationButton.focus();
+  }
+}
+
 function setSessionState(state, message, hasStoredCredential = false) {
   for (const knownState of SESSION_STATES) {
     body.classList.remove(`state-${knownState}`);
@@ -98,21 +113,29 @@ function setSessionState(state, message, hasStoredCredential = false) {
 
   const unlocked = state === "unlocked";
   const checking = state === "checking-session";
-  sessionCard.hidden = unlocked;
-  checkingSession.hidden = !checking;
+  sessionCard.dataset.sessionState = state;
   logoutButton.hidden = !unlocked;
+  authenticatedSession.hidden = !unlocked;
   retrySessionButton.hidden = state !== "unavailable" || !hasStoredCredential;
   unlockForm.hidden = checking || unlocked || (state === "unavailable" && hasStoredCredential);
 
   const labels = {
-    "checking-session": "Checking session",
-    locked: "Locked",
-    unlocked: "Ready — unlocked",
-    unavailable: "Unavailable",
+    "checking-session": "CHECKING SESSION",
+    locked: "LOCKED",
+    unlocked: "UNLOCKED",
+    unavailable: "UNAVAILABLE",
   };
   setText(sessionState, labels[state]);
+  setText(
+    unlockHeading,
+    unlocked
+      ? "Protected access unlocked"
+      : checking && hasStoredCredential
+        ? "Restoring protected access"
+        : "Unlock protected features",
+  );
   setText(globalStatus, message);
-  searchController?.setUnlocked(unlocked);
+  searchController?.setAccessState(state);
 }
 
 function invalidateProtectedRequests() {
@@ -209,6 +232,9 @@ async function authenticatedFetch(relativePath, options = {}) {
   if (response.status === 503) {
     throw new ProtectedRequestError("service-unavailable");
   }
+  if (response.status === 404) {
+    throw new ProtectedRequestError("not-found");
+  }
   if (response.status === 400 || response.status === 422) {
     throw new ProtectedRequestError("request-rejected");
   }
@@ -280,8 +306,8 @@ async function validateCredential(credential, restoreSession, focusAfterSuccess)
       : "locked";
     setApiKeyInvalid(error.kind === "authentication-required" && !retainedCredential);
     setSessionState(nextState, messageForRequestError(error), retainedCredential);
-    if (!retainedCredential) {
-      apiKeyInput.focus();
+    if (!retainedCredential && focusAfterSuccess) {
+      showApiPanel(true);
     }
   } finally {
     unlockButton.disabled = false;
@@ -292,8 +318,8 @@ async function validateCredential(credential, restoreSession, focusAfterSuccess)
 function logout() {
   invalidateProtectedRequests();
   clearCredentialState();
-  setSessionState("locked", "Logged out. Enter an API key to unlock protected features.");
-  apiKeyInput.focus();
+  setSessionState("locked", "Logged out. Enter an API key to unlock protected access.");
+  showApiPanel(true);
 }
 
 for (const [button] of navigation) {
@@ -325,19 +351,21 @@ retrySessionButton.addEventListener("click", () => {
     return;
   }
   retrySessionButton.disabled = true;
-  setSessionState("checking-session", "Revalidating the saved session.");
+  setSessionState("checking-session", "Revalidating the saved session.", true);
   void validateCredential(storedCredential.value, true, true);
 });
 
 logoutButton.addEventListener("click", logout);
+apiLogoutButton.addEventListener("click", logout);
 
 setText(applicationBase, applicationUrl("").href);
 initializeOverview(applicationUrl);
 searchController = initializeSearch({
   authenticatedFetch,
+  navigateToApi: () => showApiPanel(true),
   onAuthenticationRequired: () => {
     setSessionState("locked", "Authentication required");
-    apiKeyInput.focus();
+    showApiPanel(true);
   },
 });
 const initialCredential = readStoredCredential();

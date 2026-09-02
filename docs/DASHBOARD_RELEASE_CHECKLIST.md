@@ -470,5 +470,6 @@ the disposable key, resolved container environment, or a resolved Compose config
   separate real TrueNAS production-image gate above passed.
 - VB-074 and Milestone 8 are complete based on the combined automated, real-Chrome, and disposable
   TrueNAS evidence recorded here.
-- Publishing and verifying a dashboard-capable image remains a separate dependency before VB-080;
-  VB-075 owns that next gate. This checklist does not create or publish a release.
+- Publishing and verifying a dashboard-capable image remains a separate dependency before VB-081
+  implementation and VB-082 runtime validation; VB-075 owns that gate. The version-neutral VB-080
+  design was completed separately. This checklist does not create or publish a release.

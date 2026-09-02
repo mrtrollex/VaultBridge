@@ -306,9 +306,10 @@ vault or index, but they are local filesystem/SQLite readers rather than a remot
 VB-071 implements the dashboard shell and authenticated session boundary accepted in
 [ADR 0003](docs/adr/0003-web-dashboard-architecture-and-security.md), VB-072 implements the public
 health-backed Overview, VB-073 implements protected literal and semantic Search, and VB-074
-completes usability, accessibility, privacy, browser, and normal-image hardening. Publishing and
-verifying that dashboard-capable image (VB-075) and TrueNAS Community App packaging remain later
-distribution tasks.
+completes usability, accessibility, privacy, browser, and normal-image hardening. VB-080 defines the
+version-neutral [TrueNAS Community App packaging design](docs/TRUENAS_COMMUNITY_APP_DESIGN.md).
+Publishing and verifying a dashboard-capable image (VB-075), implementing the definition (VB-081),
+and live/upstream validation remain later distribution tasks.
 
 ### Current dashboard relationship
 
@@ -419,8 +420,8 @@ Repository ownership is deliberately separated:
 Temporary packaging/test fixtures may live in the core repository when useful for reproducibility,
 but there must be no permanent `VaultBridge-TrueNAS` runtime fork or two authoritative copies of the
 upstream catalog definition. Current TrueNAS support remains the documented source-built Custom App
-path until VB-080 through VB-083 are designed, implemented, validated on real TrueNAS, and accepted
-upstream.
+path until the VB-080 design is implemented by VB-081, validated on real TrueNAS by VB-082, and
+accepted upstream through VB-083.
 
 ---
 
