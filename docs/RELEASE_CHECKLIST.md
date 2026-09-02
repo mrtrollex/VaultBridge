@@ -10,10 +10,10 @@ tag, GitHub Release, or artifact record below.
 Preparation baseline: 2026-09-02.
 
 The latest published stable release remains `v1.0.0`, whose annotated tag resolves to source commit
-`1a430996c9db331f448339d233e940d7aa7b3b6d`. This release-preparation branch starts from
-`ca58de1426d2b83e040f882f09757d60e968a6aa`, the current `main` after PR #48 / VB-081. There are 35
-commits, including 16 first-parent commits, after `v1.0.0`. The preparation base is not the release
-candidate: the exact candidate will be the future reviewed commit containing this working-tree diff.
+`1a430996c9db331f448339d233e940d7aa7b3b6d`. PR #49 merged the reviewed preparation into `main` at
+`97368092987b23181b0e17aec9e7006043ad6f0c`. There are now 37 commits, including 17 first-parent
+commits, after `v1.0.0`. The final source-preparation diff remains uncommitted for review, so the exact
+release commit does not exist yet and must stay pending below.
 
 `v1.1.0` is the correct Semantic Versioning target because the post-v1 source adds backward-compatible
 API-key rotation, verified related-note and duplicate-candidate operations, rate limiting, expanded
@@ -27,7 +27,7 @@ would understate additive features; no breaking change justifies `v2.0.0`.
 
 | Phase | Status | Required evidence |
 |---|---|---|
-| A. Release preparation | **PASS — REVIEWABLE WORKING TREE** | Uncommitted version/changelog/checklist/project-state diff; local validation and secret audit recorded below. |
+| A. Release preparation | **PASS — SOURCE PREPARATION COMPLETE** | PR #49 contains the reviewed version/changelog/checklist/project-state preparation; the final dated source diff and validation remain reviewable and uncommitted. |
 | B. Exact release candidate commit | **BLOCKED / REQUIRES LIVE VERIFICATION** | Full commit SHA on `main`, clean tree, and successful `CI` `python` and `docker` jobs for exactly that SHA. |
 | C. Tag | **BLOCKED / REQUIRES APPROVAL** | Immutable `v1.1.0` tag and stable non-prerelease GitHub Release created from the exact candidate only after explicit approval. |
 | D. GHCR workflow | **BLOCKED / REQUIRES LIVE VERIFICATION** | `Publish GHCR image` run URL/ID with both `Verify release source` and `Build and publish` successful. |
@@ -41,7 +41,8 @@ recorded for `v1.1.0` yet. Placeholder values must never be replaced with guesse
 
 ### A. Release preparation
 
-1. Keep the release date as `TBD` until the actual stable publication step.
+1. Finalize the changelog date as `2026-09-02` in the final source-preparation diff without treating
+   that date as tag, publication, or runtime evidence.
 2. Align only the established version contract: `pyproject.toml`, `app/main.py`, and the regression
    assertion in `tests/test_api.py` must all read `1.1.0`.
 3. Reconcile release notes against the exact `v1.0.0..HEAD` history, including dashboard polish,

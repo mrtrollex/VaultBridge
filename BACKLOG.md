@@ -904,8 +904,7 @@ without declaring a release version in advance.
 
 ### VB-075 — Publish and verify dashboard-capable VaultBridge image — P1 ▶
 
-**Status:** In progress as of 2026-09-02. `v1.1.0` release metadata, changelog, checklists, and
-project-state records are being prepared on the current post-VB-080/VB-081 source. The exact release
+**Status:** In progress as of 2026-09-02. `v1.1.0` source preparation is complete. The exact release
 commit, exact-source CI, tag, GitHub Release, GHCR publication, OCI/anonymous-pull checks, and
 immutable-image TrueNAS verification remain pending.
 
