@@ -93,39 +93,37 @@ Current post-v1 planning position:
   stop, and complete cleanup without touching production data or services
 - existing API contracts, authentication, rate limiting, CLI behavior, dependencies, Dockerfile,
   and Compose definitions are unchanged by dashboard work through VB-074
-- Milestone 8 is complete; `v1.1.0` source preparation is complete and VB-075 owns the still-missing
-  published/verified dashboard-capable image required to finalize VB-081 production metadata and
-  begin VB-082 runtime validation
+- Milestone 8 is complete; `v1.1.0` is published and its exact OCI index is anonymously pullable
 - VB-080 is complete as a version-neutral packaging design in
   `docs/TRUENAS_COMMUNITY_APP_DESIGN.md`, based on current `truenas/apps` contributor conventions;
   it did not implement a catalog definition, select a release, or perform publication
-- VB-081 release-neutral/static implementation is complete: `ix-dev/community/vaultbridge/` contains
-  metadata, questions, the Compose template, documentation, and basic/watcher/host-path-data render
-  fixtures; current upstream source validation and focused render-invariant checks pass with a
-  clearly marked fixture-only development image
-- the production image tag, matching `app_version`, final generated upstream artifacts, full
-  deployable-image validation, and live TrueNAS lifecycle evidence remain blocked on VB-075/VB-082
+- VB-081 source is production-image-capable: `ix-dev/community/vaultbridge/` pins
+  `ghcr.io/mrtrollex/vaultbridge:1.1.0`, uses matching `app_version`, and has basic/watcher/host-path-
+  data fixtures that inherit the released image map with synthetic credentials and paths
+- current upstream `truenas/apps` commit `354e87006de2f49a8a2cd655bce857984a7bd247` still uses library
+  `2.3.11`, repository-plus-tag images, and initial package `version: 1.0.0`
+- official Docker-backed rendering/deployment, generated library/hash/catalog artifacts, the final
+  TrueNAS CDN icon URL, and live TrueNAS lifecycle evidence remain open
 - no upstream TrueNAS Community App exists yet; no submission, merge, or Discover availability is claimed
 - current TrueNAS support remains the documented Docker/source-built Custom App deployment
 - VB-023 remains open P1 retrieval work with unchanged scope, but it is no longer the current next task
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
 
-Current `v1.1.0` release-preparation status:
+Current `v1.1.0` release status:
 
-- `v1.1.0` is selected as a backward-compatible feature release after `v1.0.0`; package and FastAPI
-  metadata are aligned to `1.1.0`, and the changelog date is finalized as `2026-09-02`
-- PR #49 merged the reviewed preparation at `97368092987b23181b0e17aec9e7006043ad6f0c`;
-  stable `v1.0.0` source is `1a430996c9db331f448339d233e940d7aa7b3b6d`; current history contains
-  37 commits, including 17 first-parent commits, after `v1.0.0`
-- final source preparation is complete in the reviewable working tree, but the exact release commit
-  does not yet exist; exact-source CI, tag `v1.1.0`, GitHub Release, GHCR aliases/digests/labels,
-  anonymous pull, and immutable-image TrueNAS verification remain pending and are not claimed
-- the staged TrueNAS definition deliberately remains release-gated: `app_version` stays
-  `unreleased`, no production `images` map exists, and static fixtures keep their explicit
-  development-only placeholder until the published image is verified
-- VB-082 remains blocked on the published immutable image and production-finalized definition; no
-  real TrueNAS Community App lifecycle validation has run
+- `v1.1.0` is published from source commit `e39ed91db75f912f390c7ec915dea73369bb9252`
+- GitHub Actions publish run `33641163374` generated aliases `1.1.0`, `1.1`, `1`, and `latest` in
+  `ghcr.io/mrtrollex/vaultbridge`
+- OCI index `sha256:753e613617d221c3dac311600a36cab3f2727b09f630321664eaa7b7ad6eb48c`,
+  `linux/amd64` manifest `sha256:62ddad69cf3e4af632d40c3bcdb8f9e601fa7c04009616350f9ab706a4171e92`,
+  and attestation `sha256:744fe630075b91cc576a18b37012c4d37d0b551b17a74cab8088a1448e5fc4a3`
+  are recorded
+- anonymous exact-index pull with an empty temporary Docker config passed; platform and required OCI
+  source/revision/version/license labels matched the supplied evidence
+- VB-075 remains incomplete because separate exact-source CI job evidence and its full exact-image
+  dashboard/API/CLI/semantic/persistence/safe-log/cleanup runtime gate were not supplied
+- VB-082 has not started; no real TrueNAS Community App lifecycle validation has run
 - VB-083 remains blocked on successful VB-082; no upstream pull request, acceptance, or Discover
   availability exists
 
@@ -160,13 +158,12 @@ Current milestones:
 - **Milestone 6 — Public API and developer experience (complete)**
 - **Milestone 7 — Distribution and `v1.0.0` (complete)**
 - **Milestone 8 — Web Dashboard / operator experience (complete)**
-- **Milestone 9 — TrueNAS Community App distribution (in progress; definition staged, release/live gates open)**
+- **Milestone 9 — TrueNAS Community App distribution (in progress; production image pinned, official package/live gates open)**
 
 ## Working production characteristics
 
 - FastAPI application
-- package and FastAPI application metadata aligned to the proposed `v1.1.0` release target; the
-  exact release commit, tag, and published artifact do not exist yet
+- package and FastAPI application metadata aligned to released `v1.1.0`
 - tracked source and reachable remote branch history passed the VB-060 public-exposure audit
 - public GitHub source was anonymously cloned and clean-built on TrueNAS SCALE / Linux amd64 with
   Docker Engine 28.3.1 using a disposable empty vault and isolated port `8876`
@@ -272,6 +269,9 @@ Current milestones:
   disposable vault/data; the pull, platform, revision/version, startup, `/health/live`,
   `/health/ready`, authenticated `/api/v1/notes/list`, safe-log, and disposable-cleanup checks passed
 - all stable `v1.0.0` release gates are complete
+- stable `v1.1.0` release source, workflow, aliases, OCI/runtime/attestation digests, required labels,
+  platform, and anonymous exact-digest pull are recorded above; VB-075's remaining functional
+  release gate is explicitly separate
 
 ## Current implementation boundaries
 

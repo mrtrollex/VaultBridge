@@ -904,9 +904,10 @@ without declaring a release version in advance.
 
 ### VB-075 — Publish and verify dashboard-capable VaultBridge image — P1 ▶
 
-**Status:** In progress as of 2026-09-02. `v1.1.0` source preparation is complete. The exact release
-commit, exact-source CI, tag, GitHub Release, GHCR publication, OCI/anonymous-pull checks, and
-immutable-image TrueNAS verification remain pending.
+**Status:** In progress as of 2026-09-02. Release `v1.1.0`, source commit
+`e39ed91db75f912f390c7ec915dea73369bb9252`, GHCR workflow `33641163374`, four stable aliases,
+OCI/runtime/attestation digests, required labels, and anonymous exact-digest pull are recorded.
+Separate exact-source CI job evidence and the full exact-image functional runtime gate remain open.
 
 **Goal:** publish and verify the normal VaultBridge image containing the completed bundled Web
 Dashboard so downstream packaging can consume an immutable dashboard-capable artifact.
@@ -955,9 +956,9 @@ image publication, or upstream submission was performed.
 **Goal:** define the upstream TrueNAS catalog packaging, supported configuration, and upgrade
 contract around the normal published VaultBridge image.
 
-**Design input:** VB-074. A published and verified dashboard-capable VaultBridge image remains a
-dependency for VB-081 production finalization and VB-082 runtime validation, not for this
-version-neutral packaging design.
+**Design input:** VB-074. A published and verified dashboard-capable VaultBridge image was a
+dependency for VB-081 production finalization and is now available as `v1.1.0`; it was not required
+for the version-neutral packaging design itself.
 
 **Acceptance criteria**
 
@@ -997,19 +998,18 @@ version-neutral packaging design.
 
 ### VB-081 — Implement TrueNAS Community App definition — P1
 
-**Status:** Release-neutral/static implementation completed on 2026-09-02. The definition, install
-questions, Compose template, documentation, and three focused render fixtures are implemented under
-`ix-dev/community/vaultbridge/`. Current upstream source/schema/question/template validation and
-focused render-invariant checks pass with a fixture-only development image. Production finalization
-is still open: the `images` map, matching released `app_version`, final generated
-library/hash/catalog metadata, and deployable-image validation remain blocked on VB-075; live
-TrueNAS lifecycle validation remains VB-082. No upstream submission or Discover availability is
-claimed.
+**Status:** Production-image-capable source statically finalized on 2026-09-02. The definition pins
+`ghcr.io/mrtrollex/vaultbridge:1.1.0`, `app_version` matches `1.1.0`, and all focused fixtures inherit
+the released image map while retaining synthetic credentials and paths. Current upstream remains at
+library `2.3.11`, repository-plus-tag images, and initial package `version: 1.0.0`. Official Docker-
+backed rendering/deployment, generated library/hash/catalog artifacts, and a reviewer-supplied
+TrueNAS CDN icon URL remain pending. Live TrueNAS lifecycle validation remains VB-082. No upstream
+submission or Discover availability is claimed.
 
 **Goal:** create the catalog packaging approved by VB-080 using current TrueNAS Community App conventions.
 
-**Depends on:** VB-080. Final production image pinning and deployable-definition validation also
-depend on a published and verified dashboard-capable VaultBridge image from VB-075.
+**Depends on:** VB-080. The production image input is now available; official deployable-definition
+validation remains pending.
 
 **Acceptance criteria**
 
@@ -1039,9 +1039,9 @@ depend on a published and verified dashboard-capable VaultBridge image from VB-0
 
 ### VB-082 — TrueNAS install/upgrade/portal validation — P1
 
-**Status:** Blocked. A published immutable VaultBridge `v1.1.0` image, the production-finalized
-VB-081 definition, and real disposable TrueNAS access/evidence are required. No VB-082 lifecycle
-validation has been performed.
+**Status:** Not started. A published immutable VaultBridge `v1.1.0` image now exists, but official
+VB-081 generated/validation artifacts and real disposable TrueNAS access/evidence are still
+required. No VB-082 lifecycle validation has been performed.
 
 **Goal:** validate the Community App lifecycle on a real disposable TrueNAS installation and capture
 sanitized evidence.
@@ -1148,7 +1148,7 @@ VB-001 ✓
 → VB-074 ✓
 → VB-075 NEXT
 → VB-080 ✓
-→ VB-081
+→ VB-081 static production-image finalization / official generated validation pending
 → VB-082
 → VB-083
 ```
@@ -1159,14 +1159,14 @@ distribution gates are complete; immutable evidence remains recorded in `docs/RE
 
 VB-070 through VB-074 complete the bundled Web Dashboard architecture, shell/session, public
 health-backed Overview, protected literal/semantic Search, and final usability/accessibility/image
-hardening. VB-080 completes the version-neutral Community App packaging design, and VB-081's
-release-neutral/static implementation is complete with production finalization still gated.
-VB-075 is in progress for `v1.1.0` preparation and owns publication plus verification of the
-dashboard-capable image required before VB-081 production finalization and VB-082 runtime
-validation. VB-023 remains open P1
+hardening. VB-080 completes the version-neutral Community App packaging design, and VB-081's source
+now pins the released `1.1.0` image with matching application metadata. Official Docker-backed
+rendering, generated artifacts, and the upstream CDN icon remain pending. VB-075 is still in
+progress because its exact-source CI and full exact-image functional runtime evidence are
+incomplete. VB-023 remains open P1
 retrieval work with unchanged
 scope, but it is not NEXT. VB-032 and VB-033 remain deferred optional work. VB-055 remains optional
-and is not a dashboard prerequisite. Milestone 9 design is in progress, but implementation remains
-gated until VB-075 supplies the published and verified dashboard-capable VaultBridge image.
+and is not a dashboard prerequisite. Milestone 9 packaging is in progress; VB-082 and VB-083 remain
+separate, unstarted lifecycle and upstream-submission tasks.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

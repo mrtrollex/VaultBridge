@@ -1,4 +1,4 @@
-app_version: unreleased
+app_version: 1.1.0
 capabilities: []
 categories:
   - productivity
@@ -6,7 +6,7 @@ changelog_url: https://github.com/mrtrollex/VaultBridge/releases
 description: Self-hosted REST and semantic search bridge for Obsidian Markdown vaults.
 home: https://github.com/mrtrollex/VaultBridge
 host_mounts: []
-icon: https://raw.githubusercontent.com/mrtrollex/VaultBridge/8c4a2c4beb1029e0a93575955aa8c76bf249e341/docs/assets/vaultbridge-logo.webp
+icon: https://raw.githubusercontent.com/mrtrollex/VaultBridge/e39ed91db75f912f390c7ec915dea73369bb9252/docs/assets/vaultbridge-logo.webp
 keywords:
   - obsidian
   - markdown

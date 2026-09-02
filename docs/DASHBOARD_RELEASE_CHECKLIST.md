@@ -470,30 +470,32 @@ the disposable key, resolved container environment, or a resolved Compose config
   separate real TrueNAS production-image gate above passed.
 - VB-074 and Milestone 8 are complete based on the combined automated, real-Chrome, and disposable
   TrueNAS evidence recorded here.
-- Publishing and verifying a dashboard-capable image remains a separate dependency before VB-081
-  production finalization and VB-082 runtime validation; VB-075 owns that gate. The version-neutral
-  VB-080 design and VB-081 release-neutral/static implementation were completed separately. This
-  checklist does not create or publish a release.
+- VaultBridge `v1.1.0` is published and its exact OCI digest is anonymously pullable; VB-081 now pins
+  exact tag `1.1.0`. The full published-image functional gate below remains unevidenced, and VB-082
+  runtime lifecycle validation has not started. This checklist does not create or publish a release.
 
-## VB-075 future gate: exact published `v1.1.0` dashboard image
+## VB-075 open functional gate: exact published `v1.1.0` dashboard image
 
 The VB-074 evidence above remains an immutable historical record of the source-built Phase B gate.
 It must not be rewritten as proof that the later final UI or published `v1.1.0` image existed during
-that run. The current release-image gate starts only after the reviewed release-preparation tree has
-an exact commit, exact-commit CI passes, and explicit approval allows tag/Release publication.
-
-Until then, every item below is **BLOCKED / REQUIRES LIVE VERIFICATION**.
+that run. The release image now exists. The supplied evidence proves its source, workflow, aliases,
+digests, `linux/amd64` platform, required OCI labels, and anonymous exact-digest pull. It does not
+prove the functional checks below, which remain **REQUIRES LIVE VERIFICATION**.
 
 Record these exact values from the successful release and workflow before running the gate:
 
 ```text
-release commit SHA: <pending>
+release commit SHA: e39ed91db75f912f390c7ec915dea73369bb9252
 Git tag: v1.1.0
-GitHub Release URL: <pending>
-GHCR workflow run: <pending>
-OCI index digest: <pending>
-linux/amd64 runtime-manifest digest: <pending>
-exact runtime reference: ghcr.io/mrtrollex/vaultbridge@sha256:<pending>
+GitHub Release: v1.1.0
+GHCR workflow run: 33641163374
+OCI index digest: sha256:753e613617d221c3dac311600a36cab3f2727b09f630321664eaa7b7ad6eb48c
+linux/amd64 runtime-manifest digest: sha256:62ddad69cf3e4af632d40c3bcdb8f9e601fa7c04009616350f9ab706a4171e92
+BuildKit attestation: sha256:744fe630075b91cc576a18b37012c4d37d0b551b17a74cab8088a1448e5fc4a3
+exact runtime reference: ghcr.io/mrtrollex/vaultbridge@sha256:753e613617d221c3dac311600a36cab3f2727b09f630321664eaa7b7ad6eb48c
+anonymous pull: PASS
+runtime platform inspection: linux/amd64
+OCI source/revision/version/license labels: PASS
 ```
 
 ### Published bundle and delivery contract
@@ -564,6 +566,7 @@ labels, anonymous-pull result, readiness time, restart/persistence result, safe-
 result. Never record the generated key, previous key, resolved container environment, synthetic query
 or note content, or absolute host path.
 
-Passing this VB-075 exact-image gate completes only the published VaultBridge artifact dependency.
-VB-081 must still finalize and validate its production image/app metadata, and VB-082 must separately
-verify the Community App install/edit/portal/upgrade/rollback/uninstall lifecycle on real TrueNAS.
+Passing this VB-075 exact-image gate completes the remaining functional release evidence. VB-081's
+source image/app metadata is finalized, but official generated/deployable validation remains open.
+VB-082 must separately verify the Community App install/edit/portal/upgrade/rollback/uninstall
+lifecycle on real TrueNAS.

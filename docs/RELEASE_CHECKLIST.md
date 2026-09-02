@@ -5,15 +5,15 @@ audit, and the final stable publication and runtime verification closed every v1
 2026-08-26. Later releases should add their own evidence without replacing the immutable `v1.0.0`
 tag, GitHub Release, or artifact record below.
 
-## Proposed `v1.1.0` release preparation — VB-075
+## `v1.1.0` release evidence — VB-075
 
 Preparation baseline: 2026-09-02.
 
-The latest published stable release remains `v1.0.0`, whose annotated tag resolves to source commit
-`1a430996c9db331f448339d233e940d7aa7b3b6d`. PR #49 merged the reviewed preparation into `main` at
-`97368092987b23181b0e17aec9e7006043ad6f0c`. There are now 37 commits, including 17 first-parent
-commits, after `v1.0.0`. The final source-preparation diff remains uncommitted for review, so the exact
-release commit does not exist yet and must stay pending below.
+VaultBridge `v1.1.0` is published from source commit
+`e39ed91db75f912f390c7ec915dea73369bb9252`. GitHub Actions publish run `33641163374` generated and
+pushed aliases `1.1.0`, `1.1`, `1`, and `latest` for `ghcr.io/mrtrollex/vaultbridge`. The supplied
+post-release evidence is recorded exactly below; evidence not supplied is left open rather than
+inferred.
 
 `v1.1.0` is the correct Semantic Versioning target because the post-v1 source adds backward-compatible
 API-key rotation, verified related-note and duplicate-candidate operations, rate limiting, expanded
@@ -27,17 +27,19 @@ would understate additive features; no breaking change justifies `v2.0.0`.
 
 | Phase | Status | Required evidence |
 |---|---|---|
-| A. Release preparation | **PASS — SOURCE PREPARATION COMPLETE** | PR #49 contains the reviewed version/changelog/checklist/project-state preparation; the final dated source diff and validation remain reviewable and uncommitted. |
-| B. Exact release candidate commit | **BLOCKED / REQUIRES LIVE VERIFICATION** | Full commit SHA on `main`, clean tree, and successful `CI` `python` and `docker` jobs for exactly that SHA. |
-| C. Tag | **BLOCKED / REQUIRES APPROVAL** | Immutable `v1.1.0` tag and stable non-prerelease GitHub Release created from the exact candidate only after explicit approval. |
-| D. GHCR workflow | **BLOCKED / REQUIRES LIVE VERIFICATION** | `Publish GHCR image` run URL/ID with both `Verify release source` and `Build and publish` successful. |
-| E. OCI aliases and digests | **BLOCKED / REQUIRES LIVE VERIFICATION** | `1.1.0`, `1.1`, `1`, and `latest` mapped to one OCI index digest; record the index digest, `linux/amd64` runtime-manifest digest, provenance attestation where present, and all required labels. |
-| F. Anonymous pull | **BLOCKED / REQUIRES LIVE VERIFICATION** | Fresh credential-free pull by exact digest plus proof that the exact tag resolves to the recorded digest. |
+| A. Release preparation | **PASS** | Reviewed version/changelog/checklist/project-state preparation is included in the released source. |
+| B. Exact release candidate commit | **PARTIAL / EVIDENCE GAP** | Released source commit is known, but a separate exact-source `CI` run and its `python`/`docker` job results were not supplied in this evidence set. |
+| C. Tag and GitHub Release | **PASS** | Stable release `v1.1.0` exists at the recorded released source commit; it was not moved or recreated by this task. |
+| D. GHCR workflow | **PASS** | Successful GitHub Actions publish run `33641163374`. |
+| E. OCI aliases and digests | **PASS** | Four published aliases, OCI index, `linux/amd64` runtime manifest, BuildKit attestation, and required OCI labels are recorded below. |
+| F. Anonymous pull | **PASS** | Anonymous pull of the exact OCI index digest succeeded with a temporary empty Docker config. |
 | G. TrueNAS immutable-image verification | **BLOCKED / REQUIRES LIVE VERIFICATION** | Exact-digest disposable runtime gate from `DASHBOARD_RELEASE_CHECKLIST.md`, including UI/API/CLI, semantic startup, restart persistence, safe logs, and cleanup. |
-| H. Post-release evidence | **BLOCKED / REQUIRES LIVE VERIFICATION** | Sanitized release/workflow/package links, SHA, tag, aliases, digests, labels, platform, anonymous-pull result, runtime result, and downstream VB-081/VB-082 status. |
+| H. Post-release evidence | **PARTIAL** | Release, workflow, image, digest, platform, label, and anonymous-pull evidence is recorded; the exact-image functional runtime gate remains open. |
 
-No tag, GitHub Release, workflow run, OCI digest, anonymous pull, or published-image runtime result is
-recorded for `v1.1.0` yet. Placeholder values must never be replaced with guesses.
+VB-075 is not complete: its current acceptance criteria also require the separate exact-source CI
+evidence and the full exact-image disposable runtime gate. Anonymous pull, platform inspection, and
+OCI label inspection do not prove dashboard/API/CLI behavior, semantic startup, persistence, safe
+logs, clean stop, or cleanup.
 
 ### A. Release preparation
 
@@ -52,13 +54,13 @@ recorded for `v1.1.0` yet. Placeholder values must never be replaced with guesse
 
 ### B. Exact release candidate commit
 
-After review, record these values from the resulting clean `main` state:
+Current evidence:
 
 ```text
-release commit SHA: <pending>
-exact-source CI run: <pending>
-CI python job: <pending>
-CI docker job: <pending>
+release commit SHA: e39ed91db75f912f390c7ec915dea73369bb9252
+exact-source CI run: not supplied
+CI python job: not supplied
+CI docker job: not supplied
 ```
 
 The release commit must contain the reviewed preparation and no unrelated changes. Local checks do
@@ -66,9 +68,8 @@ not substitute for exact-commit GitHub CI.
 
 ### C. Tag and GitHub Release
 
-Only after explicit publication approval, create stable tag `v1.1.0` on the recorded release commit
-and publish one non-prerelease GitHub Release. Confirm the tag peels to that exact commit and record
-the release URL. Do not move or reuse the tag.
+Stable release `v1.1.0` has been published from
+`e39ed91db75f912f390c7ec915dea73369bb9252`. This task did not create, move, or recreate it.
 
 ### D. Current GHCR workflow contract
 
@@ -87,8 +88,7 @@ The sole publisher is [`.github/workflows/publish-ghcr.yml`](../.github/workflow
   repository URL, release-event SHA, release tag, and `MIT`;
 - artifact form: BuildKit minimal provenance is enabled and the build output digest is inspected.
   The prior stable publication produced an OCI index containing the runtime manifest and
-  attestation; the `v1.1.0` OCI index, runtime-manifest digest, and attestation must still be verified
-  from the actual published artifact.
+  attestation; the verified `v1.1.0` values are recorded below.
 
 This audit found no release-blocking workflow defect, so the workflow remains unchanged.
 
@@ -97,14 +97,16 @@ This audit found no release-blocking workflow defect, so the workflow remains un
 Record without abbreviation:
 
 ```text
-GHCR workflow run: <pending>
-OCI index digest: <pending>
-linux/amd64 runtime-manifest digest: <pending>
-BuildKit provenance attestation digest, if present: <pending>
-org.opencontainers.image.source: <pending; require https://github.com/mrtrollex/VaultBridge>
-org.opencontainers.image.revision: <pending; require exact release commit SHA>
-org.opencontainers.image.version: <pending; require v1.1.0>
-org.opencontainers.image.licenses: <pending; require MIT>
+GHCR workflow run: 33641163374
+published image repository: ghcr.io/mrtrollex/vaultbridge
+published aliases: 1.1.0, 1.1, 1, latest
+OCI index digest: sha256:753e613617d221c3dac311600a36cab3f2727b09f630321664eaa7b7ad6eb48c
+linux/amd64 runtime-manifest digest: sha256:62ddad69cf3e4af632d40c3bcdb8f9e601fa7c04009616350f9ab706a4171e92
+BuildKit provenance attestation digest: sha256:744fe630075b91cc576a18b37012c4d37d0b551b17a74cab8088a1448e5fc4a3
+org.opencontainers.image.source: https://github.com/mrtrollex/VaultBridge
+org.opencontainers.image.revision: e39ed91db75f912f390c7ec915dea73369bb9252
+org.opencontainers.image.version: v1.1.0
+org.opencontainers.image.licenses: MIT
 ```
 
 Inspect all four stable aliases and require the same OCI index digest. An alias match is not enough:
@@ -112,43 +114,48 @@ inspect the runtime manifest and labels from the exact digest.
 
 ### F. Anonymous pull verification
 
-Use a fresh temporary Docker configuration with no saved GHCR credentials. Pull
-`ghcr.io/mrtrollex/vaultbridge@sha256:<verified-index-digest>`, then prove the image is usable by
-digest and that `1.1.0` resolves to the same index digest. Record only sanitized output; never retain
-the temporary auth directory or resolved environment.
+Anonymous pull with a temporary empty Docker config: **PASS**.
+
+Pulled reference:
+
+```text
+ghcr.io/mrtrollex/vaultbridge@sha256:753e613617d221c3dac311600a36cab3f2727b09f630321664eaa7b7ad6eb48c
+```
+
+Runtime inspection reported `OS=linux` and `ARCH=amd64`.
 
 ### G. TrueNAS immutable-image verification
 
-Run the future VB-075 gate in [`DASHBOARD_RELEASE_CHECKLIST.md`](DASHBOARD_RELEASE_CHECKLIST.md)
-against the anonymously pulled exact digest. The completed VB-074 source-built Phase B evidence is
-historical validation and does not prove the published `v1.1.0` image.
+The supplied evidence proves exact-digest pullability, platform, and OCI labels only. The full VB-075
+gate in [`DASHBOARD_RELEASE_CHECKLIST.md`](DASHBOARD_RELEASE_CHECKLIST.md) remains required against
+the published digest. The completed VB-074 source-built Phase B evidence is historical validation
+and does not prove the published `v1.1.0` image.
 
 ### H. Post-release evidence and downstream handoff
 
-After every prior phase passes, add the immutable release facts to this document and update
-`PROJECT_STATE.md`, `ROADMAP.md`, `BACKLOG.md`, and the dashboard checklist. Only then may VB-075 be
-marked complete. Hand the verified release tag/digest to VB-081 production finalization; VB-082
-remains a separate real TrueNAS Community App lifecycle task, and VB-083 remains the separate
-upstream submission task.
+The immutable facts supplied so far are recorded here and handed to VB-081 production-image
+finalization. VB-075 remains open until its exact-source CI and exact-image functional runtime
+criteria are evidenced. VB-082 remains the separate real TrueNAS Community App lifecycle task, and
+VB-083 remains the separate upstream submission task.
 
 ### TrueNAS Community App field boundary
 
-The current `ix-dev/community/vaultbridge/` source is intentionally safe before publication:
+The current `ix-dev/community/vaultbridge/` source now represents the published image through the
+current upstream repository-plus-tag convention:
 
-- release-neutral metadata/questions/template and test fixtures are prepared and statically checked;
-- `app.yaml` keeps `app_version: unreleased`;
-- `ix_values.yaml` deliberately has no production `images` map;
-- all test-values files keep `0.0.0-vb081-development-placeholder` and explicitly prohibit submission;
-- `app.yaml` `version: 1.0.0` is the staged catalog-package revision, not the VaultBridge runtime
-  version, and is not changed merely because the application release target is `1.1.0`.
+- `app.yaml` has `app_version: 1.1.0`;
+- `ix_values.yaml` uses repository `ghcr.io/mrtrollex/vaultbridge` and exact tag `1.1.0`;
+- fixtures inherit that production image map and keep synthetic API keys and disposable paths;
+- `app.yaml` `version: 1.0.0` remains the initial, not-yet-submitted catalog package version under
+  current upstream rules; it is independent of the VaultBridge runtime version;
+- current upstream has no dedicated digest field in this image map, so the verified OCI index digest
+  remains release/live-validation evidence rather than fabricated package syntax.
 
-No production Community App field can safely claim `1.1.0` before the image exists and passes the
-publication gate. After publication and immutable verification, VB-081 production finalization must
-set the production image repository/tag, set matching `app_version: 1.1.0`, choose the next catalog
-package `version` under then-current upstream rules, generate the final library/hash/catalog
-metadata and approved icon reference, and rerun upstream schema/render/deployable-image checks. The
-actual image digest and VB-082 evidence must be recorded rather than inferred. This release
-preparation therefore leaves every file under `ix-dev/community/vaultbridge/` unchanged.
+The pre-submission icon points to the asset at the immutable released source commit. Current upstream
+submission conventions require a reviewer-supplied TrueNAS CDN URL; that URL, the generated library
+copy, `lib_version_hash`, `item.yaml`, and Docker-backed official rendering/deployment checks remain
+pending because the current host has no Docker. No CDN URL or generated hash is fabricated. VB-082
+lifecycle evidence remains separate and has not started.
 
 ### Local preparation validation evidence
 

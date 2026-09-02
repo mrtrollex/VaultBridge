@@ -2,7 +2,7 @@
 
 **Backlog item:** VB-080
 
-**Status:** Accepted design; VB-081 release-neutral packaging source is staged, not released or submitted
+**Status:** Accepted design; VB-081 production-image source is statically finalized, not lifecycle-tested or submitted
 
 **Decision date:** 2026-09-02
 
@@ -43,19 +43,19 @@ copy or a `VaultBridge-TrueNAS` runtime fork is not.
 
 ## Current upstream basis
 
-Research was performed on 2026-09-02 against `truenas/apps` master commit
-[`dee192fd89095cafa0ea93c19d40dfa1ca468dc9`](https://github.com/truenas/apps/tree/dee192fd89095cafa0ea93c19d40dfa1ca468dc9).
-VB-081 must rebase this design onto then-current master, use the then-current non-v1 catalog library,
-and record any convention changes before implementation.
+Research was refreshed on 2026-09-02 against `truenas/apps` master commit
+[`354e87006de2f49a8a2cd655bce857984a7bd247`](https://github.com/truenas/apps/tree/354e87006de2f49a8a2cd655bce857984a7bd247).
+The latest non-v1 catalog library remains `2.3.11`; the repository-plus-tag image contract and
+initial package-version rule have not materially changed since the earlier VB-080/VB-081 review at
+`dee192fd89095cafa0ea93c19d40dfa1ca468dc9`.
 
 Authoritative source:
 
-- the pinned upstream
-  [`CONTRIBUTIONS.md`](https://github.com/truenas/apps/blob/dee192fd89095cafa0ea93c19d40dfa1ca468dc9/CONTRIBUTIONS.md),
+- the refreshed upstream
+  [`CONTRIBUTIONS.md`](https://github.com/truenas/apps/blob/354e87006de2f49a8a2cd655bce857984a7bd247/CONTRIBUTIONS.md),
   including its repository structure, question schema, render library, local CI, migration, security,
   storage, and submission rules;
-- the current library at research time was `2.3.11`; that number is evidence, not a version to pin
-  before VB-081.
+- the current library remains `2.3.11`.
 
 Current conventions relevant to VaultBridge are:
 
@@ -294,21 +294,21 @@ The only permitted runtime image repository is:
 ghcr.io/mrtrollex/vaultbridge
 ```
 
-VB-080 does not select a release version and does not assert that a dashboard-capable release exists.
-Before VB-081 can render a deployable definition, VB-075 (or its factual successor) must provide a
-public, anonymously pullable, dashboard-capable release with a verified OCI digest and the required
-platform.
+VB-080 did not select a release version. VaultBridge `v1.1.0` has since been published from
+`e39ed91db75f912f390c7ec915dea73369bb9252`; its exact OCI index digest was anonymously pulled and
+inspected as `linux/amd64`, satisfying the production-image input needed for static finalization.
 
-When that dependency exists:
+The implemented contract is:
 
 - `ix_values.yaml` uses the normal GHCR repository and an exact released SemVer tag, never `latest`,
   a branch tag, or a TrueNAS-specific image;
 - `app.yaml.app_version` matches that upstream VaultBridge release; the catalog package's own
   `app.yaml.version` starts at the upstream-required initial package version and changes for catalog
   definition revisions independently of the VaultBridge release;
-- VB-082 resolves the exact tag to its OCI digest, records it, verifies the expected source,
-  revision, version, license, and platform metadata, performs an anonymous pull, and runs the tested
-  content by immutable digest where the validation path permits an image override;
+- the verified release evidence records OCI index
+  `sha256:753e613617d221c3dac311600a36cab3f2727b09f630321664eaa7b7ad6eb48c`, `linux/amd64` manifest
+  `sha256:62ddad69cf3e4af632d40c3bcdb8f9e601fa7c04009616350f9ab706a4171e92`, and attestation
+  `sha256:744fe630075b91cc576a18b37012c4d37d0b551b17a74cab8088a1448e5fc4a3`;
 - the submitted catalog source follows current upstream tag conventions. Current upstream examples
   use repository plus tag rather than digest syntax, so VB-081 must not fabricate an unsupported
   digest field. Tag-to-digest identity is an evidence gate.
@@ -347,10 +347,13 @@ The future `app.yaml` and contribution use factual metadata only:
 | Maintainer | current upstream convention lists the TrueNAS maintainer identity in `app.yaml`; do not invent a personal maintainer entry |
 | Capabilities / host mounts | empty |
 
-The source icon is [`docs/assets/vaultbridge-logo.webp`](assets/vaultbridge-logo.webp). For upstream,
-attach the source asset to the contribution and use the TrueNAS CDN URL supplied by reviewers,
-following the current contributor guide. Do not point catalog metadata at an unapproved mutable local
-or third-party asset URL. Screenshots are optional and must contain only disposable, sanitized data.
+The source icon is [`docs/assets/vaultbridge-logo.webp`](assets/vaultbridge-logo.webp). The
+pre-submission metadata uses its immutable released-source URL at
+`e39ed91db75f912f390c7ec915dea73369bb9252`, which is reviewable and currently returns the expected
+WebP. For upstream, attach the source asset to the contribution and replace that URL only with the
+TrueNAS CDN URL supplied by reviewers, following the current contributor guide. Do not invent a CDN
+URL before the asset is uploaded. Screenshots are optional and must contain only disposable,
+sanitized data.
 
 App notes remain short: identify the Web Portal, state that `/vault` is authoritative and `/data` is
 rebuildable, link documentation, and explain that `/health/ready` can remain unavailable during first
@@ -474,6 +477,10 @@ into evidence.
 VB-081 ends with an implemented, current-schema definition and passing upstream render/local tests.
 It does not claim TrueNAS UI behavior, catalog availability, or upstream acceptance.
 
+Current status: source metadata and all three fixtures pass current-library static rendering and
+focused invariants. The official upstream CI/hash generator is Docker-backed and cannot run on the
+current Docker-less host, so generated artifacts and deployable-image validation remain open.
+
 ### VB-082 - real TrueNAS lifecycle validation
 
 Use a disposable supported TrueNAS installation, isolated ports, a synthetic vault, disposable
@@ -565,12 +572,14 @@ Those legacy names remain untouched in their existing artifacts.
 VB-080 is complete when this design is accepted and repository status records it. The following facts
 remain open and block later claims:
 
-- no dashboard-capable release version is selected or published by this task;
-- the staged `ix-dev/community/vaultbridge/` definition still lacks a production release image pin;
-- current-schema source and fixture render checks pass, but no deploy test has run against a
-  published dashboard-capable VaultBridge image;
+- VaultBridge `v1.1.0` is published and the staged definition pins exact tag `1.1.0` with matching
+  `app_version`;
+- current upstream still provides repository plus tag rather than a dedicated image digest field;
+- official Docker-backed source/render/deploy validation, generated library/hash/catalog artifacts,
+  and the reviewer-supplied TrueNAS CDN icon URL remain pending;
 - no real Community App wizard, install, edit, portal, upgrade, rollback, or uninstall has been
   verified;
 - VaultBridge is not present in the upstream TrueNAS Apps catalog or Discover page.
 
-Those are VB-075/VB-081/VB-082/VB-083 responsibilities, not omissions to fill inside VB-080.
+The remaining generated-validation, lifecycle, and submission gates belong to VB-081/VB-082/VB-083,
+not to the completed VB-080 design.
