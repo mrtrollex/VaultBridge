@@ -2,7 +2,7 @@
 
 **Backlog item:** VB-080
 
-**Status:** Accepted design; VB-081 production-image source is statically finalized, not lifecycle-tested or submitted
+**Status:** Accepted design; VB-081 production-image source is statically finalized; VB-082 is in progress / partial validation; nothing submitted
 
 **Decision date:** 2026-09-02
 
@@ -519,6 +519,79 @@ storage, permission, health, restart, upgrade, and uninstall evidence, but leave
 edit-form, generated Portal metadata, and Discover-tile behavior as **REQUIRES UPSTREAM VERIFICATION**.
 Local Compose or custom YAML must never be reported as proof of a catalog wizard.
 
+#### VB-082 partial validation record — 2026-09-02
+
+VB-082 remains **IN PROGRESS / PARTIAL VALIDATION**. This session validated the core runtime/API/UI
+path through a fresh TrueNAS custom-YAML installation. It did not validate a generated Community App
+package or complete the required lifecycle, negative, upgrade, rollback, uninstall, or upstream UI
+gates.
+
+Verified environment:
+
+```text
+TrueNAS: 25.10.6
+Host: C246-NAS-ITX; Intel Xeon E-2174G; 32 GB ECC
+Docker: 28.3.1
+Docker Compose: 2.38.1
+Platform: linux/amd64
+Test installation: custom YAML app vaultbridge-vb082
+Image: ghcr.io/mrtrollex/vaultbridge:1.1.0
+Resolved OCI index digest: sha256:753e613617d221c3dac311600a36cab3f2727b09f630321664eaa7b7ad6eb48c
+```
+
+**PASS — captured/retained session evidence:**
+
+- fresh TrueNAS custom-YAML installation;
+- container reported `Running` and healthy;
+- exact `ghcr.io/mrtrollex/vaultbridge:1.1.0` image and exact OCI index digest
+  `sha256:753e613617d221c3dac311600a36cab3f2727b09f630321664eaa7b7ad6eb48c`;
+- process identity `uid=568 gid=568`; container `User=568:568`, `Privileged=false`, and
+  `CapDrop=["ALL"]`;
+- isolated Docker bridge network;
+- `/vault` mounted read/write and `/data` mounted read/write;
+- `GET /health/live` returned HTTP `200`;
+- `GET /health/ready` returned HTTP `200`;
+- `/health` reported `semantic_index_ready=true`, `semantic_index_state=ready`,
+  `semantic_search_available=true`, `indexed_notes=2`, `semantic_chunks=2`, and `vault_notes=2`;
+- an unauthenticated protected API request returned HTTP `401`;
+- authenticated notes list passed;
+- literal search for `PostgreSQL` returned `alpha.md`;
+- semantic search for `astronomy/telescope/galaxies` returned `beta.md`;
+- full note read returned `alpha.md`;
+- the UI response included a strict CSP, `X-Content-Type-Options: nosniff`, and
+  `Referrer-Policy: no-referrer`;
+- the Web UI initially rendered locked and unlocked successfully;
+- UI literal search returned `alpha.md`;
+- the UI full-note reader displayed `alpha.md` successfully.
+
+**OPERATOR-CONFIRMED PASS** — raw command output was not retained:
+
+- restart and persistence behavior;
+- watcher-disabled and watcher-enabled behavior.
+
+These confirmations are intentionally distinguished from the captured/retained evidence and do not
+substitute for the remaining required gates.
+
+**NOT RUN / deferred:**
+
+- API-key rotation overlap;
+- previous-key removal;
+- Web Port edit/redeploy;
+- occupied-port negative case;
+- permission-denied / ACL negative case;
+- upgrade from a prior supported package/image;
+- rollback;
+- uninstall and byte-for-byte external-vault preservation;
+- ixVolume uninstall behavior;
+- real pre-submission catalog question-form, edit-form, and Portal behavior.
+
+The custom-YAML TrueNAS install does not expose the catalog-generated **Web UI / Portal** button.
+That result is **REQUIRES UPSTREAM VERIFICATION**, not a VaultBridge failure. All VB-082 acceptance
+criteria not explicitly listed as captured PASS or operator-confirmed PASS above remain open.
+
+The disposable VB-082 API key was exposed during the test session. It is compromised test material
+and must never be reused outside that disposable environment.
+
 ### VB-083 - upstream submission and Discover availability
 
 Only after VB-082's required gates pass should VB-083 prepare the contribution under
@@ -577,9 +650,10 @@ remain open and block later claims:
 - current upstream still provides repository plus tag rather than a dedicated image digest field;
 - official Docker-backed source/render/deploy validation, generated library/hash/catalog artifacts,
   and the reviewer-supplied TrueNAS CDN icon URL remain pending;
-- no real Community App wizard, install, edit, portal, upgrade, rollback, or uninstall has been
-  verified;
+- a real custom-YAML install has partially validated the core runtime/API/UI path, but no generated
+  Community App wizard, edit form, Portal button, upgrade, rollback, or uninstall has been verified;
 - VaultBridge is not present in the upstream TrueNAS Apps catalog or Discover page.
 
 The remaining generated-validation, lifecycle, and submission gates belong to VB-081/VB-082/VB-083,
-not to the completed VB-080 design.
+not to the completed VB-080 design. The partial record above does not complete VB-082 or unblock
+VB-083.

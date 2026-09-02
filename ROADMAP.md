@@ -552,7 +552,9 @@ Milestone exit criteria:
 VaultBridge `v1.1.0` is published and its exact OCI index is anonymously pullable. VB-080 defines the
 version-neutral packaging contract and VB-081 now pins exact tag `1.1.0` with matching application
 metadata. VB-075 remains open only for release evidence its current criteria still require; official
-Docker-backed package validation and VB-082 lifecycle validation also remain separate gates.
+Docker-backed package validation remains separate. VB-082 is in progress / partial validation: its
+core custom-YAML runtime/API/UI path passed, while the required remaining lifecycle, negative,
+upgrade, uninstall, and upstream UI gates remain open.
 
 ---
 
@@ -600,7 +602,8 @@ published and verified dashboard-capable VaultBridge image (VB-075)
 VB-081 Community App definition (production image pinned;
 official generated/deployable validation pending)
    ↓
-VB-082 real TrueNAS install/upgrade/portal validation
+VB-082 real TrueNAS validation (IN PROGRESS / PARTIAL;
+core runtime/UI path passed, required lifecycle gates remain)
    ↓
 VB-083 upstream truenas/apps submission
 ```
@@ -715,9 +718,9 @@ VB-080 ✓
    ↓
 VB-081 production-image source ✓ / official generated validation pending
    ↓
-VB-082
+VB-082 IN PROGRESS / PARTIAL VALIDATION
    ↓
-VB-083
+VB-083 BLOCKED on required VB-082 gates
 ```
 
 `v1.0.0` has shipped, and VB-070 through VB-074 complete Milestone 8's dashboard design,
@@ -725,11 +728,14 @@ shell/session, Overview, Search, and final hardening. VB-080 completes the versi
 App packaging design, and VB-081's definition now pins the published `1.1.0` image with matching
 metadata. **Release `v1.1.0`, workflow, aliases, digests, labels, platform, and anonymous pull are
 recorded; VB-075 remains open for the exact-source CI and full functional-image evidence required by
-its current criteria.** Official package generation/deployable validation still precedes VB-082.
+its current criteria.** Official package generation/deployable validation remains open under VB-081.
+VB-082 has partial custom-YAML core runtime/API/UI evidence, but its remaining lifecycle, negative,
+upgrade, uninstall, and real catalog UI gates are still required before VB-083.
 VB-023 remains open P1 retrieval work with its requirements unchanged, but it is not NEXT. VB-032
 and VB-033 remain explicitly deferred/optional, and VB-055 remains optional rather than a dashboard
 prerequisite. Milestone 9 definition work is statically production-image-capable, but official
-Docker-backed package validation and live lifecycle validation remain open.
+Docker-backed package validation and the remaining VB-082 lifecycle gates remain open. VB-083 is
+blocked and no upstream submission has been performed.
 
 ---
 

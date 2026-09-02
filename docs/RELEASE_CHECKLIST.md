@@ -131,12 +131,23 @@ gate in [`DASHBOARD_RELEASE_CHECKLIST.md`](DASHBOARD_RELEASE_CHECKLIST.md) remai
 the published digest. The completed VB-074 source-built Phase B evidence is historical validation
 and does not prove the published `v1.1.0` image.
 
+The later VB-082 session partially validated this same tag and OCI index through a fresh TrueNAS
+`25.10.6` custom-YAML installation. Its retained evidence covers the exact image/digest, non-root
+container confinement and mounts, liveness/readiness/rich health, protected API authentication,
+literal and semantic retrieval, note read, and locked/unlocked UI with security headers and full-note
+reader. Restart/persistence and watcher disabled/enabled behavior are **OPERATOR-CONFIRMED PASS**
+without retained raw command output. The exact record and deferred gates are in
+[`TRUENAS_COMMUNITY_APP_DESIGN.md`](TRUENAS_COMMUNITY_APP_DESIGN.md#vb-082-partial-validation-record--2026-09-02).
+This downstream partial session does not change VB-075's status or satisfy its separately defined
+exact-source and complete functional-image evidence requirements.
+
 ### H. Post-release evidence and downstream handoff
 
 The immutable facts supplied so far are recorded here and handed to VB-081 production-image
 finalization. VB-075 remains open until its exact-source CI and exact-image functional runtime
-criteria are evidenced. VB-082 remains the separate real TrueNAS Community App lifecycle task, and
-VB-083 remains the separate upstream submission task.
+criteria are evidenced. VB-082 is the separate real TrueNAS Community App lifecycle task and is now
+in progress / partial validation. VB-083 remains blocked on completion of the required VB-082 gates;
+no upstream submission has been performed.
 
 ### TrueNAS Community App field boundary
 
@@ -154,8 +165,10 @@ current upstream repository-plus-tag convention:
 The pre-submission icon points to the asset at the immutable released source commit. Current upstream
 submission conventions require a reviewer-supplied TrueNAS CDN URL; that URL, the generated library
 copy, `lib_version_hash`, `item.yaml`, and Docker-backed official rendering/deployment checks remain
-pending because the current host has no Docker. No CDN URL or generated hash is fabricated. VB-082
-lifecycle evidence remains separate and has not started.
+pending because the current host has no Docker. No CDN URL or generated hash is fabricated. The
+separate VB-082 lifecycle task now has partial custom-YAML runtime/API/UI evidence, but its remaining
+required gates are deferred and official form/Portal behavior remains **REQUIRES UPSTREAM
+VERIFICATION**.
 
 ### Local preparation validation evidence
 

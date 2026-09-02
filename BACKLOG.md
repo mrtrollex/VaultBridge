@@ -1039,9 +1039,14 @@ validation remains pending.
 
 ### VB-082 — TrueNAS install/upgrade/portal validation — P1
 
-**Status:** Not started. A published immutable VaultBridge `v1.1.0` image now exists, but official
-VB-081 generated/validation artifacts and real disposable TrueNAS access/evidence are still
-required. No VB-082 lifecycle validation has been performed.
+**Status:** In progress / partial validation as of 2026-09-02. A fresh TrueNAS `25.10.6` custom-YAML
+installation of `ghcr.io/mrtrollex/vaultbridge:1.1.0` at OCI index digest
+`sha256:753e613617d221c3dac311600a36cab3f2727b09f630321664eaa7b7ad6eb48c` validated the core
+runtime/API/UI path. Restart/persistence and watcher-disabled/watcher-enabled behavior are recorded
+separately as **OPERATOR-CONFIRMED PASS** because raw command output was not retained. Required
+rotation, port-edit/negative, permission-negative, upgrade, rollback, uninstall, ixVolume, and real
+catalog form/Portal gates remain open. Official VB-081 generated/validation artifacts also remain as
+currently documented. No upstream submission has been performed.
 
 **Goal:** validate the Community App lifecycle on a real disposable TrueNAS installation and capture
 sanitized evidence.
@@ -1076,9 +1081,20 @@ sanitized evidence.
 - real TrueNAS install/start/health/portal/API/restart/configuration/upgrade/rollback/uninstall runbook
   with sanitized artifact, image tag/digest, platform, and result evidence.
 
+**Recorded partial validation evidence**
+
+- the retained session evidence, its operator-confirmed-only results, the deliberately deferred gates,
+  and the exposed-disposable-key warning are recorded in
+  [`docs/TRUENAS_COMMUNITY_APP_DESIGN.md`](docs/TRUENAS_COMMUNITY_APP_DESIGN.md#vb-082-partial-validation-record--2026-09-02);
+- custom-YAML installation does not expose the catalog-generated Web UI / Portal button, so that
+  behavior remains **REQUIRES UPSTREAM VERIFICATION**, not a VaultBridge failure;
+- this partial record does not satisfy or remove any acceptance criterion above and does not complete
+  VB-082.
+
 ### VB-083 — Submit VaultBridge to upstream TrueNAS Apps catalog — P1
 
-**Status:** Planned; blocked on successful VB-082. No upstream submission has been performed.
+**Status:** Blocked on completion of the required VB-082 gates. No upstream submission has been
+performed.
 
 **Goal:** prepare and submit the verified VaultBridge Community App contribution to `truenas/apps`.
 
@@ -1149,8 +1165,8 @@ VB-001 ✓
 → VB-075 NEXT
 → VB-080 ✓
 → VB-081 static production-image finalization / official generated validation pending
-→ VB-082
-→ VB-083
+→ VB-082 IN PROGRESS / PARTIAL VALIDATION
+→ VB-083 BLOCKED on required VB-082 gates
 ```
 
 VB-057 through VB-060 close the confirmed containment, native-Windows test-portability,
@@ -1166,7 +1182,9 @@ progress because its exact-source CI and full exact-image functional runtime evi
 incomplete. VB-023 remains open P1
 retrieval work with unchanged
 scope, but it is not NEXT. VB-032 and VB-033 remain deferred optional work. VB-055 remains optional
-and is not a dashboard prerequisite. Milestone 9 packaging is in progress; VB-082 and VB-083 remain
-separate, unstarted lifecycle and upstream-submission tasks.
+and is not a dashboard prerequisite. Milestone 9 packaging is in progress; VB-082 has partial
+core-runtime/UI evidence but retains its lifecycle, negative, upgrade, uninstall, and upstream UI
+gates. VB-083 remains blocked on completion of those required VB-082 gates, and no upstream
+submission has been performed.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.
