@@ -1,8 +1,11 @@
-# The production images map is deliberately release-gated. VB-075 must provide a
-# public, versioned, anonymously pullable dashboard-capable image before this
-# definition can pin ghcr.io/mrtrollex/vaultbridge:<released-version> here.
-# Render fixtures supply an explicit development-only images map; it must not be
-# carried into an upstream submission.
+images:
+  image:
+    repository: ghcr.io/mrtrollex/vaultbridge
+    tag: 1.1.0
+  container_utils_image:
+    repository: ixsystems/container-utils
+    tag: 1.0.2
+
 consts:
   vaultbridge_container_name: vaultbridge
   perms_container_name: permissions

@@ -7,24 +7,28 @@ available in the [repository README](https://github.com/mrtrollex/VaultBridge#re
 
 This directory is a pre-submission development copy of the future TrueNAS Community App definition.
 It does not make VaultBridge available in TrueNAS Discover and is not an official TrueNAS app. The
-accepted upstream definition will be owned by `truenas/apps`; this copy exists only so VB-081 can be
-developed and statically reviewed before release and submission gates are satisfied.
+accepted upstream definition will be owned by `truenas/apps`; this copy exists so the package can be
+developed and reviewed before lifecycle and submission gates are satisfied.
 
-## Release gate
+## Production image contract
 
-No dashboard-capable VaultBridge release is selected by VB-081. `ix_values.yaml` therefore does not
-contain a production `images` map. Render fixtures use the clearly synthetic
-`0.0.0-vb081-development-placeholder` tag only to exercise the template. Before upstream submission,
-VB-075/VB-082 must provide and verify a public, versioned, anonymously pullable image and the source
-must pin:
+The package consumes the published VaultBridge `1.1.0` image through the current upstream
+repository-plus-tag convention:
 
 ```text
-ghcr.io/mrtrollex/vaultbridge:<released-version>
+ghcr.io/mrtrollex/vaultbridge:1.1.0
 ```
 
-The release tag, matching `app_version`, final TrueNAS CDN icon URL, factual upstream `date_added`,
-generated library/hash, and generated catalog metadata remain release/submission finalization work.
-Test-only image values must not be copied into the contribution.
+The verified release evidence records OCI index
+`sha256:753e613617d221c3dac311600a36cab3f2727b09f630321664eaa7b7ad6eb48c`; the current TrueNAS image
+values schema has no dedicated digest field, so the digest remains a validation/evidence invariant.
+Fixtures inherit the production image map from `ix_values.yaml` and retain only synthetic API keys
+and disposable paths.
+
+`app_version` is `1.1.0`. Catalog package `version` remains the upstream-required initial `1.0.0`
+because this package has not been submitted. Library `2.3.11` remains current. The official Docker-
+backed tooling must still generate the library copy, `lib_version_hash`, `item.yaml`, and final
+TrueNAS CDN icon reference during upstream preparation; none is fabricated in this development copy.
 
 ## Storage and permissions
 

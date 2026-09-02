@@ -308,8 +308,9 @@ VB-071 implements the dashboard shell and authenticated session boundary accepte
 health-backed Overview, VB-073 implements protected literal and semantic Search, and VB-074
 completes usability, accessibility, privacy, browser, and normal-image hardening. VB-080 defines the
 version-neutral [TrueNAS Community App packaging design](docs/TRUENAS_COMMUNITY_APP_DESIGN.md).
-Publishing and verifying a dashboard-capable image (VB-075), implementing the definition (VB-081),
-and live/upstream validation remain later distribution tasks.
+VaultBridge `v1.1.0` now provides the published dashboard-capable image, and VB-081's staged
+definition pins exact tag `1.1.0`. Official generated/deployable package validation, VB-082 live
+lifecycle validation, and VB-083 upstream submission remain later distribution gates.
 
 ### Current dashboard relationship
 

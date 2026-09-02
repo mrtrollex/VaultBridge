@@ -549,11 +549,10 @@ Milestone exit criteria:
 - [x] no note editor, account system, general file manager, or live index-rebuild mutation is added
 - [x] accessibility, privacy-safe rendering, browser smoke tests, and container verification pass
 
-The remaining release gate for Milestone 9 is VB-075: publish and verify a dashboard-capable
-VaultBridge image. VB-080 defines the version-neutral packaging contract and VB-081 now stages the
-release-neutral catalog source plus static render fixtures. The release decision is `v1.1.0` and
-source preparation is complete, but the production image pin and runtime validation still may not
-select an unpublished or unverified image.
+VaultBridge `v1.1.0` is published and its exact OCI index is anonymously pullable. VB-080 defines the
+version-neutral packaging contract and VB-081 now pins exact tag `1.1.0` with matching application
+metadata. VB-075 remains open only for release evidence its current criteria still require; official
+Docker-backed package validation and VB-082 lifecycle validation also remain separate gates.
 
 ---
 
@@ -598,8 +597,8 @@ VB-080 packaging design ✓
    +
 published and verified dashboard-capable VaultBridge image (VB-075)
    ↓
-VB-081 Community App definition (release-neutral/static implementation complete;
-final image pin and deployable-image validation pending)
+VB-081 Community App definition (production image pinned;
+official generated/deployable validation pending)
    ↓
 VB-082 real TrueNAS install/upgrade/portal validation
    ↓
@@ -608,7 +607,7 @@ VB-083 upstream truenas/apps submission
 
 Milestone exit criteria:
 
-- [ ] packaging consumes a published VaultBridge GHCR image without rebuilding/forking runtime code
+- [x] packaging consumes a published VaultBridge GHCR image without rebuilding/forking runtime code
 - [x] release-neutral metadata, questions, Compose template, and focused fixtures statically render
   through the current upstream library without changing VaultBridge runtime code
 - [x] storage, identity, secret, port, health, portal, resource, upgrade, and rollback contracts are
@@ -709,12 +708,12 @@ VB-073 ✓
    ↓
 VB-074 ✓
    ↓
-VB-075 ← IN PROGRESS (v1.1.0 preparation; publication/verification pending)
+VB-075 ← IN PROGRESS (release published; exact-source CI/full functional-image evidence pending)
    ↓
 TRUENAS COMMUNITY APP DISTRIBUTION
 VB-080 ✓
    ↓
-VB-081 static implementation ✓ / production finalization pending
+VB-081 production-image source ✓ / official generated validation pending
    ↓
 VB-082
    ↓
@@ -723,15 +722,14 @@ VB-083
 
 `v1.0.0` has shipped, and VB-070 through VB-074 complete Milestone 8's dashboard design,
 shell/session, Overview, Search, and final hardening. VB-080 completes the version-neutral Community
-App packaging design, and VB-081's release-neutral/static definition and focused render fixtures are
-complete without selecting or publishing an image. **VB-075 source preparation for `v1.1.0` is
-complete; publication and verification remain pending.** VB-075 owns the normal dashboard-capable
-image required to finalize VB-081's production image metadata and begin VB-082 runtime validation.
+App packaging design, and VB-081's definition now pins the published `1.1.0` image with matching
+metadata. **Release `v1.1.0`, workflow, aliases, digests, labels, platform, and anonymous pull are
+recorded; VB-075 remains open for the exact-source CI and full functional-image evidence required by
+its current criteria.** Official package generation/deployable validation still precedes VB-082.
 VB-023 remains open P1 retrieval work with its requirements unchanged, but it is not NEXT. VB-032
 and VB-033 remain explicitly deferred/optional, and VB-055 remains optional rather than a dashboard
-prerequisite. Milestone 9 definition work has begun, but release finalization and live validation
-remain gated on VB-075. The `v1.1.0` decision is a backward-compatible minor release; publication
-and all immutable-image evidence remain pending.
+prerequisite. Milestone 9 definition work is statically production-image-capable, but official
+Docker-backed package validation and live lifecycle validation remain open.
 
 ---
 
