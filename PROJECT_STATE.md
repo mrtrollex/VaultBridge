@@ -93,9 +93,9 @@ Current post-v1 planning position:
   stop, and complete cleanup without touching production data or services
 - existing API contracts, authentication, rate limiting, CLI behavior, dependencies, Dockerfile,
   and Compose definitions are unchanged by dashboard work through VB-074
-- Milestone 8 is complete; VB-075 is in progress for `v1.1.0` release preparation and owns the
-  missing published/verified dashboard-capable image required to finalize VB-081 production
-  metadata and begin VB-082 runtime validation
+- Milestone 8 is complete; `v1.1.0` source preparation is complete and VB-075 owns the still-missing
+  published/verified dashboard-capable image required to finalize VB-081 production metadata and
+  begin VB-082 runtime validation
 - VB-080 is complete as a version-neutral packaging design in
   `docs/TRUENAS_COMMUNITY_APP_DESIGN.md`, based on current `truenas/apps` contributor conventions;
   it did not implement a catalog definition, select a release, or perform publication
@@ -114,13 +114,13 @@ Current post-v1 planning position:
 Current `v1.1.0` release-preparation status:
 
 - `v1.1.0` is selected as a backward-compatible feature release after `v1.0.0`; package and FastAPI
-  metadata are aligned to `1.1.0`, and the changelog date remains `TBD`
-- release-preparation base: `ca58de1426d2b83e040f882f09757d60e968a6aa`; stable `v1.0.0` source:
-  `1a430996c9db331f448339d233e940d7aa7b3b6d`; current history contains 35 commits, including 16
-  first-parent commits, after `v1.0.0`
-- the reviewable release-candidate working tree is not yet an exact release commit; exact-source CI,
-  tag `v1.1.0`, GitHub Release, GHCR aliases/digests/labels, anonymous pull, and immutable-image
-  TrueNAS verification remain pending and are not claimed
+  metadata are aligned to `1.1.0`, and the changelog date is finalized as `2026-09-02`
+- PR #49 merged the reviewed preparation at `97368092987b23181b0e17aec9e7006043ad6f0c`;
+  stable `v1.0.0` source is `1a430996c9db331f448339d233e940d7aa7b3b6d`; current history contains
+  37 commits, including 17 first-parent commits, after `v1.0.0`
+- final source preparation is complete in the reviewable working tree, but the exact release commit
+  does not yet exist; exact-source CI, tag `v1.1.0`, GitHub Release, GHCR aliases/digests/labels,
+  anonymous pull, and immutable-image TrueNAS verification remain pending and are not claimed
 - the staged TrueNAS definition deliberately remains release-gated: `app_version` stays
   `unreleased`, no production `images` map exists, and static fixtures keep their explicit
   development-only placeholder until the published image is verified

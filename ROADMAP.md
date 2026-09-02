@@ -552,8 +552,8 @@ Milestone exit criteria:
 The remaining release gate for Milestone 9 is VB-075: publish and verify a dashboard-capable
 VaultBridge image. VB-080 defines the version-neutral packaging contract and VB-081 now stages the
 release-neutral catalog source plus static render fixtures. The release decision is `v1.1.0` and
-release preparation is in progress, but the production image pin and runtime validation still may
-not select an unpublished or unverified image.
+source preparation is complete, but the production image pin and runtime validation still may not
+select an unpublished or unverified image.
 
 ---
 
@@ -724,9 +724,9 @@ VB-083
 `v1.0.0` has shipped, and VB-070 through VB-074 complete Milestone 8's dashboard design,
 shell/session, Overview, Search, and final hardening. VB-080 completes the version-neutral Community
 App packaging design, and VB-081's release-neutral/static definition and focused render fixtures are
-complete without selecting or publishing an image. **VB-075 is now in progress for `v1.1.0` release
-preparation** and owns publication plus verification of the normal dashboard-capable image required
-to finalize VB-081's production image metadata and begin VB-082 runtime validation.
+complete without selecting or publishing an image. **VB-075 source preparation for `v1.1.0` is
+complete; publication and verification remain pending.** VB-075 owns the normal dashboard-capable
+image required to finalize VB-081's production image metadata and begin VB-082 runtime validation.
 VB-023 remains open P1 retrieval work with its requirements unchanged, but it is not NEXT. VB-032
 and VB-033 remain explicitly deferred/optional, and VB-055 remains optional rather than a dashboard
 prerequisite. Milestone 9 definition work has begun, but release finalization and live validation
