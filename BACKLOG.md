@@ -923,7 +923,7 @@ Dashboard so downstream packaging can consume an immutable dashboard-capable art
 - run the exact published image against disposable vault/data and verify dashboard assets, health,
   authenticated API behavior, literal and semantic retrieval, CLI availability, safe logs, restart
   persistence, clean stop, and cleanup;
-- record sanitized release, workflow, tag, digest, platform, and runtime evidence for VB-080.
+- record sanitized release, workflow, tag, digest, platform, and runtime evidence for VB-081/VB-082.
 
 **Out of scope**
 
@@ -946,12 +946,16 @@ Dashboard so downstream packaging can consume an immutable dashboard-capable art
 
 ### VB-080 — TrueNAS Community App packaging design — P1
 
-**Status:** Planned.
+**Status:** Completed on 2026-09-02. The accepted packaging contract is recorded in
+[`docs/TRUENAS_COMMUNITY_APP_DESIGN.md`](docs/TRUENAS_COMMUNITY_APP_DESIGN.md); no catalog definition,
+image publication, or upstream submission was performed.
 
 **Goal:** define the upstream TrueNAS catalog packaging, supported configuration, and upgrade
 contract around the normal published VaultBridge image.
 
-**Depends on:** VB-074 plus a published and verified dashboard-capable VaultBridge image.
+**Design input:** VB-074. A published and verified dashboard-capable VaultBridge image remains a
+dependency for VB-081 implementation and VB-082 runtime validation, not for this version-neutral
+packaging design.
 
 **Acceptance criteria**
 
@@ -978,13 +982,16 @@ contract around the normal published VaultBridge image.
 
 **Safety/privacy constraints**
 
-- secret fields must not appear in generated output, logs, portal URLs, support bundles, or screenshots;
+- secret fields use current upstream UI masking and must not be deliberately emitted in app notes,
+  portal URLs, logs, retained render output, support bundles, fixtures, or screenshots; the privileged
+  TrueNAS/Docker control plane necessarily carries the values into the container environment and is
+  not an encrypted secret boundary;
 - packaging must not gain arbitrary filesystem, Docker socket, host administration, or vault-deletion behavior.
 
 **Validation expectations**
 
-- compare the design with current upstream TrueNAS documentation/schema and the verified VaultBridge
-  image/runtime contract; record any live or upstream-version gates explicitly.
+- compare the design with current upstream TrueNAS documentation/schema and the VaultBridge runtime
+  contract; keep publication, immutable-image, live TrueNAS, and upstream-version gates explicit.
 
 ### VB-081 — Implement TrueNAS Community App definition — P1
 
@@ -992,7 +999,7 @@ contract around the normal published VaultBridge image.
 
 **Goal:** create the catalog packaging approved by VB-080 using current TrueNAS Community App conventions.
 
-**Depends on:** VB-080.
+**Depends on:** VB-080 plus a published and verified dashboard-capable VaultBridge image.
 
 **Acceptance criteria**
 
@@ -1128,7 +1135,7 @@ VB-001 ✓
 → VB-073 ✓
 → VB-074 ✓
 → VB-075 NEXT
-→ VB-080
+→ VB-080 ✓
 → VB-081
 → VB-082
 → VB-083
@@ -1140,10 +1147,12 @@ distribution gates are complete; immutable evidence remains recorded in `docs/RE
 
 VB-070 through VB-074 complete the bundled Web Dashboard architecture, shell/session, public
 health-backed Overview, protected literal/semantic Search, and final usability/accessibility/image
-hardening. VB-075 is the sole next recommended task and owns publication plus verification of the
-dashboard-capable image required by VB-080. VB-023 remains open P1 retrieval work with unchanged
+hardening. VB-080 completes the version-neutral Community App packaging design. VB-075 remains the
+sole next recommended task and owns publication plus verification of the dashboard-capable image
+required before VB-081 implementation and VB-082 runtime validation. VB-023 remains open P1
+retrieval work with unchanged
 scope, but it is not NEXT. VB-032 and VB-033 remain deferred optional work. VB-055 remains optional
-and is not a dashboard prerequisite. Milestone 9 begins only after VB-075 supplies the published and
-verified dashboard-capable VaultBridge image.
+and is not a dashboard prerequisite. Milestone 9 design is in progress, but implementation remains
+gated until VB-075 supplies the published and verified dashboard-capable VaultBridge image.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.
