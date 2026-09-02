@@ -471,5 +471,99 @@ the disposable key, resolved container environment, or a resolved Compose config
 - VB-074 and Milestone 8 are complete based on the combined automated, real-Chrome, and disposable
   TrueNAS evidence recorded here.
 - Publishing and verifying a dashboard-capable image remains a separate dependency before VB-081
-  implementation and VB-082 runtime validation; VB-075 owns that gate. The version-neutral VB-080
-  design was completed separately. This checklist does not create or publish a release.
+  production finalization and VB-082 runtime validation; VB-075 owns that gate. The version-neutral
+  VB-080 design and VB-081 release-neutral/static implementation were completed separately. This
+  checklist does not create or publish a release.
+
+## VB-075 future gate: exact published `v1.1.0` dashboard image
+
+The VB-074 evidence above remains an immutable historical record of the source-built Phase B gate.
+It must not be rewritten as proof that the later final UI or published `v1.1.0` image existed during
+that run. The current release-image gate starts only after the reviewed release-preparation tree has
+an exact commit, exact-commit CI passes, and explicit approval allows tag/Release publication.
+
+Until then, every item below is **BLOCKED / REQUIRES LIVE VERIFICATION**.
+
+Record these exact values from the successful release and workflow before running the gate:
+
+```text
+release commit SHA: <pending>
+Git tag: v1.1.0
+GitHub Release URL: <pending>
+GHCR workflow run: <pending>
+OCI index digest: <pending>
+linux/amd64 runtime-manifest digest: <pending>
+exact runtime reference: ghcr.io/mrtrollex/vaultbridge@sha256:<pending>
+```
+
+### Published bundle and delivery contract
+
+Use `GET` and `HEAD` where applicable. Require the exact pulled digest to serve:
+
+| Resource | Required media type | Required checks |
+|---|---|---|
+| `/ui` | redirect | HTTP `307` to canonical `/ui/`; no credential in location or body |
+| `/ui/` | `text/html` | Current dashboard shell; CSP, `nosniff`, and `no-referrer` headers |
+| `/ui/assets/app.css` | `text/css` | Present in image; security headers; no disposable key |
+| `/ui/assets/app.js` | `text/javascript` | Present in image; security headers; no disposable key |
+| `/ui/assets/overview.js` | `text/javascript` | Present in image; security headers; no disposable key |
+| `/ui/assets/search.js` | `text/javascript` | Present in image; security headers; no disposable key |
+| `/ui/assets/vaultbridge-logo.webp` | `image/webp` | Present in image; security headers; no disposable key |
+
+Require the CSP to retain self-only script/style/connect delivery, deny objects and framing, and omit
+`unsafe-inline`/`unsafe-eval`. Unknown `/ui` paths must remain `404`, and UI routes must remain absent
+from OpenAPI. Search the downloaded shell/assets and container logs for the generated disposable key;
+the search must return no matches.
+
+### Current dashboard behavior gate
+
+Using only disposable synthetic notes and a generated key, verify in the published image:
+
+- the protected-access flow starts locked, rejects an invalid key, validates through the existing
+  protected API, keeps the validated key only in namespaced `sessionStorage`, restores the session on
+  reload, and clears it plus protected results/note content on logout or `401`;
+- Overview loads the public `/health` contract without a Bearer header and renders responding,
+  indexing/degraded, malformed, and unavailable states without inventing progress;
+- Literal Search calls `POST /api/v1/notes/search`, preserves server order, and renders synthetic
+  results as text;
+- Semantic Search calls `POST /api/v1/notes/related`, waits for actual semantic availability,
+  preserves server order/scores, and renders synthetic results as text;
+- opening a result calls protected `GET /api/v1/notes/read`, displays the complete Markdown source as
+  text without executing HTML, returns focus to the originating result, suppresses stale reads, and
+  clears the reader when protected access ends;
+- late Overview, search, and note-reader responses cannot repaint stale or logged-out data;
+- no browser console error, remote resource, dashboard-specific API, note mutation, or live index
+  mutation is introduced.
+
+The existing local/static UI tests support this audit but do not prove these behaviors in the
+published image.
+
+### Exact-image API, CLI, persistence, and privacy gate
+
+Run the anonymously pulled digest with a new disposable root, synthetic vault, persistent derived
+data, unique container name, unused loopback port, and new random key. Do not inspect, stop, mount,
+or reuse any production container, vault, data, port, or credential. Require:
+
+1. container remains running and `GET /health/live` returns HTTP 200 with `ok: true`;
+2. `GET /health` returns the safe rich health contract while initial indexing progresses;
+3. protected `GET /api/v1/notes/list?limit=1` succeeds;
+4. Literal and real Semantic Search find only the expected synthetic note;
+5. protected complete note read returns the expected synthetic Markdown;
+6. `python -m app.cli --help` succeeds from the same exact image;
+7. derived semantic data exists, survives container restart, and semantic retrieval becomes
+   available again without replacing the disposable `/data` mount;
+8. application logs omit the key, previous key, authorization headers, query text, note content,
+   private/resolved host paths, and complete environment;
+9. clean stop returns exit code zero;
+10. the uniquely named container, temporary Docker auth directory, and disposable vault/data root are
+    removed after resolving and validating their exact paths.
+
+Record the TrueNAS version, Docker version, UTC time, release/workflow URLs, exact release commit,
+tag-to-index-digest mapping, runtime-manifest digest, platform, OCI source/revision/version/license
+labels, anonymous-pull result, readiness time, restart/persistence result, safe-log result, and cleanup
+result. Never record the generated key, previous key, resolved container environment, synthetic query
+or note content, or absolute host path.
+
+Passing this VB-075 exact-image gate completes only the published VaultBridge artifact dependency.
+VB-081 must still finalize and validate its production image/app metadata, and VB-082 must separately
+verify the Community App install/edit/portal/upgrade/rollback/uninstall lifecycle on real TrueNAS.

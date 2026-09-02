@@ -551,8 +551,9 @@ Milestone exit criteria:
 
 The remaining release gate for Milestone 9 is VB-075: publish and verify a dashboard-capable
 VaultBridge image. VB-080 defines the version-neutral packaging contract and VB-081 now stages the
-release-neutral catalog source plus static render fixtures. The production image pin and runtime
-validation still may not select an unpublished image; no release version is assigned here.
+release-neutral catalog source plus static render fixtures. The release decision is `v1.1.0` and
+release preparation is in progress, but the production image pin and runtime validation still may
+not select an unpublished or unverified image.
 
 ---
 
@@ -597,7 +598,8 @@ VB-080 packaging design ✓
    +
 published and verified dashboard-capable VaultBridge image (VB-075)
    ↓
-VB-081 Community App definition (release-neutral source staged; final image pin pending)
+VB-081 Community App definition (release-neutral/static implementation complete;
+final image pin and deployable-image validation pending)
    ↓
 VB-082 real TrueNAS install/upgrade/portal validation
    ↓
@@ -707,12 +709,12 @@ VB-073 ✓
    ↓
 VB-074 ✓
    ↓
-VB-075 ← NEXT
+VB-075 ← IN PROGRESS (v1.1.0 preparation; publication/verification pending)
    ↓
 TRUENAS COMMUNITY APP DISTRIBUTION
 VB-080 ✓
    ↓
-VB-081
+VB-081 static implementation ✓ / production finalization pending
    ↓
 VB-082
    ↓
@@ -721,14 +723,15 @@ VB-083
 
 `v1.0.0` has shipped, and VB-070 through VB-074 complete Milestone 8's dashboard design,
 shell/session, Overview, Search, and final hardening. VB-080 completes the version-neutral Community
-App packaging design, and VB-081 now stages the release-neutral definition and focused render
-fixtures without selecting or publishing an image. **VB-075 remains the sole next recommended
-task** and owns publication plus verification of the normal dashboard-capable image required to
-finalize VB-081's production image metadata and begin VB-082 runtime validation.
+App packaging design, and VB-081's release-neutral/static definition and focused render fixtures are
+complete without selecting or publishing an image. **VB-075 is now in progress for `v1.1.0` release
+preparation** and owns publication plus verification of the normal dashboard-capable image required
+to finalize VB-081's production image metadata and begin VB-082 runtime validation.
 VB-023 remains open P1 retrieval work with its requirements unchanged, but it is not NEXT. VB-032
 and VB-033 remain explicitly deferred/optional, and VB-055 remains optional rather than a dashboard
 prerequisite. Milestone 9 definition work has begun, but release finalization and live validation
-remain gated on VB-075. This plan does not assign a release version.
+remain gated on VB-075. The `v1.1.0` decision is a backward-compatible minor release; publication
+and all immutable-image evidence remain pending.
 
 ---
 

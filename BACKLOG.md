@@ -904,7 +904,10 @@ without declaring a release version in advance.
 
 ### VB-075 — Publish and verify dashboard-capable VaultBridge image — P1 ▶
 
-**Status:** Planned; next recommended task.
+**Status:** In progress as of 2026-09-02. `v1.1.0` release metadata, changelog, checklists, and
+project-state records are being prepared on the current post-VB-080/VB-081 source. The exact release
+commit, exact-source CI, tag, GitHub Release, GHCR publication, OCI/anonymous-pull checks, and
+immutable-image TrueNAS verification remain pending.
 
 **Goal:** publish and verify the normal VaultBridge image containing the completed bundled Web
 Dashboard so downstream packaging can consume an immutable dashboard-capable artifact.
@@ -954,8 +957,8 @@ image publication, or upstream submission was performed.
 contract around the normal published VaultBridge image.
 
 **Design input:** VB-074. A published and verified dashboard-capable VaultBridge image remains a
-dependency for VB-081 implementation and VB-082 runtime validation, not for this version-neutral
-packaging design.
+dependency for VB-081 production finalization and VB-082 runtime validation, not for this
+version-neutral packaging design.
 
 **Acceptance criteria**
 
@@ -995,13 +998,14 @@ packaging design.
 
 ### VB-081 — Implement TrueNAS Community App definition — P1
 
-**Status:** In progress as of 2026-09-02. The release-neutral definition, install questions,
-Compose template, documentation, and three focused render fixtures are implemented under
+**Status:** Release-neutral/static implementation completed on 2026-09-02. The definition, install
+questions, Compose template, documentation, and three focused render fixtures are implemented under
 `ix-dev/community/vaultbridge/`. Current upstream source/schema/question/template validation and
-focused render-invariant checks pass with a fixture-only development image. The production
-`images` map, matching released `app_version`, final generated library/hash/catalog metadata, and
-deployable-image validation remain blocked on VB-075; live TrueNAS lifecycle validation remains
-VB-082. No upstream submission or Discover availability is claimed.
+focused render-invariant checks pass with a fixture-only development image. Production finalization
+is still open: the `images` map, matching released `app_version`, final generated
+library/hash/catalog metadata, and deployable-image validation remain blocked on VB-075; live
+TrueNAS lifecycle validation remains VB-082. No upstream submission or Discover availability is
+claimed.
 
 **Goal:** create the catalog packaging approved by VB-080 using current TrueNAS Community App conventions.
 
@@ -1036,7 +1040,9 @@ depend on a published and verified dashboard-capable VaultBridge image from VB-0
 
 ### VB-082 — TrueNAS install/upgrade/portal validation — P1
 
-**Status:** Planned.
+**Status:** Blocked. A published immutable VaultBridge `v1.1.0` image, the production-finalized
+VB-081 definition, and real disposable TrueNAS access/evidence are required. No VB-082 lifecycle
+validation has been performed.
 
 **Goal:** validate the Community App lifecycle on a real disposable TrueNAS installation and capture
 sanitized evidence.
@@ -1073,7 +1079,7 @@ sanitized evidence.
 
 ### VB-083 — Submit VaultBridge to upstream TrueNAS Apps catalog — P1
 
-**Status:** Planned.
+**Status:** Planned; blocked on successful VB-082. No upstream submission has been performed.
 
 **Goal:** prepare and submit the verified VaultBridge Community App contribution to `truenas/apps`.
 
@@ -1154,9 +1160,11 @@ distribution gates are complete; immutable evidence remains recorded in `docs/RE
 
 VB-070 through VB-074 complete the bundled Web Dashboard architecture, shell/session, public
 health-backed Overview, protected literal/semantic Search, and final usability/accessibility/image
-hardening. VB-080 completes the version-neutral Community App packaging design. VB-075 remains the
-sole next recommended task and owns publication plus verification of the dashboard-capable image
-required before VB-081 implementation and VB-082 runtime validation. VB-023 remains open P1
+hardening. VB-080 completes the version-neutral Community App packaging design, and VB-081's
+release-neutral/static implementation is complete with production finalization still gated.
+VB-075 is in progress for `v1.1.0` preparation and owns publication plus verification of the
+dashboard-capable image required before VB-081 production finalization and VB-082 runtime
+validation. VB-023 remains open P1
 retrieval work with unchanged
 scope, but it is not NEXT. VB-032 and VB-033 remain deferred optional work. VB-055 remains optional
 and is not a dashboard prerequisite. Milestone 9 design is in progress, but implementation remains

@@ -6,6 +6,8 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ## [Unreleased]
 
+## [1.1.0] - TBD
+
 ### Fixed
 
 - dashboard hardening improves restored-session focus behavior, API-key error association, input
@@ -35,6 +37,9 @@ The project intends to follow Semantic Versioning after the public repository ba
   assets, responsive Overview/Search/API/About navigation, authenticated `sessionStorage` lifecycle,
   centralized Bearer requests and safe status handling, strict CSP/security headers, and no
   note/index mutation or new frontend/runtime dependency
+- a complete safe read-only note reader that opens literal or semantic results through the existing
+  protected `/api/v1/notes/read` contract, renders Markdown source as text, suppresses stale requests,
+  restores focus to results, and clears protected content on logout or authentication failure
 - accepted ADR 0003 for the planned Web Dashboard, defining canonical same-origin `/ui/` routing,
   operator-supplied Bearer-key handling in `sessionStorage`, strict CSP and text-safe rendering,
   reuse of current health/search contracts, and no note/index mutation
@@ -53,12 +58,17 @@ The project intends to follow Semantic Versioning after the public repository ba
 - a dependency-free, process-local fixed-window limiter for protected legacy and `/api/v1` traffic,
   keyed only by the direct ASGI peer, with monotonic timing, bounded client state, deterministic
   cleanup/eviction, `429` plus `Retry-After`, and public health/privacy exemptions
+- an accepted version-neutral TrueNAS Community App design plus a release-neutral development
+  definition with metadata, questions, Compose template, Web Portal, and focused static render
+  fixtures; the production image pin, live TrueNAS validation, upstream submission, and Discover
+  availability remain explicitly unclaimed
 
 ### Changed
 
 - post-v1 documentation now records the platform-neutral dashboard shell, session, Overview, and
-  protected literal/semantic Search as implemented while retaining release hardening, image
-  publication, and TrueNAS Community App packaging as separate future work
+  protected Literal/Semantic Search as implemented, together with final operator-console polish,
+  streamlined protected access, and complete note reading, while retaining image publication and
+  immutable-image verification as separate release work
 - targeted synchronization now removes derived rows for safely contained missing Markdown paths, so
   external deletes and both sides of renames are processed without a full vault scan
 - related-note suggestions now return only live, contained regular Markdown paths verified through

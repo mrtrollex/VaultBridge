@@ -34,7 +34,7 @@ from app.services.vault import (
 from app.ui.router import router as ui_router
 
 APP_TITLE = "VaultBridge"
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.1.0"
 APP_DESCRIPTION = "Self-hosted REST and semantic search API for an Obsidian vault."
 
 configure_application_logging()
