@@ -21,6 +21,9 @@
 12. **One distributable application.** The dashboard ships in the normal VaultBridge
     production image. A second UI service/container requires a measured future need and an explicit
     architecture decision.
+13. **Protocol adapters share domain ownership.** MCP and future client protocols remain thin
+    adapters over the same vault and semantic services; they do not call another adapter by default
+    or create a second implementation of VaultBridge behavior.
 
 ---
 
@@ -87,6 +90,7 @@ app/semantic.py                 legacy compatibility facade
 - [x] **VB-020 — Markdown heading-aware chunker**
 - [x] **VB-021 — Embed title + heading hierarchy + chunk**
 - [x] **VB-022 — Retrieval evaluation fixture**
+- [x] **VB-023 — Retrieval benchmark command**
 - [x] **VB-024 — Tune hybrid ranking from evaluation data**
 - [x] **VB-040 — Structured JSON logging**
 - [x] **VB-041 — Request IDs and latency logging**
@@ -624,6 +628,71 @@ Milestone exit criteria:
 
 ---
 
+# Milestone 10 — MCP integration — DESIGN COMPLETE / IMPLEMENTATION NOT STARTED
+
+**Goal:** add MCP as a small client/integration surface over existing VaultBridge services without
+replacing REST, duplicating domain logic, or creating a permanent runtime fork.
+
+ADR 0004 establishes the transport and ownership model:
+
+```text
+local MCP client
+       |
+       | stdio (VB-091, read-only)
+       v
+MCP protocol adapter
+       |
+       +------------------+
+       |                  |
+       v                  v
+ VaultService     SemanticSearchService
+       |                  |
+   Markdown        SQLite / FastEmbed
+
+future network client
+       |
+       | Streamable HTTP /mcp (opt-in, existing process/port)
+       +------------------> same MCP adapter and services
+```
+
+VB-091 is deliberately limited to an explicit read-only stdio entry point, five tools
+(`list_notes`, `read_note`, `search_notes`, `related_notes`, and `duplicate_candidates`), and one
+contained note Resource template. It starts no FastAPI app, background indexer, watcher,
+synchronization, or semantic-index writer. The main API process is not required for local stdio.
+
+Streamable HTTP is the selected future network transport, but it is not part of VB-091. When
+implemented separately, it will mount opt-in `/mcp` in the existing FastAPI process and port, reuse
+the existing Bearer rotation and rate-limit primitives, validate Origin, and share the application
+indexer. Legacy HTTP+SSE, a second service/container, write tools, and Prompts are not in the initial
+scope.
+
+Task sequence:
+
+```text
+VB-090 MCP architecture / ADR ✓
+   ↓
+VB-091 read-only stdio MCP server — NOT STARTED
+   ↓
+future network and write phases only after separate approval
+```
+
+Milestone exit criteria:
+
+- [x] current MCP transports, authorization guidance, tool/Resource rules, and official Python SDK
+  are documented from authoritative current sources
+- [x] service ownership, process lifecycle, authentication, safety, observability, packaging, and
+  compatibility contracts are accepted in
+  [`docs/adr/0004-mcp-integration.md`](docs/adr/0004-mcp-integration.md)
+- [ ] the VB-091 read-only stdio tool and Resource surface is implemented and verified
+- [ ] existing REST, dashboard, CLI, ChatGPT Action, Docker, and TrueNAS behavior remains unchanged
+  after implementation
+
+This milestone is an independent post-v1 integration track. VB-091 is planned but is not the
+current `NEXT` task; VB-075 retains that marker while its existing release-evidence criteria remain
+open.
+
+---
+
 # Post-1.0 candidates
 
 - pluggable embedding providers
@@ -633,7 +702,6 @@ Milestone exit criteria:
 - read-only mode
 - per-folder access policies
 - multiple vaults
-- MCP server adapter
 - webhook/event integrations
 - frontmatter query language
 - graph-aware ranking using Obsidian links
@@ -725,6 +793,11 @@ VB-081 production-image source ✓ / official generated validation pending
 VB-082 IN PROGRESS / PARTIAL VALIDATION
    ↓
 VB-083 BLOCKED on required VB-082 gates
+   ↓
+MCP INTEGRATION (independent post-v1 track)
+VB-090 ✓
+   ↓
+VB-091 NOT STARTED (planned; not NEXT)
 ```
 
 `v1.0.0` has shipped, and VB-070 through VB-074 complete Milestone 8's dashboard design,
@@ -739,7 +812,8 @@ VB-023 retrieval benchmarking is complete. VB-032 and VB-033 remain explicitly d
 and VB-055 remains optional rather than a dashboard
 prerequisite. Milestone 9 definition work is statically production-image-capable, but official
 Docker-backed package validation and the remaining VB-082 lifecycle gates remain open. VB-083 is
-blocked and no upstream submission has been performed.
+blocked and no upstream submission has been performed. ADR 0004 completes VB-090's MCP design-only
+work; VB-091 remains not started, and VB-075 retains the current next-task marker.
 
 ---
 

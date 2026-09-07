@@ -4,7 +4,7 @@ This document is the current factual snapshot for future Codex sessions. It shou
 
 ## Baseline date
 
-2026-09-02
+2026-09-07
 
 ## Current development position
 
@@ -24,6 +24,7 @@ Completed:
 - VB-020 — Markdown heading-aware chunker
 - VB-021 — Embed title + heading hierarchy + chunk
 - VB-022 — Retrieval evaluation fixture
+- VB-023 — Retrieval benchmark command
 - VB-024 — Tune hybrid ranking from evaluation data
 - VB-030 — Duplicate candidate service
 - VB-031 — Verified related-note suggestions
@@ -49,6 +50,7 @@ Completed:
 - VB-073 — Dashboard search interface
 - VB-074 — Dashboard usability, accessibility and release hardening
 - VB-080 — TrueNAS Community App packaging design
+- VB-090 — MCP integration architecture / ADR
 
 Post-v1 development position:
 
@@ -116,6 +118,11 @@ Current post-v1 planning position:
 - current TrueNAS support remains the documented Docker/source-built Custom App deployment
 - VB-023 is complete: the sanitized real-model retrieval benchmark emits Markdown/JSON without
   changing the deterministic VB-022 baseline or production retrieval behavior
+- ADR 0004 is accepted and VB-090 is complete as design-only work: VB-091 is scoped as a read-only
+  stdio-first MCP implementation with five tools and a contained note Resource template; VB-091 is NOT STARTED,
+  no MCP runtime/dependency/configuration exists yet, and VB-075 remains the current next task
+- future MCP Streamable HTTP is selected for opt-in `/mcp` in the existing FastAPI process/port, but
+  it is deferred beyond VB-091 together with network auth/Origin validation, write tools, and Prompts
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
 
@@ -170,6 +177,7 @@ Current milestones:
 - **Milestone 7 — Distribution and `v1.0.0` (complete)**
 - **Milestone 8 — Web Dashboard / operator experience (complete)**
 - **Milestone 9 — TrueNAS Community App distribution (in progress; production image pinned, VB-082 partially validated, official package/remaining live gates open)**
+- **Milestone 10 — MCP integration (design complete; VB-091 implementation not started)**
 
 ## Working production characteristics
 

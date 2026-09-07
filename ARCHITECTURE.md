@@ -424,33 +424,80 @@ upstream catalog definition. Current TrueNAS support remains the documented sour
 path until the VB-080 design is implemented by VB-081, validated on real TrueNAS by VB-082, and
 accepted upstream through VB-083.
 
+### Planned MCP relationship (not implemented)
+
+[ADR 0004](docs/adr/0004-mcp-integration.md) accepts MCP as another thin client protocol over the
+same services. VB-090 changes the target architecture only; no MCP dependency, entry point, route,
+configuration, tool, Resource, listener, or runtime behavior exists yet.
+
+VB-091 is intentionally read-only and stdio-first:
+
+```text
+local MCP client
+       |
+       | launches `python -m app.mcp_server`
+       v
+MCP stdio adapter
+       |
+       +--------------------+
+       |                    |
+       v                    v
+ VaultService      SemanticSearchService
+       |                    |
+   Markdown          compatible ready
+                    persisted index
+```
+
+The stdio entry point will construct only existing read services. It will not start FastAPI,
+`BackgroundSemanticIndexer`, `SemanticFilesystemWatcher`, synchronization, rebuild, or any semantic
+storage writer. This preserves the current no-cross-process-index-writer boundary while allowing
+local MCP clients to list, read, search, find related notes, and request duplicate candidates without
+the HTTP application. Semantic tools are available only when the existing read-only persisted-index
+inspection confirms a compatible ready index.
+
+The five planned VB-091 tools are `list_notes`, `read_note`, `search_notes`, `related_notes`, and
+`duplicate_candidates`. `related_notes` is the single semantic-retrieval name; there is no duplicate
+`semantic_search` alias. Note content will also be readable as `text/markdown` through the contained
+`vaultbridge://note/{percent-encoded-vault-relative-path}` Resource template. The URI never exposes
+an absolute host path and is decoded through `VaultService`. No Prompts or write tools are included.
+
+Streamable HTTP is the selected later network transport. It will be opt-in at fixed `/mcp` in the
+existing FastAPI process and port, share the wired services/indexer, validate Origin, explicitly apply
+the current Bearer-key rotation and fixed-window rate-limit primitives, and remain outside REST
+OpenAPI. It is not part of VB-091. The deprecated standalone HTTP+SSE transport, a custom transport,
+a second MCP service/container, and a new port are not planned.
+
+Future `create_note` and `append_note` MCP tools may be added only through a separately approved
+in-process design that preserves `VaultService` writes and queues the committed path through the
+application-owned `BackgroundSemanticIndexer`. MCP cannot introduce overwrite, delete, section
+update, backlink mutation, arbitrary filesystem access, index maintenance, or a bypass of deferred
+VB-032/VB-033.
+
 ---
 
 ## Target architecture
 
 ```text
-                         +--------------------+
-                         |   API clients      |
-                         | ChatGPT / CLI / UI |
-                         +----------+---------+
-                                    |
-                                    v
-                         +--------------------+
-                         | FastAPI / api/v1   |
-                         +----+----------+----+
-                              |          |
-                    +---------+          +----------+
-                    v                               v
-             +-------------+                +---------------+
-             | VaultService |                | SearchService |
-             +------+------+                +-------+-------+
-                    |                               |
-                    v                               v
-             Obsidian Markdown               SemanticIndexer
+                  REST / Web / CLI clients          MCP clients
+                            |                       /          \
+                            v                  stdio       future HTTP
+                  FastAPI / CLI adapters             \       /mcp
+                            |                          v       /
+                            +---------------------- MCP adapter
                                                     |
-                                      +-------------+-------------+
-                                      v                           v
-                                Embedder (ONNX)             SQLite repo
+                          +-------------------------+-------------------+
+                          |                                             |
+                          v                                             v
+                   +-------------+                              +---------------+
+                   | VaultService |                              | SearchService |
+                   +------+------+                              +-------+-------+
+                          |                                             |
+                          v                                             v
+                   Obsidian Markdown                             SemanticIndexer
+                                                                       |
+                                                         +-------------+-------------+
+                                                         v                           v
+                                                   Embedder (ONNX)             SQLite repo
 ```
 
 ## Proposed module boundaries
@@ -510,6 +557,13 @@ Pydantic HTTP request/response models only.
 FastAPI routers, versioned route registration and dependencies. Routes should orchestrate services
 rather than implement domain logic. Legacy and current version paths must converge on the same
 endpoint function and service path.
+
+### `mcp_server.py` (planned by VB-091; not present)
+
+Explicit stdio composition root plus MCP tool/Resource schema and result/error mapping. It injects
+existing services directly, starts no index writer, and contains no vault, ranking, or persistence
+logic. A later opt-in Streamable HTTP mount may reuse the same registration layer inside the existing
+FastAPI process.
 
 ---
 

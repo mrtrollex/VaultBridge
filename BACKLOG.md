@@ -1134,6 +1134,79 @@ performed.
 
 ---
 
+## MCP integration
+
+### VB-090 — MCP integration architecture / ADR — P1 ✅
+
+**Status:** Completed on 2026-09-07. The accepted design is recorded in
+[`docs/adr/0004-mcp-integration.md`](docs/adr/0004-mcp-integration.md). No MCP server, dependency,
+runtime route, configuration, image change, or write capability was implemented.
+
+**Goal:** define how MCP becomes an additive first-class VaultBridge integration without replacing
+REST or duplicating vault, semantic, indexing, authentication, or deployment behavior.
+
+**Accepted decision**
+
+- VB-091 is a read-only stdio-first MVP with `list_notes`, `read_note`, `search_notes`,
+  `related_notes`, and `duplicate_candidates`;
+- note content will also be available through a contained `vaultbridge://note/...` Resource template;
+- Prompts, writes, Streamable HTTP, new ports, a permanent second service/container, and legacy
+  HTTP+SSE are outside VB-091;
+- future network MCP uses current-spec Streamable HTTP at opt-in `/mcp` in the existing FastAPI
+  process/port with explicit Origin validation, Bearer authentication, and rate limiting;
+- the official Python `mcp` v2 SDK is the selected bounded normal runtime dependency for VB-091;
+- stdio starts no background indexer or synchronization and performs semantic queries only against a
+  compatible ready persisted index through the existing read-only service boundary.
+
+**Acceptance criteria**
+
+- current authoritative MCP specification and official Python SDK sources are dated and referenced;
+- transport, process, authentication, tool/Resource/Prompt, error, observability, configuration,
+  packaging, compatibility, and dependency decisions are explicit;
+- service ownership and the no-cross-process-index-writer constraint are preserved;
+- the ADR defines exact stable tool schemas and a bounded VB-091 implementation contract;
+- VB-032/VB-033, VB-075, and VB-081 through VB-083 retain their prior truth and scope.
+
+### VB-091 — MCP server implementation — P1
+
+**Status:** NOT STARTED. This task is planned but is not the current `NEXT` task.
+
+**Depends on:** VB-090.
+
+**Goal:** implement the ADR 0004 read-only stdio MCP adapter over existing VaultBridge services.
+
+**Acceptance criteria**
+
+- use the official Python `mcp` v2 SDK through one bounded normal runtime dependency;
+- provide explicit `python -m app.mcp_server` stdio startup with stdout reserved for MCP messages and
+  safe structured logs on stderr;
+- register exactly `list_notes`, `read_note`, `search_notes`, `related_notes`, and
+  `duplicate_candidates`, plus the canonical read-only note Resource template;
+- inject/reuse `VaultService`, `SemanticSearchService`, and `DuplicateCandidateService` directly;
+  do not call REST through loopback or move MCP concepts into those services;
+- do not start FastAPI, a listener, `BackgroundSemanticIndexer`, filesystem watcher,
+  synchronization, rebuild, or any semantic-index write path;
+- allow semantic tools only when the existing read-only persisted-index boundary confirms a
+  compatible ready index; otherwise return safe retryable MCP execution errors;
+- preserve validation, containment, symlink protection, Markdown-only access, result order/scores,
+  and no-secret/no-content logging;
+- apply one process-wide stdio operation budget through the existing fixed-window limiter primitive
+  without claiming ASGI peer protection;
+- add focused fake-service, schema, error, Resource containment/canonicalization, rate-limit,
+  logging/stdout, lifecycle, and no-persistence-write tests;
+- run the full Python/compile and changed-image dependency checks required by ADR 0004, while proving
+  REST paths/operation IDs and existing clients remain unchanged.
+
+**Out of scope**
+
+- Streamable HTTP, `/mcp`, OAuth, write tools, Prompts, Resource subscriptions/catalogue
+  notifications, index maintenance, a second service/container/image, and any API/dashboard/CLI
+  behavior change;
+- `semantic_search` as a duplicate alias for `related_notes`;
+- create, append, overwrite, update, delete, backlink, or arbitrary filesystem operations.
+
+---
+
 ## Recommended Codex sequence
 
 ```text
@@ -1174,6 +1247,8 @@ VB-001 ✓
 → VB-081 static production-image finalization / official generated validation pending
 → VB-082 IN PROGRESS / PARTIAL VALIDATION
 → VB-083 BLOCKED on required VB-082 gates
+→ VB-090 ✓ (independent MCP design track)
+→ VB-091 NOT STARTED (planned; not NEXT)
 ```
 
 VB-057 through VB-060 close the confirmed containment, native-Windows test-portability,
@@ -1191,6 +1266,8 @@ work. VB-055 remains optional
 and is not a dashboard prerequisite. Milestone 9 packaging is in progress; VB-082 has partial
 core-runtime/UI evidence but retains its lifecycle, negative, upgrade, uninstall, and upstream UI
 gates. VB-083 remains blocked on completion of those required VB-082 gates, and no upstream
-submission has been performed.
+submission has been performed. VB-090 completes the MCP architecture decision without runtime
+changes; VB-091 remains not started and does not replace VB-075 as the current next recommended
+task.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.
