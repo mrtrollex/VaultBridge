@@ -67,7 +67,12 @@ def eligible_markdown_files(vault_root: Path, max_note_bytes: int) -> list[Path]
                 files.append(path)
         except (OSError, ValueError):
             continue
-    return files
+
+    def relative_sort_key(path: Path) -> tuple[str, str]:
+        relative_path = path.relative_to(resolved_root).as_posix()
+        return relative_path.casefold(), relative_path
+
+    return sorted(files, key=relative_sort_key)
 
 
 class VaultServiceError(Exception):

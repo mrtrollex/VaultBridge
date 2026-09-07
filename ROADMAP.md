@@ -628,7 +628,7 @@ Milestone exit criteria:
 
 ---
 
-# Milestone 10 — MCP integration — IMPLEMENTED / DOCKER VERIFICATION BLOCKED
+# Milestone 10 — MCP integration — IMPLEMENTED / CI RERUN PENDING
 
 **Goal:** add MCP as a small client/integration surface over existing VaultBridge services without
 replacing REST, duplicating domain logic, or creating a permanent runtime fork.
@@ -671,7 +671,7 @@ Task sequence:
 ```text
 VB-090 MCP architecture / ADR ✓
    ↓
-VB-091 read-only stdio MCP server — IMPLEMENTED / DOCKER CHECK BLOCKED
+VB-091 read-only stdio MCP server — IMPLEMENTED / CI RERUN PENDING
    ↓
 future network and write phases only after separate approval
 ```
@@ -686,12 +686,12 @@ Milestone exit criteria:
 - [x] the VB-091 read-only stdio tool and Resource surface is implemented and verified through the
   official SDK's in-memory and subprocess clients
 - [ ] existing REST, dashboard, CLI, ChatGPT Action, Docker, and TrueNAS behavior remains unchanged
-  after implementation; Python/API compatibility checks pass, while Docker configuration/build is
-  blocked because Docker is unavailable in the validation environment
+  after implementation; PR #55's Docker job passes and the deterministic full-sync ordering
+  correction passes locally, while the hosted Python job still requires a green rerun
 
-This milestone is an independent post-v1 integration track. VB-091 remains incomplete only because
-the required changed-image Docker gate is unverified; it is not the current `NEXT` task. VB-075
-retains that marker while its existing release-evidence criteria remain open.
+This milestone is an independent post-v1 integration track. VB-091 remains incomplete pending a
+green PR #55 Python rerun; it is not the current `NEXT` task. VB-075 retains that marker while its
+existing release-evidence criteria remain open.
 
 ---
 
@@ -799,7 +799,7 @@ VB-083 BLOCKED on required VB-082 gates
 MCP INTEGRATION (independent post-v1 track)
 VB-090 ✓
    ↓
-VB-091 IMPLEMENTED / DOCKER CHECK BLOCKED (not NEXT)
+VB-091 IMPLEMENTED / CI RERUN PENDING (not NEXT)
 ```
 
 `v1.0.0` has shipped, and VB-070 through VB-074 complete Milestone 8's dashboard design,
@@ -815,7 +815,7 @@ and VB-055 remains optional rather than a dashboard
 prerequisite. Milestone 9 definition work is statically production-image-capable, but official
 Docker-backed package validation and the remaining VB-082 lifecycle gates remain open. VB-083 is
 blocked and no upstream submission has been performed. ADR 0004 completes VB-090's MCP design-only
-work; VB-091 is implemented but remains incomplete pending its required Docker check, and VB-075
+work; VB-091 is implemented but remains incomplete pending a green PR #55 Python rerun, and VB-075
 retains the current next-task marker.
 
 ---

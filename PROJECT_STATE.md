@@ -121,10 +121,11 @@ Current post-v1 planning position:
 - ADR 0004 is accepted and VB-090 is complete as design-only work; VB-091 now implements a
   read-only stdio MCP adapter with five tools and a contained note Resource template using official
   `mcp==2.1.1`
-- VB-091 protocol tests, full Python suite, compile, Ruff, diff, dependency advisory audit, and
-  official-client subprocess smoke pass; the required Docker configuration/build gate is blocked
-  because Docker is unavailable, so VB-091 is not marked complete and VB-075 remains the current
-  next task
+- VB-091 protocol tests, full local Python suite, compile, Ruff, diff, dependency advisory audit,
+  and official-client subprocess smoke pass; PR #55's Docker job also passes Compose, image build,
+  MCP import, and stdio EOF smoke, while its Python job requires a green rerun after the deterministic
+  full-sync ordering correction, so VB-091 is not marked complete and VB-075 remains the current next
+  task
 - future MCP Streamable HTTP is selected for opt-in `/mcp` in the existing FastAPI process/port, but
   it is deferred beyond VB-091 together with network auth/Origin validation, write tools, and Prompts
 - VB-032 and VB-033 remain deferred optional future work
@@ -181,7 +182,7 @@ Current milestones:
 - **Milestone 7 — Distribution and `v1.0.0` (complete)**
 - **Milestone 8 — Web Dashboard / operator experience (complete)**
 - **Milestone 9 — TrueNAS Community App distribution (in progress; production image pinned, VB-082 partially validated, official package/remaining live gates open)**
-- **Milestone 10 — MCP integration (implemented; required Docker verification blocked)**
+- **Milestone 10 — MCP integration (implemented; PR #55 Python rerun pending)**
 
 ## Working production characteristics
 
