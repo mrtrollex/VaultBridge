@@ -114,7 +114,8 @@ Current post-v1 planning position:
   disposable environment
 - no upstream TrueNAS Community App exists yet; no submission, merge, or Discover availability is claimed
 - current TrueNAS support remains the documented Docker/source-built Custom App deployment
-- VB-023 remains open P1 retrieval work with unchanged scope, but it is no longer the current next task
+- VB-023 is complete: the sanitized real-model retrieval benchmark emits Markdown/JSON without
+  changing the deterministic VB-022 baseline or production retrieval behavior
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
 

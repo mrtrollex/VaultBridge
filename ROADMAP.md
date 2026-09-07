@@ -304,9 +304,13 @@ replaced. Its checked 13-case baseline is Hit@1 100%, Hit@3 100% and MRR 100%. R
 material-tie guards keep the fixture deterministic, while controlled ablations prove semantic,
 lexical, heading-context and cross-language sensitivity.
 
-### VB-023 — Retrieval benchmark command — P1
+### VB-023 — Retrieval benchmark command — P1 ✅
 
-Record latency, paths, semantic score, lexical score, final score, and rank.
+The repository benchmark now runs the sanitized evaluation corpus in disposable state through the
+real production model/service contract. Stable Markdown and JSON record query latency, paths,
+headings, semantic/lexical/final scores, ranks, Hit@1, Hit@5, MRR, and latency aggregates. Model
+loading/indexing is reported separately from query latency; offline tests use deterministic injected
+embeddings and timing without changing the VB-022 baseline or retrieval behavior.
 
 ### VB-024 — Tune hybrid ranking from evaluation data — P1 ✅
 
@@ -731,8 +735,8 @@ recorded; VB-075 remains open for the exact-source CI and full functional-image 
 its current criteria.** Official package generation/deployable validation remains open under VB-081.
 VB-082 has partial custom-YAML core runtime/API/UI evidence, but its remaining lifecycle, negative,
 upgrade, uninstall, and real catalog UI gates are still required before VB-083.
-VB-023 remains open P1 retrieval work with its requirements unchanged, but it is not NEXT. VB-032
-and VB-033 remain explicitly deferred/optional, and VB-055 remains optional rather than a dashboard
+VB-023 retrieval benchmarking is complete. VB-032 and VB-033 remain explicitly deferred/optional,
+and VB-055 remains optional rather than a dashboard
 prerequisite. Milestone 9 definition work is statically production-image-capable, but official
 Docker-backed package validation and the remaining VB-082 lifecycle gates remain open. VB-083 is
 blocked and no upstream submission has been performed.
