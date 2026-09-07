@@ -78,9 +78,10 @@ Do not implement the recommended next task.
 At the current project state, the next recommended task is:
 
 ```text
-VB-071 — Dashboard shell and authenticated session
+VB-075 — Publish and verify dashboard-capable VaultBridge image
 ```
 
+VB-090's MCP architecture is complete, but VB-091 remains planned and is not the current next task.
 Always verify this against `PROJECT_STATE.md` and `BACKLOG.md` before starting.
 
 ## Index-maintenance CLI convention
