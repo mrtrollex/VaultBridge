@@ -277,22 +277,42 @@ class SemanticRepository:
     def load_chunks(self) -> list[StoredChunk]:
         connection = self._connect()
         try:
-            rows = connection.execute(
-                "SELECT path, chunk_index, heading, content, embedding, dimensions FROM chunks"
-            ).fetchall()
-            return [
-                StoredChunk(
-                    path=row["path"],
-                    chunk_index=row["chunk_index"],
-                    heading=row["heading"],
-                    content=row["content"],
-                    embedding=row["embedding"],
-                    dimensions=row["dimensions"],
-                )
-                for row in rows
-            ]
+            return self._load_chunks_connection(connection)
         finally:
             connection.close()
+
+    @staticmethod
+    def _load_chunks_connection(connection: sqlite3.Connection) -> list[StoredChunk]:
+        connection.row_factory = sqlite3.Row
+        rows = connection.execute(
+            "SELECT path, chunk_index, heading, content, embedding, dimensions FROM chunks"
+        ).fetchall()
+        return [
+            StoredChunk(
+                path=row["path"],
+                chunk_index=row["chunk_index"],
+                heading=row["heading"],
+                content=row["content"],
+                embedding=row["embedding"],
+                dimensions=row["dimensions"],
+            )
+            for row in rows
+        ]
+
+    def load_chunks_read_only(self) -> list[StoredChunk]:
+        """Load persisted chunks without creating storage, sidecars, or schema objects."""
+        sidecars = (Path(f"{self.db_path}-wal"), Path(f"{self.db_path}-shm"))
+        if any(path.exists() for path in sidecars):
+            raise ImmutableIndexInspectionUnavailableError
+        database_uri = f"{self.db_path.resolve().as_uri()}?mode=ro&immutable=1"
+        connection = sqlite3.connect(database_uri, uri=True, timeout=1)
+        try:
+            chunks = self._load_chunks_connection(connection)
+        finally:
+            connection.close()
+        if any(path.exists() for path in sidecars):
+            raise ImmutableIndexInspectionUnavailableError
+        return chunks
 
     def get_metadata(self, key: str) -> str | None:
         connection = self._connect()

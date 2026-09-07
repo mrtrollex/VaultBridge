@@ -37,3 +37,16 @@ jobs:
         run: docker compose config >/dev/null
       - name: Build image
         run: docker build -t vaultbridge:ci .
+      - name: Verify MCP dependency in image
+        run: |
+          docker run --rm \
+            --entrypoint python \
+            vaultbridge:ci \
+            -c "from importlib.metadata import version; import app.mcp_server; print(version('mcp'))"
+
+      - name: Smoke MCP stdio entry point
+        run: |
+          docker run --rm -i \
+            --entrypoint sh \
+            vaultbridge:ci \
+            -c 'mkdir -p /tmp/vault /tmp/data && VAULT_PATH=/tmp/vault SEMANTIC_DATA_PATH=/tmp/data python -m app.mcp_server </dev/null'  

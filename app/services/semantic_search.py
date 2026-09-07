@@ -18,7 +18,13 @@ import numpy as np
 
 from app.core.config import DEFAULT_SEMANTIC_MODEL, Settings
 from app.core.logging import log_event
-from app.repositories.semantic import SemanticIndexStatus, SemanticRepository, StoredChunk, StoredNote
+from app.repositories.semantic import (
+    ImmutableIndexInspectionUnavailableError,
+    SemanticIndexStatus,
+    SemanticRepository,
+    StoredChunk,
+    StoredNote,
+)
 from app.services.vault import SEMANTIC_EXCLUDED_DIRECTORIES, eligible_markdown_files
 
 DEFAULT_MODEL = DEFAULT_SEMANTIC_MODEL
@@ -216,6 +222,7 @@ class SemanticSearchService:
         self._availability_lock = threading.Lock()
         self._embed_lock = threading.Lock()
         self._search_available = False
+        self._persisted_read_only_search = False
         self._state_init_lock = threading.Lock()
         self._state_initialized = False
 
@@ -431,20 +438,30 @@ class SemanticSearchService:
 
     def use_persisted_index_for_read_only_search(self) -> bool:
         """Enable this instance to search a compatible persisted index without lifecycle writes."""
-        storage = self.repository.read_availability_status()
+        try:
+            storage = self.repository.read_immutable_status()
+        except ImmutableIndexInspectionUnavailableError:
+            self._set_search_available(False)
+            return False
         available = self._stored_index_available_from_storage(
             storage_initialized=storage.storage_initialized,
             storage_error=storage.storage_error,
             index_signature=storage.index_signature,
             index_state=storage.index_state,
-            has_chunks=storage.has_chunks,
+            has_chunks=bool(storage.semantic_chunks),
         )
-        self._set_search_available(available)
+        self._set_search_available(available, persisted_read_only=available)
         return available
 
-    def _set_search_available(self, available: bool) -> None:
+    def _set_search_available(
+        self,
+        available: bool,
+        *,
+        persisted_read_only: bool = False,
+    ) -> None:
         with self._availability_lock:
             self._search_available = available
+            self._persisted_read_only_search = persisted_read_only
 
     def _embed(self, texts: Sequence[str]) -> list[np.ndarray]:
         """Serialize only calls into one embedder instance; the surrounding pipelines stay concurrent."""
@@ -1351,7 +1368,20 @@ class SemanticSearchService:
         prefix = f"{folder}/" if folder else ""
         best: dict[str, _RankedChunk] = {}
 
-        for chunk in self.repository.load_chunks():
+        with self._availability_lock:
+            persisted_read_only_search = self._persisted_read_only_search
+        try:
+            chunks = (
+                self.repository.load_chunks_read_only()
+                if persisted_read_only_search
+                else self.repository.load_chunks()
+            )
+        except ImmutableIndexInspectionUnavailableError as exc:
+            self._set_search_available(False)
+            raise SemanticSearchUnavailableError(
+                "Persisted semantic index is unavailable for immutable reads"
+            ) from exc
+        for chunk in chunks:
             if prefix and not chunk.path.startswith(prefix):
                 continue
             vector = np.frombuffer(

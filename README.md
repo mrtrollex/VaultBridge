@@ -40,6 +40,8 @@
 > dashboard.
 > There is still no upstream TrueNAS Community App; existing API/CLI and documented Docker/TrueNAS
 > Custom App workflows remain independently usable.
+> The source tree also includes the read-only local MCP stdio adapter described below; it is
+> additive and does not change the REST, dashboard, CLI, or deployed API startup path.
 
 ## Why VaultBridge
 
@@ -121,6 +123,37 @@ The dashboard targets current evergreen browsers with support for ES modules, `f
 standards-based compatibility statement, not a claim that every browser/version has been tested.
 Actual browser and production-image evidence is tracked separately in
 [`docs/DASHBOARD_RELEASE_CHECKLIST.md`](docs/DASHBOARD_RELEASE_CHECKLIST.md).
+
+### MCP stdio
+
+VaultBridge can be launched as a local, read-only MCP server for MCP-capable clients:
+
+```text
+python -m app.mcp_server
+```
+
+The current MCP surface is stdio only. It exposes `list_notes`, `read_note`, `search_notes`,
+`related_notes`, and `duplicate_candidates`, plus contained Markdown Resources such as
+`vaultbridge://note/Projects%2FLaunch%20plan.md`. The process reuses `VAULT_PATH`,
+`SEMANTIC_DATA_PATH`, model, size, and rate-limit settings. It does not require `API_KEY`; the local
+spawning process and filesystem permissions are the trust boundary.
+
+The adapter never starts FastAPI, a network listener, the background indexer, or the filesystem
+watcher. Literal list/read/search operations work independently of semantic storage. Semantic tools
+read only an existing compatible ready index and never synchronize, rebuild, or modify it; if a safe
+immutable index view is unavailable, those tools return a retryable error.
+
+A generic client entry uses the current Python environment and repository as its working directory:
+
+```yaml
+command: python
+args:
+  - -m
+  - app.mcp_server
+```
+
+Streamable HTTP `/mcp`, MCP OAuth, write tools, Prompts, and subscriptions are not implemented.
+The REST API, dashboard, and CLI remain unchanged.
 
 ### 🐳 Deployment & operations
 
