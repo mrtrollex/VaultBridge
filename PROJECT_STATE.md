@@ -57,7 +57,7 @@ Post-v1 development position:
 - stable `v1.0.0` is released and all v1.0 release gates are complete
 - optional and future backlog work continues independently of the completed v1.0 release
 
-Current release task:
+Completed release task:
 
 - **VB-075 — Prepare, publish, and verify the dashboard-capable VaultBridge `v1.1.0` image**
 
@@ -125,7 +125,7 @@ Current post-v1 planning position:
   audit, and official-client subprocess smoke pass; PR #55 pull-request CI also passes, with its
   Python job passing the full suite and compile check and its Docker job passing Compose validation,
   Linux image build, MCP dependency import inside that image, and MCP stdio EOF smoke
-- VB-075 remains the current next task
+- VB-075 is complete with exact-source CI and exact-image runtime evidence
 - future MCP Streamable HTTP is selected for opt-in `/mcp` in the existing FastAPI process/port, but
   it is deferred beyond VB-091 together with network auth/Origin validation, write tools, and Prompts
 - VB-032 and VB-033 remain deferred optional future work
@@ -142,8 +142,9 @@ Current `v1.1.0` release status:
   are recorded
 - anonymous exact-index pull with an empty temporary Docker config passed; platform and required OCI
   source/revision/version/license labels matched the supplied evidence
-- VB-075 remains incomplete because separate exact-source CI job evidence and its full exact-image
-  dashboard/API/CLI/semantic/persistence/safe-log/cleanup runtime gate were not supplied
+- exact-source CI run `33640580398` passed both `python` and `docker` jobs on the release commit
+- the exact immutable image passed the disposable dashboard/API/CLI/semantic/persistence/safe-log/
+  clean-stop/cleanup gate at `2026-09-07T17:12:10Z` on Docker `28.3.3`; VB-075 is complete
 - VB-082 is in progress / partial validation; captured evidence proves the custom-YAML core
   runtime/API/UI path, while required lifecycle, negative, upgrade, uninstall, and real catalog UI
   gates remain deferred
@@ -297,9 +298,9 @@ Current milestones:
   disposable vault/data; the pull, platform, revision/version, startup, `/health/live`,
   `/health/ready`, authenticated `/api/v1/notes/list`, safe-log, and disposable-cleanup checks passed
 - all stable `v1.0.0` release gates are complete
-- stable `v1.1.0` release source, workflow, aliases, OCI/runtime/attestation digests, required labels,
-  platform, and anonymous exact-digest pull are recorded above; VB-075's remaining functional
-  release gate is explicitly separate
+- stable `v1.1.0` release source, exact-source CI, workflow, aliases, OCI/runtime/attestation digests,
+  required labels, platform, anonymous exact-digest pull, and functional runtime gate are recorded
+  above; VB-075 is complete
 
 ## Current implementation boundaries
 

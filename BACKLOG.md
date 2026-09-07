@@ -909,12 +909,12 @@ without declaring a release version in advance.
   artifact is claimed or fabricated; rendered Chrome inspection still passed;
 - no release version, tag, GitHub Release, or dashboard-capable GHCR image was created by VB-074.
 
-### VB-075 — Publish and verify dashboard-capable VaultBridge image — P1 ▶
+### VB-075 — Publish and verify dashboard-capable VaultBridge image — P1 ✅
 
-**Status:** In progress as of 2026-09-02. Release `v1.1.0`, source commit
-`e39ed91db75f912f390c7ec915dea73369bb9252`, GHCR workflow `33641163374`, four stable aliases,
-OCI/runtime/attestation digests, required labels, and anonymous exact-digest pull are recorded.
-Separate exact-source CI job evidence and the full exact-image functional runtime gate remain open.
+**Status:** Completed on 2026-09-07. Release `v1.1.0`, source commit
+`e39ed91db75f912f390c7ec915dea73369bb9252`, exact-source CI run `33640580398`, GHCR workflow
+`33641163374`, four stable aliases, OCI/runtime/attestation digests, required labels, anonymous
+exact-digest pull, and the full disposable exact-image functional runtime gate are recorded.
 
 **Goal:** publish and verify the normal VaultBridge image containing the completed bundled Web
 Dashboard so downstream packaging can consume an immutable dashboard-capable artifact.
@@ -1171,8 +1171,8 @@ REST or duplicating vault, semantic, indexing, authentication, or deployment beh
 
 **Status:** Completed on 2026-09-07. PR #55 pull-request CI passes. Its Python job passes the full
 test suite and compile check. Its Docker job passes Compose validation, the Linux image build, MCP
-dependency import inside that built image, and the MCP stdio EOF smoke. VB-091 does not replace
-VB-075 as the current `NEXT` task.
+dependency import inside that built image, and the MCP stdio EOF smoke. VB-091 did not replace or
+alter VB-075's release-evidence criteria, which were completed separately on 2026-09-07.
 
 **Dependency review:** the only declared MCP contract is `mcp>=2,<3`; validation used `mcp==2.1.1`
 without the optional `mcp[cli]` extra. Its incremental local closure uses MIT/MIT-0, BSD-3-Clause,
@@ -1252,7 +1252,7 @@ VB-001 ✓
 → VB-072 ✓
 → VB-073 ✓
 → VB-074 ✓
-→ VB-075 NEXT
+→ VB-075 ✓
 → VB-080 ✓
 → VB-081 static production-image finalization / official generated validation pending
 → VB-082 IN PROGRESS / PARTIAL VALIDATION
@@ -1269,14 +1269,14 @@ VB-070 through VB-074 complete the bundled Web Dashboard architecture, shell/ses
 health-backed Overview, protected literal/semantic Search, and final usability/accessibility/image
 hardening. VB-080 completes the version-neutral Community App packaging design, and VB-081's source
 now pins the released `1.1.0` image with matching application metadata. Official Docker-backed
-rendering, generated artifacts, and the upstream CDN icon remain pending. VB-075 is still in
-progress because its exact-source CI and full exact-image functional runtime evidence are
-incomplete. VB-023 retrieval benchmarking is complete. VB-032 and VB-033 remain deferred optional
+rendering, generated artifacts, and the upstream CDN icon remain pending. VB-075 is complete with
+exact-source CI and full exact-image functional runtime evidence. VB-023 retrieval benchmarking is
+complete. VB-032 and VB-033 remain deferred optional
 work. VB-055 remains optional
 and is not a dashboard prerequisite. Milestone 9 packaging is in progress; VB-082 has partial
 core-runtime/UI evidence but retains its lifecycle, negative, upgrade, uninstall, and upstream UI
 gates. VB-083 remains blocked on completion of those required VB-082 gates, and no upstream
 submission has been performed. VB-090 and VB-091 complete the read-only stdio MCP design and
-implementation; VB-075 remains the current next recommended task.
+implementation.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

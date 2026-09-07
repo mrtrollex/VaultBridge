@@ -559,7 +559,7 @@ Milestone exit criteria:
 
 VaultBridge `v1.1.0` is published and its exact OCI index is anonymously pullable. VB-080 defines the
 version-neutral packaging contract and VB-081 now pins exact tag `1.1.0` with matching application
-metadata. VB-075 remains open only for release evidence its current criteria still require; official
+metadata. VB-075's exact-source CI and exact-image functional release evidence now pass; official
 Docker-backed package validation remains separate. VB-082 is in progress / partial validation: its
 core custom-YAML runtime/API/UI path passed, while the required remaining lifecycle, negative,
 upgrade, uninstall, and upstream UI gates remain open.
@@ -690,8 +690,8 @@ Milestone exit criteria:
   job passes Compose validation, Linux image build, MCP dependency import in that image, and MCP
   stdio EOF smoke
 
-This milestone is an independent completed post-v1 integration track. VB-091 is not the current
-`NEXT` task; VB-075 retains that marker while its existing release-evidence criteria remain open.
+This milestone is an independent completed post-v1 integration track. VB-091 did not replace or
+alter VB-075's release-evidence criteria, which were completed separately on 2026-09-07.
 
 ---
 
@@ -785,7 +785,7 @@ VB-073 ✓
    ↓
 VB-074 ✓
    ↓
-VB-075 ← IN PROGRESS (release published; exact-source CI/full functional-image evidence pending)
+VB-075 ✓
    ↓
 TRUENAS COMMUNITY APP DISTRIBUTION
 VB-080 ✓
@@ -805,9 +805,9 @@ VB-091 ✓ (not NEXT)
 `v1.0.0` has shipped, and VB-070 through VB-074 complete Milestone 8's dashboard design,
 shell/session, Overview, Search, and final hardening. VB-080 completes the version-neutral Community
 App packaging design, and VB-081's definition now pins the published `1.1.0` image with matching
-metadata. **Release `v1.1.0`, workflow, aliases, digests, labels, platform, and anonymous pull are
-recorded; VB-075 remains open for the exact-source CI and full functional-image evidence required by
-its current criteria.** Official package generation/deployable validation remains open under VB-081.
+metadata. **Release `v1.1.0`, workflow, aliases, digests, labels, platform, anonymous pull,
+exact-source CI, and the full exact-image functional gate are recorded; VB-075 is complete.**
+Official package generation/deployable validation remains open under VB-081.
 VB-082 has partial custom-YAML core runtime/API/UI evidence, but its remaining lifecycle, negative,
 upgrade, uninstall, and real catalog UI gates are still required before VB-083.
 VB-023 retrieval benchmarking is complete. VB-032 and VB-033 remain explicitly deferred/optional,
@@ -815,8 +815,7 @@ and VB-055 remains optional rather than a dashboard
 prerequisite. Milestone 9 definition work is statically production-image-capable, but official
 Docker-backed package validation and the remaining VB-082 lifecycle gates remain open. VB-083 is
 blocked and no upstream submission has been performed. ADR 0004 completes VB-090's MCP design-only
-work, and PR #55 CI completes VB-091's read-only stdio implementation verification. VB-075 retains
-the current next-task marker.
+work, and PR #55 CI completes VB-091's read-only stdio implementation verification.
 
 ---
 

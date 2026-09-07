@@ -11,9 +11,9 @@ Preparation baseline: 2026-09-02.
 
 VaultBridge `v1.1.0` is published from source commit
 `e39ed91db75f912f390c7ec915dea73369bb9252`. GitHub Actions publish run `33641163374` generated and
-pushed aliases `1.1.0`, `1.1`, `1`, and `latest` for `ghcr.io/mrtrollex/vaultbridge`. The supplied
-post-release evidence is recorded exactly below; evidence not supplied is left open rather than
-inferred.
+pushed aliases `1.1.0`, `1.1`, `1`, and `latest` for `ghcr.io/mrtrollex/vaultbridge`. Exact-source
+CI and the disposable exact-image functional gate were verified on 2026-09-07; the immutable
+evidence is recorded below.
 
 `v1.1.0` is the correct Semantic Versioning target because the post-v1 source adds backward-compatible
 API-key rotation, verified related-note and duplicate-candidate operations, rate limiting, expanded
@@ -28,18 +28,17 @@ would understate additive features; no breaking change justifies `v2.0.0`.
 | Phase | Status | Required evidence |
 |---|---|---|
 | A. Release preparation | **PASS** | Reviewed version/changelog/checklist/project-state preparation is included in the released source. |
-| B. Exact release candidate commit | **PARTIAL / EVIDENCE GAP** | Released source commit is known, but a separate exact-source `CI` run and its `python`/`docker` job results were not supplied in this evidence set. |
+| B. Exact release candidate commit | **PASS** | Exact-source `CI` run `33640580398` passed its `python` and `docker` jobs on release commit `e39ed91db75f912f390c7ec915dea73369bb9252`. |
 | C. Tag and GitHub Release | **PASS** | Stable release `v1.1.0` exists at the recorded released source commit; it was not moved or recreated by this task. |
 | D. GHCR workflow | **PASS** | Successful GitHub Actions publish run `33641163374`. |
 | E. OCI aliases and digests | **PASS** | Four published aliases, OCI index, `linux/amd64` runtime manifest, BuildKit attestation, and required OCI labels are recorded below. |
 | F. Anonymous pull | **PASS** | Anonymous pull of the exact OCI index digest succeeded with a temporary empty Docker config. |
-| G. TrueNAS immutable-image verification | **BLOCKED / REQUIRES LIVE VERIFICATION** | Exact-digest disposable runtime gate from `DASHBOARD_RELEASE_CHECKLIST.md`, including UI/API/CLI, semantic startup, restart persistence, safe logs, and cleanup. |
-| H. Post-release evidence | **PARTIAL** | Release, workflow, image, digest, platform, label, and anonymous-pull evidence is recorded; the exact-image functional runtime gate remains open. |
+| G. Immutable-image functional verification | **PASS** | The exact digest passed the disposable dashboard/API/CLI/semantic/persistence/privacy/cleanup gate at `2026-09-07T17:12:10Z`. |
+| H. Post-release evidence | **PASS** | Release, workflow, image, digest, platform, labels, anonymous pull, exact-source CI, and exact-image runtime evidence are recorded. |
 
-VB-075 is not complete: its current acceptance criteria also require the separate exact-source CI
-evidence and the full exact-image disposable runtime gate. Anonymous pull, platform inspection, and
-OCI label inspection do not prove dashboard/API/CLI behavior, semantic startup, persistence, safe
-logs, clean stop, or cleanup.
+VB-075 is complete. Publication evidence, exact-source CI, and the reproducible exact-image runtime
+gate all pass without changing the published image or conflating this release gate with VB-082's
+separate TrueNAS Community App lifecycle work.
 
 ### A. Release preparation
 
@@ -58,9 +57,15 @@ Current evidence:
 
 ```text
 release commit SHA: e39ed91db75f912f390c7ec915dea73369bb9252
-exact-source CI run: not supplied
-CI python job: not supplied
-CI docker job: not supplied
+CI workflow: CI
+CI event: push
+CI run: 33640580398
+CI URL: https://github.com/mrtrollex/VaultBridge/actions/runs/33640580398
+CI commit SHA: e39ed91db75f912f390c7ec915dea73369bb9252
+CI python job: success (tests and compile check passed)
+CI docker job: success (Compose validation and image build passed)
+CI conclusion: success
+CI completed: 2026-09-02T14:13:24Z (before the release workflow started at 2026-09-02T14:18:13Z)
 ```
 
 The release commit must contain the reviewed preparation and no unrelated changes. Local checks do
@@ -98,6 +103,8 @@ Record without abbreviation:
 
 ```text
 GHCR workflow run: 33641163374
+GitHub Release URL: https://github.com/mrtrollex/VaultBridge/releases/tag/v1.1.0
+GHCR workflow URL: https://github.com/mrtrollex/VaultBridge/actions/runs/33641163374
 published image repository: ghcr.io/mrtrollex/vaultbridge
 published aliases: 1.1.0, 1.1, 1, latest
 OCI index digest: sha256:753e613617d221c3dac311600a36cab3f2727b09f630321664eaa7b7ad6eb48c
@@ -124,12 +131,38 @@ ghcr.io/mrtrollex/vaultbridge@sha256:753e613617d221c3dac311600a36cab3f2727b09f63
 
 Runtime inspection reported `OS=linux` and `ARCH=amd64`.
 
-### G. TrueNAS immutable-image verification
+### G. Immutable-image functional verification
 
-The supplied evidence proves exact-digest pullability, platform, and OCI labels only. The full VB-075
-gate in [`DASHBOARD_RELEASE_CHECKLIST.md`](DASHBOARD_RELEASE_CHECKLIST.md) remains required against
-the published digest. The completed VB-074 source-built Phase B evidence is historical validation
-and does not prove the published `v1.1.0` image.
+The reproducible gate in [`scripts/verify-vb075-image.sh`](../scripts/verify-vb075-image.sh) passed at
+`2026-09-07T17:12:10Z` against the anonymously pulled immutable OCI index on a disposable Ubuntu
+WSL2 `linux/amd64` runner with Docker `28.3.3`. It used generated one-run credentials, two synthetic
+notes, a unique container, an unused loopback port, separate disposable `/vault` and `/data` mounts,
+and a temporary empty Docker auth directory.
+
+Recorded results:
+
+```text
+exact runtime reference: ghcr.io/mrtrollex/vaultbridge@sha256:753e613617d221c3dac311600a36cab3f2727b09f630321664eaa7b7ad6eb48c
+anonymous pull and OCI metadata: PASS
+dashboard shell/assets/CSP/nosniff/no-referrer: PASS
+liveness/readiness/rich health: PASS
+authenticated list/read and invalid-key rejection: PASS
+literal retrieval: PASS
+real semantic retrieval: PASS
+CLI availability: PASS
+initial semantic readiness: 5 seconds
+post-restart semantic readiness: 2 seconds
+derived-data restart persistence: PASS
+privacy-safe application logs and dashboard asset scan: PASS
+clean stops with exit code zero: PASS
+container/auth/vault/data/evidence cleanup: PASS
+```
+
+The validation host lacked a normal bridge/iptables setup, so this run used the script's explicit
+host-network compatibility mode and selected an unused loopback port for Uvicorn. The earlier exact-
+digest TrueNAS session independently retained the normal isolated-bridge/default-container startup,
+health, API, semantic, and UI evidence. Together these prove the VB-075 image criteria without
+turning host-network mode into a deployment recommendation.
 
 The later VB-082 session partially validated this same tag and OCI index through a fresh TrueNAS
 `25.10.6` custom-YAML installation. Its retained evidence covers the exact image/digest, non-root
@@ -138,16 +171,14 @@ literal and semantic retrieval, note read, and locked/unlocked UI with security 
 reader. Restart/persistence and watcher disabled/enabled behavior are **OPERATOR-CONFIRMED PASS**
 without retained raw command output. The exact record and deferred gates are in
 [`TRUENAS_COMMUNITY_APP_DESIGN.md`](TRUENAS_COMMUNITY_APP_DESIGN.md#vb-082-partial-validation-record--2026-09-02).
-This downstream partial session does not change VB-075's status or satisfy its separately defined
-exact-source and complete functional-image evidence requirements.
+That downstream session remains partial for VB-082 despite contributing independent exact-image
+evidence to the now-complete VB-075 release gate.
 
 ### H. Post-release evidence and downstream handoff
 
-The immutable facts supplied so far are recorded here and handed to VB-081 production-image
-finalization. VB-075 remains open until its exact-source CI and exact-image functional runtime
-criteria are evidenced. VB-082 is the separate real TrueNAS Community App lifecycle task and is now
-in progress / partial validation. VB-083 remains blocked on completion of the required VB-082 gates;
-no upstream submission has been performed.
+The complete immutable release, exact-source CI, and exact-image runtime facts are recorded here and
+handed to VB-081/VB-082. VB-082 remains the separate partial TrueNAS Community App lifecycle task,
+and VB-083 remains blocked on its required gates; no upstream submission has been performed.
 
 ### TrueNAS Community App field boundary
 

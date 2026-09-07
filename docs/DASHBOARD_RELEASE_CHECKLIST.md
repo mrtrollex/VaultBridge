@@ -471,18 +471,18 @@ the disposable key, resolved container environment, or a resolved Compose config
 - VB-074 and Milestone 8 are complete based on the combined automated, real-Chrome, and disposable
   TrueNAS evidence recorded here.
 - VaultBridge `v1.1.0` is published and its exact OCI digest is anonymously pullable; VB-081 now pins
-  exact tag `1.1.0`. The full published-image functional gate below remains unevidenced. VB-082 is
+  exact tag `1.1.0`. The published-image functional gate below passed on 2026-09-07. VB-082 is
   separately in progress / partial validation, with a custom-YAML core runtime/API/UI PASS record and
   required lifecycle/negative/upgrade/uninstall gates still open. This checklist does not create or
   publish a release.
 
-## VB-075 open functional gate: exact published `v1.1.0` dashboard image
+## VB-075 completed functional gate: exact published `v1.1.0` dashboard image
 
 The VB-074 evidence above remains an immutable historical record of the source-built Phase B gate.
 It must not be rewritten as proof that the later final UI or published `v1.1.0` image existed during
 that run. The release image now exists. The supplied evidence proves its source, workflow, aliases,
-digests, `linux/amd64` platform, required OCI labels, and anonymous exact-digest pull. It does not
-prove the functional checks below, which remain **REQUIRES LIVE VERIFICATION**.
+digests, `linux/amd64` platform, required OCI labels, and anonymous exact-digest pull. The
+reproducible exact-image checks below passed on 2026-09-07.
 
 Record these exact values from the successful release and workflow before running the gate:
 
@@ -568,10 +568,30 @@ labels, anonymous-pull result, readiness time, restart/persistence result, safe-
 result. Never record the generated key, previous key, resolved container environment, synthetic query
 or note content, or absolute host path.
 
-Passing this VB-075 exact-image gate completes the remaining functional release evidence. VB-081's
+The passing VB-075 exact-image gate completed the final functional release evidence. VB-081's
 source image/app metadata is finalized, but official generated/deployable validation remains open.
 VB-082 separately records a partial TrueNAS `25.10.6` custom-YAML core runtime/API/UI validation in
 [`TRUENAS_COMMUNITY_APP_DESIGN.md`](TRUENAS_COMMUNITY_APP_DESIGN.md#vb-082-partial-validation-record--2026-09-02).
 That evidence does not prove catalog form/Portal behavior and does not complete the required
 install/edit/upgrade/rollback/uninstall lifecycle. VB-083 remains blocked, and no upstream submission
 has been performed.
+
+### Completed exact-image run — 2026-09-07
+
+[`scripts/verify-vb075-image.sh`](../scripts/verify-vb075-image.sh) passed against the exact immutable
+reference above at `2026-09-07T17:12:10Z` on a disposable Ubuntu WSL2 `linux/amd64` runner using
+Docker `28.3.3`. It generated one-run credentials internally and retained no key, query, note
+content, resolved host path, container log, or disposable runtime directory.
+
+The run independently verified anonymous pull and OCI labels, the dashboard shell and all listed
+assets, redirect/media/security-header/CSP contracts, disabled runtime OpenAPI plus schema-hidden UI,
+liveness/readiness/rich health, invalid-key rejection, authenticated list and complete-note read,
+literal and real semantic retrieval, CLI help, persistent derived data and semantic availability
+after restart, privacy-safe logs/assets, two exit-code-zero stops, and complete container/auth/vault/
+data/evidence cleanup. Initial semantic readiness took 5 seconds and post-restart readiness took 2
+seconds.
+
+Because the temporary daemon deliberately had no bridge or iptables, the executed run selected the
+script's host-network compatibility mode and an unused loopback Uvicorn port. The earlier retained
+exact-digest TrueNAS evidence covers the normal isolated bridge and default container startup. This
+runner detail does not alter the published image or the supported deployment contract.
