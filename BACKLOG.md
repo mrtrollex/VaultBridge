@@ -276,9 +276,16 @@ per-sync counters such as current note, percentage complete, current batch or ET
   the English-to-Slovak case depends on multilingual concept equivalence,
 - the measured baseline is Hit@1 `13/13` (100%), Hit@3 `13/13` (100%) and MRR `13/13` (100%).
 
-### VB-023 — Retrieval benchmark command — P1
+### VB-023 — Retrieval benchmark command — P1 ✅
 
-Output latency, returned paths and scores as JSON and/or Markdown.
+**Status:** Completed on 2026-09-07.
+
+The repository command `python -m tests.eval.benchmark` runs the sanitized VB-022 corpus through a
+disposable production-model `SemanticSearchService` and reports stable Markdown or JSON. It records
+per-query latency, expected-result rank, vault-relative paths, headings, and semantic/lexical/final
+scores plus Hit@1, Hit@5, MRR, and latency aggregates. Synchronization/model loading is timed
+separately, normal tests inject the deterministic embedder and fake timing, and `baseline.json`
+remains the unchanged VB-022 regression authority.
 
 ### VB-024 — Tune hybrid ranking from evaluation data — P1 ✅
 
@@ -1179,9 +1186,8 @@ hardening. VB-080 completes the version-neutral Community App packaging design, 
 now pins the released `1.1.0` image with matching application metadata. Official Docker-backed
 rendering, generated artifacts, and the upstream CDN icon remain pending. VB-075 is still in
 progress because its exact-source CI and full exact-image functional runtime evidence are
-incomplete. VB-023 remains open P1
-retrieval work with unchanged
-scope, but it is not NEXT. VB-032 and VB-033 remain deferred optional work. VB-055 remains optional
+incomplete. VB-023 retrieval benchmarking is complete. VB-032 and VB-033 remain deferred optional
+work. VB-055 remains optional
 and is not a dashboard prerequisite. Milestone 9 packaging is in progress; VB-082 has partial
 core-runtime/UI evidence but retains its lifecycle, negative, upgrade, uninstall, and upstream UI
 gates. VB-083 remains blocked on completion of those required VB-082 gates, and no upstream

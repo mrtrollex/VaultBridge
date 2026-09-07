@@ -47,4 +47,66 @@ These numbers describe the deterministic fixture, not real-model accuracy or lat
 vault. Future retrieval changes should run the fixture before and after the change and report both
 the per-case ranks and aggregate metrics. Production exact ties now resolve by final score, semantic
 score, lexical score and canonical path; equal chunks within one note finally use source chunk index.
+
+## VB-023 real-model retrieval benchmark
+
+Run the benchmark from the repository root. Markdown is the default format:
+
+```bash
+python -m tests.eval.benchmark
+python -m tests.eval.benchmark --format markdown
+python -m tests.eval.benchmark --format json
+```
+
+The command creates a disposable temporary vault and semantic data directory, copies only the nine
+sanitized notes from `corpus/`, and constructs `SemanticSearchService` through the normal production
+settings factory. It uses the current production default model contract, chunking, embedding
+input, SQLite repository, scoring, filtering, per-note aggregation, and ranking. It never reads the
+configured or user vault, and it removes the temporary vault, index, and model cache when the run
+ends.
+
+Synchronization happens before retrieval timing. The separately reported indexing duration includes
+index construction and any initial model load or download. Each `query_latency_ms` measures only the
+corresponding `SemanticSearchService.search()` call with `time.perf_counter`; model download time is
+therefore excluded from per-query latency. Latency varies with CPU, architecture, runtime, model cache
+state, and model implementation. It is measurement evidence, not a normal-CI threshold.
+
+Metadata records the model identifier, FastEmbed version, Python/runtime platform, sanitized corpus
+size, result limit, timer, percentile method, and separate indexing duration. The aggregate report
+contains total cases, Hit@1, Hit@5 (equivalent to Recall@5 for this single-
+expected-result fixture), MRR, and query-latency count/mean/P50/P95/min/max. MRR assigns reciprocal
+rank `1/rank` to a returned expected result and zero to a miss. P50 and P95 use deterministic R7
+linear interpolation at position `(n - 1) * p`; P50 is the median.
+
+JSON is a single valid document on stdout with top-level `schema_version`, `metadata`, `summary`,
+`latency`, and `cases` fields. Numeric timings and scores remain JSON numbers. Every case records its
+sanitized fixture identity/query, expected path/heading/accepted top-k, actual expected-result rank or
+`null`, latency, and ranked results. Result entries contain only rank, vault-relative path, heading,
+final score, semantic score, and lexical score. For example, a JSON case excerpt begins with:
+
+```json
+{
+  "case_id": "postgres-backup-en",
+  "language": "en",
+  "category": "topic-confusion",
+  "query": "PostgreSQL backup retention and restore procedure",
+  "expected_path": "Database/PostgreSQL.md"
+}
+```
+
+Markdown contains `Benchmark metadata`, `Aggregate summary`, `Latency summary`, `Per-case summary`,
+and `Ranked result details` sections. Its concise case table uses this sanitized shape:
+
+```text
+| Case | Language | Category | Expected path | Accepted top-k | Actual rank | Latency |
+```
+
+The command exits `0` when measurement completes regardless of retrieval quality, `1` on an
+operational model/index/benchmark failure, and argparse exits `2` for invalid invocation. It writes
+no files by default. Poor rankings and `actual_expected_rank: null` are reported faithfully.
+
+VB-022 and VB-023 serve different purposes: `baseline.json` remains the authoritative deterministic,
+offline regression gate and contains no timings or real-model scores. VB-023 measures the real
+production model on the same public sanitized cases; its environment-dependent results are not
+written into `baseline.json` and do not alter process exit status.
 Focused tests reverse repository/chunk iteration and assert identical output.
