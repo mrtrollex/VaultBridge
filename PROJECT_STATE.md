@@ -118,9 +118,14 @@ Current post-v1 planning position:
 - current TrueNAS support remains the documented Docker/source-built Custom App deployment
 - VB-023 is complete: the sanitized real-model retrieval benchmark emits Markdown/JSON without
   changing the deterministic VB-022 baseline or production retrieval behavior
-- ADR 0004 is accepted and VB-090 is complete as design-only work: VB-091 is scoped as a read-only
-  stdio-first MCP implementation with five tools and a contained note Resource template; VB-091 is NOT STARTED,
-  no MCP runtime/dependency/configuration exists yet, and VB-075 remains the current next task
+- ADR 0004 is accepted and VB-090 is complete as design-only work; VB-091 now implements a
+  read-only stdio MCP adapter with five tools and a contained note Resource template using official
+  `mcp==2.1.1`
+- VB-091 is complete: protocol tests, local Python/compile/Ruff/diff checks, dependency advisory
+  audit, and official-client subprocess smoke pass; PR #55 pull-request CI also passes, with its
+  Python job passing the full suite and compile check and its Docker job passing Compose validation,
+  Linux image build, MCP dependency import inside that image, and MCP stdio EOF smoke
+- VB-075 remains the current next task
 - future MCP Streamable HTTP is selected for opt-in `/mcp` in the existing FastAPI process/port, but
   it is deferred beyond VB-091 together with network auth/Origin validation, write tools, and Prompts
 - VB-032 and VB-033 remain deferred optional future work
@@ -177,7 +182,7 @@ Current milestones:
 - **Milestone 7 — Distribution and `v1.0.0` (complete)**
 - **Milestone 8 — Web Dashboard / operator experience (complete)**
 - **Milestone 9 — TrueNAS Community App distribution (in progress; production image pinned, VB-082 partially validated, official package/remaining live gates open)**
-- **Milestone 10 — MCP integration (design complete; VB-091 implementation not started)**
+- **Milestone 10 — MCP integration (complete)**
 
 ## Working production characteristics
 
@@ -190,6 +195,10 @@ Current milestones:
   authenticated `GET /api/v1/notes/list?limit=5` returned an empty note list
 - Python 3.12 container
 - FastAPI routes, vault operations, semantic orchestration and SQLite persistence have separate modules
+- explicit read-only `python -m app.mcp_server` local stdio adapter with five MCP tools, one contained
+  Markdown Resource template, process-wide monotonic rate limiting, and safe stderr-only diagnostics
+- MCP/CLI persisted semantic reads use immutable SQLite connections and never create semantic
+  storage, schema objects, WAL/SHM sidecars, synchronization work, or index lifecycle writes
 - typed runtime settings via `app/core/config.py`
 - standard-library JSON application logging via `app/core/logging.py`
 - context-local HTTP request correlation and latency events via `app/core/observability.py`

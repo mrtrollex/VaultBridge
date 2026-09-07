@@ -1752,7 +1752,7 @@ def test_v3_index_configuration_changes_invalidate_all_chunks(
     assert changed.repository.load_chunks() == []
 
 
-def test_targeted_refresh_against_v2_index_runs_safe_full_v3_rebuild(tmp_path):
+def test_targeted_refresh_against_v2_index_runs_safe_full_v3_rebuild(tmp_path, monkeypatch):
     service = semantic_service(tmp_path)
     first = service.vault_root / "first.md"
     second = service.vault_root / "second.md"
@@ -1777,6 +1777,10 @@ def test_targeted_refresh_against_v2_index_runs_safe_full_v3_rebuild(tmp_path):
     first.write_bytes(b"# Server\n\n## Backups\n\nUpdated first.")
     embedder = RecordingEmbedder()
     restarted = semantic_service(tmp_path, embedder=embedder)
+    monkeypatch.setattr(
+        "app.services.vault.contained_markdown_files",
+        lambda _vault_root: [second.resolve(), first.resolve()],
+    )
 
     assert restarted.sync_paths(["first.md"]) == {
         "indexed": 2,

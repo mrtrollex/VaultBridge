@@ -1167,9 +1167,19 @@ REST or duplicating vault, semantic, indexing, authentication, or deployment beh
 - the ADR defines exact stable tool schemas and a bounded VB-091 implementation contract;
 - VB-032/VB-033, VB-075, and VB-081 through VB-083 retain their prior truth and scope.
 
-### VB-091 — MCP server implementation — P1
+### VB-091 — MCP server implementation — P1 ✅
 
-**Status:** NOT STARTED. This task is planned but is not the current `NEXT` task.
+**Status:** Completed on 2026-09-07. PR #55 pull-request CI passes. Its Python job passes the full
+test suite and compile check. Its Docker job passes Compose validation, the Linux image build, MCP
+dependency import inside that built image, and the MCP stdio EOF smoke. VB-091 does not replace
+VB-075 as the current `NEXT` task.
+
+**Dependency review:** the only declared MCP contract is `mcp>=2,<3`; validation used `mcp==2.1.1`
+without the optional `mcp[cli]` extra. Its incremental local closure uses MIT/MIT-0, BSD-3-Clause,
+Apache-2.0, and PSF license families. The measured installed footprint was approximately 20.9 MB
+excluding Windows-only `pywin32` (approximately 20.3 MB more on this host). The exact Linux
+production-image delta remains unmeasured because the PR #55 build did not capture a before/after
+size comparison.
 
 **Depends on:** VB-090.
 
@@ -1248,7 +1258,7 @@ VB-001 ✓
 → VB-082 IN PROGRESS / PARTIAL VALIDATION
 → VB-083 BLOCKED on required VB-082 gates
 → VB-090 ✓ (independent MCP design track)
-→ VB-091 NOT STARTED (planned; not NEXT)
+→ VB-091 ✓ (not NEXT)
 ```
 
 VB-057 through VB-060 close the confirmed containment, native-Windows test-portability,
@@ -1266,8 +1276,7 @@ work. VB-055 remains optional
 and is not a dashboard prerequisite. Milestone 9 packaging is in progress; VB-082 has partial
 core-runtime/UI evidence but retains its lifecycle, negative, upgrade, uninstall, and upstream UI
 gates. VB-083 remains blocked on completion of those required VB-082 gates, and no upstream
-submission has been performed. VB-090 completes the MCP architecture decision without runtime
-changes; VB-091 remains not started and does not replace VB-075 as the current next recommended
-task.
+submission has been performed. VB-090 and VB-091 complete the read-only stdio MCP design and
+implementation; VB-075 remains the current next recommended task.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

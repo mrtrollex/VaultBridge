@@ -424,11 +424,11 @@ upstream catalog definition. Current TrueNAS support remains the documented sour
 path until the VB-080 design is implemented by VB-081, validated on real TrueNAS by VB-082, and
 accepted upstream through VB-083.
 
-### Planned MCP relationship (not implemented)
+### MCP stdio relationship
 
 [ADR 0004](docs/adr/0004-mcp-integration.md) accepts MCP as another thin client protocol over the
-same services. VB-090 changes the target architecture only; no MCP dependency, entry point, route,
-configuration, tool, Resource, listener, or runtime behavior exists yet.
+same services. VB-091 implements its read-only stdio phase as an explicit alternate process entry;
+it adds no FastAPI route, network listener, always-on setting, or deployment fork.
 
 VB-091 is intentionally read-only and stdio-first:
 
@@ -448,14 +448,15 @@ MCP stdio adapter
                     persisted index
 ```
 
-The stdio entry point will construct only existing read services. It will not start FastAPI,
+The stdio entry point constructs only existing read services. It does not start FastAPI,
 `BackgroundSemanticIndexer`, `SemanticFilesystemWatcher`, synchronization, rebuild, or any semantic
-storage writer. This preserves the current no-cross-process-index-writer boundary while allowing
+storage writer. Immutable SQLite status/chunk reads avoid creating schema objects or WAL/SHM
+sidecars. This preserves the current no-cross-process-index-writer boundary while allowing
 local MCP clients to list, read, search, find related notes, and request duplicate candidates without
 the HTTP application. Semantic tools are available only when the existing read-only persisted-index
 inspection confirms a compatible ready index.
 
-The five planned VB-091 tools are `list_notes`, `read_note`, `search_notes`, `related_notes`, and
+The five VB-091 tools are `list_notes`, `read_note`, `search_notes`, `related_notes`, and
 `duplicate_candidates`. `related_notes` is the single semantic-retrieval name; there is no duplicate
 `semantic_search` alias. Note content will also be readable as `text/markdown` through the contained
 `vaultbridge://note/{percent-encoded-vault-relative-path}` Resource template. The URI never exposes
@@ -558,12 +559,13 @@ FastAPI routers, versioned route registration and dependencies. Routes should or
 rather than implement domain logic. Legacy and current version paths must converge on the same
 endpoint function and service path.
 
-### `mcp_server.py` (planned by VB-091; not present)
+### `mcp_server.py`
 
 Explicit stdio composition root plus MCP tool/Resource schema and result/error mapping. It injects
-existing services directly, starts no index writer, and contains no vault, ranking, or persistence
-logic. A later opt-in Streamable HTTP mount may reuse the same registration layer inside the existing
-FastAPI process.
+existing services directly, applies a one-identity process-wide fixed-window operation budget,
+reserves stdout for MCP traffic, emits allowlisted structured diagnostics to stderr, and starts no
+index writer. A later opt-in Streamable HTTP mount may reuse the same registration layer inside the
+existing FastAPI process.
 
 ---
 
