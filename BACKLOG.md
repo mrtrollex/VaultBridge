@@ -1005,18 +1005,20 @@ for the version-neutral packaging design itself.
 
 ### VB-081 — Implement TrueNAS Community App definition — P1
 
-**Status:** Production-image-capable source statically finalized on 2026-09-02. The definition pins
-`ghcr.io/mrtrollex/vaultbridge:1.1.0`, `app_version` matches `1.1.0`, and all focused fixtures inherit
-the released image map while retaining synthetic credentials and paths. Current upstream remains at
-library `2.3.11`, repository-plus-tag images, and initial package `version: 1.0.0`. Official Docker-
-backed rendering/deployment, generated library/hash/catalog artifacts, and a reviewer-supplied
-TrueNAS CDN icon URL remain pending. Live TrueNAS lifecycle validation remains VB-082. No upstream
-submission or Discover availability is claimed.
+**Status:** Completed on 2026-09-08 against `truenas/apps` commit
+`906a20a22ee885add8c620660eba3d6ed51289da`. The definition pins
+`ghcr.io/mrtrollex/vaultbridge:1.1.0`, uses matching `app_version`, library `2.3.11`, officially
+generated hash/library/catalog artifacts, and catalog-free Community App port `30486`. Current
+upstream schema, catalog-port, render, deploy/health/cleanup, hash/generator, and dev-catalog checks
+pass for all three synthetic fixtures. The final TrueNAS CDN icon URL is supplied during upstream
+review and is therefore **REQUIRES UPSTREAM REVIEW / VB-083**, not a VB-081 source blocker. Live
+TrueNAS lifecycle validation remains VB-082. No upstream submission or Discover availability is
+claimed.
 
 **Goal:** create the catalog packaging approved by VB-080 using current TrueNAS Community App conventions.
 
-**Depends on:** VB-080. The production image input is now available; official deployable-definition
-validation remains pending.
+**Depends on:** VB-080. The production image and official deployable-definition validation are
+complete.
 
 **Acceptance criteria**
 
@@ -1052,8 +1054,8 @@ installation of `ghcr.io/mrtrollex/vaultbridge:1.1.0` at OCI index digest
 runtime/API/UI path. Restart/persistence and watcher-disabled/watcher-enabled behavior are recorded
 separately as **OPERATOR-CONFIRMED PASS** because raw command output was not retained. Required
 rotation, port-edit/negative, permission-negative, upgrade, rollback, uninstall, ixVolume, and real
-catalog form/Portal gates remain open. Official VB-081 generated/validation artifacts also remain as
-currently documented. No upstream submission has been performed.
+catalog form/Portal gates remain open. VB-081's source/generator validation is complete. No upstream
+submission has been performed.
 
 **Goal:** validate the Community App lifecycle on a real disposable TrueNAS installation and capture
 sanitized evidence.
@@ -1254,7 +1256,7 @@ VB-001 ✓
 → VB-074 ✓
 → VB-075 ✓
 → VB-080 ✓
-→ VB-081 static production-image finalization / official generated validation pending
+→ VB-081 ✓
 → VB-082 IN PROGRESS / PARTIAL VALIDATION
 → VB-083 BLOCKED on required VB-082 gates
 → VB-090 ✓ (independent MCP design track)
@@ -1267,9 +1269,10 @@ distribution gates are complete; immutable evidence remains recorded in `docs/RE
 
 VB-070 through VB-074 complete the bundled Web Dashboard architecture, shell/session, public
 health-backed Overview, protected literal/semantic Search, and final usability/accessibility/image
-hardening. VB-080 completes the version-neutral Community App packaging design, and VB-081's source
-now pins the released `1.1.0` image with matching application metadata. Official Docker-backed
-rendering, generated artifacts, and the upstream CDN icon remain pending. VB-075 is complete with
+hardening. VB-080 completes the version-neutral Community App packaging design, and VB-081 is
+complete with the released `1.1.0` image, current upstream metadata, officially generated artifacts,
+and Docker-backed render/deploy validation. The reviewer-provided CDN icon remains a VB-083 upstream-
+review gate. VB-075 is complete with
 exact-source CI and full exact-image functional runtime evidence. VB-023 retrieval benchmarking is
 complete. VB-032 and VB-033 remain deferred optional
 work. VB-055 remains optional

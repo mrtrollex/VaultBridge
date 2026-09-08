@@ -100,7 +100,7 @@ questions:
                 description: Host port that maps to VaultBridge container port 8000.
                 schema:
                   type: int
-                  default: 8765
+                  default: 30486
                   min: 1
                   max: 65535
                   required: true

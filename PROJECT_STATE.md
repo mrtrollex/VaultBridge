@@ -99,13 +99,16 @@ Current post-v1 planning position:
 - VB-080 is complete as a version-neutral packaging design in
   `docs/TRUENAS_COMMUNITY_APP_DESIGN.md`, based on current `truenas/apps` contributor conventions;
   it did not implement a catalog definition, select a release, or perform publication
-- VB-081 source is production-image-capable: `ix-dev/community/vaultbridge/` pins
+- VB-081 is complete: `ix-dev/community/vaultbridge/` pins
   `ghcr.io/mrtrollex/vaultbridge:1.1.0`, uses matching `app_version`, and has basic/watcher/host-path-
   data fixtures that inherit the released image map with synthetic credentials and paths
-- current upstream `truenas/apps` commit `354e87006de2f49a8a2cd655bce857984a7bd247` still uses library
-  `2.3.11`, repository-plus-tag images, and initial package `version: 1.0.0`
-- official Docker-backed rendering/deployment, generated library/hash/catalog artifacts, and the final
-  TrueNAS CDN icon URL remain open under VB-081
+- validation used current upstream `truenas/apps` commit
+  `906a20a22ee885add8c620660eba3d6ed51289da`, library `2.3.11`, generated library hash
+  `874636814efb275e5276ea9d709b7cd665fed42bb1d50328e853d9253a2e1229`, repository-plus-tag images,
+  and initial package `version: 1.0.0`
+- official catalog-port, questions/schema, generator/hash, render, deploy/health/cleanup, and dev-
+  catalog validation passed; catalog metadata validation stops only on the reviewer-provided TrueNAS
+  CDN icon, classified **REQUIRES UPSTREAM REVIEW / VB-083**
 - VB-082 is in progress / partial validation: a fresh TrueNAS `25.10.6` custom-YAML install of the
   exact `v1.1.0` OCI index validated the core runtime/API/UI path; restart/persistence and watcher
   disabled/enabled behavior are **OPERATOR-CONFIRMED PASS** without retained raw command output
@@ -182,7 +185,7 @@ Current milestones:
 - **Milestone 6 — Public API and developer experience (complete)**
 - **Milestone 7 — Distribution and `v1.0.0` (complete)**
 - **Milestone 8 — Web Dashboard / operator experience (complete)**
-- **Milestone 9 — TrueNAS Community App distribution (in progress; production image pinned, VB-082 partially validated, official package/remaining live gates open)**
+- **Milestone 9 — TrueNAS Community App distribution (in progress; VB-081 complete, VB-082 partially validated, remaining live/upstream gates open)**
 - **Milestone 10 — MCP integration (complete)**
 
 ## Working production characteristics

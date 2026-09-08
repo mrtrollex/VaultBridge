@@ -558,9 +558,10 @@ Milestone exit criteria:
 - [x] accessibility, privacy-safe rendering, browser smoke tests, and container verification pass
 
 VaultBridge `v1.1.0` is published and its exact OCI index is anonymously pullable. VB-080 defines the
-version-neutral packaging contract and VB-081 now pins exact tag `1.1.0` with matching application
-metadata. VB-075's exact-source CI and exact-image functional release evidence now pass; official
-Docker-backed package validation remains separate. VB-082 is in progress / partial validation: its
+version-neutral packaging contract and VB-081 is complete with exact tag `1.1.0`, matching metadata,
+officially generated artifacts, and current-upstream Docker-backed package validation. VB-075's
+exact-source CI and exact-image functional release evidence also pass. VB-082 is in progress /
+partial validation: its
 core custom-YAML runtime/API/UI path passed, while the required remaining lifecycle, negative,
 upgrade, uninstall, and upstream UI gates remain open.
 
@@ -607,8 +608,7 @@ VB-080 packaging design ✓
    +
 published and verified dashboard-capable VaultBridge image (VB-075)
    ↓
-VB-081 Community App definition (production image pinned;
-official generated/deployable validation pending)
+VB-081 Community App definition ✓
    ↓
 VB-082 real TrueNAS validation (IN PROGRESS / PARTIAL;
 core runtime/UI path passed, required lifecycle gates remain)
@@ -623,6 +623,7 @@ Milestone exit criteria:
   through the current upstream library without changing VaultBridge runtime code
 - [x] storage, identity, secret, port, health, portal, resource, upgrade, and rollback contracts are
   documented in [`docs/TRUENAS_COMMUNITY_APP_DESIGN.md`](docs/TRUENAS_COMMUNITY_APP_DESIGN.md)
+- [x] current-upstream schema, generation, catalog-port, render, and local deploy/health checks pass
 - [ ] install, restart, configuration edit, persistence, upgrade, supported rollback, and safe uninstall are verified on real TrueNAS with sanitized evidence
 - [ ] upstream acceptance is claimed only after the `truenas/apps` pull request is merged
 
@@ -790,7 +791,7 @@ VB-075 ✓
 TRUENAS COMMUNITY APP DISTRIBUTION
 VB-080 ✓
    ↓
-VB-081 production-image source ✓ / official generated validation pending
+VB-081 ✓
    ↓
 VB-082 IN PROGRESS / PARTIAL VALIDATION
    ↓
@@ -807,13 +808,14 @@ shell/session, Overview, Search, and final hardening. VB-080 completes the versi
 App packaging design, and VB-081's definition now pins the published `1.1.0` image with matching
 metadata. **Release `v1.1.0`, workflow, aliases, digests, labels, platform, anonymous pull,
 exact-source CI, and the full exact-image functional gate are recorded; VB-075 is complete.**
-Official package generation/deployable validation remains open under VB-081.
+Official package generation/deployable validation passes and VB-081 is complete; the reviewer-
+provided CDN icon remains an upstream-review gate under VB-083.
 VB-082 has partial custom-YAML core runtime/API/UI evidence, but its remaining lifecycle, negative,
 upgrade, uninstall, and real catalog UI gates are still required before VB-083.
 VB-023 retrieval benchmarking is complete. VB-032 and VB-033 remain explicitly deferred/optional,
 and VB-055 remains optional rather than a dashboard
-prerequisite. Milestone 9 definition work is statically production-image-capable, but official
-Docker-backed package validation and the remaining VB-082 lifecycle gates remain open. VB-083 is
+prerequisite. Milestone 9 definition work and official Docker-backed package validation are complete,
+but the remaining VB-082 lifecycle gates remain open. VB-083 is
 blocked and no upstream submission has been performed. ADR 0004 completes VB-090's MCP design-only
 work, and PR #55 CI completes VB-091's read-only stdio implementation verification.
 
