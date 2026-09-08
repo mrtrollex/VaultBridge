@@ -1095,6 +1095,9 @@ sanitized evidence.
 - the retained session evidence, its operator-confirmed-only results, the deliberately deferred gates,
   and the exposed-disposable-key warning are recorded in
   [`docs/TRUENAS_COMMUNITY_APP_DESIGN.md`](docs/TRUENAS_COMMUNITY_APP_DESIGN.md#vb-082-partial-validation-record--2026-09-02);
+- the remaining-gate classification and sanitized copy/paste operator plan are recorded in
+  [`docs/VB_082_TRUENAS_LIFECYCLE_RUNBOOK.md`](docs/VB_082_TRUENAS_LIFECYCLE_RUNBOOK.md); this is a
+  planning artifact, not live evidence;
 - custom-YAML installation does not expose the catalog-generated Web UI / Portal button, so that
   behavior remains **REQUIRES UPSTREAM VERIFICATION**, not a VaultBridge failure;
 - this partial record does not satisfy or remove any acceptance criterion above and does not complete

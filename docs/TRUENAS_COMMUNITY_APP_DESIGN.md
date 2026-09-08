@@ -507,6 +507,10 @@ Use a disposable supported TrueNAS installation, isolated ports, a synthetic vau
 derived data, and the exact release digest recorded for the test. Classify every result as PASS,
 FAIL, or REQUIRES LIVE/UPSTREAM VERIFICATION.
 
+The copy/paste operator plan and current gate classification are maintained in
+[`VB_082_TRUENAS_LIFECYCLE_RUNBOOK.md`](VB_082_TRUENAS_LIFECYCLE_RUNBOOK.md). That runbook is a
+planning artifact only; it does not replace live evidence or change the partial status below.
+
 The runbook must cover:
 
 - fresh install with the normal host-path vault and default ixVolume `/data`;
