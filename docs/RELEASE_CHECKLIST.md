@@ -164,21 +164,21 @@ digest TrueNAS session independently retained the normal isolated-bridge/default
 health, API, semantic, and UI evidence. Together these prove the VB-075 image criteria without
 turning host-network mode into a deployment recommendation.
 
-The later VB-082 session partially validated this same tag and OCI index through a fresh TrueNAS
-`25.10.6` custom-YAML installation. Its retained evidence covers the exact image/digest, non-root
-container confinement and mounts, liveness/readiness/rich health, protected API authentication,
-literal and semantic retrieval, note read, and locked/unlocked UI with security headers and full-note
-reader. Restart/persistence and watcher disabled/enabled behavior are **OPERATOR-CONFIRMED PASS**
-without retained raw command output. The exact record and deferred gates are in
-[`TRUENAS_COMMUNITY_APP_DESIGN.md`](TRUENAS_COMMUNITY_APP_DESIGN.md#vb-082-partial-validation-record--2026-09-02).
-That downstream session remains partial for VB-082 despite contributing independent exact-image
-evidence to the now-complete VB-075 release gate.
+Later VB-082 sessions partially validated this same tag and OCI index through a disposable TrueNAS
+`25.10.6` Custom App. In addition to the core runtime/API/UI record, sanitized 2026-09-08 evidence
+covers API-key rotation/removal, port edit/persistence, occupied-port rejection/recovery,
+permission-denied/recovery behavior, and external host-path preservation on uninstall. Every
+executable pre-upstream VB-082 gate is complete, while catalog-only and eventual rollback gates keep
+VB-082 partial. The exact record is in
+[`TRUENAS_COMMUNITY_APP_DESIGN.md`](TRUENAS_COMMUNITY_APP_DESIGN.md#vb-082-pre-upstream-lifecycle-evidence--2026-09-08).
+This downstream evidence does not alter the already-complete VB-075 release gate.
 
 ### H. Post-release evidence and downstream handoff
 
 The complete immutable release, exact-source CI, and exact-image runtime facts are recorded here and
-handed to VB-081/VB-082. VB-082 remains the separate partial TrueNAS Community App lifecycle task,
-and VB-083 remains blocked on its required gates; no upstream submission has been performed.
+handed to VB-081/VB-082. VB-082 remains the separate partial TrueNAS Community App lifecycle task.
+Its pre-upstream executable gates are complete, so the VB-083 submission/review phase is unblocked;
+no upstream submission has been performed and neither task is complete.
 
 ### TrueNAS Community App field boundary
 
@@ -197,9 +197,9 @@ The pre-submission icon points to the asset at the immutable released source com
 submission conventions require a reviewer-supplied TrueNAS CDN URL; that URL, the generated library
 copy, `lib_version_hash`, `item.yaml`, and Docker-backed official rendering/deployment checks remain
 pending because the current host has no Docker. No CDN URL or generated hash is fabricated. The
-separate VB-082 lifecycle task now has partial custom-YAML runtime/API/UI evidence, but its remaining
-required gates are deferred and official form/Portal behavior remains **REQUIRES UPSTREAM
-VERIFICATION**.
+separate VB-082 lifecycle task now has completed executable pre-upstream evidence, but official
+form/Portal/storage/ixVolume behavior remains **REQUIRES UPSTREAM CATALOG/PR** and rollback remains
+blocked until a prior real catalog revision exists.
 
 ### Local preparation validation evidence
 

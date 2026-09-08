@@ -561,9 +561,9 @@ VaultBridge `v1.1.0` is published and its exact OCI index is anonymously pullabl
 version-neutral packaging contract and VB-081 is complete with exact tag `1.1.0`, matching metadata,
 officially generated artifacts, and current-upstream Docker-backed package validation. VB-075's
 exact-source CI and exact-image functional release evidence also pass. VB-082 is in progress /
-partial validation: its
-core custom-YAML runtime/API/UI path passed, while the required remaining lifecycle, negative,
-upgrade, uninstall, and upstream UI gates remain open.
+partial validation: all executable pre-upstream lifecycle and negative gates are complete, while
+real catalog-only UI/storage/ixVolume and eventual rollback gates remain open. The VB-083
+submission/review phase may now begin; neither task is complete and no submission is claimed.
 
 ---
 
@@ -610,10 +610,13 @@ published and verified dashboard-capable VaultBridge image (VB-075)
    ↓
 VB-081 Community App definition ✓
    ↓
-VB-082 real TrueNAS validation (IN PROGRESS / PARTIAL;
-core runtime/UI path passed, required lifecycle gates remain)
+VB-082 executable pre-upstream validation ✓
    ↓
-VB-083 upstream truenas/apps submission
+VB-083 upstream submission/review phase (UNBLOCKED; NOT SUBMITTED)
+   ↓ creates the supported real catalog surface
+VB-082 catalog-only validation (IN PROGRESS / PARTIAL)
+   ↓
+VB-082 completion, then VB-083 completion under their unchanged criteria
 ```
 
 Milestone exit criteria:
@@ -624,7 +627,9 @@ Milestone exit criteria:
 - [x] storage, identity, secret, port, health, portal, resource, upgrade, and rollback contracts are
   documented in [`docs/TRUENAS_COMMUNITY_APP_DESIGN.md`](docs/TRUENAS_COMMUNITY_APP_DESIGN.md)
 - [x] current-upstream schema, generation, catalog-port, render, and local deploy/health checks pass
-- [ ] install, restart, configuration edit, persistence, upgrade, supported rollback, and safe uninstall are verified on real TrueNAS with sanitized evidence
+- [ ] executable install/restart/edit/persistence/negative/uninstall gates are recorded and upgrade
+  is classified **UNSUPPORTED / NO VALID PRIOR PACKAGE STATE**; catalog-only UI/storage/ixVolume and
+  eventual rollback validation remain before VB-082 completion
 - [ ] upstream acceptance is claimed only after the `truenas/apps` pull request is merged
 
 ---
@@ -795,7 +800,7 @@ VB-081 ✓
    ↓
 VB-082 IN PROGRESS / PARTIAL VALIDATION
    ↓
-VB-083 BLOCKED on required VB-082 gates
+VB-083 SUBMISSION/REVIEW UNBLOCKED; NOT SUBMITTED / NOT COMPLETE
    ↓
 MCP INTEGRATION (independent post-v1 track)
 VB-090 ✓
@@ -810,13 +815,15 @@ metadata. **Release `v1.1.0`, workflow, aliases, digests, labels, platform, anon
 exact-source CI, and the full exact-image functional gate are recorded; VB-075 is complete.**
 Official package generation/deployable validation passes and VB-081 is complete; the reviewer-
 provided CDN icon remains an upstream-review gate under VB-083.
-VB-082 has partial custom-YAML core runtime/API/UI evidence, but its remaining lifecycle, negative,
-upgrade, uninstall, and real catalog UI gates are still required before VB-083.
+VB-082 has completed every executable pre-upstream lifecycle and negative gate with sanitized
+evidence or an allowed classification. Real catalog UI/storage/ixVolume and eventual rollback gates
+remain required before VB-082 completion, but they depend on a supported upstream catalog surface.
 VB-023 retrieval benchmarking is complete. VB-032 and VB-033 remain explicitly deferred/optional,
 and VB-055 remains optional rather than a dashboard
-prerequisite. Milestone 9 definition work and official Docker-backed package validation are complete,
-but the remaining VB-082 lifecycle gates remain open. VB-083 is
-blocked and no upstream submission has been performed. ADR 0004 completes VB-090's MCP design-only
+prerequisite. Milestone 9 definition work, official Docker-backed package validation, and executable
+pre-upstream VB-082 validation are complete. The VB-083 submission/review phase is unblocked so the
+remaining catalog-only VB-082 surface can become available; VB-082 and VB-083 remain incomplete and
+no upstream submission has been performed. ADR 0004 completes VB-090's MCP design-only
 work, and PR #55 CI completes VB-091's read-only stdio implementation verification.
 
 ---

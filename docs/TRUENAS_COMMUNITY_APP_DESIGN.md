@@ -507,9 +507,9 @@ Use a disposable supported TrueNAS installation, isolated ports, a synthetic vau
 derived data, and the exact release digest recorded for the test. Classify every result as PASS,
 FAIL, or REQUIRES LIVE/UPSTREAM VERIFICATION.
 
-The copy/paste operator plan and current gate classification are maintained in
-[`VB_082_TRUENAS_LIFECYCLE_RUNBOOK.md`](VB_082_TRUENAS_LIFECYCLE_RUNBOOK.md). That runbook is a
-planning artifact only; it does not replace live evidence or change the partial status below.
+The reusable operator plan, current result ledger, and sanitized execution evidence are maintained
+in [`VB_082_TRUENAS_LIFECYCLE_RUNBOOK.md`](VB_082_TRUENAS_LIFECYCLE_RUNBOOK.md). The evidence does
+not change VB-082's partial status or remove any acceptance criterion.
 
 The runbook must cover:
 
@@ -554,7 +554,7 @@ Verified environment:
 
 ```text
 TrueNAS: 25.10.6
-Host: C246-NAS-ITX; Intel Xeon E-2174G; 32 GB ECC
+Host: disposable validation host
 Docker: 28.3.1
 Docker Compose: 2.38.1
 Platform: linux/amd64
@@ -616,10 +616,62 @@ criteria not explicitly listed as captured PASS or operator-confirmed PASS above
 The disposable VB-082 API key was exposed during the test session. It is compromised test material
 and must never be reused outside that disposable environment.
 
+#### VB-082 pre-upstream lifecycle evidence — 2026-09-08
+
+VB-082 remains **IN PROGRESS / PARTIAL VALIDATION**. Sanitized operator evidence now closes every
+currently executable pre-upstream gate without changing the acceptance criteria:
+
+- **PASS — API-key rotation overlap/removal:** liveness remained `200`; both disposable keys
+  authenticated with `200` during overlap; after the previous key was cleared, the old key returned
+  `401` and the new key returned `200`. No key value is retained.
+- **PASS — Web Port runtime behavior and persistence:** the disposable app moved from `30486` to
+  `30500`; liveness, readiness, and authenticated API returned `200` on the new port; the old port
+  returned `000`; `/ui/` loaded and showed Ready / 2 indexed notes; the synthetic vault hashes were
+  unchanged; and derived `/data` persisted while its normal runtime file count changed from 17 to
+  19. Retained evidence does not prove an authenticated UI unlock/note-read after the port change,
+  so that stricter subcheck is not upgraded to PASS.
+- **PASS — occupied-port negative:** a disposable listener remained reachable on `30501`; the app
+  update failed with bounded `address already in use` evidence; VaultBridge did not replace the
+  listener; vault and data remained intact; recovery to `30500` restored live, ready, and
+  authenticated API `200`; and listener cleanup left `30501` unreachable.
+- **PASS — permission/ACL negative:** the test correctly stopped before mutating a shared restricted
+  NFSv4 ACL dataset. A dedicated disposable POSIX dataset was then tested at owner/group `568:568`,
+  baseline mode `770`. At mode `000`, the app remained Running and live `200`, readiness returned
+  `503`, health reported zero vault/indexed notes, list returned `200`, and direct note read returned
+  `500`; restart did not change the mode, and VaultBridge did not repair permissions. Exact mode
+  restoration recovered ready/list/read `200`, with owner/group and both file hashes unchanged.
+- **PASS — external host-path uninstall ownership:** deleting the stopped disposable Custom App
+  removed the app but preserved both the external vault and external host-path `/data`; numeric
+  owner/group/mode and both before/after SHA-256 manifests were identical.
+
+The synthetic hashes used for port, permission, and uninstall integrity checks were:
+
+```text
+alpha.md  b551001ca83c182986862b9f59839aa49aa28bc3a2e8332d063e325bf1b47bcb
+beta.md   e113a2078a99a1cb85bc0193da3a9537f844340dd81205ebfbc5451a4bc2293b
+```
+
+Classification-only and remaining results:
+
+- supported Community App upgrade is **UNSUPPORTED / NO VALID PRIOR PACKAGE STATE** because only
+  package `1.0.0` / app and image `1.1.0` exist and there is no earlier accepted package; this is not
+  an executed PASS;
+- rollback is **BLOCKED** until a prior real VaultBridge catalog revision exists; current TrueNAS
+  does support catalog rollback, so this is not classified as unsupported;
+- real generated install/question and edit forms, real-surface secret masking, generated Web UI /
+  Portal targeting `/ui/`, catalog-only storage UI behavior, and ixVolume retain/remove behavior are
+  **REQUIRES UPSTREAM CATALOG/PR**.
+
+All executable pre-upstream VB-082 gates are complete. This unblocks the VB-083 submission/review
+phase so the supported real catalog surface can become available. It does not complete VB-082, mark
+VB-083 submitted or complete, or prove any upstream-only result.
+
 ### VB-083 - upstream submission and Discover availability
 
-Only after VB-082's required gates pass should VB-083 prepare the contribution under
-`ix-dev/community/vaultbridge/`. Submission does not guarantee acceptance. During development,
+Completion of all executable pre-upstream VB-082 gates allows VB-083 to prepare and submit the
+contribution under `ix-dev/community/vaultbridge/`. The resulting supported catalog surface is then
+required to complete VB-082's catalog-only validation before either task can be fully complete.
+Submission does not guarantee acceptance. During development,
 VaultBridge does not automatically appear in users' Discover pages. A normal Community tile becomes
 available only if the upstream pull request is accepted, merged, generated into the catalog, and
 distributed by TrueNAS. Documentation may then state factual Community App availability; it must not
@@ -678,9 +730,13 @@ facts are:
 - current upstream still provides repository plus tag rather than a dedicated image digest field;
 - official Docker-backed source/render/deploy validation and generated library/hash/catalog artifacts
   pass under VB-081; the reviewer-supplied TrueNAS CDN icon URL remains a VB-083 upstream-review gate;
-- a real custom-YAML install has partially validated the core runtime/API/UI path, but no generated
-  Community App wizard, edit form, Portal button, upgrade, rollback, or uninstall has been verified;
+- all executable pre-upstream VB-082 gates are complete, including rotation, port edit/collision,
+  permission-negative/recovery, and external host-path uninstall ownership; upgrade has no valid
+  prior package state and rollback remains blocked on a prior catalog revision;
+- generated Community App wizard/edit/Portal, secret-masking, catalog storage UI, and ixVolume
+  uninstall behavior remain upstream-only;
 - VaultBridge is not present in the upstream TrueNAS Apps catalog or Discover page.
 
 The remaining lifecycle and submission gates belong to VB-082/VB-083, not to completed VB-080 or
-VB-081. The partial record above does not complete VB-082 or unblock VB-083.
+VB-081. The partial record above unblocks only the VB-083 submission/review phase; it completes
+neither VB-082 nor VB-083, and no upstream submission has been performed.
