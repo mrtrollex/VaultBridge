@@ -472,9 +472,9 @@ the disposable key, resolved container environment, or a resolved Compose config
   TrueNAS evidence recorded here.
 - VaultBridge `v1.1.0` is published and its exact OCI digest is anonymously pullable; VB-081 now pins
   exact tag `1.1.0`. The published-image functional gate below passed on 2026-09-07. VB-082 is
-  separately in progress / partial validation, with a custom-YAML core runtime/API/UI PASS record and
-  required lifecycle/negative/upgrade/uninstall gates still open. This checklist does not create or
-  publish a release.
+  separately in progress / partial validation: all executable pre-upstream lifecycle and negative
+  gates are complete, while catalog-only and eventual rollback gates remain. This checklist does not
+  create or publish a release.
 
 ## VB-075 completed functional gate: exact published `v1.1.0` dashboard image
 
@@ -568,13 +568,13 @@ labels, anonymous-pull result, readiness time, restart/persistence result, safe-
 result. Never record the generated key, previous key, resolved container environment, synthetic query
 or note content, or absolute host path.
 
-The passing VB-075 exact-image gate completed the final functional release evidence. VB-081's
-source image/app metadata is finalized, but official generated/deployable validation remains open.
-VB-082 separately records a partial TrueNAS `25.10.6` custom-YAML core runtime/API/UI validation in
-[`TRUENAS_COMMUNITY_APP_DESIGN.md`](TRUENAS_COMMUNITY_APP_DESIGN.md#vb-082-partial-validation-record--2026-09-02).
-That evidence does not prove catalog form/Portal behavior and does not complete the required
-install/edit/upgrade/rollback/uninstall lifecycle. VB-083 remains blocked, and no upstream submission
-has been performed.
+The passing VB-075 exact-image gate completed the final functional release evidence, and VB-081's
+official generated/deployable validation is complete. VB-082 separately records completed
+pre-upstream lifecycle evidence in
+[`TRUENAS_COMMUNITY_APP_DESIGN.md`](TRUENAS_COMMUNITY_APP_DESIGN.md#vb-082-pre-upstream-lifecycle-evidence--2026-09-08).
+That evidence does not prove catalog-only form/Portal/storage/ixVolume behavior or eventual rollback,
+so VB-082 remains partial. The VB-083 submission/review phase is unblocked, but no upstream
+submission has been performed and VB-083 is not complete.
 
 ### Completed exact-image run — 2026-09-07
 

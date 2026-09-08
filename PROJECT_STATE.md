@@ -112,12 +112,22 @@ Current post-v1 planning position:
 - VB-082 is in progress / partial validation: a fresh TrueNAS `25.10.6` custom-YAML install of the
   exact `v1.1.0` OCI index validated the core runtime/API/UI path; restart/persistence and watcher
   disabled/enabled behavior are **OPERATOR-CONFIRMED PASS** without retained raw command output
-- VB-082 rotation, port edit/collision, permission-negative, upgrade, rollback, uninstall, ixVolume,
-  and real catalog question/edit/Portal gates remain open; custom-YAML Portal-button absence is
-  **REQUIRES UPSTREAM VERIFICATION**, not a VaultBridge failure
+- sanitized 2026-09-08 VB-082 evidence records **PASS** for API-key rotation overlap/removal, Web
+  Port runtime behavior and persistence, occupied-port rejection/recovery, permission-denied/
+  recovery behavior, and external-vault plus host-path-data preservation on uninstall
+- the retained port-change evidence proves the UI route loaded and showed Ready / 2 indexed notes
+  plus authenticated API access; it does not prove an authenticated UI unlock/note-read after the
+  port change, so that stricter subcheck is not upgraded to PASS
+- supported Community App upgrade is **UNSUPPORTED / NO VALID PRIOR PACKAGE STATE**; rollback is
+  **BLOCKED** until a prior real catalog revision exists
+- real catalog question/edit forms, secret masking, Portal targeting, catalog-only storage behavior,
+  ixVolume uninstall, and eventual rollback remain pending; custom-YAML Portal-button absence is
+  **REQUIRES UPSTREAM CATALOG/PR**, not a VaultBridge failure
 - the disposable VB-082 API key was exposed during testing and must never be reused outside that
   disposable environment
-- no upstream TrueNAS Community App exists yet; no submission, merge, or Discover availability is claimed
+- all executable pre-upstream VB-082 gates are complete, so the VB-083 submission/review phase is
+  unblocked; VB-082 remains in progress, VB-083 is not submitted or complete, and no merge or
+  Discover availability is claimed
 - current TrueNAS support remains the documented Docker/source-built Custom App deployment
 - VB-023 is complete: the sanitized real-model retrieval benchmark emits Markdown/JSON without
   changing the deterministic VB-022 baseline or production retrieval behavior
@@ -148,10 +158,9 @@ Current `v1.1.0` release status:
 - exact-source CI run `33640580398` passed both `python` and `docker` jobs on the release commit
 - the exact immutable image passed the disposable dashboard/API/CLI/semantic/persistence/safe-log/
   clean-stop/cleanup gate at `2026-09-07T17:12:10Z` on Docker `28.3.3`; VB-075 is complete
-- VB-082 is in progress / partial validation; captured evidence proves the custom-YAML core
-  runtime/API/UI path, while required lifecycle, negative, upgrade, uninstall, and real catalog UI
-  gates remain deferred
-- VB-083 remains blocked on completion of the required VB-082 gates; no upstream pull request,
+- VB-082 is in progress / partial validation; all executable pre-upstream gates are complete, while
+  real catalog-only UI/storage/ixVolume and eventual rollback gates remain pending
+- VB-083's submission/review phase is unblocked, but no upstream pull request, completion,
   acceptance, or Discover availability exists
 
 Current v1.0 release status:
@@ -185,7 +194,7 @@ Current milestones:
 - **Milestone 6 — Public API and developer experience (complete)**
 - **Milestone 7 — Distribution and `v1.0.0` (complete)**
 - **Milestone 8 — Web Dashboard / operator experience (complete)**
-- **Milestone 9 — TrueNAS Community App distribution (in progress; VB-081 complete, VB-082 partially validated, remaining live/upstream gates open)**
+- **Milestone 9 — TrueNAS Community App distribution (in progress; VB-081 complete, VB-082 pre-upstream gates complete, VB-083 submission/review unblocked but not started)**
 - **Milestone 10 — MCP integration (complete)**
 
 ## Working production characteristics

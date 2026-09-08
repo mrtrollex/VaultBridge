@@ -1048,14 +1048,17 @@ complete.
 
 ### VB-082 — TrueNAS install/upgrade/portal validation — P1
 
-**Status:** In progress / partial validation as of 2026-09-02. A fresh TrueNAS `25.10.6` custom-YAML
+**Status:** In progress / partial validation as of 2026-09-08. A fresh TrueNAS `25.10.6` custom-YAML
 installation of `ghcr.io/mrtrollex/vaultbridge:1.1.0` at OCI index digest
 `sha256:753e613617d221c3dac311600a36cab3f2727b09f630321664eaa7b7ad6eb48c` validated the core
 runtime/API/UI path. Restart/persistence and watcher-disabled/watcher-enabled behavior are recorded
-separately as **OPERATOR-CONFIRMED PASS** because raw command output was not retained. Required
-rotation, port-edit/negative, permission-negative, upgrade, rollback, uninstall, ixVolume, and real
-catalog form/Portal gates remain open. VB-081's source/generator validation is complete. No upstream
-submission has been performed.
+separately as **OPERATOR-CONFIRMED PASS** because raw command output was not retained. Sanitized
+operator evidence now also records **PASS** for API-key overlap/removal, Web Port runtime behavior,
+occupied-port rejection/recovery, permission-denied/recovery behavior, and preservation of the
+external vault and host-path `/data` on uninstall. Upgrade is **UNSUPPORTED / NO VALID PRIOR PACKAGE
+STATE** and rollback is **BLOCKED** until a prior catalog revision exists. Real catalog form/edit,
+secret-masking, Portal, storage-UI, and ixVolume-uninstall gates remain **REQUIRES UPSTREAM
+CATALOG/PR**. No upstream submission has been performed.
 
 **Goal:** validate the Community App lifecycle on a real disposable TrueNAS installation and capture
 sanitized evidence.
@@ -1096,21 +1099,27 @@ sanitized evidence.
   and the exposed-disposable-key warning are recorded in
   [`docs/TRUENAS_COMMUNITY_APP_DESIGN.md`](docs/TRUENAS_COMMUNITY_APP_DESIGN.md#vb-082-partial-validation-record--2026-09-02);
 - the remaining-gate classification and sanitized copy/paste operator plan are recorded in
-  [`docs/VB_082_TRUENAS_LIFECYCLE_RUNBOOK.md`](docs/VB_082_TRUENAS_LIFECYCLE_RUNBOOK.md); this is a
-  planning artifact, not live evidence;
+  [`docs/VB_082_TRUENAS_LIFECYCLE_RUNBOOK.md`](docs/VB_082_TRUENAS_LIFECYCLE_RUNBOOK.md), together
+  with the sanitized 2026-09-08 execution evidence and result ledger;
 - custom-YAML installation does not expose the catalog-generated Web UI / Portal button, so that
   behavior remains **REQUIRES UPSTREAM VERIFICATION**, not a VaultBridge failure;
+- all currently executable pre-upstream VB-082 gates are complete as of 2026-09-08; the retained
+  Web Port evidence proves the new UI route loaded and showed Ready / 2 indexed notes plus an
+  authenticated API response, but does not prove the stricter authenticated UI unlock/note-read
+  subcheck after that port change;
 - this partial record does not satisfy or remove any acceptance criterion above and does not complete
   VB-082.
 
 ### VB-083 — Submit VaultBridge to upstream TrueNAS Apps catalog — P1
 
-**Status:** Blocked on completion of the required VB-082 gates. No upstream submission has been
-performed.
+**Status:** Submission/review phase unblocked as of 2026-09-08 by completion of all executable
+pre-upstream VB-082 gates. No upstream submission has been performed. VB-083 is not complete.
 
 **Goal:** prepare and submit the verified VaultBridge Community App contribution to `truenas/apps`.
 
-**Depends on:** successful VB-082.
+**Depends on:** VB-081 and completion of all executable pre-upstream VB-082 gates for the
+submission/review phase. Full VB-083 completion still depends on completing VB-082's remaining real
+catalog-only validation and satisfying every VB-083 acceptance criterion.
 
 **Acceptance criteria**
 
@@ -1261,7 +1270,7 @@ VB-001 ✓
 → VB-080 ✓
 → VB-081 ✓
 → VB-082 IN PROGRESS / PARTIAL VALIDATION
-→ VB-083 BLOCKED on required VB-082 gates
+→ VB-083 SUBMISSION/REVIEW PHASE UNBLOCKED; NOT SUBMITTED / NOT COMPLETE
 → VB-090 ✓ (independent MCP design track)
 → VB-091 ✓ (not NEXT)
 ```
@@ -1279,9 +1288,10 @@ review gate. VB-075 is complete with
 exact-source CI and full exact-image functional runtime evidence. VB-023 retrieval benchmarking is
 complete. VB-032 and VB-033 remain deferred optional
 work. VB-055 remains optional
-and is not a dashboard prerequisite. Milestone 9 packaging is in progress; VB-082 has partial
-core-runtime/UI evidence but retains its lifecycle, negative, upgrade, uninstall, and upstream UI
-gates. VB-083 remains blocked on completion of those required VB-082 gates, and no upstream
+and is not a dashboard prerequisite. Milestone 9 packaging is in progress; all executable
+pre-upstream VB-082 gates are complete, while VB-082 remains partial pending real catalog-only UI,
+Portal, storage, ixVolume-uninstall, and eventual rollback validation. That pre-upstream completion
+unblocks the VB-083 submission/review phase without marking VB-082 or VB-083 complete. No upstream
 submission has been performed. VB-090 and VB-091 complete the read-only stdio MCP design and
 implementation.
 
