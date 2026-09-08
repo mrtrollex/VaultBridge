@@ -2,7 +2,7 @@
 
 **Backlog item:** VB-080
 
-**Status:** Accepted design; VB-081 production-image source is statically finalized; VB-082 is in progress / partial validation; nothing submitted
+**Status:** Accepted design; VB-081 is complete; VB-082 is in progress / partial validation; nothing submitted
 
 **Decision date:** 2026-09-02
 
@@ -43,8 +43,8 @@ copy or a `VaultBridge-TrueNAS` runtime fork is not.
 
 ## Current upstream basis
 
-Research was refreshed on 2026-09-02 against `truenas/apps` master commit
-[`354e87006de2f49a8a2cd655bce857984a7bd247`](https://github.com/truenas/apps/tree/354e87006de2f49a8a2cd655bce857984a7bd247).
+Research and validation were refreshed through 2026-09-08 against `truenas/apps` commit
+[`906a20a22ee885add8c620660eba3d6ed51289da`](https://github.com/truenas/apps/tree/906a20a22ee885add8c620660eba3d6ed51289da).
 The latest non-v1 catalog library remains `2.3.11`; the repository-plus-tag image contract and
 initial package-version rule have not materially changed since the earlier VB-080/VB-081 review at
 `dee192fd89095cafa0ea93c19d40dfa1ca468dc9`.
@@ -52,7 +52,7 @@ initial package-version rule have not materially changed since the earlier VB-08
 Authoritative source:
 
 - the refreshed upstream
-  [`CONTRIBUTIONS.md`](https://github.com/truenas/apps/blob/354e87006de2f49a8a2cd655bce857984a7bd247/CONTRIBUTIONS.md),
+  [`CONTRIBUTIONS.md`](https://github.com/truenas/apps/blob/906a20a22ee885add8c620660eba3d6ed51289da/CONTRIBUTIONS.md),
   including its repository structure, question schema, render library, local CI, migration, security,
   storage, and submission rules;
 - the current library remains `2.3.11`.
@@ -163,15 +163,15 @@ The container always listens on bridge networking at port `8000`. The wizard exp
 | Value | Contract | Default |
 |---|---|---|
 | `network.web_port.bind_mode` | Hidden/fixed to `published` | `published` |
-| `network.web_port.port_number` | Required integer from 1 through 65535, labelled **Web Port** | `8765` |
+| `network.web_port.port_number` | Required integer from 1 through 65535, labelled **Web Port** | `30486` |
 | `network.web_port.host_ips` | Standard optional host-IP selector | empty list, meaning wildcard IPv4/IPv6 under the current library |
 | `network.networks` | Standard optional additional Docker networks | empty list |
 
-The template maps the selected host port to fixed container port `8000`. The existing VaultBridge
-operator default `8765` is retained because it is valid under the current schema and familiar to
-existing deployments. The schema validates the numeric range; TrueNAS/Docker remains responsible for
-rejecting an occupied host address/port during installation. VB-082 must exercise a real collision
-and confirm the error is actionable.
+The template maps the selected host port to fixed container port `8000`. The Community App default
+`30486` follows the current upstream catalog-wide unique-port validation; the separate source-built
+Custom App workflow retains its existing `8765` default. The schema validates the numeric range;
+TrueNAS/Docker remains responsible for rejecting an occupied host address/port during installation.
+VB-082 must exercise a real collision and confirm the error is actionable.
 
 Host networking is not exposed: VaultBridge does not require it, it weakens isolation, and it makes
 the host-port/portal contract less clear. The app requests no capabilities, devices, Docker socket,
@@ -259,9 +259,9 @@ The future template creates one main container named `vaultbridge` from the `ima
 helper is not another VaultBridge service and has no network access. The main container has no added
 Linux capabilities and runs as the selected non-root UID/GID.
 
-The container health check targets `http://127.0.0.1:8000/health/live`. It must use an executable
+The container health check targets `http://127.0.0.1:8000/health/live`. It uses an executable
 already present in the normal image. Because the current image includes Python but not curl or wget,
-VB-081 should render a JSON-array custom check using Python's standard-library HTTP client; it must
+VB-081 renders a JSON-array custom check using Python's standard-library HTTP client; it does
 not change the VaultBridge image merely to add a probe binary.
 
 `/health/live` is intentionally the Docker/TrueNAS health check: it reports whether the API process
@@ -344,6 +344,7 @@ The future `app.yaml` and contribution use factual metadata only:
 | Changelog | `https://github.com/mrtrollex/VaultBridge/releases` |
 | Image | `ghcr.io/mrtrollex/vaultbridge:<released-version>` only after publication/verification |
 | License | MIT; state it in the contribution/README/notes because current `app.yaml` examples have no `license` field |
+| Date added | `2026-09-07`; required by current upstream metadata validation |
 | Maintainer | current upstream convention lists the TrueNAS maintainer identity in `app.yaml`; do not invent a personal maintainer entry |
 | Capabilities / host mounts | empty |
 
@@ -362,7 +363,7 @@ official status. The terminology is **TrueNAS Community App**, never “official
 
 ## Expected upstream file structure
 
-At VB-081, the source contribution is expected to be:
+The implemented VB-081 source contribution is:
 
 ```text
 ix-dev/community/vaultbridge/
@@ -373,16 +374,18 @@ ix-dev/community/vaultbridge/
 `-- templates/
     |-- docker-compose.yaml               required, hand-authored Jinja2 template
     `-- test_values/
-        |-- basic-values.yaml             required: host-path vault, ixVolume data, watcher off
-        |-- host-data-watcher-values.yaml required by this design: host-path data, watcher on, rotation placeholder
-        `-- readonly-vault-values.yaml    required by this design: explicit read-only vault render
+        |-- basic-values.yaml             host-path vault, ixVolume data, watcher off
+        |-- watcher-enabled-values.yaml   host-path vault, ixVolume data, watcher on
+        `-- host-path-data-values.yaml    host-path vault and data
 ```
 
-Current tooling also creates or copies:
+Current tooling also creates or copies the following. The first two are generator-owned but must be
+present in the proposed source tree for the raw-PR dev-catalog validator; rendered Compose is
+temporary validation output and must not be submitted:
 
 ```text
-item.yaml                                 generated catalog entry; do not hand-edit
-templates/library/base_v2_x_x/            generated copy of selected library; do not hand-edit
+item.yaml                                 generated catalog entry; source-required, do not hand-edit
+templates/library/base_v2_3_11/           generated library copy; source-required, do not hand-edit
 templates/rendered/docker-compose.yaml    temporary rendered output; gitignored, do not submit
 ```
 
@@ -390,8 +393,8 @@ templates/rendered/docker-compose.yaml    temporary rendered output; gitignored,
 Add them only when a later catalog revision changes stored question values in a way that requires a
 migration. Image upgrades alone do not justify a no-op migration.
 
-The exact upstream file set and generated-artifact policy must be rechecked against current master at
-VB-081 because upstream owns this structure.
+The exact upstream file set and generated-artifact policy were rechecked at the pinned VB-081 commit
+because upstream owns this structure.
 
 ## Install, edit, upgrade, rollback, and uninstall
 
@@ -477,9 +480,26 @@ into evidence.
 VB-081 ends with an implemented, current-schema definition and passing upstream render/local tests.
 It does not claim TrueNAS UI behavior, catalog availability, or upstream acceptance.
 
-Current status: source metadata and all three fixtures pass current-library static rendering and
-focused invariants. The official upstream CI/hash generator is Docker-backed and cannot run on the
-current Docker-less host, so generated artifacts and deployable-image validation remain open.
+Completed on 2026-09-08 against upstream commit
+`906a20a22ee885add8c620660eba3d6ed51289da` and library `2.3.11`. Official generation produced
+`lib_version_hash` `874636814efb275e5276ea9d709b7cd665fed42bb1d50328e853d9253a2e1229`, `item.yaml`, and the
+78-file `templates/library/base_v2_3_11/` tree. The copied artifacts match the native WSL generator
+output byte-for-byte; `item.yaml` has SHA-256
+`c567702b80a7141e1f821eaa7ee4da3270f23206e98e90f3ff975334064da233`.
+
+The full catalog port validator passes with Community App port `30486`; the generic Docker/Custom
+App default remains `8765`. Current middleware schema construction rejected 13 disposable negative
+cases covering missing required values, UID/GID zero, ports below/above range, debounce below range,
+missing vault/data host paths, and malformed vault/data storage choices. The dev-catalog validator
+passes with the correct disposable Git/library baseline. Official `.github/scripts/ci.py` render,
+deploy, health, and cleanup pass for `basic-values.yaml`, `watcher-enabled-values.yaml`, and
+`host-path-data-values.yaml`, confirming the released `1.1.0` image, `30486:8000`, `/health/live`,
+`/ui/`, non-root `568:568`, bridge networking, and the `/data`-only permissions helper.
+
+Metadata validation's only remaining failure is the pre-submission icon URL: final catalog metadata
+must use `https://media.sys.truenas.net/apps/...`, and current contributor guidance assigns upload/
+URL provision to reviewers. This is **REQUIRES UPSTREAM REVIEW / VB-083**; no CDN URL is invented and
+it does not block VB-081 source completion.
 
 ### VB-082 - real TrueNAS lifecycle validation
 
@@ -601,6 +621,10 @@ available only if the upstream pull request is accepted, merged, generated into 
 distributed by TrueNAS. Documentation may then state factual Community App availability; it must not
 call the app official or promise approval before merge.
 
+VB-083 also owns replacing the reviewable pre-submission icon URL with the
+`media.sys.truenas.net/apps` URL supplied during upstream review. That value cannot be truthfully
+created before the asset is uploaded; its current status is **REQUIRES UPSTREAM REVIEW**.
+
 ## Security invariants
 
 The package preserves, rather than replaces, VaultBridge security boundaries:
@@ -642,18 +666,17 @@ Those legacy names remain untouched in their existing artifacts.
 
 ## Completion boundary
 
-VB-080 is complete when this design is accepted and repository status records it. The following facts
-remain open and block later claims:
+VB-080 is complete because this design is accepted and repository status records it. Current boundary
+facts are:
 
 - VaultBridge `v1.1.0` is published and the staged definition pins exact tag `1.1.0` with matching
   `app_version`;
 - current upstream still provides repository plus tag rather than a dedicated image digest field;
-- official Docker-backed source/render/deploy validation, generated library/hash/catalog artifacts,
-  and the reviewer-supplied TrueNAS CDN icon URL remain pending;
+- official Docker-backed source/render/deploy validation and generated library/hash/catalog artifacts
+  pass under VB-081; the reviewer-supplied TrueNAS CDN icon URL remains a VB-083 upstream-review gate;
 - a real custom-YAML install has partially validated the core runtime/API/UI path, but no generated
   Community App wizard, edit form, Portal button, upgrade, rollback, or uninstall has been verified;
 - VaultBridge is not present in the upstream TrueNAS Apps catalog or Discover page.
 
-The remaining generated-validation, lifecycle, and submission gates belong to VB-081/VB-082/VB-083,
-not to the completed VB-080 design. The partial record above does not complete VB-082 or unblock
-VB-083.
+The remaining lifecycle and submission gates belong to VB-082/VB-083, not to completed VB-080 or
+VB-081. The partial record above does not complete VB-082 or unblock VB-083.
