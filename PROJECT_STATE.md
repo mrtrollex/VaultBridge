@@ -128,6 +128,17 @@ Current post-v1 planning position:
 - all executable pre-upstream VB-082 gates are complete, so the VB-083 submission/review phase is
   unblocked; VB-082 remains in progress, VB-083 is not submitted or complete, and no merge or
   Discover availability is claimed
+- the VB-083 readiness audit checked live `truenas/apps` `master` at
+  `a61f1bf5a63c7bdf39df50ead789a98e24cdb6d5`; contributor guidance and library `2.3.11` remain
+  compatible, but newly merged apps now own ports `30486` and `30487`
+- the submission package and all three fixtures now use the current next-free Community App port
+  `30488`; the current port validator passes with that exact staged package, and generic
+  Docker/Custom App default `8765` remains unchanged
+- VB-083 is **BLOCKED BEFORE PR OPENING** until the required upstream discussion issue exists and
+  full current-upstream Docker-backed validation passes at `30488`; Docker was unavailable for that
+  rerun in this audit environment
+- the final TrueNAS CDN icon remains **REQUIRES UPSTREAM REVIEWER ACTION** during PR review and does
+  not independently block PR opening; no VaultBridge issue, fork, or PR was created
 - current TrueNAS support remains the documented Docker/source-built Custom App deployment
 - VB-023 is complete: the sanitized real-model retrieval benchmark emits Markdown/JSON without
   changing the deterministic VB-022 baseline or production retrieval behavior
@@ -160,8 +171,9 @@ Current `v1.1.0` release status:
   clean-stop/cleanup gate at `2026-09-07T17:12:10Z` on Docker `28.3.3`; VB-075 is complete
 - VB-082 is in progress / partial validation; all executable pre-upstream gates are complete, while
   real catalog-only UI/storage/ixVolume and eventual rollback gates remain pending
-- VB-083's submission/review phase is unblocked, but no upstream pull request, completion,
-  acceptance, or Discover availability exists
+- VB-083 preparation is active but blocked before PR opening on its required discussion issue and
+  current-upstream validation; no pull request, completion, acceptance, or Discover availability
+  exists
 
 Current v1.0 release status:
 
@@ -194,7 +206,7 @@ Current milestones:
 - **Milestone 6 — Public API and developer experience (complete)**
 - **Milestone 7 — Distribution and `v1.0.0` (complete)**
 - **Milestone 8 — Web Dashboard / operator experience (complete)**
-- **Milestone 9 — TrueNAS Community App distribution (in progress; VB-081 complete, VB-082 pre-upstream gates complete, VB-083 submission/review unblocked but not started)**
+- **Milestone 9 — TrueNAS Community App distribution (in progress; VB-081 complete, VB-082 pre-upstream gates complete, VB-083 preparation blocked before PR on issue/validation)**
 - **Milestone 10 — MCP integration (complete)**
 
 ## Working production characteristics

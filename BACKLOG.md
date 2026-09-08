@@ -1112,8 +1112,13 @@ sanitized evidence.
 
 ### VB-083 — Submit VaultBridge to upstream TrueNAS Apps catalog — P1
 
-**Status:** Submission/review phase unblocked as of 2026-09-08 by completion of all executable
-pre-upstream VB-082 gates. No upstream submission has been performed. VB-083 is not complete.
+**Status:** Submission/review phase is active but **BLOCKED BEFORE PR OPENING** as of 2026-09-08.
+Live upstream `master` now assigns the previously validated Community App port `30486` to another
+app; the package has moved to currently free port `30488` and requires a full current-upstream
+Docker-backed validation rerun. The app-addition template also requires a discussion issue, and none
+exists. The CDN icon is **REQUIRES UPSTREAM REVIEWER ACTION** and does not block opening the PR after
+the contributor-controlled prerequisites pass. No upstream submission has been performed. VB-083 is
+not complete.
 
 **Goal:** prepare and submit the verified VaultBridge Community App contribution to `truenas/apps`.
 
@@ -1145,6 +1150,24 @@ catalog-only validation and satisfying every VB-083 acceptance criterion.
 
 - upstream-required checks pass; record pull-request URL/state and, after merge, independently verify
   the accepted catalog entry before marking the task complete.
+
+**Submission preparation record**
+
+- audited live upstream `master` at `a61f1bf5a63c7bdf39df50ead789a98e24cdb6d5`; base branch is
+  `master` and destination is `ix-dev/community/vaultbridge/`;
+- the pinned/current contributor guide confirms the reviewer uploads linked/attached icon assets and
+  supplies the final `media.sys.truenas.net` URL during review;
+- package structure, metadata, questions, templates, fixtures, generated artifacts, public URLs, and
+  source hygiene were audited; repository-local YAML validation passes;
+- current port validation reports `30486` owned by `community/rotki`, `30487` owned by
+  `community/actuallyfreecd`, and `30488` through `30492` available; the package/fixtures now use
+  `30488`, and the current validator passes with the exact staged package; generic Docker/Custom App
+  default `8765` is unchanged;
+- full current-upstream Docker-backed generation/render/deploy validation remains required before PR
+  opening because Docker was unavailable in this audit environment;
+- the exact next-step workflow, issue/PR drafts, reviewer boundary, privacy rules, and VB-082
+  post-delivery gates are recorded in
+  [`docs/VB_083_TRUENAS_UPSTREAM_SUBMISSION_RUNBOOK.md`](docs/VB_083_TRUENAS_UPSTREAM_SUBMISSION_RUNBOOK.md).
 
 ---
 
@@ -1270,7 +1293,7 @@ VB-001 ✓
 → VB-080 ✓
 → VB-081 ✓
 → VB-082 IN PROGRESS / PARTIAL VALIDATION
-→ VB-083 SUBMISSION/REVIEW PHASE UNBLOCKED; NOT SUBMITTED / NOT COMPLETE
+→ VB-083 PREPARATION ACTIVE; BLOCKED BEFORE PR (issue + current validation)
 → VB-090 ✓ (independent MCP design track)
 → VB-091 ✓ (not NEXT)
 ```
@@ -1290,9 +1313,9 @@ complete. VB-032 and VB-033 remain deferred optional
 work. VB-055 remains optional
 and is not a dashboard prerequisite. Milestone 9 packaging is in progress; all executable
 pre-upstream VB-082 gates are complete, while VB-082 remains partial pending real catalog-only UI,
-Portal, storage, ixVolume-uninstall, and eventual rollback validation. That pre-upstream completion
-unblocks the VB-083 submission/review phase without marking VB-082 or VB-083 complete. No upstream
-submission has been performed. VB-090 and VB-091 complete the read-only stdio MCP design and
-implementation.
+Portal, storage, ixVolume-uninstall, and eventual rollback validation. VB-083 preparation is active,
+but PR opening is blocked on the required discussion issue and current-upstream validation after the
+port correction. Neither VB-082 nor VB-083 is complete, and no upstream submission has been
+performed. VB-090 and VB-091 complete the read-only stdio MCP design and implementation.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

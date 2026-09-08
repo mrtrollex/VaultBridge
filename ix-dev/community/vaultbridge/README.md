@@ -5,10 +5,9 @@ bridge for Obsidian Markdown vaults. It is licensed under the MIT License. Proje
 available in the [repository README](https://github.com/mrtrollex/VaultBridge#readme) and the
 [TrueNAS deployment guide](https://github.com/mrtrollex/VaultBridge/blob/main/README_TRUENAS.md).
 
-This directory is a pre-submission development copy of the future TrueNAS Community App definition.
-It does not make VaultBridge available in TrueNAS Discover and is not an official TrueNAS app. The
-accepted upstream definition will be owned by `truenas/apps`; this copy exists so the package can be
-developed and reviewed before lifecycle and submission gates are satisfied.
+This package definition deploys the normal published VaultBridge image as a TrueNAS Community App.
+It does not fork VaultBridge runtime behavior. Catalog availability is claimed only after upstream
+review, merge, and delivery through TrueNAS.
 
 ## Production image contract
 
@@ -25,10 +24,10 @@ values schema has no dedicated digest field, so the digest remains a validation/
 Fixtures inherit the production image map from `ix_values.yaml` and retain only synthetic API keys
 and disposable paths.
 
-`app_version` is `1.1.0`. Catalog package `version` remains the upstream-required initial `1.0.0`
-because this package has not been submitted. Library `2.3.11` remains current. The official Docker-
-backed tooling must still generate the library copy, `lib_version_hash`, `item.yaml`, and final
-TrueNAS CDN icon reference during upstream preparation; none is fabricated in this development copy.
+`app_version` is `1.1.0`. Catalog package `version` is the required initial `1.0.0`. Library `2.3.11`,
+its generated hash, `item.yaml`, and the generated library copy are included. The current source icon
+is attached or linked for review; a TrueNAS reviewer supplies the final CDN URL during the upstream
+review process. No CDN URL is fabricated here.
 
 ## Storage and permissions
 

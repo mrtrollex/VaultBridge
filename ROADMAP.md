@@ -563,7 +563,9 @@ officially generated artifacts, and current-upstream Docker-backed package valid
 exact-source CI and exact-image functional release evidence also pass. VB-082 is in progress /
 partial validation: all executable pre-upstream lifecycle and negative gates are complete, while
 real catalog-only UI/storage/ixVolume and eventual rollback gates remain open. The VB-083
-submission/review phase may now begin; neither task is complete and no submission is claimed.
+submission/review phase has begun with a readiness audit, but PR opening is blocked on the required
+discussion issue and a current-upstream Docker validation rerun after moving the Community App port
+from newly occupied `30486` to free `30488`. Neither task is complete and no submission is claimed.
 
 ---
 
@@ -612,7 +614,7 @@ VB-081 Community App definition ✓
    ↓
 VB-082 executable pre-upstream validation ✓
    ↓
-VB-083 upstream submission/review phase (UNBLOCKED; NOT SUBMITTED)
+VB-083 preparation (BLOCKED BEFORE PR: issue + current validation)
    ↓ creates the supported real catalog surface
 VB-082 catalog-only validation (IN PROGRESS / PARTIAL)
    ↓
@@ -626,7 +628,8 @@ Milestone exit criteria:
   through the current upstream library without changing VaultBridge runtime code
 - [x] storage, identity, secret, port, health, portal, resource, upgrade, and rollback contracts are
   documented in [`docs/TRUENAS_COMMUNITY_APP_DESIGN.md`](docs/TRUENAS_COMMUNITY_APP_DESIGN.md)
-- [x] current-upstream schema, generation, catalog-port, render, and local deploy/health checks pass
+- [ ] pinned VB-081 schema/generation/render/deploy checks passed; rerun the full current-upstream
+  suite for the submission package after its port moved to `30488`
 - [ ] executable install/restart/edit/persistence/negative/uninstall gates are recorded and upgrade
   is classified **UNSUPPORTED / NO VALID PRIOR PACKAGE STATE**; catalog-only UI/storage/ixVolume and
   eventual rollback validation remain before VB-082 completion
@@ -800,7 +803,7 @@ VB-081 ✓
    ↓
 VB-082 IN PROGRESS / PARTIAL VALIDATION
    ↓
-VB-083 SUBMISSION/REVIEW UNBLOCKED; NOT SUBMITTED / NOT COMPLETE
+VB-083 PREPARATION ACTIVE; BLOCKED BEFORE PR (issue + current validation)
    ↓
 MCP INTEGRATION (independent post-v1 track)
 VB-090 ✓
@@ -820,10 +823,11 @@ evidence or an allowed classification. Real catalog UI/storage/ixVolume and even
 remain required before VB-082 completion, but they depend on a supported upstream catalog surface.
 VB-023 retrieval benchmarking is complete. VB-032 and VB-033 remain explicitly deferred/optional,
 and VB-055 remains optional rather than a dashboard
-prerequisite. Milestone 9 definition work, official Docker-backed package validation, and executable
-pre-upstream VB-082 validation are complete. The VB-083 submission/review phase is unblocked so the
-remaining catalog-only VB-082 surface can become available; VB-082 and VB-083 remain incomplete and
-no upstream submission has been performed. ADR 0004 completes VB-090's MCP design-only
+prerequisite. Milestone 9 definition work, pinned VB-081 Docker-backed package validation, and
+executable pre-upstream VB-082 validation are complete. VB-083 preparation found that live upstream
+port allocation has moved the submission package to `30488`; the required issue and full
+current-upstream validation block PR opening. VB-082 and VB-083 remain incomplete, and no upstream
+submission has been performed. ADR 0004 completes VB-090's MCP design-only
 work, and PR #55 CI completes VB-091's read-only stdio implementation verification.
 
 ---

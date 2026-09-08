@@ -77,12 +77,12 @@ labels and HTTP status codes.
 3. Create a disposable dataset/directory containing exactly two synthetic Markdown files. Record a
    relative-name SHA-256 manifest before testing.
 4. Create a separate disposable host-path directory for the `/data` alternative.
-5. Use the exact VB-081 generated definition with package `version: 1.0.0`, `app_version: 1.1.0`,
-   image `ghcr.io/mrtrollex/vaultbridge:1.1.0`, and default Web Port `30486`.
+5. Use the current submission definition with package `version: 1.0.0`, `app_version: 1.1.0`, image
+   `ghcr.io/mrtrollex/vaultbridge:1.1.0`, and current Community App default Web Port `30488`.
 6. Resolve the running image and require OCI index digest
    `sha256:753e613617d221c3dac311600a36cab3f2727b09f630321664eaa7b7ad6eb48c`.
 7. Select one unused disposable port as `<FREE_PORT>` and a different unused port as
-   `<OCCUPIED_PORT>`. Do not use `8765`, `30486`, or a port belonging to another application.
+   `<OCCUPIED_PORT>`. Do not use `8765`, `30488`, or a port belonging to another application.
 8. Take a TrueNAS configuration backup if required by local operator policy. Do not include it in
    repository evidence.
 
@@ -91,7 +91,7 @@ Prepare a non-recorded TrueNAS shell once:
 ```sh
 set -eu
 APP_NAME='vaultbridge-vb082'
-DEFAULT_PORT='30486'
+DEFAULT_PORT='30488'
 FREE_PORT='<FREE_PORT>'
 OCCUPIED_PORT='<OCCUPIED_PORT>'
 VAULT_PATH='<DISPOSABLE_VAULT_HOST_PATH>'
@@ -108,7 +108,7 @@ filled copy of this runbook.
 
 ## Stage 1 - API-key rotation overlap
 
-**Preconditions:** The disposable app is healthy on `30486`; both new disposable keys are loaded in
+**Preconditions:** The disposable app is healthy on the current default port; both new disposable keys are loaded in
 the non-recorded shell; public health and one protected request work with the current key.
 
 **Exact steps:**
@@ -165,7 +165,7 @@ derived-data marker/count have been recorded without private paths.
 
 **Exact steps:**
 
-1. Edit the exact Custom App YAML/rendered mapping from `30486:8000` to `<FREE_PORT>:8000`; do not
+1. Edit the exact Custom App YAML/rendered mapping from `<DEFAULT_PORT>:8000` to `<FREE_PORT>:8000`; do not
    change mounts, image, environment, user, capabilities, or health check. Save/update.
 2. Wait for Running/healthy and run:
 
@@ -376,7 +376,7 @@ App; TrueNAS documents conversion as permanent.
 
 1. Open the real install form and verify all generated fields: masked current/previous API keys;
    required vault host path and ACL control; ixVolume/host-path data selector; watcher and debounce;
-   UID/GID; Web Port default `30486`; host IPs/networks; CPU `2`; memory `4096` MB; optional labels.
+   UID/GID; current Web Port default `30488`; host IPs/networks; CPU `2`; memory `4096` MB; optional labels.
 2. Install with the default ixVolume and disposable vault. Require Running/healthy, readiness,
    authenticated API/UI behavior, and **Web UI** opening `/ui/` on the selected port.
 3. Open Edit. Require stored secret values to remain masked and the port/watcher/resource fields to

@@ -163,15 +163,16 @@ The container always listens on bridge networking at port `8000`. The wizard exp
 | Value | Contract | Default |
 |---|---|---|
 | `network.web_port.bind_mode` | Hidden/fixed to `published` | `published` |
-| `network.web_port.port_number` | Required integer from 1 through 65535, labelled **Web Port** | `30486` |
+| `network.web_port.port_number` | Required integer from 1 through 65535, labelled **Web Port** | `30488` |
 | `network.web_port.host_ips` | Standard optional host-IP selector | empty list, meaning wildcard IPv4/IPv6 under the current library |
 | `network.networks` | Standard optional additional Docker networks | empty list |
 
-The template maps the selected host port to fixed container port `8000`. The Community App default
-`30486` follows the current upstream catalog-wide unique-port validation; the separate source-built
-Custom App workflow retains its existing `8765` default. The schema validates the numeric range;
-TrueNAS/Docker remains responsible for rejecting an occupied host address/port during installation.
-VB-082 must exercise a real collision and confirm the error is actionable.
+The template maps the selected host port to fixed container port `8000`. VB-081 originally validated
+Community App default `30486`; by the VB-083 audit, newly merged upstream apps owned `30486` and
+`30487`, and the current validator reported `30488` through `30492` as free. The submission package
+therefore uses `30488`. The separate source-built Custom App workflow retains its existing `8765`
+default. The schema validates the numeric range; TrueNAS/Docker remains responsible for rejecting an
+occupied host address/port during installation.
 
 Host networking is not exposed: VaultBridge does not require it, it weakens isolation, and it makes
 the host-port/portal contract less clear. The app requests no capabilities, devices, Docker socket,
@@ -680,6 +681,16 @@ call the app official or promise approval before merge.
 VB-083 also owns replacing the reviewable pre-submission icon URL with the
 `media.sys.truenas.net/apps` URL supplied during upstream review. That value cannot be truthfully
 created before the asset is uploaded; its current status is **REQUIRES UPSTREAM REVIEW**.
+
+The 2026-09-08 VB-083 readiness audit checked live upstream `master` at
+`a61f1bf5a63c7bdf39df50ead789a98e24cdb6d5`. The contributor guide still matches the pinned VB-081
+contract and library `2.3.11` remains current, but upstream port allocation drift requires the
+submission package to use `30488`. The current app-addition template also requires a discussion issue
+before the PR; no VaultBridge issue or PR exists. Full Docker-backed validation must be rerun after
+the port correction. The exact workflow and PR draft are in
+[`VB_083_TRUENAS_UPSTREAM_SUBMISSION_RUNBOOK.md`](VB_083_TRUENAS_UPSTREAM_SUBMISSION_RUNBOOK.md).
+VB-083 is therefore **BLOCKED BEFORE PR OPENING** on the issue and current validation, while the CDN
+icon remains a non-pre-PR **REQUIRES UPSTREAM REVIEWER ACTION** item.
 
 ## Security invariants
 
