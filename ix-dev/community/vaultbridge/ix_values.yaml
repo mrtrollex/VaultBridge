@@ -9,6 +9,6 @@ images:
 consts:
   vaultbridge_container_name: vaultbridge
   perms_container_name: permissions
-  application_port: 8000
+  internal_port: 8000
   vault_path: /vault
   data_path: /data

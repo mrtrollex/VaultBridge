@@ -4,10 +4,10 @@ categories:
   - productivity
 changelog_url: https://github.com/mrtrollex/VaultBridge/releases
 description: Self-hosted REST and semantic search bridge for Obsidian Markdown vaults.
-date_added: '2026-09-07'
+date_added: '2026-09-10'
 home: https://github.com/mrtrollex/VaultBridge
 host_mounts: []
-icon: https://raw.githubusercontent.com/mrtrollex/VaultBridge/e39ed91db75f912f390c7ec915dea73369bb9252/docs/assets/vaultbridge-logo.webp
+icon: https://media.sys.truenas.net/apps/vaultbridge/icons/icon.webp
 keywords:
   - obsidian
   - markdown
@@ -28,6 +28,7 @@ run_as_context:
     user_name: Host user is [apps]
 screenshots: []
 sources:
+  - https://apps.truenas.com/catalog/vaultbridge_community/
   - https://github.com/mrtrollex/VaultBridge
 title: VaultBridge
 train: community
