@@ -572,9 +572,11 @@ The passing VB-075 exact-image gate completed the final functional release evide
 official generated/deployable validation is complete. VB-082 separately records completed
 pre-upstream lifecycle evidence in
 [`TRUENAS_COMMUNITY_APP_DESIGN.md`](TRUENAS_COMMUNITY_APP_DESIGN.md#vb-082-pre-upstream-lifecycle-evidence--2026-09-08).
-That evidence does not prove catalog-only form/Portal/storage/ixVolume behavior or eventual rollback,
-so VB-082 remains partial. The VB-083 submission/review phase is unblocked, but no upstream
-submission has been performed and VB-083 is not complete.
+Post-merge operator evidence additionally confirms the initial real-catalog install, masked-secret
+form, `/ui/` Portal, Host Path, ixVolume configuration, healthy vault visibility, and rotation
+migration. It does not prove edit-form persistence, ixVolume uninstall semantics, a valid
+prior-state upgrade, or rollback, so VB-082 remains partial. VB-083 is complete after upstream PR
+#5805 review/merge and Discover Apps availability confirmation.
 
 ### Completed exact-image run — 2026-09-07
 

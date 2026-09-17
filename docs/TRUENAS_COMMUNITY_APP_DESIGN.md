@@ -2,13 +2,14 @@
 
 **Backlog item:** VB-080
 
-**Status:** Accepted design; VB-081 is complete; VB-082 is in progress / partial validation; nothing submitted
+**Status:** Accepted design; VB-081 and VB-083 are complete; VB-082 is in progress / partial validation
 
 **Decision date:** 2026-09-02
 
-This document defines how a future TrueNAS Community App should package the normal VaultBridge
-image. It does not add a catalog definition, publish an image, assign a release version, or claim
-catalog availability.
+This document originally defined how a future TrueNAS Community App should package the normal
+VaultBridge image. That VB-080 design scope did not add a catalog definition, publish an image,
+assign a release version, or claim catalog availability. Later sections retain the implementation,
+validation, upstream-acceptance, and post-merge evidence recorded by VB-081 through VB-083.
 
 ## Decision summary
 
@@ -43,11 +44,12 @@ copy or a `VaultBridge-TrueNAS` runtime fork is not.
 
 ## Current upstream basis
 
-Research and validation were refreshed through 2026-09-08 against `truenas/apps` commit
-[`906a20a22ee885add8c620660eba3d6ed51289da`](https://github.com/truenas/apps/tree/906a20a22ee885add8c620660eba3d6ed51289da).
-The latest non-v1 catalog library remains `2.3.11`; the repository-plus-tag image contract and
-initial package-version rule have not materially changed since the earlier VB-080/VB-081 review at
-`dee192fd89095cafa0ea93c19d40dfa1ca468dc9`.
+Pre-submission research and validation were refreshed through 2026-09-08 against `truenas/apps`
+commit [`906a20a22ee885add8c620660eba3d6ed51289da`](https://github.com/truenas/apps/tree/906a20a22ee885add8c620660eba3d6ed51289da).
+PR [#5805](https://github.com/truenas/apps/pull/5805) was reviewed and merged on 2026-09-16 at
+`fd185603de32444f9e36f872dbcd84af44509115`. Upstream `master` now contains the accepted source at
+`ix-dev/community/vaultbridge/` and generated catalog entry at
+`trains/community/vaultbridge/1.0.0/`.
 
 Authoritative source:
 
@@ -56,6 +58,9 @@ Authoritative source:
   including its repository structure, question schema, render library, local CI, migration, security,
   storage, and submission rules;
 - the current library remains `2.3.11`.
+- the accepted package metadata is name/title `vaultbridge` / **VaultBridge**, train `community`,
+  catalog package `1.0.0`, app/image `1.1.0`, library `2.3.11`, default Web UI port `30491`, Portal
+  path `/ui/`, and icon `https://media.sys.truenas.net/apps/vaultbridge/icons/icon.webp`.
 
 Current conventions relevant to VaultBridge are:
 
@@ -163,12 +168,12 @@ The container always listens on bridge networking at port `8000`. The wizard exp
 | Value | Contract | Default |
 |---|---|---|
 | `network.web_port.bind_mode` | Hidden/fixed to `published` | `published` |
-| `network.web_port.port_number` | Required integer from 1 through 65535, labelled **Web Port** | `30486` |
+| `network.web_port.port_number` | Required integer from 1 through 65535, labelled **Web Port** | `30491` |
 | `network.web_port.host_ips` | Standard optional host-IP selector | empty list, meaning wildcard IPv4/IPv6 under the current library |
 | `network.networks` | Standard optional additional Docker networks | empty list |
 
-The template maps the selected host port to fixed container port `8000`. The Community App default
-`30486` follows the current upstream catalog-wide unique-port validation; the separate source-built
+The template maps the selected host port to fixed container port `8000`. The accepted Community App
+default `30491` follows upstream catalog-wide unique-port validation; the separate source-built
 Custom App workflow retains its existing `8765` default. The schema validates the numeric range;
 TrueNAS/Docker remains responsible for rejecting an occupied host address/port during installation.
 VB-082 must exercise a real collision and confirm the error is actionable.
@@ -477,8 +482,9 @@ into evidence.
    host paths, and malformed storage choices through the current schema/render tooling.
 7. Verify no fixture, note, README, rendered artifact, diff, or test output contains a real secret.
 
-VB-081 ends with an implemented, current-schema definition and passing upstream render/local tests.
-It does not claim TrueNAS UI behavior, catalog availability, or upstream acceptance.
+At completion, VB-081 provided an implemented, then-current-schema definition and passing upstream
+render/local tests. That pre-submission result did not itself claim TrueNAS UI behavior, catalog
+availability, or upstream acceptance.
 
 Completed on 2026-09-08 against upstream commit
 `906a20a22ee885add8c620660eba3d6ed51289da` and library `2.3.11`. Official generation produced
@@ -487,8 +493,9 @@ Completed on 2026-09-08 against upstream commit
 output byte-for-byte; `item.yaml` has SHA-256
 `c567702b80a7141e1f821eaa7ee4da3270f23206e98e90f3ff975334064da233`.
 
-The full catalog port validator passes with Community App port `30486`; the generic Docker/Custom
-App default remains `8765`. Current middleware schema construction rejected 13 disposable negative
+The full catalog port validator passed with the then-free pre-submission port `30486`; that value was
+later superseded by accepted upstream default `30491`. The generic Docker/Custom App default remains
+`8765`. Current middleware schema construction rejected 13 disposable negative
 cases covering missing required values, UID/GID zero, ports below/above range, debounce below range,
 missing vault/data host paths, and malformed vault/data storage choices. The dev-catalog validator
 passes with the correct disposable Git/library baseline. Official `.github/scripts/ci.py` render,
@@ -496,10 +503,10 @@ deploy, health, and cleanup pass for `basic-values.yaml`, `watcher-enabled-value
 `host-path-data-values.yaml`, confirming the released `1.1.0` image, `30486:8000`, `/health/live`,
 `/ui/`, non-root `568:568`, bridge networking, and the `/data`-only permissions helper.
 
-Metadata validation's only remaining failure is the pre-submission icon URL: final catalog metadata
-must use `https://media.sys.truenas.net/apps/...`, and current contributor guidance assigns upload/
-URL provision to reviewers. This is **REQUIRES UPSTREAM REVIEW / VB-083**; no CDN URL is invented and
-it does not block VB-081 source completion.
+At VB-081 completion, metadata validation's only remaining failure was the pre-submission icon URL;
+contributor guidance assigned upload and CDN URL provision to upstream review. VB-083 resolved that
+historical gate with the accepted icon
+`https://media.sys.truenas.net/apps/vaultbridge/icons/icon.webp`.
 
 ### VB-082 - real TrueNAS lifecycle validation
 
@@ -651,7 +658,7 @@ alpha.md  b551001ca83c182986862b9f59839aa49aa28bc3a2e8332d063e325bf1b47bcb
 beta.md   e113a2078a99a1cb85bc0193da3a9537f844340dd81205ebfbc5451a4bc2293b
 ```
 
-Classification-only and remaining results:
+Pre-submission classification recorded on 2026-09-08:
 
 - supported Community App upgrade is **UNSUPPORTED / NO VALID PRIOR PACKAGE STATE** because only
   package `1.0.0` / app and image `1.1.0` exist and there is no earlier accepted package; this is not
@@ -659,27 +666,39 @@ Classification-only and remaining results:
 - rollback is **BLOCKED** until a prior real VaultBridge catalog revision exists; current TrueNAS
   does support catalog rollback, so this is not classified as unsupported;
 - real generated install/question and edit forms, real-surface secret masking, generated Web UI /
-  Portal targeting `/ui/`, catalog-only storage UI behavior, and ixVolume retain/remove behavior are
-  **REQUIRES UPSTREAM CATALOG/PR**.
+  Portal targeting `/ui/`, catalog-only storage UI behavior, and ixVolume retain/remove behavior
+  required an upstream catalog/PR at that time. The post-merge classification follows below.
 
-All executable pre-upstream VB-082 gates are complete. This unblocks the VB-083 submission/review
-phase so the supported real catalog surface can become available. It does not complete VB-082, mark
-VB-083 submitted or complete, or prove any upstream-only result.
+All executable pre-upstream VB-082 gates were complete before submission. That evidence enabled
+VB-083 without completing VB-082 or proving any then-upstream-only result.
+
+#### VB-082 post-merge catalog evidence — 2026-09-17
+
+A real installation through the accepted Community catalog is **OPERATOR-CONFIRMED PASS** for:
+
+- appearance in Discover Apps and successful installation;
+- a usable install form with masked secret API-key inputs;
+- the generated Web UI / Portal opening the bundled `/ui/` dashboard;
+- mounting a pre-existing Obsidian vault through Host Path;
+- configuring semantic/derived data through ixVolume;
+- healthy operation with the mounted Markdown vault visible; and
+- `API_KEY` / `API_KEY_PREVIOUS` rotation compatibility during migration to the catalog app while
+  keeping the existing external hostname.
+
+The evidence does not establish edit-form persistence or ixVolume uninstall retain/remove
+semantics. Upgrade remains **UNSUPPORTED / NO VALID PRIOR PACKAGE STATE**, and rollback remains
+**BLOCKED** until a prior real catalog revision exists. VB-082 therefore remains **IN PROGRESS /
+PARTIAL VALIDATION**.
 
 ### VB-083 - upstream submission and Discover availability
 
-Completion of all executable pre-upstream VB-082 gates allows VB-083 to prepare and submit the
-contribution under `ix-dev/community/vaultbridge/`. The resulting supported catalog surface is then
-required to complete VB-082's catalog-only validation before either task can be fully complete.
-Submission does not guarantee acceptance. During development,
-VaultBridge does not automatically appear in users' Discover pages. A normal Community tile becomes
-available only if the upstream pull request is accepted, merged, generated into the catalog, and
-distributed by TrueNAS. Documentation may then state factual Community App availability; it must not
-call the app official or promise approval before merge.
-
-VB-083 also owns replacing the reviewable pre-submission icon URL with the
-`media.sys.truenas.net/apps` URL supplied during upstream review. That value cannot be truthfully
-created before the asset is uploaded; its current status is **REQUIRES UPSTREAM REVIEW**.
+VB-083 is complete. Upstream PR [#5805](https://github.com/truenas/apps/pull/5805), **Add
+VaultBridge to the community train**, incorporated maintainer review and merged at
+`2026-09-16T20:04:07Z` with merge commit
+`fd185603de32444f9e36f872dbcd84af44509115`. The accepted source and generated entry independently
+exist in upstream `master`, the reviewer-provided CDN icon is present, and Discover Apps availability
+is operator-confirmed. The supported catalog surface now enables the remaining VB-082 lifecycle
+checks; VB-083 completion does not imply those checks passed.
 
 ## Security invariants
 
@@ -704,7 +723,7 @@ VB-080 does not implement or authorize runtime, API, UI, semantic ranking/model/
 dependency, or image changes. It does not create a TrueNAS-specific UI, NAS administration features,
 dashboard editing, a second application service, a source build, a release, a tag, a GHCR
 publication, an upstream contribution, or a catalog-availability claim. VB-081, VB-082, and VB-083
-remain separate gated tasks.
+were separate gated tasks and retain their independent evidence boundaries.
 
 ## Existing TrueNAS artifact disposition
 
@@ -712,9 +731,9 @@ VB-080 does not delete or modify the existing deployment artifacts:
 
 | Artifact | Classification | Future disposition |
 |---|---|---|
-| `compose.truenas.yml` | Still useful generic/operator material and reusable contract input | It documents the proven source-build Custom App mapping, fixed paths, non-root identity, watcher values, and port. It remains supported until a Community App is accepted and may remain as an advanced source-build fallback afterward. It is not the Community App template and should not be copied verbatim because it builds source and hard-codes host paths. |
-| `truenas-install.yml` | Still useful only for the current source-built Custom App flow | It is a small include adapter for TrueNAS **Install via YAML**. It becomes unnecessary for users who adopt an accepted Community App, but it is not obsolete before catalog acceptance and must not be silently removed. |
-| `README_TRUENAS.md` | Still useful generic/operator documentation and reusable validation input | It records storage, permissions, rotation, watcher, health/readiness, and lifecycle behavior. After upstream acceptance it should lead with the Community App while retaining or clearly archiving the source-built fallback. It is not modified by VB-080. |
+| `compose.truenas.yml` | Still useful generic/operator material and reusable contract input | It documents the proven source-build Custom App mapping, fixed paths, non-root identity, watcher values, and port. It remains an advanced source-build fallback. It is not the Community App template and should not be copied verbatim because it builds source and hard-codes host paths. |
+| `truenas-install.yml` | Still useful only for the source-built Custom App flow | It is a small include adapter for TrueNAS **Install via YAML**. Community App users do not need it; the manual compatibility workflow retains it. |
+| `README_TRUENAS.md` | Current Community App guidance plus generic/operator documentation | It leads with the accepted Community App and preserves storage, permissions, rotation, watcher, health/readiness, and source-built fallback guidance. |
 
 The Community App definition must not inherit the legacy `ObsidianChatGPT*`, `obsidian-api`, or
 `obsidian-chatgpt` identifiers merely for compatibility with the separate source-built workflow.
@@ -729,14 +748,16 @@ facts are:
   `app_version`;
 - current upstream still provides repository plus tag rather than a dedicated image digest field;
 - official Docker-backed source/render/deploy validation and generated library/hash/catalog artifacts
-  pass under VB-081; the reviewer-supplied TrueNAS CDN icon URL remains a VB-083 upstream-review gate;
+  pass under VB-081;
 - all executable pre-upstream VB-082 gates are complete, including rotation, port edit/collision,
   permission-negative/recovery, and external host-path uninstall ownership; upgrade has no valid
   prior package state and rollback remains blocked on a prior catalog revision;
-- generated Community App wizard/edit/Portal, secret-masking, catalog storage UI, and ixVolume
-  uninstall behavior remain upstream-only;
-- VaultBridge is not present in the upstream TrueNAS Apps catalog or Discover page.
+- the real install form, secret masking, Portal, Host Path, ixVolume configuration, healthy vault
+  visibility, and rotation migration are operator-confirmed after merge; edit-form persistence and
+  ixVolume uninstall behavior remain unverified;
+- PR #5805 is merged, accepted source/generated entries exist upstream, and VaultBridge is available
+  through the Community train / Discover Apps path.
 
-The remaining lifecycle and submission gates belong to VB-082/VB-083, not to completed VB-080 or
-VB-081. The partial record above unblocks only the VB-083 submission/review phase; it completes
-neither VB-082 nor VB-083, and no upstream submission has been performed.
+The remaining lifecycle gates belong to VB-082, not to completed VB-080, VB-081, or VB-083. Upstream
+acceptance and a successful initial catalog installation do not prove edit-form persistence,
+ixVolume uninstall semantics, upgrade from a valid prior package state, or rollback.

@@ -4,18 +4,45 @@
 
 # VaultBridge on TrueNAS SCALE
 
-This runbook documents the existing source-built deployment on the Docker-based Apps implementation
-in TrueNAS SCALE 24.10 or later. It is independent of the generic Docker workflow in
-the [main VaultBridge README](README.md).
+VaultBridge is available as an accepted Community App on the TrueNAS Community train. This runbook
+starts with that preferred installation path, then preserves the existing source-built deployment
+for advanced, manual, and compatibility use on the Docker-based Apps implementation in TrueNAS
+SCALE 24.10 or later. Both are independent of the generic Docker workflow in the
+[main VaultBridge README](README.md).
 
-Versioned GHCR images are an additional distribution artifact. VB-054 does not migrate or replace
-this known-working TrueNAS source-build deployment.
+Versioned GHCR images remain the runtime artifact for both the Community App and manual deployments.
+Installing the Community App does not automatically migrate an existing source-built Custom App.
 
-> **Current availability:** this guide remains the supported Docker/source-built TrueNAS Custom App
-> path. A release-gated Community App definition is being developed under
-> `ix-dev/community/vaultbridge/`, but it has not been submitted or accepted upstream and does not
-> replace this workflow. VaultBridge is not currently available as an upstream catalog app; do not
-> search Discover Apps for it yet.
+> **Current availability:** VaultBridge is available from the TrueNAS Community catalog through
+> **Apps > Discover Apps**. The accepted package runs VaultBridge `1.1.0`, has catalog package version
+> `1.0.0`, and defaults the Web UI to port `30491`.
+
+## Preferred installation: TrueNAS Community App
+
+1. Open **Apps > Discover Apps**.
+2. Search for **VaultBridge** and select the Community App.
+3. Select **Install**, configure the API key and storage, and confirm the vault host path points to
+   the intended Obsidian vault.
+4. After the app becomes healthy, open **Web UI** to reach the bundled `/ui/` dashboard.
+
+The catalog form masks secret API-key inputs. Masking prevents casual display in the form; a
+privileged TrueNAS or Docker administrator can still inspect deployed container configuration.
+The default semantic/derived-data storage is a TrueNAS-managed ixVolume, while an existing host path
+can be selected when its lifecycle is managed separately. The accepted catalog source is published
+at [apps.truenas.com/catalog/vaultbridge_community/](https://apps.truenas.com/catalog/vaultbridge_community/).
+
+A real post-merge installation confirmed Discover Apps availability, successful installation, a
+usable masked-secret configuration form, the `/ui/` Web Dashboard, an existing vault mounted by Host
+Path, ixVolume-backed derived data, healthy vault visibility, and API-key rotation compatibility.
+The ixVolume uninstall retain/remove choices, upgrade from a valid prior Community App revision, and
+rollback remain separate lifecycle gates; see
+[`docs/VB_082_TRUENAS_LIFECYCLE_RUNBOOK.md`](docs/VB_082_TRUENAS_LIFECYCLE_RUNBOOK.md).
+
+## Source-built Custom App deployment
+
+The remainder of this guide documents the known-working source-built Custom App path. It remains a
+valid manual alternative and preserves its existing compatibility identifiers and operational
+procedures.
 
 The installation intentionally retains older identifiers. `ObsidianChatGPT*`, `obsidian-api`, and
 `obsidian-chatgpt` are compatibility names from the working installation, not the public product

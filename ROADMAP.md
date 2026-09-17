@@ -27,11 +27,11 @@
 
 ---
 
-# Current project state — `v1.0.0` released; post-v1 development
+# Current project state — `v1.1.0` released; `v1.0.0` history preserved
 
-VaultBridge `v1.0.0` has shipped with its stable release and distribution evidence verified.
-Post-v1 development continues through the open knowledge-maintenance, operational-security, and
-developer-experience backlog without changing the completed v1.0 release scope.
+VaultBridge `v1.1.0` is the current released application and image. Its release, exact-source CI,
+image, and immutable runtime evidence are verified. The completed `v1.0.0` release scope and evidence
+remain historical; current work continues without rewriting those release records.
 
 ## Current architecture
 
@@ -560,14 +560,15 @@ Milestone exit criteria:
 VaultBridge `v1.1.0` is published and its exact OCI index is anonymously pullable. VB-080 defines the
 version-neutral packaging contract and VB-081 is complete with exact tag `1.1.0`, matching metadata,
 officially generated artifacts, and current-upstream Docker-backed package validation. VB-075's
-exact-source CI and exact-image functional release evidence also pass. VB-082 is in progress /
-partial validation: all executable pre-upstream lifecycle and negative gates are complete, while
-real catalog-only UI/storage/ixVolume and eventual rollback gates remain open. The VB-083
-submission/review phase may now begin; neither task is complete and no submission is claimed.
+exact-source CI and exact-image functional release evidence also pass. VB-083 is complete after
+upstream PR #5805 was reviewed and merged, accepted source/generated entries were verified, and
+Discover Apps availability was operator-confirmed. VB-082 remains in progress / partial validation:
+the initial catalog install path is operator-confirmed, while unresolved post-merge lifecycle gates
+remain open.
 
 ---
 
-# Milestone 9 — TrueNAS Community App distribution — IN PROGRESS
+# Milestone 9 — TrueNAS Community App distribution — UPSTREAM ACCEPTED / POST-MERGE VALIDATION IN PROGRESS
 
 **Goal:** make the same published, dashboard-capable VaultBridge image installable through the
 TrueNAS Apps catalog with generated configuration and Web Portal integration.
@@ -596,7 +597,7 @@ normal VaultBridge runtime
 
 The core `mrtrollex/VaultBridge` repository owns the application runtime, API, semantic behavior,
 CLI, bundled dashboard, Dockerfile, GHCR image, and generic deployment documentation. The accepted
-upstream Community App definition should be owned by `truenas/apps`. The published image is the
+upstream Community App definition is owned by `truenas/apps`. The published image is the
 interface between the repositories. Temporary local packaging/test fixtures may exist for
 reproducibility, but there must be no permanent `VaultBridge-TrueNAS` runtime fork or two
 authoritative catalog definitions. TrueNAS-specific code must not enter core domain services.
@@ -612,11 +613,11 @@ VB-081 Community App definition ✓
    ↓
 VB-082 executable pre-upstream validation ✓
    ↓
-VB-083 upstream submission/review phase (UNBLOCKED; NOT SUBMITTED)
+VB-083 submission/review/merge/catalog availability ✓
    ↓ creates the supported real catalog surface
-VB-082 catalog-only validation (IN PROGRESS / PARTIAL)
+VB-082 post-merge lifecycle validation (IN PROGRESS / PARTIAL)
    ↓
-VB-082 completion, then VB-083 completion under their unchanged criteria
+VB-082 completion after its remaining gates have actual evidence
 ```
 
 Milestone exit criteria:
@@ -627,10 +628,14 @@ Milestone exit criteria:
 - [x] storage, identity, secret, port, health, portal, resource, upgrade, and rollback contracts are
   documented in [`docs/TRUENAS_COMMUNITY_APP_DESIGN.md`](docs/TRUENAS_COMMUNITY_APP_DESIGN.md)
 - [x] current-upstream schema, generation, catalog-port, render, and local deploy/health checks pass
-- [ ] executable install/restart/edit/persistence/negative/uninstall gates are recorded and upgrade
-  is classified **UNSUPPORTED / NO VALID PRIOR PACKAGE STATE**; catalog-only UI/storage/ixVolume and
-  eventual rollback validation remain before VB-082 completion
-- [ ] upstream acceptance is claimed only after the `truenas/apps` pull request is merged
+- [x] pre-upstream install/restart/edit/persistence/negative/host-path-uninstall gates are recorded;
+  initial real-catalog install/form/masking/Portal/Host Path/ixVolume configuration is
+  operator-confirmed
+- [ ] edit-form persistence and ixVolume uninstall semantics are verified; upgrade remains
+  **UNSUPPORTED / NO VALID PRIOR PACKAGE STATE** and rollback remains blocked until a valid prior
+  catalog revision exists
+- [x] upstream PR #5805 was reviewed and merged; accepted source/generated entries and Discover Apps
+  availability are verified
 
 ---
 
@@ -798,9 +803,11 @@ VB-080 ✓
    ↓
 VB-081 ✓
    ↓
-VB-082 IN PROGRESS / PARTIAL VALIDATION
+VB-082 PRE-UPSTREAM GATES ✓
    ↓
-VB-083 SUBMISSION/REVIEW UNBLOCKED; NOT SUBMITTED / NOT COMPLETE
+VB-083 ✓
+   ↓
+VB-082 POST-MERGE LIFECYCLE VALIDATION IN PROGRESS / PARTIAL
    ↓
 MCP INTEGRATION (independent post-v1 track)
 VB-090 ✓
@@ -813,17 +820,19 @@ shell/session, Overview, Search, and final hardening. VB-080 completes the versi
 App packaging design, and VB-081's definition now pins the published `1.1.0` image with matching
 metadata. **Release `v1.1.0`, workflow, aliases, digests, labels, platform, anonymous pull,
 exact-source CI, and the full exact-image functional gate are recorded; VB-075 is complete.**
-Official package generation/deployable validation passes and VB-081 is complete; the reviewer-
-provided CDN icon remains an upstream-review gate under VB-083.
+Official package generation/deployable validation passes and VB-081 is complete. VB-083 is complete:
+PR #5805 was reviewed and merged, the accepted package uses the reviewer-provided CDN icon and
+default Web UI port `30491`, and Discover Apps availability is operator-confirmed.
 VB-082 has completed every executable pre-upstream lifecycle and negative gate with sanitized
-evidence or an allowed classification. Real catalog UI/storage/ixVolume and eventual rollback gates
-remain required before VB-082 completion, but they depend on a supported upstream catalog surface.
+evidence or an allowed classification. Post-merge operator evidence also confirms initial catalog
+installation, the usable masked-secret form, `/ui/` Portal, Host Path and ixVolume configuration,
+healthy vault visibility, and rotation migration. Edit-form persistence, ixVolume uninstall
+semantics, a valid prior-state upgrade, and rollback remain required before VB-082 completion.
 VB-023 retrieval benchmarking is complete. VB-032 and VB-033 remain explicitly deferred/optional,
 and VB-055 remains optional rather than a dashboard
-prerequisite. Milestone 9 definition work, official Docker-backed package validation, and executable
-pre-upstream VB-082 validation are complete. The VB-083 submission/review phase is unblocked so the
-remaining catalog-only VB-082 surface can become available; VB-082 and VB-083 remain incomplete and
-no upstream submission has been performed. ADR 0004 completes VB-090's MCP design-only
+prerequisite. Milestone 9 package definition, official Docker-backed validation, upstream acceptance,
+and initial real-catalog installation are complete. Milestone 9 remains open because VB-082 still has
+unresolved post-merge lifecycle gates. ADR 0004 completes VB-090's MCP design-only
 work, and PR #55 CI completes VB-091's read-only stdio implementation verification.
 
 ---

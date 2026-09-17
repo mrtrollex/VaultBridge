@@ -4,7 +4,7 @@ This document is the current factual snapshot for future Codex sessions. It shou
 
 ## Baseline date
 
-2026-09-07
+2026-09-17
 
 ## Current development position
 
@@ -50,7 +50,10 @@ Completed:
 - VB-073 — Dashboard search interface
 - VB-074 — Dashboard usability, accessibility and release hardening
 - VB-080 — TrueNAS Community App packaging design
+- VB-081 — Implement TrueNAS Community App definition
+- VB-083 — Submit VaultBridge to upstream TrueNAS Apps catalog
 - VB-090 — MCP integration architecture / ADR
+- VB-091 — Read-only MCP stdio adapter
 
 Post-v1 development position:
 
@@ -99,16 +102,21 @@ Current post-v1 planning position:
 - VB-080 is complete as a version-neutral packaging design in
   `docs/TRUENAS_COMMUNITY_APP_DESIGN.md`, based on current `truenas/apps` contributor conventions;
   it did not implement a catalog definition, select a release, or perform publication
-- VB-081 is complete: `ix-dev/community/vaultbridge/` pins
-  `ghcr.io/mrtrollex/vaultbridge:1.1.0`, uses matching `app_version`, and has basic/watcher/host-path-
-  data fixtures that inherit the released image map with synthetic credentials and paths
-- validation used current upstream `truenas/apps` commit
-  `906a20a22ee885add8c620660eba3d6ed51289da`, library `2.3.11`, generated library hash
-  `874636814efb275e5276ea9d709b7cd665fed42bb1d50328e853d9253a2e1229`, repository-plus-tag images,
-  and initial package `version: 1.0.0`
-- official catalog-port, questions/schema, generator/hash, render, deploy/health/cleanup, and dev-
-  catalog validation passed; catalog metadata validation stops only on the reviewer-provided TrueNAS
-  CDN icon, classified **REQUIRES UPSTREAM REVIEW / VB-083**
+- VB-081 is complete: the historical pre-submission copy under `ix-dev/community/vaultbridge/`
+  validated the `ghcr.io/mrtrollex/vaultbridge:1.1.0` image, matching `app_version`, library `2.3.11`,
+  and synthetic basic/watcher/host-path-data fixtures against upstream commit
+  `906a20a22ee885add8c620660eba3d6ed51289da`; its then-free port `30486` is superseded by the accepted
+  upstream package default `30491`
+- VB-083 is complete: `truenas/apps` PR
+  [#5805](https://github.com/truenas/apps/pull/5805), **Add VaultBridge to the community train**, was
+  reviewed and merged on 2026-09-16 at merge commit
+  `fd185603de32444f9e36f872dbcd84af44509115`
+- accepted source now exists in upstream `master` under `ix-dev/community/vaultbridge/`, and the
+  generated catalog entry exists under `trains/community/vaultbridge/1.0.0/`
+- the accepted Community package is `vaultbridge` / **VaultBridge** on the `community` train, catalog
+  package `1.0.0`, app/image `1.1.0`, library `2.3.11`, default Web UI port `30491`, Portal path
+  `/ui/`, and icon `https://media.sys.truenas.net/apps/vaultbridge/icons/icon.webp`
+- VaultBridge is available through the TrueNAS Community train / Discover Apps delivery path
 - VB-082 is in progress / partial validation: a fresh TrueNAS `25.10.6` custom-YAML install of the
   exact `v1.1.0` OCI index validated the core runtime/API/UI path; restart/persistence and watcher
   disabled/enabled behavior are **OPERATOR-CONFIRMED PASS** without retained raw command output
@@ -120,15 +128,19 @@ Current post-v1 planning position:
   port change, so that stricter subcheck is not upgraded to PASS
 - supported Community App upgrade is **UNSUPPORTED / NO VALID PRIOR PACKAGE STATE**; rollback is
   **BLOCKED** until a prior real catalog revision exists
-- real catalog question/edit forms, secret masking, Portal targeting, catalog-only storage behavior,
-  ixVolume uninstall, and eventual rollback remain pending; custom-YAML Portal-button absence is
-  **REQUIRES UPSTREAM CATALOG/PR**, not a VaultBridge failure
+- a real post-merge Community catalog installation is **OPERATOR-CONFIRMED PASS** for Discover Apps
+  availability, installation, the usable install form, masked API-key inputs, `/ui/` Web Dashboard,
+  Host Path mounting of an existing vault, ixVolume configuration for derived data, healthy vault
+  visibility, and `API_KEY` / `API_KEY_PREVIOUS` rotation compatibility during migration
+- edit-form persistence and ixVolume uninstall retain/remove semantics remain unverified; supported
+  Community App upgrade is **UNSUPPORTED / NO VALID PRIOR PACKAGE STATE**, and rollback is **BLOCKED**
+  until a prior real catalog revision exists
 - the disposable VB-082 API key was exposed during testing and must never be reused outside that
   disposable environment
-- all executable pre-upstream VB-082 gates are complete, so the VB-083 submission/review phase is
-  unblocked; VB-082 remains in progress, VB-083 is not submitted or complete, and no merge or
-  Discover availability is claimed
-- current TrueNAS support remains the documented Docker/source-built Custom App deployment
+- VB-082 remains in progress / partial validation because the unresolved lifecycle gates above were
+  not demonstrated by catalog acceptance or the successful initial installation
+- ordinary TrueNAS users can install the accepted Community App from Discover Apps; the documented
+  Docker/source-built Custom App deployment remains an advanced/manual compatibility path
 - VB-023 is complete: the sanitized real-model retrieval benchmark emits Markdown/JSON without
   changing the deterministic VB-022 baseline or production retrieval behavior
 - ADR 0004 is accepted and VB-090 is complete as design-only work; VB-091 now implements a
@@ -158,10 +170,12 @@ Current `v1.1.0` release status:
 - exact-source CI run `33640580398` passed both `python` and `docker` jobs on the release commit
 - the exact immutable image passed the disposable dashboard/API/CLI/semantic/persistence/safe-log/
   clean-stop/cleanup gate at `2026-09-07T17:12:10Z` on Docker `28.3.3`; VB-075 is complete
-- VB-082 is in progress / partial validation; all executable pre-upstream gates are complete, while
-  real catalog-only UI/storage/ixVolume and eventual rollback gates remain pending
-- VB-083's submission/review phase is unblocked, but no upstream pull request, completion,
-  acceptance, or Discover availability exists
+- VB-083 is complete after PR #5805 review, merge, independent upstream source/generated-entry
+  verification, and operator-confirmed Discover Apps availability
+- VB-082 is in progress / partial validation; initial real-catalog install/form/masking/Portal,
+  Host Path, ixVolume configuration, healthy vault visibility, and rotation migration are
+  operator-confirmed, while edit-form persistence, ixVolume uninstall semantics, a valid prior-state
+  upgrade, and rollback remain unresolved
 
 Current v1.0 release status:
 
@@ -194,7 +208,7 @@ Current milestones:
 - **Milestone 6 — Public API and developer experience (complete)**
 - **Milestone 7 — Distribution and `v1.0.0` (complete)**
 - **Milestone 8 — Web Dashboard / operator experience (complete)**
-- **Milestone 9 — TrueNAS Community App distribution (in progress; VB-081 complete, VB-082 pre-upstream gates complete, VB-083 submission/review unblocked but not started)**
+- **Milestone 9 — TrueNAS Community App distribution (upstream accepted; post-merge VB-082 lifecycle validation in progress)**
 - **Milestone 10 — MCP integration (complete)**
 
 ## Working production characteristics

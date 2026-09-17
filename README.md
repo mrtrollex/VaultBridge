@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/mrtrollex/VaultBridge/releases/tag/v1.0.0"><img src="https://img.shields.io/badge/stable-v1.0.0-2f6f5e" alt="Stable release v1.0.0"></a>
+  <a href="https://github.com/mrtrollex/VaultBridge/releases/tag/v1.1.0"><img src="https://img.shields.io/badge/stable-v1.1.0-2f6f5e" alt="Stable release v1.1.0"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-356a8a" alt="MIT License"></a>
   <a href="pyproject.toml"><img src="https://img.shields.io/badge/python-3.12-3776AB?logo=python&amp;logoColor=white" alt="Python 3.12"></a>
   <a href="https://github.com/mrtrollex/VaultBridge/pkgs/container/vaultbridge"><img src="https://img.shields.io/badge/container-GHCR-181717?logo=github" alt="VaultBridge container on GHCR"></a>
@@ -30,16 +30,15 @@
   <img src="docs/assets/vaultbridge-architecture.webp" alt="VaultBridge architecture showing an AI client connected through VaultBridge to an Obsidian vault and a local semantic index" width="960">
 </p>
 
-> **Release status:** VaultBridge `v1.0.0` is released. Its stable source, GitHub Release, public
-> GHCR image, and exact-digest TrueNAS runtime were verified. Current development includes post-v1.0
-> capabilities; see [`ROADMAP.md`](ROADMAP.md) for the current state and historical release scope.
+> **Release status:** VaultBridge `v1.1.0` is the current released application and image. Its source,
+> GitHub Release, public GHCR image, and exact-image runtime were verified. The `v1.0.0` evidence
+> remains historical release evidence; see [`ROADMAP.md`](ROADMAP.md) for the current state.
 
-> **Current post-v1 development:** the source tree now includes a bundled Web Dashboard at `/ui/`
+> **Current release:** `v1.1.0` includes a bundled Web Dashboard at `/ui/`
 > with a public health-backed Overview, operator-supplied API-key unlock, and tab-scoped session
-> handling plus protected literal and semantic Search. The stable `v1.0.0` image predates this
-> dashboard.
-> There is still no upstream TrueNAS Community App; existing API/CLI and documented Docker/TrueNAS
-> Custom App workflows remain independently usable.
+> handling plus protected literal and semantic Search. The historical `v1.0.0` image predates this
+> dashboard. VaultBridge is also available through the TrueNAS Community train in Discover Apps;
+> the documented Docker and TrueNAS Custom App workflows remain independently usable.
 > The source tree also includes the read-only local MCP stdio adapter described below; it is
 > additive and does not change the REST, dashboard, CLI, or deployed API startup path.
 
@@ -344,10 +343,11 @@ Published GitHub Releases also produce the same Dockerfile-based application ima
 ghcr.io/<repository-owner>/vaultbridge:<version>
 ```
 
-Use the lowercase repository owner shown on the package page. For example, after a `v1.0.0` release:
+Use the lowercase repository owner shown on the package page. For example, for the current `v1.1.0`
+release:
 
 ```bash
-docker pull ghcr.io/<repository-owner>/vaultbridge:1.0.0
+docker pull ghcr.io/<repository-owner>/vaultbridge:1.1.0
 ```
 
 The publication workflow accepts v-prefixed semantic release tags. Every release receives the exact
@@ -371,8 +371,8 @@ runner; multi-architecture manifests remain VB-055.
 
 - Production is the repository Dockerfile running as a Linux container, built from source or pulled
   from GHCR after a release image is actually published and verified.
-- Docker-based TrueNAS SCALE 24.10 or later is supported through the source-built workflow in
-  [`README_TRUENAS.md`](README_TRUENAS.md).
+- Docker-based TrueNAS SCALE users can install the accepted Community App from Discover Apps. The
+  source-built Custom App workflow remains available in [`README_TRUENAS.md`](README_TRUENAS.md).
 - Docker Desktop on Windows or macOS may run the Linux container. Native Windows is a development
   and test environment, not a documented production deployment.
 - The current GHCR workflow is single-architecture. Do not assume ARM64 or multi-architecture image
@@ -661,10 +661,11 @@ See [`SECURITY.md`](SECURITY.md) for the security invariants.
 
 ## TrueNAS
 
-The generic workflow above does not require TrueNAS. Existing TrueNAS installations use a separate
-Compose file, `/data` mount, and compatibility identifiers; see
-[`README_TRUENAS.md`](README_TRUENAS.md). Those paths and identifiers are intentionally not reused in
-the generic examples.
+The generic workflow above does not require TrueNAS. For ordinary TrueNAS installations, use the
+VaultBridge Community App from the Community train in Discover Apps. The source-built Custom App
+path remains available for manual and compatibility deployments; see
+[`README_TRUENAS.md`](README_TRUENAS.md). Its separate Compose file, `/data` mount, and compatibility
+identifiers are intentionally not reused in the generic examples.
 
 ## About the project
 
