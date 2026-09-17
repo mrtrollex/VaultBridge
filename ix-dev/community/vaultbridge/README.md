@@ -5,10 +5,17 @@ bridge for Obsidian Markdown vaults. It is licensed under the MIT License. Proje
 available in the [repository README](https://github.com/mrtrollex/VaultBridge#readme) and the
 [TrueNAS deployment guide](https://github.com/mrtrollex/VaultBridge/blob/main/README_TRUENAS.md).
 
-This directory is a pre-submission development copy of the future TrueNAS Community App definition.
-It does not make VaultBridge available in TrueNAS Discover and is not an official TrueNAS app. The
-accepted upstream definition will be owned by `truenas/apps`; this copy exists so the package can be
-developed and reviewed before lifecycle and submission gates are satisfied.
+This directory preserves the pre-submission development copy used to validate the TrueNAS Community
+App definition. The authoritative accepted definition is now owned by `truenas/apps` under
+`ix-dev/community/vaultbridge/`, with generated catalog output under
+`trains/community/vaultbridge/1.0.0/`. VaultBridge is available through the Community train in
+Discover Apps after upstream PR #5805 merged on 2026-09-16.
+
+This local copy remains historical/reproducibility material and is not synchronized to the final
+reviewer changes. In particular, its pre-submission port `30486` and raw repository icon are
+superseded upstream by default Web UI port `30491` and
+`https://media.sys.truenas.net/apps/vaultbridge/icons/icon.webp`. Do not treat this directory as a
+second authoritative catalog source.
 
 ## Production image contract
 
@@ -25,10 +32,10 @@ values schema has no dedicated digest field, so the digest remains a validation/
 Fixtures inherit the production image map from `ix_values.yaml` and retain only synthetic API keys
 and disposable paths.
 
-`app_version` is `1.1.0`. Catalog package `version` remains the upstream-required initial `1.0.0`
-because this package has not been submitted. Library `2.3.11` remains current. The official Docker-
-backed tooling must still generate the library copy, `lib_version_hash`, `item.yaml`, and final
-TrueNAS CDN icon reference during upstream preparation; none is fabricated in this development copy.
+`app_version` is `1.1.0`. Catalog package `version` is the accepted initial `1.0.0`, and library
+`2.3.11` remains current. The accepted upstream package contains its generated library/hash/catalog
+artifacts and reviewer-provided TrueNAS CDN icon; the historical local values above are retained
+without modifying package implementation in this documentation reconciliation.
 
 ## Storage and permissions
 

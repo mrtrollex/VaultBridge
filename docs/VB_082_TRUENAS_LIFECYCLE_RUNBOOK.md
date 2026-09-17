@@ -1,6 +1,6 @@
 # VB-082 TrueNAS lifecycle validation runbook
 
-**Status:** Executed pre-upstream record; VB-082 remains **IN PROGRESS / PARTIAL VALIDATION**.
+**Status:** Pre-upstream and post-merge evidence recorded; VB-082 remains **IN PROGRESS / PARTIAL VALIDATION**.
 
 **Scope:** Reusable procedure, result ledger, and sanitized VB-082 lifecycle evidence for the
 generated VaultBridge Community App definition. The earlier captured and operator-confirmed results
@@ -8,8 +8,9 @@ remain recorded in
 [`TRUENAS_COMMUNITY_APP_DESIGN.md`](TRUENAS_COMMUNITY_APP_DESIGN.md#vb-082-partial-validation-record--2026-09-02).
 
 This runbook does not change the VaultBridge runtime, the released `v1.1.0` image, or any API or UI
-contract. All executable pre-upstream gates are complete as of 2026-09-08, which unblocks only the
-VB-083 submission/review phase. Neither VB-082 nor VB-083 is complete, and no submission is claimed.
+contract. All executable pre-upstream gates were complete as of 2026-09-08. VB-083 is now complete:
+upstream PR #5805 merged on 2026-09-16, accepted source/generated entries exist, and Discover Apps
+availability is operator-confirmed. The remaining gates below keep VB-082 partial.
 
 > **Compromised test key:** The disposable API key used in the earlier VB-082 session was exposed.
 > It is permanently non-reusable. Generate two new disposable values for this run and never paste
@@ -31,9 +32,11 @@ Classification-only and upstream-only rows are not executed PASS results.
 | Rollback behavior | **BLOCKED** | Real catalog app with at least two installed catalog revisions | Current TrueNAS supports rollback to a prior catalog revision and can optionally roll back app-pool snapshots, but VaultBridge has no prior catalog revision to select. This is not “unsupported by TrueNAS.” |
 | External vault preservation on uninstall | **PASS** | Exact generated host-path mapping through TrueNAS Custom App delete | The external vault remained present with identical hashes and unchanged numeric metadata. |
 | Host-path `/data` uninstall behavior | **PASS** | Exact host-path-data render through TrueNAS Custom App delete | External host-path data remained present with an identical before/after manifest and unchanged numeric metadata. |
-| ixVolume uninstall behavior | **REQUIRES UPSTREAM CATALOG/PR** | Real catalog-app Delete dialog | TrueNAS documents an explicit **Remove iXVolumes** choice, shown only for apps that own iXVolumes. Custom YAML or ordinary named volumes do not prove that UI/ownership path. |
-| Real question form and edit form | **REQUIRES UPSTREAM CATALOG/PR** | Real TrueNAS Apps UI | TrueNAS 24.10 and later do not provide a supported third-party catalog-loading path; Custom App forms/YAML are not the generated catalog question form. |
-| Real Web UI / Portal button | **REQUIRES UPSTREAM CATALOG/PR** | Real TrueNAS Apps UI | TrueNAS documents that YAML custom apps do not include the Web UI button. The generated portal metadata must be delivered through the catalog. |
+| Real catalog install form and secret masking | **OPERATOR-CONFIRMED PASS** | Accepted Community App in TrueNAS Apps UI | The form was usable and secret API-key inputs were masked during a successful real catalog installation. |
+| Real Web UI / Portal button | **OPERATOR-CONFIRMED PASS** | Accepted Community App in TrueNAS Apps UI | Web UI opened the bundled `/ui/` dashboard after installation. |
+| Host Path and ixVolume configuration | **OPERATOR-CONFIRMED PASS** | Accepted Community App install flow | A pre-existing vault mounted through Host Path and derived data used ixVolume; the app became healthy and saw the Markdown vault. |
+| Real edit-form persistence | **REQUIRES LIVE VERIFICATION** | Installed Community App Edit form | The initial install form was exercised, but stored-secret masking and port/watcher/resource rendering after installation were not separately retained. |
+| ixVolume uninstall behavior | **REQUIRES LIVE VERIFICATION** | Real catalog-app Delete dialog | Installation proved ixVolume configuration, but not the separate retain/remove outcomes controlled by **Remove iXVolumes**. |
 
 Current authoritative platform references:
 
@@ -44,6 +47,9 @@ Current authoritative platform references:
   documents the supported catalog and Custom App surfaces.
 - The pinned upstream contributor contract remains
   [`truenas/apps` `906a20a...` `CONTRIBUTIONS.md`](https://github.com/truenas/apps/blob/906a20a22ee885add8c620660eba3d6ed51289da/CONTRIBUTIONS.md).
+- [PR #5805](https://github.com/truenas/apps/pull/5805) records upstream review and the 2026-09-16
+  merge; the accepted catalog source is
+  [VaultBridge Community](https://apps.truenas.com/catalog/vaultbridge_community/).
 
 ## Evidence rules
 
@@ -54,8 +60,8 @@ Retain only:
 - sanitized UI screenshots with secret fields masked and private addresses/paths cropped or redacted;
 - HTTP status codes, state names, relative synthetic filenames, file hashes, and bounded error text;
 - before/after numeric ownership and permission modes for disposable paths;
-- whether each result is `PASS`, `FAIL`, `UNSUPPORTED / NO VALID PRIOR PACKAGE STATE`,
-  `REQUIRES UPSTREAM CATALOG/PR`, or `BLOCKED`.
+- whether each result is `PASS`, `OPERATOR-CONFIRMED PASS`, `FAIL`,
+  `UNSUPPORTED / NO VALID PRIOR PACKAGE STATE`, `REQUIRES LIVE VERIFICATION`, or `BLOCKED`.
 
 Never retain:
 
@@ -69,7 +75,11 @@ Run credential checks from a non-recorded terminal. Do not enable shell tracing 
 commands below read keys silently so they are not present in shell history. Retain only the printed
 labels and HTTP status codes.
 
-## Preconditions
+## Preconditions — historical 2026-09-08 pre-upstream execution
+
+Stages 1 through 8 retain the exact pre-submission Custom App procedure and then-free port `30486`
+used for the recorded evidence. The accepted upstream Community App now defaults to `30491`; do not
+substitute the historical commands below for the current Discover Apps install flow.
 
 1. Use the disposable TrueNAS validation host only. Record its current full version/build from
    **System Settings > General > System Information** and confirm the platform is `linux/amd64`.
@@ -366,17 +376,17 @@ operator action outside this runbook.
 
 **Retain:** Before/after relative hashes and numeric metadata only.
 
-## Stage 9 - real catalog question form, Portal, and ixVolume uninstall
+## Stage 9 - post-merge catalog edit and ixVolume uninstall
 
-**Preconditions:** **REQUIRES UPSTREAM CATALOG/PR.** The accepted/generated VaultBridge entry is
-available through the real TrueNAS catalog delivery path. Do not convert a catalog app to Custom
-App; TrueNAS documents conversion as permanent.
+**Preconditions:** **SATISFIED.** The accepted/generated VaultBridge entry is available through the
+real TrueNAS catalog delivery path. Do not convert a catalog app to Custom App; TrueNAS documents
+conversion as permanent.
 
 **Exact steps:**
 
 1. Open the real install form and verify all generated fields: masked current/previous API keys;
    required vault host path and ACL control; ixVolume/host-path data selector; watcher and debounce;
-   UID/GID; Web Port default `30486`; host IPs/networks; CPU `2`; memory `4096` MB; optional labels.
+   UID/GID; Web Port default `30491`; host IPs/networks; CPU `2`; memory `4096` MB; optional labels.
 2. Install with the default ixVolume and disposable vault. Require Running/healthy, readiness,
    authenticated API/UI behavior, and **Web UI** opening `/ui/` on the selected port.
 3. Open Edit. Require stored secret values to remain masked and the port/watcher/resource fields to
@@ -476,21 +486,23 @@ owner/group/mode values were unchanged, and each before/after SHA-256 manifest w
 External `/vault` preservation and host-path `/data` preservation on uninstall are therefore PASS.
 This does not prove ixVolume retain/remove behavior.
 
-### Classification-only and upstream-only results
+### Classification-only and post-merge results
 
 - Supported Community App upgrade: **UNSUPPORTED / NO VALID PRIOR PACKAGE STATE**. The only package
   is `version: 1.0.0`, `app_version: 1.1.0`, image `1.1.0`; no earlier accepted package exists. This
   is not an executed PASS.
 - Rollback: **BLOCKED**. Current TrueNAS supports rollback to prior catalog revisions, but VaultBridge
   has no prior real catalog revision. This is not `UNSUPPORTED BY CURRENT TRUENAS` and not PASS.
-- Real generated install/question form, edit form, secret masking, generated Web UI / Portal button
-  targeting `/ui/`, catalog-only storage UI behavior, and ixVolume uninstall retain/remove behavior:
-  **REQUIRES UPSTREAM CATALOG/PR**.
+- Real catalog install/form/masking, generated Web UI / Portal targeting `/ui/`, Host Path mounting,
+  ixVolume configuration, healthy vault visibility, and rotation compatibility during catalog
+  migration: **OPERATOR-CONFIRMED PASS** on 2026-09-17.
+- Real edit-form persistence and ixVolume uninstall retain/remove behavior: **REQUIRES LIVE
+  VERIFICATION**. The successful install did not demonstrate these separate lifecycle outcomes.
 
-All executable pre-upstream VB-082 gates are now complete. VB-083's submission/review phase is
-therefore unblocked so that the supported real catalog surface can become available. VB-082 remains
-**IN PROGRESS / PARTIAL VALIDATION**, VB-083 is neither submitted nor complete, and the remaining
-VB-082 catalog-only gates and eventual rollback criterion are unchanged.
+All executable pre-upstream VB-082 gates are complete, and VB-083 is complete after PR #5805 merge
+and catalog availability. VB-082 remains **IN PROGRESS / PARTIAL VALIDATION** because edit-form
+persistence, ixVolume uninstall semantics, upgrade from a valid prior package revision, and rollback
+are not demonstrated.
 
 ## Reusable execution order and operator-action estimate
 
@@ -505,7 +517,8 @@ Execute in this order to minimize redeploys and preserve recovery paths:
 7. Host-path `/data` plus Custom App uninstall ownership check.
 8. Record upgrade as **UNSUPPORTED / NO VALID PRIOR PACKAGE STATE**.
 9. Record rollback as **BLOCKED** until a prior real catalog revision exists.
-10. After the upstream catalog path exists, run the real form/Portal and three storage-delete cases.
+10. Run the remaining real edit-form and ixVolume retain/remove cases through the accepted catalog
+    app; preserve the already recorded initial install/form/Portal evidence.
 
 Estimated manual operator actions, counting a grouped UI edit, shell block, or evidence checkpoint as
 one action rather than individual clicks:
@@ -514,10 +527,12 @@ one action rather than individual clicks:
 |---|---:|
 | Ready-now preflight, rotation, port, collision, permission, and host-path uninstall | 16 |
 | Classification-only upgrade/rollback review | 2 |
-| Later real catalog form/Portal and storage ownership validation | 9 |
-| **Total if all prerequisites become available** | **27** |
+| Original real catalog form/Portal and storage ownership estimate | 9 |
+| **Original total estimate** | **27** |
 
-No repository helper script is added. Most safe assertions are already copy/paste command blocks;
+The estimate above predates the post-merge operator-confirmed install/form/Portal checks and is kept
+as historical planning evidence; no revised click count is claimed. No repository helper script is
+added. Most safe assertions are already copy/paste command blocks;
 automating the TrueNAS UI mutations would hide the exact platform behavior under test and would add
 risk around app deletion and storage ownership.
 
@@ -533,11 +548,13 @@ risk around app deletion and storage ownership.
 | Upgrade | UNSUPPORTED / NO VALID PRIOR PACKAGE STATE | Package `1.0.0`; app/image `1.1.0`; no prior package | Classification only; not PASS |
 | Rollback | BLOCKED | Current TrueNAS supports it; no prior VaultBridge catalog revision | Requires a prior real catalog revision |
 | External vault / host-path data uninstall | PASS | Both paths and manifests/metadata unchanged after TrueNAS app deletion | 2026-09-08 sanitized execution evidence above |
-| ixVolume uninstall | REQUIRES UPSTREAM CATALOG/PR | Real catalog Delete dialog required | Not executed |
-| Real question/edit form, secret masking, storage UI, and Portal | REQUIRES UPSTREAM CATALOG/PR | Supported real catalog surface required | Not executed |
+| Real catalog install/form/masking and Portal | OPERATOR-CONFIRMED PASS | Accepted package `1.0.0`; app `1.1.0`; default port `30491`; `/ui/` Portal | 2026-09-17 sanitized operator evidence |
+| Host Path and ixVolume configuration | OPERATOR-CONFIRMED PASS | Existing vault mounted; derived data configured through ixVolume; app healthy | 2026-09-17 sanitized operator evidence |
+| Rotation during catalog migration | OPERATOR-CONFIRMED PASS | `API_KEY` / `API_KEY_PREVIOUS` compatibility exercised; external hostname unchanged | 2026-09-17 sanitized operator evidence |
+| Real edit-form persistence | REQUIRES LIVE VERIFICATION | Installed Community App Edit form required | Not executed or retained |
+| ixVolume uninstall | REQUIRES LIVE VERIFICATION | Real catalog Delete dialog required | Not executed |
 
 VB-082 must remain **IN PROGRESS / PARTIAL VALIDATION** until every required acceptance criterion has
-actual retained evidence or a classification explicitly permitted by its contract. Completion of
-all executable pre-upstream gates unblocks only the VB-083 submission/review phase; `BLOCKED` and
-`REQUIRES UPSTREAM CATALOG/PR` rows still prevent VB-082 completion, and VB-083 completion remains
-subject to its own acceptance criteria.
+actual retained evidence or a classification explicitly permitted by its contract. The `BLOCKED`,
+`UNSUPPORTED / NO VALID PRIOR PACKAGE STATE`, and `REQUIRES LIVE VERIFICATION` rows still prevent
+VB-082 completion. VB-083 is independently complete.

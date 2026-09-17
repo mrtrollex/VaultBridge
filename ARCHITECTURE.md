@@ -301,16 +301,17 @@ vault or index, but they are local filesystem/SQLite readers rather than a remot
 
 ---
 
-## Web Dashboard and planned platform packaging
+## Web Dashboard and platform packaging
 
 VB-071 implements the dashboard shell and authenticated session boundary accepted in
 [ADR 0003](docs/adr/0003-web-dashboard-architecture-and-security.md), VB-072 implements the public
 health-backed Overview, VB-073 implements protected literal and semantic Search, and VB-074
 completes usability, accessibility, privacy, browser, and normal-image hardening. VB-080 defines the
 version-neutral [TrueNAS Community App packaging design](docs/TRUENAS_COMMUNITY_APP_DESIGN.md).
-VaultBridge `v1.1.0` now provides the published dashboard-capable image, and VB-081's staged
-definition pins exact tag `1.1.0`. Official generated/deployable package validation, VB-082 live
-lifecycle validation, and VB-083 upstream submission remain later distribution gates.
+VaultBridge `v1.1.0` provides the published dashboard-capable image. VB-081 validated its catalog
+adapter, and VB-083 completed upstream review/merge through `truenas/apps` PR #5805. The accepted
+source and generated catalog entry exist upstream, and Discover Apps availability is confirmed.
+VB-082 remains the separate partial lifecycle-validation gate.
 
 ### Current dashboard relationship
 
@@ -415,14 +416,14 @@ Repository ownership is deliberately separated:
 
 - `mrtrollex/VaultBridge` owns the application runtime, API, semantic behavior, CLI, bundled
   dashboard, Dockerfile, GHCR image, and generic deployment documentation;
-- `truenas/apps` should own the accepted upstream TrueNAS Community App definition;
+- `truenas/apps` owns the accepted upstream TrueNAS Community App definition;
 - `ghcr.io/mrtrollex/vaultbridge:<released-version>` is the interface between those repositories.
 
 Temporary packaging/test fixtures may live in the core repository when useful for reproducibility,
 but there must be no permanent `VaultBridge-TrueNAS` runtime fork or two authoritative copies of the
-upstream catalog definition. Current TrueNAS support remains the documented source-built Custom App
-path until the VB-080 design is implemented by VB-081, validated on real TrueNAS by VB-082, and
-accepted upstream through VB-083.
+upstream catalog definition. The accepted Community App is the preferred ordinary TrueNAS path; the
+documented source-built Custom App remains an advanced/manual compatibility path. VB-082 continues
+to own the unresolved post-merge lifecycle evidence.
 
 ### MCP stdio relationship
 

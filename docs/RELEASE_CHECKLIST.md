@@ -176,30 +176,29 @@ This downstream evidence does not alter the already-complete VB-075 release gate
 ### H. Post-release evidence and downstream handoff
 
 The complete immutable release, exact-source CI, and exact-image runtime facts are recorded here and
-handed to VB-081/VB-082. VB-082 remains the separate partial TrueNAS Community App lifecycle task.
-Its pre-upstream executable gates are complete, so the VB-083 submission/review phase is unblocked;
-no upstream submission has been performed and neither task is complete.
+handed to VB-081/VB-082. VB-083 is complete after upstream PR #5805 review/merge, accepted
+source/generated-entry verification, and Discover Apps availability confirmation. VB-082 remains the
+separate partial TrueNAS Community App lifecycle task; release evidence and catalog acceptance do not
+close its unresolved post-merge gates.
 
 ### TrueNAS Community App field boundary
 
-The current `ix-dev/community/vaultbridge/` source now represents the published image through the
-current upstream repository-plus-tag convention:
+The historical local `ix-dev/community/vaultbridge/` source represented the published image through
+the upstream repository-plus-tag convention during release preparation:
 
 - `app.yaml` has `app_version: 1.1.0`;
 - `ix_values.yaml` uses repository `ghcr.io/mrtrollex/vaultbridge` and exact tag `1.1.0`;
 - fixtures inherit that production image map and keep synthetic API keys and disposable paths;
-- `app.yaml` `version: 1.0.0` remains the initial, not-yet-submitted catalog package version under
-  current upstream rules; it is independent of the VaultBridge runtime version;
+- `app.yaml` `version: 1.0.0` is independent of the VaultBridge runtime version;
 - current upstream has no dedicated digest field in this image map, so the verified OCI index digest
   remains release/live-validation evidence rather than fabricated package syntax.
 
-The pre-submission icon points to the asset at the immutable released source commit. Current upstream
-submission conventions require a reviewer-supplied TrueNAS CDN URL; that URL, the generated library
-copy, `lib_version_hash`, `item.yaml`, and Docker-backed official rendering/deployment checks remain
-pending because the current host has no Docker. No CDN URL or generated hash is fabricated. The
-separate VB-082 lifecycle task now has completed executable pre-upstream evidence, but official
-form/Portal/storage/ixVolume behavior remains **REQUIRES UPSTREAM CATALOG/PR** and rollback remains
-blocked until a prior real catalog revision exists.
+After this release gate completed, upstream PR #5805 supplied the TrueNAS CDN icon, retained catalog
+package `1.0.0` / app `1.1.0` / library `2.3.11`, selected default Web UI port `30491`, and merged the
+accepted source plus generated catalog entry. Initial real-catalog install/form/masking/Portal, Host
+Path, ixVolume configuration, healthy vault visibility, and rotation migration are
+operator-confirmed. The separate VB-082 lifecycle task remains partial because edit-form persistence,
+ixVolume uninstall semantics, a valid prior-state upgrade, and rollback are unresolved.
 
 ### Local preparation validation evidence
 

@@ -1006,14 +1006,12 @@ for the version-neutral packaging design itself.
 ### VB-081 — Implement TrueNAS Community App definition — P1
 
 **Status:** Completed on 2026-09-08 against `truenas/apps` commit
-`906a20a22ee885add8c620660eba3d6ed51289da`. The definition pins
+`906a20a22ee885add8c620660eba3d6ed51289da`. The historical pre-submission definition pins
 `ghcr.io/mrtrollex/vaultbridge:1.1.0`, uses matching `app_version`, library `2.3.11`, officially
-generated hash/library/catalog artifacts, and catalog-free Community App port `30486`. Current
-upstream schema, catalog-port, render, deploy/health/cleanup, hash/generator, and dev-catalog checks
-pass for all three synthetic fixtures. The final TrueNAS CDN icon URL is supplied during upstream
-review and is therefore **REQUIRES UPSTREAM REVIEW / VB-083**, not a VB-081 source blocker. Live
-TrueNAS lifecycle validation remains VB-082. No upstream submission or Discover availability is
-claimed.
+generated hash/library/catalog artifacts, and the then-free Community App port `30486`. Upstream
+schema, catalog-port, render, deploy/health/cleanup, hash/generator, and dev-catalog checks passed for
+all three synthetic fixtures. The accepted upstream package later moved to default port `30491` and
+the reviewer-supplied CDN icon under VB-083. Live lifecycle validation remains VB-082.
 
 **Goal:** create the catalog packaging approved by VB-080 using current TrueNAS Community App conventions.
 
@@ -1048,7 +1046,7 @@ complete.
 
 ### VB-082 — TrueNAS install/upgrade/portal validation — P1
 
-**Status:** In progress / partial validation as of 2026-09-08. A fresh TrueNAS `25.10.6` custom-YAML
+**Status:** In progress / partial validation as of 2026-09-17. A fresh TrueNAS `25.10.6` custom-YAML
 installation of `ghcr.io/mrtrollex/vaultbridge:1.1.0` at OCI index digest
 `sha256:753e613617d221c3dac311600a36cab3f2727b09f630321664eaa7b7ad6eb48c` validated the core
 runtime/API/UI path. Restart/persistence and watcher-disabled/watcher-enabled behavior are recorded
@@ -1056,9 +1054,13 @@ separately as **OPERATOR-CONFIRMED PASS** because raw command output was not ret
 operator evidence now also records **PASS** for API-key overlap/removal, Web Port runtime behavior,
 occupied-port rejection/recovery, permission-denied/recovery behavior, and preservation of the
 external vault and host-path `/data` on uninstall. Upgrade is **UNSUPPORTED / NO VALID PRIOR PACKAGE
-STATE** and rollback is **BLOCKED** until a prior catalog revision exists. Real catalog form/edit,
-secret-masking, Portal, storage-UI, and ixVolume-uninstall gates remain **REQUIRES UPSTREAM
-CATALOG/PR**. No upstream submission has been performed.
+STATE** and rollback is **BLOCKED** until a prior catalog revision exists. After PR #5805 merged, a
+real Community catalog install was **OPERATOR-CONFIRMED PASS** for Discover Apps availability,
+installation, the usable install form, masked API-key inputs, `/ui/` Portal/dashboard access, Host
+Path mounting of an existing vault, ixVolume configuration for derived data, healthy vault
+visibility, and API-key rotation compatibility during migration. Edit-form persistence and ixVolume
+uninstall retain/remove semantics remain unverified; acceptance and initial installation do not
+close those gates.
 
 **Goal:** validate the Community App lifecycle on a real disposable TrueNAS installation and capture
 sanitized evidence.
@@ -1102,24 +1104,31 @@ sanitized evidence.
   [`docs/VB_082_TRUENAS_LIFECYCLE_RUNBOOK.md`](docs/VB_082_TRUENAS_LIFECYCLE_RUNBOOK.md), together
   with the sanitized 2026-09-08 execution evidence and result ledger;
 - custom-YAML installation does not expose the catalog-generated Web UI / Portal button, so that
-  behavior remains **REQUIRES UPSTREAM VERIFICATION**, not a VaultBridge failure;
+  historical pre-upstream limitation is preserved rather than treated as catalog evidence;
 - all currently executable pre-upstream VB-082 gates are complete as of 2026-09-08; the retained
   Web Port evidence proves the new UI route loaded and showed Ready / 2 indexed notes plus an
   authenticated API response, but does not prove the stricter authenticated UI unlock/note-read
-  subcheck after that port change;
+  subcheck after that historical port change;
+- post-merge operator evidence confirms the initial real-catalog install/form/masking/Portal,
+  Host Path, ixVolume configuration, healthy vault visibility, and rotation-migration checks listed
+  in the status above, but does not prove edit-form persistence or ixVolume uninstall behavior;
 - this partial record does not satisfy or remove any acceptance criterion above and does not complete
   VB-082.
 
 ### VB-083 — Submit VaultBridge to upstream TrueNAS Apps catalog — P1
 
-**Status:** Submission/review phase unblocked as of 2026-09-08 by completion of all executable
-pre-upstream VB-082 gates. No upstream submission has been performed. VB-083 is not complete.
+**Status:** Completed on 2026-09-17. Upstream PR
+[#5805](https://github.com/truenas/apps/pull/5805), **Add VaultBridge to the community train**, was
+reviewed and merged on 2026-09-16 at `2026-09-16T20:04:07Z`; merge commit
+`fd185603de32444f9e36f872dbcd84af44509115`. The accepted source exists under
+`ix-dev/community/vaultbridge/`, the generated entry exists under
+`trains/community/vaultbridge/1.0.0/`, and Discover Apps availability is operator-confirmed.
 
 **Goal:** prepare and submit the verified VaultBridge Community App contribution to `truenas/apps`.
 
 **Depends on:** VB-081 and completion of all executable pre-upstream VB-082 gates for the
-submission/review phase. Full VB-083 completion still depends on completing VB-082's remaining real
-catalog-only validation and satisfying every VB-083 acceptance criterion.
+submission/review phase. Those prerequisites were satisfied before PR #5805; VB-082 continues as a
+separate post-merge lifecycle-validation task.
 
 **Acceptance criteria**
 
@@ -1269,8 +1278,9 @@ VB-001 ✓
 → VB-075 ✓
 → VB-080 ✓
 → VB-081 ✓
-→ VB-082 IN PROGRESS / PARTIAL VALIDATION
-→ VB-083 SUBMISSION/REVIEW PHASE UNBLOCKED; NOT SUBMITTED / NOT COMPLETE
+→ VB-082 PRE-UPSTREAM GATES ✓
+→ VB-083 ✓
+→ VB-082 POST-MERGE LIFECYCLE VALIDATION IN PROGRESS / PARTIAL
 → VB-090 ✓ (independent MCP design track)
 → VB-091 ✓ (not NEXT)
 ```
@@ -1283,16 +1293,16 @@ VB-070 through VB-074 complete the bundled Web Dashboard architecture, shell/ses
 health-backed Overview, protected literal/semantic Search, and final usability/accessibility/image
 hardening. VB-080 completes the version-neutral Community App packaging design, and VB-081 is
 complete with the released `1.1.0` image, current upstream metadata, officially generated artifacts,
-and Docker-backed render/deploy validation. The reviewer-provided CDN icon remains a VB-083 upstream-
-review gate. VB-075 is complete with
-exact-source CI and full exact-image functional runtime evidence. VB-023 retrieval benchmarking is
+and Docker-backed render/deploy validation. VB-083 is complete after PR #5805 review/merge, accepted
+source and generated-entry verification, and operator-confirmed Discover Apps availability. The
+accepted package uses the reviewer-provided CDN icon and default Web UI port `30491`. VB-075 is
+complete with exact-source CI and full exact-image functional runtime evidence. VB-023 retrieval benchmarking is
 complete. VB-032 and VB-033 remain deferred optional
 work. VB-055 remains optional
-and is not a dashboard prerequisite. Milestone 9 packaging is in progress; all executable
-pre-upstream VB-082 gates are complete, while VB-082 remains partial pending real catalog-only UI,
-Portal, storage, ixVolume-uninstall, and eventual rollback validation. That pre-upstream completion
-unblocks the VB-083 submission/review phase without marking VB-082 or VB-083 complete. No upstream
-submission has been performed. VB-090 and VB-091 complete the read-only stdio MCP design and
-implementation.
+and is not a dashboard prerequisite. Milestone 9 is **UPSTREAM ACCEPTED / POST-MERGE VALIDATION IN
+PROGRESS**. VB-082 remains partial: the initial catalog install/form/masking/Portal, Host Path,
+ixVolume configuration, healthy-vault, and rotation-migration checks are operator-confirmed, while
+edit-form persistence, ixVolume uninstall semantics, a valid prior-state upgrade, and rollback remain
+open. VB-090 and VB-091 complete the read-only stdio MCP design and implementation.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.
