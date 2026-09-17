@@ -5,7 +5,7 @@ import re
 import time
 from collections.abc import Callable
 from pathlib import PurePosixPath, PureWindowsPath
-from typing import Annotated, Any, TypeVar
+from typing import Annotated, Any, Literal, TypeVar
 from urllib.parse import quote
 from uuid import uuid4
 
@@ -37,6 +37,7 @@ from app.services.vault import (
 MCP_SERVER_NAME = "VaultBridge"
 MCP_SERVER_VERSION = "1.1.0"
 MCP_CLIENT_ID = "stdio-process"
+MCPTransport = Literal["stdio", "streamable-http"]
 NOTE_RESOURCE_TEMPLATE = "vaultbridge://note/{path}"
 NOTE_MIME_TYPE = "text/markdown"
 RELATED_CANDIDATE_OVERFETCH_FACTOR = 3
@@ -217,20 +218,22 @@ class VaultBridgeMCPAdapter:
         vault_service: VaultService,
         semantic_search_service: SemanticSearchService,
         duplicate_candidate_service: DuplicateCandidateService,
-        rate_limiter: FixedWindowRateLimiter,
+        transport: MCPTransport,
+        operation_rate_limiter: FixedWindowRateLimiter | None,
     ) -> None:
         self.settings = settings
         self.vault_service = vault_service
         self.semantic_search_service = semantic_search_service
         self.duplicate_candidate_service = duplicate_candidate_service
-        self.rate_limiter = rate_limiter
+        self.transport = transport
+        self.operation_rate_limiter = operation_rate_limiter
 
     def _execute(self, operation: str, action: Callable[[], T], *, result_count: Callable[[T], int]) -> T:
         request_id = uuid4().hex
         started_at = time.perf_counter()
         try:
-            if self.settings.rate_limit_enabled:
-                decision = self.rate_limiter.check(MCP_CLIENT_ID)
+            if self.settings.rate_limit_enabled and self.operation_rate_limiter is not None:
+                decision = self.operation_rate_limiter.check(MCP_CLIENT_ID)
                 if not decision.allowed:
                     retry_after = decision.retry_after_seconds or 1
                     raise ToolError(
@@ -279,15 +282,15 @@ class VaultBridgeMCPAdapter:
             "mcp_operation_completed",
             "MCP operation completed",
             request_id=request_id,
-            transport="stdio",
+            transport=self.transport,
             operation=operation,
             result_count=result_count(result),
             duration_ms=round((time.perf_counter() - started_at) * 1000, 3),
         )
         return result
 
-    @staticmethod
     def _log_failure(
+        self,
         operation: str,
         request_id: str,
         started_at: float,
@@ -302,7 +305,7 @@ class VaultBridgeMCPAdapter:
             "mcp_operation_failed",
             "MCP operation failed",
             request_id=request_id,
-            transport="stdio",
+            transport=self.transport,
             operation=operation,
             failure_class=failure_class,
             duration_ms=round((time.perf_counter() - started_at) * 1000, 3),
@@ -312,9 +315,14 @@ class VaultBridgeMCPAdapter:
 
     def _require_semantic_index(self) -> None:
         try:
-            if self.semantic_search_service.use_persisted_index_for_read_only_search():
-                return
-            inspection = self.semantic_search_service.inspect_persisted_index()
+            if self.transport == "stdio":
+                if self.semantic_search_service.use_persisted_index_for_read_only_search():
+                    return
+                inspection = self.semantic_search_service.inspect_persisted_index()
+            else:
+                inspection = self.semantic_search_service.inspect_index()
+                if inspection.search_available:
+                    return
         except Exception as exc:
             raise SemanticSearchUnavailableError from exc
         if inspection.state is IndexState.INDEXING:
@@ -487,6 +495,7 @@ def create_mcp_server(
     semantic_search_service: SemanticSearchService | None = None,
     duplicate_candidate_service: DuplicateCandidateService | None = None,
     rate_limiter: FixedWindowRateLimiter | None = None,
+    transport: MCPTransport = "stdio",
 ) -> MCPServer:
     app_settings = settings if settings is not None else Settings.from_env()
     app_vault_service = vault_service or VaultService(
@@ -498,17 +507,20 @@ def create_mcp_server(
         vault_service=app_vault_service,
         semantic_search_service=app_semantic_service,
     )
-    app_rate_limiter = rate_limiter or FixedWindowRateLimiter(
-        requests=app_settings.rate_limit_requests,
-        window_seconds=app_settings.rate_limit_window_seconds,
-        max_clients=1,
-    )
+    operation_rate_limiter = rate_limiter
+    if transport == "stdio" and operation_rate_limiter is None:
+        operation_rate_limiter = FixedWindowRateLimiter(
+            requests=app_settings.rate_limit_requests,
+            window_seconds=app_settings.rate_limit_window_seconds,
+            max_clients=1,
+        )
     adapter = VaultBridgeMCPAdapter(
         settings=app_settings,
         vault_service=app_vault_service,
         semantic_search_service=app_semantic_service,
         duplicate_candidate_service=app_duplicate_service,
-        rate_limiter=app_rate_limiter,
+        transport=transport,
+        operation_rate_limiter=operation_rate_limiter,
     )
     server = MCPServer(
         MCP_SERVER_NAME,

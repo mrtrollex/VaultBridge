@@ -55,6 +55,10 @@ Completed:
 - VB-090 — MCP integration architecture / ADR
 - VB-091 — Read-only MCP stdio adapter
 
+Implemented with Docker validation pending:
+
+- VB-092 — Opt-in read-only MCP Streamable HTTP transport
+
 Post-v1 development position:
 
 - stable `v1.0.0` is released and all v1.0 release gates are complete
@@ -150,9 +154,15 @@ Current post-v1 planning position:
   audit, and official-client subprocess smoke pass; PR #55 pull-request CI also passes, with its
   Python job passing the full suite and compile check and its Docker job passing Compose validation,
   Linux image build, MCP dependency import inside that image, and MCP stdio EOF smoke
+- VB-092 implements opt-in exact `/mcp` Streamable HTTP in the existing FastAPI process/port with
+  the same five read-only tools and contained Resource; it reuses the live application services,
+  current/previous Bearer verification, direct-peer limiter, and parent lifespan
+- VB-092 local tests pass against both installed historical SDK `2.1.1` and current stable `2.2.0`,
+  including a modern `2026-07-28` official-client tool and Resource round trip; Docker/Compose build
+  and container smoke remain unverified because Docker is unavailable on the implementation host
 - VB-075 is complete with exact-source CI and exact-image runtime evidence
-- future MCP Streamable HTTP is selected for opt-in `/mcp` in the existing FastAPI process/port, but
-  it is deferred beyond VB-091 together with network auth/Origin validation, write tools, and Prompts
+- MCP write tools, OAuth, Prompts, and VaultBridge subscription features remain deferred beyond the
+  implemented read-only stdio and Streamable HTTP transports
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
 
@@ -209,7 +219,7 @@ Current milestones:
 - **Milestone 7 — Distribution and `v1.0.0` (complete)**
 - **Milestone 8 — Web Dashboard / operator experience (complete)**
 - **Milestone 9 — TrueNAS Community App distribution (upstream accepted; post-merge VB-082 lifecycle validation in progress)**
-- **Milestone 10 — MCP integration (complete)**
+- **Milestone 10 — MCP integration (implemented; VB-092 Docker validation pending)**
 
 ## Working production characteristics
 
@@ -224,6 +234,9 @@ Current milestones:
 - FastAPI routes, vault operations, semantic orchestration and SQLite persistence have separate modules
 - explicit read-only `python -m app.mcp_server` local stdio adapter with five MCP tools, one contained
   Markdown Resource template, process-wide monotonic rate limiting, and safe stderr-only diagnostics
+- disabled-by-default read-only MCP Streamable HTTP at exact `/mcp` on the application port, using
+  SDK Host/Origin protection, shared Bearer rotation, the live direct-peer limiter, live services,
+  and the parent FastAPI lifespan without a second service or index owner
 - MCP/CLI persisted semantic reads use immutable SQLite connections and never create semantic
   storage, schema objects, WAL/SHM sidecars, synchronization work, or index lifecycle writes
 - typed runtime settings via `app/core/config.py`

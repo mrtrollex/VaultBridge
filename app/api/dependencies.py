@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import hmac
-
-from fastapi import Depends, Header, HTTPException, Request, status
+from fastapi import Depends, Header, Request
 
 from app.core.config import Settings
+from app.core.http_security import enforce_peer_rate_limit, verify_bearer_authorization
 from app.services.duplicate_candidates import DuplicateCandidateService
 from app.services.indexer import BackgroundSemanticIndexer
 from app.services.rate_limiter import FixedWindowRateLimiter
@@ -41,41 +40,15 @@ def enforce_rate_limit(
     settings: Settings = Depends(get_settings),
     rate_limiter: FixedWindowRateLimiter = Depends(get_rate_limiter),
 ) -> None:
-    if not settings.rate_limit_enabled or not settings.api_key.get_secret_value():
-        return
-
     client_id = request.client.host if request.client is not None else "unknown-peer"
-    decision = rate_limiter.check(client_id)
-    if not decision.allowed:
-        headers = (
-            {"Retry-After": str(decision.retry_after_seconds)}
-            if decision.retry_after_seconds is not None
-            else None
-        )
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Rate limit exceeded",
-            headers=headers,
-        )
+    enforce_peer_rate_limit(client_id, settings, rate_limiter)
 
 
 def require_auth(
     authorization: str | None = Header(default=None),
     settings: Settings = Depends(get_settings),
 ) -> None:
-    api_key = settings.api_key.get_secret_value()
-    if not api_key:
-        raise HTTPException(status_code=500, detail="Server API_KEY is not configured")
-
-    presented = (authorization or "").encode("utf-8")
-    current_matches = hmac.compare_digest(presented, f"Bearer {api_key}".encode("utf-8"))
-    previous_api_key = settings.previous_api_key.get_secret_value()
-    previous_matches = bool(previous_api_key) and hmac.compare_digest(
-        presented,
-        f"Bearer {previous_api_key}".encode("utf-8"),
-    )
-    if not (current_matches | previous_matches):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
+    verify_bearer_authorization(authorization, settings)
 
 
 PROTECTED_ROUTE_DEPENDENCIES = (

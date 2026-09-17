@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
@@ -15,6 +15,7 @@ from app.api.search import router as search_router
 from app.core.config import Settings
 from app.core.logging import configure_application_logging, log_event
 from app.core.observability import RequestObservabilityMiddleware
+from app.mcp_http import create_mcp_http_transport
 from app.services.duplicate_candidates import DuplicateCandidateService
 from app.services.filesystem_watcher import SemanticFilesystemWatcher
 from app.services.indexer import BackgroundSemanticIndexer
@@ -56,6 +57,9 @@ async def lifespan(application: FastAPI):
         "semantic_watcher",
         None,
     )
+    mcp_server = getattr(application.state, "mcp_server", None)
+    mcp_sessions = AsyncExitStack()
+    await mcp_sessions.__aenter__()
     started_at = time.perf_counter()
     log_event(
         logger,
@@ -67,6 +71,8 @@ async def lifespan(application: FastAPI):
         semantic_indexer.start()
         if semantic_watcher is not None:
             semantic_watcher.start()
+        if mcp_server is not None:
+            await mcp_sessions.enter_async_context(mcp_server.session_manager.run())
     except BaseException as exc:
         log_event(
             logger,
@@ -77,10 +83,13 @@ async def lifespan(application: FastAPI):
             error_type=type(exc).__name__,
         )
         try:
-            if semantic_watcher is not None:
-                await asyncio.to_thread(semantic_watcher.stop)
+            await mcp_sessions.aclose()
         finally:
-            await asyncio.to_thread(semantic_indexer.shutdown)
+            try:
+                if semantic_watcher is not None:
+                    await asyncio.to_thread(semantic_watcher.stop)
+            finally:
+                await asyncio.to_thread(semantic_indexer.shutdown)
         raise
     log_event(
         logger,
@@ -101,6 +110,10 @@ async def lifespan(application: FastAPI):
             "VaultBridge application is stopping",
         )
         shutdown_error: BaseException | None = None
+        try:
+            await mcp_sessions.aclose()
+        except BaseException as exc:
+            shutdown_error = exc
         if semantic_watcher is not None:
             try:
                 await asyncio.to_thread(semantic_watcher.stop)
@@ -214,11 +227,22 @@ def create_app(
     application.state.semantic_watcher = app_semantic_watcher
     application.state.rate_limiter = app_rate_limiter
     application.state.vault_service = app_vault_service
+    application.state.mcp_server = None
     application.add_exception_handler(VaultServiceError, handle_vault_service_error)
     application.include_router(health_router)
     application.include_router(notes_router)
     application.include_router(search_router)
     application.include_router(ui_router)
+    if app_settings.mcp_http_enabled:
+        mcp_server, mcp_http_app = create_mcp_http_transport(
+            settings=app_settings,
+            vault_service=app_vault_service,
+            semantic_search_service=app_semantic_search_service,
+            duplicate_candidate_service=app_duplicate_candidate_service,
+            rate_limiter=app_rate_limiter,
+        )
+        application.state.mcp_server = mcp_server
+        application.mount("/", mcp_http_app, name="mcp-http")
     return application
 
 

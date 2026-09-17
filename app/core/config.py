@@ -31,6 +31,9 @@ class Settings(BaseModel):
         "RATE_LIMIT_REQUESTS",
         "RATE_LIMIT_WINDOW_SECONDS",
         "RATE_LIMIT_MAX_CLIENTS",
+        "MCP_HTTP_ENABLED",
+        "MCP_HTTP_ALLOWED_HOSTS",
+        "MCP_HTTP_ALLOWED_ORIGINS",
     )
 
     api_key: SecretStr = Field(default=SecretStr(""), alias="API_KEY", repr=False)
@@ -60,6 +63,15 @@ class Settings(BaseModel):
     rate_limit_requests: int = Field(default=120, alias="RATE_LIMIT_REQUESTS", gt=0)
     rate_limit_window_seconds: int = Field(default=60, alias="RATE_LIMIT_WINDOW_SECONDS", gt=0)
     rate_limit_max_clients: int = Field(default=1024, alias="RATE_LIMIT_MAX_CLIENTS", gt=0)
+    mcp_http_enabled: bool = Field(default=False, alias="MCP_HTTP_ENABLED")
+    mcp_http_allowed_hosts: tuple[str, ...] = Field(
+        default=("127.0.0.1:*", "localhost:*", "[::1]:*"),
+        alias="MCP_HTTP_ALLOWED_HOSTS",
+    )
+    mcp_http_allowed_origins: tuple[str, ...] = Field(
+        default=("http://127.0.0.1:*", "http://localhost:*", "http://[::1]:*"),
+        alias="MCP_HTTP_ALLOWED_ORIGINS",
+    )
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> Settings:
@@ -86,6 +98,13 @@ class Settings(BaseModel):
         value = value.strip()
         if not value:
             raise ValueError("SEMANTIC_MODEL must not be empty")
+        return value
+
+    @field_validator("mcp_http_allowed_hosts", "mcp_http_allowed_origins", mode="before")
+    @classmethod
+    def parse_mcp_http_allowlist(cls, value: object) -> object:
+        if isinstance(value, str):
+            return tuple(item.strip() for item in value.split(",") if item.strip())
         return value
 
     @model_validator(mode="after")

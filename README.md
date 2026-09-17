@@ -39,8 +39,8 @@
 > handling plus protected literal and semantic Search. The historical `v1.0.0` image predates this
 > dashboard. VaultBridge is also available through the TrueNAS Community train in Discover Apps;
 > the documented Docker and TrueNAS Custom App workflows remain independently usable.
-> The source tree also includes the read-only local MCP stdio adapter described below; it is
-> additive and does not change the REST, dashboard, CLI, or deployed API startup path.
+> The source tree also includes read-only MCP stdio plus an opt-in Streamable HTTP `/mcp` transport
+> on the existing application port; both are additive to REST, dashboard, and CLI behavior.
 
 ## Why VaultBridge
 
@@ -123,7 +123,7 @@ standards-based compatibility statement, not a claim that every browser/version 
 Actual browser and production-image evidence is tracked separately in
 [`docs/DASHBOARD_RELEASE_CHECKLIST.md`](docs/DASHBOARD_RELEASE_CHECKLIST.md).
 
-### MCP stdio
+### MCP
 
 VaultBridge can be launched as a local, read-only MCP server for MCP-capable clients:
 
@@ -131,7 +131,7 @@ VaultBridge can be launched as a local, read-only MCP server for MCP-capable cli
 python -m app.mcp_server
 ```
 
-The current MCP surface is stdio only. It exposes `list_notes`, `read_note`, `search_notes`,
+The stdio transport exposes `list_notes`, `read_note`, `search_notes`,
 `related_notes`, and `duplicate_candidates`, plus contained Markdown Resources such as
 `vaultbridge://note/Projects%2FLaunch%20plan.md`. The process reuses `VAULT_PATH`,
 `SEMANTIC_DATA_PATH`, model, size, and rate-limit settings. It does not require `API_KEY`; the local
@@ -151,8 +151,18 @@ args:
   - app.mcp_server
 ```
 
-Streamable HTTP `/mcp`, MCP OAuth, write tools, Prompts, and subscriptions are not implemented.
-The REST API, dashboard, and CLI remain unchanged.
+The same five read-only tools and contained Markdown Resources can be exposed over Streamable HTTP
+at `/mcp` on the existing application port. It is disabled by default. Enable it with
+`MCP_HTTP_ENABLED=true`, keep using `Authorization: Bearer <token>`, and configure
+`MCP_HTTP_ALLOWED_HOSTS` plus `MCP_HTTP_ALLOWED_ORIGINS` for the actual deployment. The defaults
+allow loopback Host/Origin values only; a request without `Origin` remains valid for non-browser
+clients when its Host is allowed. The HTTP transport accepts the current `API_KEY` and optional
+`API_KEY_PREVIOUS`, and shares the normal process-local peer rate limit and live application
+services/index lifecycle.
+
+The Streamable HTTP surface remains read-only and schema-hidden. It adds no port, service,
+container, OAuth flow, write tool, Prompt, subscription feature, or standalone HTTP+SSE endpoint.
+The stdio command remains supported and retains its local trust and independent operation budget.
 
 ### 🐳 Deployment & operations
 
@@ -401,6 +411,9 @@ host PUID:PGID  ->  container process user and group
 | `RATE_LIMIT_REQUESTS` | `120` | Positive requests allowed per peer in one fixed window |
 | `RATE_LIMIT_WINDOW_SECONDS` | `60` | Positive fixed-window duration in seconds |
 | `RATE_LIMIT_MAX_CLIENTS` | `1024` | Positive hard cap on process-local peer state |
+| `MCP_HTTP_ENABLED` | `false` | Opt in to read-only Streamable HTTP at `/mcp` on the existing application port |
+| `MCP_HTTP_ALLOWED_HOSTS` | loopback hosts with any port | Comma-separated Host allowlist enforced by the MCP SDK; external hosts must be explicit |
+| `MCP_HTTP_ALLOWED_ORIGINS` | loopback HTTP origins with any port | Comma-separated allowlist for a present Origin; external origins must be explicit |
 | `OBSIDIAN_VAULT_PATH` | `/path/to/your/Obsidian/Vault` | Required absolute host path to the vault |
 | `API_PORT` | `8765` | Host loopback port mapped to container port `8000` |
 | `PUID` / `PGID` | `1000` / `1000` | Numeric container user/group used for bind-mounted files |

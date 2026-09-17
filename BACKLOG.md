@@ -1238,6 +1238,44 @@ size comparison.
 - `semantic_search` as a duplicate alias for `related_notes`;
 - create, append, overwrite, update, delete, backlink, or arbitrary filesystem operations.
 
+### VB-092 — Opt-in read-only MCP Streamable HTTP transport — P1
+
+**Status:** Implemented on 2026-09-17 with local Python, Ruff, compile, official MCP v2.1.1 and
+v2.2.0 client, in-process protocol coverage, and disposable loopback runtime coverage.
+Docker/Compose validation remains unverified on this host because the Docker command is unavailable;
+no release or catalog claim is made from the local evidence.
+
+**Depends on:** VB-090 and VB-091.
+
+**Goal:** expose the existing read-only MCP surface at opt-in `/mcp` inside the running FastAPI
+process and port without adding a service, index owner, write capability, or transport fork.
+
+**Acceptance criteria**
+
+- add typed `MCP_HTTP_ENABLED`, `MCP_HTTP_ALLOWED_HOSTS`, and `MCP_HTTP_ALLOWED_ORIGINS` settings;
+  remain absent by default and require explicit external Host/Origin values;
+- mount the official MCP v2 Streamable HTTP ASGI app at exact `/mcp`, with no `/mcp/mcp`, legacy
+  HTTP+SSE endpoint, REST OpenAPI entry, second port, service, or container;
+- have the parent FastAPI lifespan enter and exit the SDK session manager while preserving indexer
+  and watcher startup/shutdown ownership;
+- reuse the exact application-owned `VaultService`, `SemanticSearchService`,
+  `DuplicateCandidateService`, and `FixedWindowRateLimiter` objects;
+- require the existing current/previous Bearer-key rotation verifier for every MCP HTTP request and
+  use the direct ASGI peer budget once, without the stdio operation limiter double counting it;
+- delegate Host/Origin and protocol framing validation to SDK `TransportSecuritySettings` and the
+  current Streamable HTTP implementation;
+- retain exactly the five read-only tools and contained Markdown Resource, with accurate `stdio` or
+  `streamable-http` safe operation logs;
+- preserve stdio trust, operation limiting, immutable semantic reads, and all REST/API/dashboard
+  behavior and operation IDs;
+- verify disabled/enabled routing, authentication, rate limiting, transport security, modern
+  official-client tool/Resource calls, lifecycle, logging privacy, and compatibility.
+
+**Out of scope**
+
+- write tools, OAuth, Prompts, VaultBridge subscription features, standalone HTTP+SSE, a second
+  semantic store/indexer, TrueNAS catalog changes, release/version selection, or publication.
+
 ---
 
 ## Recommended Codex sequence
@@ -1283,6 +1321,7 @@ VB-001 ✓
 → VB-082 POST-MERGE LIFECYCLE VALIDATION IN PROGRESS / PARTIAL
 → VB-090 ✓ (independent MCP design track)
 → VB-091 ✓ (not NEXT)
+→ VB-092 IMPLEMENTED / DOCKER VALIDATION PENDING
 ```
 
 VB-057 through VB-060 close the confirmed containment, native-Windows test-portability,
@@ -1303,6 +1342,7 @@ and is not a dashboard prerequisite. Milestone 9 is **UPSTREAM ACCEPTED / POST-M
 PROGRESS**. VB-082 remains partial: the initial catalog install/form/masking/Portal, Host Path,
 ixVolume configuration, healthy-vault, and rotation-migration checks are operator-confirmed, while
 edit-form persistence, ixVolume uninstall semantics, a valid prior-state upgrade, and rollback remain
-open. VB-090 and VB-091 complete the read-only stdio MCP design and implementation.
+open. VB-090 and VB-091 complete the read-only stdio MCP design and implementation. VB-092 adds the
+opt-in read-only Streamable HTTP path; its Docker-capable validation gate remains open.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.
