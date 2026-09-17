@@ -639,7 +639,7 @@ Milestone exit criteria:
 
 ---
 
-# Milestone 10 — MCP integration — COMPLETE
+# Milestone 10 — MCP integration — IMPLEMENTED / DOCKER VALIDATION PENDING
 
 **Goal:** add MCP as a small client/integration surface over existing VaultBridge services without
 replacing REST, duplicating domain logic, or creating a permanent runtime fork.
@@ -671,11 +671,11 @@ VB-091 is deliberately limited to an explicit read-only stdio entry point, five 
 contained note Resource template. It starts no FastAPI app, background indexer, watcher,
 synchronization, or semantic-index writer. The main API process is not required for local stdio.
 
-Streamable HTTP is the selected future network transport, but it is not part of VB-091. When
-implemented separately, it will mount opt-in `/mcp` in the existing FastAPI process and port, reuse
-the existing Bearer rotation and rate-limit primitives, validate Origin, and share the application
-indexer. Legacy HTTP+SSE, a second service/container, write tools, and Prompts are not in the initial
-scope.
+VB-092 implements the selected Streamable HTTP transport at opt-in `/mcp` in the existing FastAPI
+process and port. It reuses the live services, current/previous Bearer verification, direct-peer
+application limiter, and parent lifespan while delegating protocol and Host/Origin checks to the
+official SDK. Legacy HTTP+SSE, a second service/container, write tools, OAuth, Prompts, and
+VaultBridge subscription features remain outside the scope.
 
 Task sequence:
 
@@ -684,7 +684,7 @@ VB-090 MCP architecture / ADR ✓
    ↓
 VB-091 read-only stdio MCP server ✓
    ↓
-future network and write phases only after separate approval
+VB-092 read-only Streamable HTTP implemented; Docker gate pending
 ```
 
 Milestone exit criteria:
@@ -696,13 +696,18 @@ Milestone exit criteria:
   [`docs/adr/0004-mcp-integration.md`](docs/adr/0004-mcp-integration.md)
 - [x] the VB-091 read-only stdio tool and Resource surface is implemented and verified through the
   official SDK's in-memory and subprocess clients
+- [x] the VB-092 read-only Streamable HTTP surface is implemented and verified locally through the
+  official modern MCP client under SDK v2.1.1 and v2.2.0
+- [ ] VB-092 Compose validation, image build, and container runtime smoke pass in a Docker-capable
+  environment
 - [x] existing REST, dashboard, CLI, ChatGPT Action, Docker, and TrueNAS behavior remains unchanged
   after implementation; PR #55's Python job passes the full suite and compile check, and its Docker
   job passes Compose validation, Linux image build, MCP dependency import in that image, and MCP
   stdio EOF smoke
 
-This milestone is an independent completed post-v1 integration track. VB-091 did not replace or
-alter VB-075's release-evidence criteria, which were completed separately on 2026-09-07.
+This milestone remains an independent post-v1 integration track. VB-091 did not replace or alter
+VB-075's release-evidence criteria, which were completed separately on 2026-09-07. VB-092 adds no
+release or TrueNAS catalog claim; its Docker-capable validation gate remains open.
 
 ---
 
@@ -813,6 +818,8 @@ MCP INTEGRATION (independent post-v1 track)
 VB-090 ✓
    ↓
 VB-091 ✓ (not NEXT)
+   ↓
+VB-092 IMPLEMENTED / DOCKER VALIDATION PENDING
 ```
 
 `v1.0.0` has shipped, and VB-070 through VB-074 complete Milestone 8's dashboard design,
@@ -833,7 +840,8 @@ and VB-055 remains optional rather than a dashboard
 prerequisite. Milestone 9 package definition, official Docker-backed validation, upstream acceptance,
 and initial real-catalog installation are complete. Milestone 9 remains open because VB-082 still has
 unresolved post-merge lifecycle gates. ADR 0004 completes VB-090's MCP design-only
-work, and PR #55 CI completes VB-091's read-only stdio implementation verification.
+work, PR #55 CI completes VB-091's read-only stdio implementation verification, and VB-092 adds the
+locally verified opt-in read-only HTTP transport with its Docker-capable gate still open.
 
 ---
 

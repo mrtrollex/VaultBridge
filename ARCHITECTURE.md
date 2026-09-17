@@ -12,7 +12,7 @@ Clients (Web Dashboard / ChatGPT / curl / CLI / integrations)
                     | HTTPS + Bearer token
                     v
                FastAPI app
-       (`/ui/` + `/api/v1` + legacy aliases)
+ (`/ui/` + `/api/v1` + legacy aliases + opt-in `/mcp`)
               /           \
              /             \
     Vault operations     Semantic search
@@ -42,7 +42,10 @@ Every protected legacy and `/api/v1` note/search route runs one shared rate-limi
 the VB-042 authentication dependency. The standard-library fixed-window limiter uses monotonic time
 and the direct ASGI peer host as its identity; it never reads bearer credentials or forwarded
 client-address headers. Repeated invalid authentication attempts therefore eventually receive HTTP
-`429`, while a missing required `API_KEY` retains the existing configuration error.
+`429`, while a missing required `API_KEY` retains the existing configuration error. The opt-in MCP
+Streamable HTTP transport calls the same Bearer verifier and limiter instance once at its ASGI
+boundary before MCP dispatch. Its stdio operation budget remains separate and is never applied to
+HTTP operations.
 
 State is thread-safe, process-local, non-persistent, and bounded. Expired windows are reclaimed on
 request handling; when the configured client cap remains full, the least-recently-used peer window
@@ -144,6 +147,10 @@ interruption. Lifespan shutdown signals cooperative cancellation, lets the activ
 roll back normally, and skips remaining batches. Shutdown must still wait for an already-running
 model download, ONNX inference call, or filesystem operation because those calls are not forcibly
 interruptible.
+
+When MCP HTTP is enabled, the same parent lifespan also enters the SDK session manager after the
+indexer and optional watcher start. Shutdown closes MCP sessions before stopping the watcher and
+indexer. Mounted sub-application lifespan is deliberately not relied on.
 
 When `SEMANTIC_WATCH_ENABLED=true`, lifespan starts one recursive `watchdog` observer after the
 semantic indexer exists. Filesystem callbacks only interpret safe Markdown paths and submit them to
@@ -425,11 +432,11 @@ upstream catalog definition. The accepted Community App is the preferred ordinar
 documented source-built Custom App remains an advanced/manual compatibility path. VB-082 continues
 to own the unresolved post-merge lifecycle evidence.
 
-### MCP stdio relationship
+### MCP transports
 
 [ADR 0004](docs/adr/0004-mcp-integration.md) accepts MCP as another thin client protocol over the
-same services. VB-091 implements its read-only stdio phase as an explicit alternate process entry;
-it adds no FastAPI route, network listener, always-on setting, or deployment fork.
+same services. VB-091 implements its read-only stdio phase as an explicit alternate process entry.
+VB-092 adds an opt-in Streamable HTTP adapter inside the existing FastAPI process and port.
 
 VB-091 is intentionally read-only and stdio-first:
 
@@ -463,11 +470,18 @@ The five VB-091 tools are `list_notes`, `read_note`, `search_notes`, `related_no
 `vaultbridge://note/{percent-encoded-vault-relative-path}` Resource template. The URI never exposes
 an absolute host path and is decoded through `VaultService`. No Prompts or write tools are included.
 
-Streamable HTTP is the selected later network transport. It will be opt-in at fixed `/mcp` in the
-existing FastAPI process and port, share the wired services/indexer, validate Origin, explicitly apply
-the current Bearer-key rotation and fixed-window rate-limit primitives, and remain outside REST
-OpenAPI. It is not part of VB-091. The deprecated standalone HTTP+SSE transport, a custom transport,
-a second MCP service/container, and a new port are not planned.
+Streamable HTTP is mounted through the official MCP SDK at fixed `/mcp` only when
+`MCP_HTTP_ENABLED=true`. The SDK owns protocol framing and DNS-rebinding protection through typed
+Host/Origin allowlists. VaultBridge applies its current/previous Bearer verification and the running
+application's direct-peer limiter before SDK dispatch. The adapter reuses the exact `VaultService`,
+`SemanticSearchService`, and `DuplicateCandidateService` objects wired by `create_app()`, so it sees
+the live index lifecycle without creating another index owner. The route remains outside REST
+OpenAPI.
+
+HTTP uses stateless JSON responses and the same five read-only tools and contained Resource. It has
+no MCP operation limiter inside the adapter, preventing double counting with the HTTP boundary. The
+deprecated standalone HTTP+SSE transport, a custom transport, a second MCP service/container, and a
+new port are not implemented.
 
 Future `create_note` and `append_note` MCP tools may be added only through a separately approved
 in-process design that preserves `VaultService` writes and queues the committed path through the
@@ -482,7 +496,7 @@ VB-032/VB-033.
 ```text
                   REST / Web / CLI clients          MCP clients
                             |                       /          \
-                            v                  stdio       future HTTP
+                            v                  stdio       HTTP
                   FastAPI / CLI adapters             \       /mcp
                             |                          v       /
                             +---------------------- MCP adapter
@@ -508,10 +522,10 @@ VB-032/VB-033.
 
 Typed environment configuration. No HTTP or vault logic.
 
-### `core/security.py`
+### `core/http_security.py`
 
-Potential home for Bearer token verification if security logic grows beyond the current small shared
-API dependency.
+Shared current/previous Bearer verification and direct-peer fixed-window enforcement used by REST
+dependencies and the MCP HTTP ASGI boundary.
 
 ### `services/vault.py`
 
@@ -562,11 +576,17 @@ endpoint function and service path.
 
 ### `mcp_server.py`
 
-Explicit stdio composition root plus MCP tool/Resource schema and result/error mapping. It injects
-existing services directly, applies a one-identity process-wide fixed-window operation budget,
-reserves stdout for MCP traffic, emits allowlisted structured diagnostics to stderr, and starts no
-index writer. A later opt-in Streamable HTTP mount may reuse the same registration layer inside the
-existing FastAPI process.
+Shared MCP tool/Resource registration plus the explicit stdio composition root. Stdio injects
+existing read services, applies a one-identity process-wide fixed-window operation budget, reserves
+stdout for MCP traffic, emits allowlisted structured diagnostics to stderr, and starts no index
+writer.
+
+### `mcp_http.py`
+
+Opt-in Streamable HTTP composition for the existing FastAPI process. It wraps the official SDK ASGI
+app with the shared Bearer verifier and application limiter, passes typed Host/Origin allowlists to
+`TransportSecuritySettings`, and injects the live application services without adding domain or
+index ownership.
 
 ---
 

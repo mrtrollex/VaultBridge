@@ -178,7 +178,7 @@ def test_authentication_checks_both_configured_keys_with_constant_time_compariso
         comparisons.append((presented, expected))
         return compare_digest(presented, expected)
 
-    monkeypatch.setattr("app.api.dependencies.hmac.compare_digest", record_comparison)
+    monkeypatch.setattr("app.core.http_security.hmac.compare_digest", record_comparison)
     client = client_for(tmp_path, previous_api_key="test-previous-secret")
 
     response = client.get("/notes/list", headers=auth())

@@ -3,7 +3,10 @@
 - **Status:** Accepted
 - **Date:** 2026-09-07
 - **Decision owner:** VB-090
-- **Implementation task:** VB-091
+- **Implementation tasks:** VB-091 and VB-092
+
+VB-091 implemented the stdio phase on 2026-09-07. VB-092 implemented the accepted opt-in read-only
+Streamable HTTP `/mcp` phase on 2026-09-17; its Docker-capable validation gate remains pending.
 
 ## Context
 
