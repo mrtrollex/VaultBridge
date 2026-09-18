@@ -75,7 +75,7 @@ class FastEmbedder:
         model_name: str,
         cache_dir: Path,
         *,
-        batch_size: int = 256,
+        batch_size: int = 4,
         enable_cpu_mem_arena: bool = True,
     ) -> None:
         if batch_size <= 0:
@@ -218,7 +218,7 @@ class SemanticSearchService:
         max_note_bytes: int = 1_000_000,
         chunk_chars: int = 600,
         chunk_overlap: int = 100,
-        embed_batch_size: int = 256,
+        embed_batch_size: int = 4,
         onnx_cpu_mem_arena: bool = True,
         index_batch_size: int = 25,
         embedder: Embedder | None = None,

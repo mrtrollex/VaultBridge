@@ -18,7 +18,7 @@ def test_configuration_defaults_match_existing_behavior():
     assert settings.semantic_model == DEFAULT_SEMANTIC_MODEL
     assert settings.semantic_chunk_chars == 600
     assert settings.semantic_chunk_overlap == 100
-    assert settings.semantic_embed_batch_size == 256
+    assert settings.semantic_embed_batch_size == 4
     assert settings.semantic_onnx_cpu_mem_arena is True
     assert settings.semantic_index_batch_size == 25
     assert settings.semantic_watch_enabled is False
