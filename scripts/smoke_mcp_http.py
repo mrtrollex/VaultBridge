@@ -27,6 +27,7 @@ TOOLS = {
 }
 API_KEY = "vb093-current-placeholder"
 PREVIOUS_API_KEY = "vb093-previous-placeholder"
+MCP_SERVER_ALIAS = "vb093-server"
 
 
 def run(*args: str, capture: bool = False) -> subprocess.CompletedProcess[str]:
@@ -132,7 +133,7 @@ def start_container(
     if enabled:
         args += [
             "--env",
-            "MCP_HTTP_ALLOWED_HOSTS=vb093-server:8000,127.0.0.1:*",
+            f"MCP_HTTP_ALLOWED_HOSTS={MCP_SERVER_ALIAS}:8000,127.0.0.1:*",
             "--env",
             "MCP_HTTP_ALLOWED_ORIGINS=https://vb093-client.invalid",
         ]
@@ -241,7 +242,7 @@ def orchestrate(image: str) -> None:
         enabled_url = start_container(
             image, enabled, root / "enabled-vault", root / "enabled-data", enabled=True
         )
-        run("docker", "network", "connect", "--alias", "vb093-server", network, enabled)
+        run("docker", "network", "connect", "--alias", MCP_SERVER_ALIAS, network, enabled)
         wait_until_live(enabled_url, enabled)
         assert_rest(enabled_url)
 
@@ -266,7 +267,8 @@ def orchestrate(image: str) -> None:
         )
         assert status == 200, f"previous API key returned {status}"
 
-        run_official_client(image, enabled, network, Path(__file__))
+        # The client URL host must match both the Docker alias and MCP_HTTP_ALLOWED_HOSTS.
+        run_official_client(image, MCP_SERVER_ALIAS, network, Path(__file__))
         stop_cleanly(enabled)
         containers.remove(enabled)
     finally:
