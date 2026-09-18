@@ -54,11 +54,8 @@ Completed:
 - VB-083 — Submit VaultBridge to upstream TrueNAS Apps catalog
 - VB-090 — MCP integration architecture / ADR
 - VB-091 — Read-only MCP stdio adapter
-
-Implemented with container CI validation pending:
-
 - VB-092 — Opt-in read-only MCP Streamable HTTP transport
-- VB-093 — Container-level validation for MCP Streamable HTTP (CI run pending)
+- VB-093 — Container-level validation for MCP Streamable HTTP
 
 Post-v1 development position:
 
@@ -159,13 +156,12 @@ Current post-v1 planning position:
   the same five read-only tools and contained Resource; it reuses the live application services,
   current/previous Bearer verification, direct-peer limiter, and parent lifespan
 - VB-092 local tests pass against both installed historical SDK `2.1.1` and current stable `2.2.0`,
-  including a modern `2026-07-28` official-client tool and Resource round trip; Docker/Compose build
-  and container smoke remain unverified because Docker is unavailable on the implementation host
-- VB-093 adds a GitHub Actions smoke against the exact `vaultbridge:ci` image in fresh disabled and
-  enabled containers. It checks liveness, REST, the official Streamable HTTP client, the exact
-  read-only tool set, the synthetic note, current/previous authentication, Host/Origin rejection,
-  clean shutdown, and disposable cleanup. Completion awaits a successful Docker job; this is not
-  production TrueNAS evidence.
+  including a modern `2026-07-28` official-client tool and Resource round trip
+- VB-093 is complete: PR #62 merged as `f03f48b`, and GitHub Actions run `35355236057` passed its
+  Python and Docker jobs. The Docker job passed Compose validation, the exact `vaultbridge:ci` image
+  build, stdio and disabled/enabled HTTP MCP smokes, the official Streamable HTTP client, the exact
+  read-only tool set and synthetic note, authentication and Host/Origin failures, and clean
+  shutdown. This is container CI evidence, not production TrueNAS runtime evidence.
 - VB-075 is complete with exact-source CI and exact-image runtime evidence
 - MCP write tools, OAuth, Prompts, and VaultBridge subscription features remain deferred beyond the
   implemented read-only stdio and Streamable HTTP transports
@@ -225,7 +221,7 @@ Current milestones:
 - **Milestone 7 — Distribution and `v1.0.0` (complete)**
 - **Milestone 8 — Web Dashboard / operator experience (complete)**
 - **Milestone 9 — TrueNAS Community App distribution (upstream accepted; post-merge VB-082 lifecycle validation in progress)**
-- **Milestone 10 — MCP integration (implemented; VB-093 container CI run pending)**
+- **Milestone 10 — MCP integration (complete)**
 
 ## Working production characteristics
 
