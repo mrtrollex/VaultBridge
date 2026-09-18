@@ -4,7 +4,7 @@ This document is the current factual snapshot for future Codex sessions. It shou
 
 ## Baseline date
 
-2026-09-17
+2026-09-18
 
 ## Current development position
 
@@ -162,13 +162,24 @@ Current post-v1 planning position:
   build, stdio and disabled/enabled HTTP MCP smokes, the official Streamable HTTP client, the exact
   read-only tool set and synthetic note, authentication and Host/Origin failures, and clean
   shutdown. This is container CI evidence, not production TrueNAS runtime evidence.
+- a separate disposable TrueNAS runtime smoke built main commit `8ae99d3` from source and passed
+  `/health/live`, authenticated REST listing of synthetic `Smoke.md`, an official MCP Python client
+  connection over Streamable HTTP protocol `2026-07-28`, the exact five read-only tools, and MCP
+  `list_notes`. The production app on port `30491` remained healthy, and the disposable app, image,
+  vault, and data were removed afterward. The production vault was not used or validated.
 - VB-075 is complete with exact-source CI and exact-image runtime evidence
 - MCP write tools, OAuth, Prompts, and VaultBridge subscription features remain deferred beyond the
   implemented read-only stdio and Streamable HTTP transports
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
 
-Current `v1.1.0` release status:
+Current `v1.2.0` release-preparation status:
+
+- package, FastAPI, and MCP server metadata plus release documentation target `1.2.0`
+- no `v1.2.0` Git tag, GitHub Release, GHCR image, or TrueNAS Community catalog update exists yet
+- the existing publish workflow remains gated on a published GitHub Release
+
+Published `v1.1.0` release and distribution status:
 
 - `v1.1.0` is published from source commit `e39ed91db75f912f390c7ec915dea73369bb9252`
 - GitHub Actions publish run `33641163374` generated aliases `1.1.0`, `1.1`, `1`, and `latest` in
@@ -226,7 +237,8 @@ Current milestones:
 ## Working production characteristics
 
 - FastAPI application
-- package and FastAPI application metadata aligned to released `v1.1.0`
+- package, FastAPI application, and MCP server metadata aligned to prepared `v1.2.0`; the current
+  published GHCR image and accepted TrueNAS Community App remain on `1.1.0`
 - tracked source and reachable remote branch history passed the VB-060 public-exposure audit
 - public GitHub source was anonymously cloned and clean-built on TrueNAS SCALE / Linux amd64 with
   Docker Engine 28.3.1 using a disposable empty vault and isolated port `8876`

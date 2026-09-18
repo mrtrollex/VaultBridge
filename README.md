@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/mrtrollex/VaultBridge/releases/tag/v1.1.0"><img src="https://img.shields.io/badge/stable-v1.1.0-2f6f5e" alt="Stable release v1.1.0"></a>
+  <a href="https://github.com/mrtrollex/VaultBridge/releases/tag/v1.2.0"><img src="https://img.shields.io/badge/stable-v1.2.0-2f6f5e" alt="Stable release v1.2.0"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-356a8a" alt="MIT License"></a>
   <a href="pyproject.toml"><img src="https://img.shields.io/badge/python-3.12-3776AB?logo=python&amp;logoColor=white" alt="Python 3.12"></a>
   <a href="https://github.com/mrtrollex/VaultBridge/pkgs/container/vaultbridge"><img src="https://img.shields.io/badge/container-GHCR-181717?logo=github" alt="VaultBridge container on GHCR"></a>
@@ -30,17 +30,17 @@
   <img src="docs/assets/vaultbridge-architecture.webp" alt="VaultBridge architecture showing an AI client connected through VaultBridge to an Obsidian vault and a local semantic index" width="960">
 </p>
 
-> **Release status:** VaultBridge `v1.1.0` is the current released application and image. Its source,
-> GitHub Release, public GHCR image, and exact-image runtime were verified. The `v1.0.0` evidence
-> remains historical release evidence; see [`ROADMAP.md`](ROADMAP.md) for the current state.
+> **Release status:** VaultBridge `v1.2.0` is the prepared current application release. Its metadata
+> and documentation are aligned, but its Git tag, GitHub Release, and GHCR image have not been
+> published. The verified `v1.1.0` image remains the current published image and the image used by
+> the accepted TrueNAS Community App; see [`ROADMAP.md`](ROADMAP.md) for the current state.
 
-> **Current release:** `v1.1.0` includes a bundled Web Dashboard at `/ui/`
+> **Current application release:** `v1.2.0` includes a bundled Web Dashboard at `/ui/`
 > with a public health-backed Overview, operator-supplied API-key unlock, and tab-scoped session
-> handling plus protected literal and semantic Search. The historical `v1.0.0` image predates this
-> dashboard. VaultBridge is also available through the TrueNAS Community train in Discover Apps;
-> the documented Docker and TrueNAS Custom App workflows remain independently usable.
-> The source tree also includes read-only MCP stdio plus an opt-in Streamable HTTP `/mcp` transport
-> on the existing application port; both are additive to REST, dashboard, and CLI behavior.
+> handling plus protected literal and semantic Search. It provides read-only MCP over local stdio
+> and, when explicitly enabled, Streamable HTTP at `/mcp` on the same FastAPI process and port.
+> Streamable HTTP is disabled by default. Both MCP transports remain additive to the compatible
+> REST, dashboard, and CLI surfaces.
 
 ## Why VaultBridge
 
@@ -353,8 +353,8 @@ Published GitHub Releases also produce the same Dockerfile-based application ima
 ghcr.io/<repository-owner>/vaultbridge:<version>
 ```
 
-Use the lowercase repository owner shown on the package page. For example, for the current `v1.1.0`
-release:
+Use the lowercase repository owner shown on the package page. Until `v1.2.0` is published, the
+current published image remains `v1.1.0`:
 
 ```bash
 docker pull ghcr.io/<repository-owner>/vaultbridge:1.1.0

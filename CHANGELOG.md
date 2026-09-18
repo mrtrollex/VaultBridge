@@ -6,6 +6,39 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-09-18
+
+### Added
+
+- a read-only MCP stdio adapter using the official Python SDK, exposing exactly `list_notes`,
+  `read_note`, `search_notes`, `related_notes`, and `duplicate_candidates` plus contained Markdown
+  note Resources, without starting FastAPI, an index writer, or another service
+- an opt-in, disabled-by-default Streamable HTTP endpoint at exact `/mcp` on the existing FastAPI
+  process and port, reusing the live vault, semantic, duplicate-candidate, indexer, and lifecycle
+  owners instead of creating a second runtime
+- Bearer authentication for network MCP using the existing current and optional previous API keys,
+  the shared direct-peer rate limit, and official SDK Host and present-Origin validation
+- a repeatable real-model retrieval benchmark command that emits Markdown and JSON reports without
+  changing the deterministic evaluation baseline or production retrieval behavior
+- accepted TrueNAS Community App packaging for the published `1.1.0` image; the catalog package has
+  not yet been updated to a `1.2.0` image
+
+### Changed
+
+- full semantic synchronization now processes eligible Markdown files in deterministic path order,
+  preserving index contents and retrieval behavior while making rebuilds repeatable
+
+### Validation
+
+- GitHub Actions now exercises the built production image with MCP HTTP disabled and enabled,
+  including the official MCP client, the exact five-tool read-only surface, synthetic-note access,
+  REST compatibility, current/previous credentials, invalid Bearer/Host/Origin rejection, and clean
+  shutdown
+- a disposable source-built image from main commit `8ae99d3` passed an isolated TrueNAS runtime
+  smoke: liveness, authenticated REST listing, official Streamable HTTP protocol `2026-07-28`, the
+  exact five read-only tools, and `list_notes` against synthetic `Smoke.md`; the production app on
+  port `30491` remained healthy and all disposable smoke resources were removed afterward
+
 ## [1.1.0] - 2026-09-02
 
 ### Fixed

@@ -16,6 +16,9 @@ Installing the Community App does not automatically migrate an existing source-b
 > **Current availability:** VaultBridge is available from the TrueNAS Community catalog through
 > **Apps > Discover Apps**. The accepted package runs VaultBridge `1.1.0`, has catalog package version
 > `1.0.0`, and defaults the Web UI to port `30491`.
+>
+> The source repository is preparing application release `v1.2.0`. The accepted Community catalog
+> remains on application image `1.1.0` until a separate catalog update is published and accepted.
 
 ## Preferred installation: TrueNAS Community App
 
