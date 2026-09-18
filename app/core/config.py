@@ -24,6 +24,8 @@ class Settings(BaseModel):
         "SEMANTIC_MODEL",
         "SEMANTIC_CHUNK_CHARS",
         "SEMANTIC_CHUNK_OVERLAP",
+        "SEMANTIC_EMBED_BATCH_SIZE",
+        "SEMANTIC_ONNX_CPU_MEM_ARENA",
         "SEMANTIC_INDEX_BATCH_SIZE",
         "SEMANTIC_WATCH_ENABLED",
         "SEMANTIC_WATCH_DEBOUNCE_SECONDS",
@@ -51,6 +53,8 @@ class Settings(BaseModel):
     semantic_model: str = Field(default=DEFAULT_SEMANTIC_MODEL, alias="SEMANTIC_MODEL")
     semantic_chunk_chars: int = Field(default=600, alias="SEMANTIC_CHUNK_CHARS", ge=250)
     semantic_chunk_overlap: int = Field(default=100, alias="SEMANTIC_CHUNK_OVERLAP", ge=0)
+    semantic_embed_batch_size: int = Field(default=256, alias="SEMANTIC_EMBED_BATCH_SIZE", gt=0)
+    semantic_onnx_cpu_mem_arena: bool = Field(default=True, alias="SEMANTIC_ONNX_CPU_MEM_ARENA")
     semantic_index_batch_size: int = Field(default=25, alias="SEMANTIC_INDEX_BATCH_SIZE", gt=0)
     semantic_watch_enabled: bool = Field(default=False, alias="SEMANTIC_WATCH_ENABLED")
     semantic_watch_debounce_seconds: float = Field(

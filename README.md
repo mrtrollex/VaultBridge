@@ -421,6 +421,8 @@ host PUID:PGID  ->  container process user and group
 | `SEMANTIC_MODEL` | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` | Non-empty local model name |
 | `SEMANTIC_CHUNK_CHARS` | `600` | Integer of at least `250` |
 | `SEMANTIC_CHUNK_OVERLAP` | `100` | Non-negative and at most half the chunk size |
+| `SEMANTIC_EMBED_BATCH_SIZE` | `256` | Experimental positive FastEmbed inference batch size; lower values can reduce peak memory during indexing |
+| `SEMANTIC_ONNX_CPU_MEM_ARENA` | `true` | Experimental toggle for the ONNX Runtime CPU memory arena during semantic inference |
 | `SEMANTIC_INDEX_BATCH_SIZE` | `25` | Positive maximum notes committed per indexing transaction |
 | `SEMANTIC_WATCH_ENABLED` | `false` | Opt in to recursive external Markdown change watching |
 | `SEMANTIC_WATCH_DEBOUNCE_SECONDS` | `1.0` | Positive coalescing window for editor/synchronizer event bursts |

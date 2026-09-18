@@ -4,7 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.core.config import DEFAULT_SEMANTIC_MODEL, Settings
-from app.services.semantic_search import semantic_search_service_from_settings
+from app.services.semantic_search import FastEmbedder, semantic_search_service_from_settings
 
 
 def test_configuration_defaults_match_existing_behavior():
@@ -18,6 +18,8 @@ def test_configuration_defaults_match_existing_behavior():
     assert settings.semantic_model == DEFAULT_SEMANTIC_MODEL
     assert settings.semantic_chunk_chars == 600
     assert settings.semantic_chunk_overlap == 100
+    assert settings.semantic_embed_batch_size == 256
+    assert settings.semantic_onnx_cpu_mem_arena is True
     assert settings.semantic_index_batch_size == 25
     assert settings.semantic_watch_enabled is False
     assert settings.semantic_watch_debounce_seconds == 1.0
@@ -45,6 +47,8 @@ def test_configuration_environment_overrides(tmp_path):
             "SEMANTIC_MODEL": "example/model",
             "SEMANTIC_CHUNK_CHARS": "800",
             "SEMANTIC_CHUNK_OVERLAP": "200",
+            "SEMANTIC_EMBED_BATCH_SIZE": "32",
+            "SEMANTIC_ONNX_CPU_MEM_ARENA": "false",
             "SEMANTIC_INDEX_BATCH_SIZE": "10",
             "SEMANTIC_WATCH_ENABLED": "true",
             "SEMANTIC_WATCH_DEBOUNCE_SECONDS": "0.25",
@@ -66,6 +70,8 @@ def test_configuration_environment_overrides(tmp_path):
     assert settings.semantic_model == "example/model"
     assert settings.semantic_chunk_chars == 800
     assert settings.semantic_chunk_overlap == 200
+    assert settings.semantic_embed_batch_size == 32
+    assert settings.semantic_onnx_cpu_mem_arena is False
     assert settings.semantic_index_batch_size == 10
     assert settings.semantic_watch_enabled is True
     assert settings.semantic_watch_debounce_seconds == 0.25
@@ -89,6 +95,8 @@ def test_semantic_search_service_uses_typed_configuration(tmp_path):
         semantic_model="example/model",
         semantic_chunk_chars=800,
         semantic_chunk_overlap=200,
+        semantic_embed_batch_size=32,
+        semantic_onnx_cpu_mem_arena=False,
         semantic_index_batch_size=10,
     )
 
@@ -102,6 +110,9 @@ def test_semantic_search_service_uses_typed_configuration(tmp_path):
     assert service.chunk_chars == 800
     assert service.chunk_overlap == 200
     assert service.index_batch_size == 10
+    assert isinstance(service.embedder, FastEmbedder)
+    assert service.embedder.batch_size == 32
+    assert service.embedder.enable_cpu_mem_arena is False
 
 
 @pytest.mark.parametrize(
@@ -112,6 +123,10 @@ def test_semantic_search_service_uses_typed_configuration(tmp_path):
         ({"SEMANTIC_CHUNK_CHARS": "249"}, "SEMANTIC_CHUNK_CHARS"),
         ({"SEMANTIC_CHUNK_OVERLAP": "-1"}, "SEMANTIC_CHUNK_OVERLAP"),
         ({"SEMANTIC_CHUNK_OVERLAP": "301"}, "SEMANTIC_CHUNK_OVERLAP"),
+        ({"SEMANTIC_EMBED_BATCH_SIZE": "0"}, "SEMANTIC_EMBED_BATCH_SIZE"),
+        ({"SEMANTIC_EMBED_BATCH_SIZE": "-1"}, "SEMANTIC_EMBED_BATCH_SIZE"),
+        ({"SEMANTIC_EMBED_BATCH_SIZE": "not-an-integer"}, "SEMANTIC_EMBED_BATCH_SIZE"),
+        ({"SEMANTIC_ONNX_CPU_MEM_ARENA": "sometimes"}, "SEMANTIC_ONNX_CPU_MEM_ARENA"),
         ({"SEMANTIC_INDEX_BATCH_SIZE": "0"}, "SEMANTIC_INDEX_BATCH_SIZE"),
         ({"SEMANTIC_INDEX_BATCH_SIZE": "not-an-integer"}, "SEMANTIC_INDEX_BATCH_SIZE"),
         ({"SEMANTIC_WATCH_ENABLED": "sometimes"}, "SEMANTIC_WATCH_ENABLED"),
