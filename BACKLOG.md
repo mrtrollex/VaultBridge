@@ -1278,8 +1278,12 @@ process and port without adding a service, index owner, write capability, or tra
 
 ### VB-093 — Container-level validation for MCP Streamable HTTP — P1
 
-**Status:** Implemented on 2026-09-18; completion is pending the first successful GitHub Actions
-Docker job because Docker is unavailable on the implementation host.
+**Status:** Completed on 2026-09-18. PR #62 merged as `f03f48b`, and follow-up GitHub Actions run
+`35355236057` passed both the Python and Docker jobs. The Docker job passed Compose validation, the
+`vaultbridge:ci` image build, MCP dependency verification, the stdio MCP smoke, fresh disabled and
+enabled MCP HTTP container smokes, the official Streamable HTTP client round trip, current/previous
+authentication and invalid Bearer/Host/Origin checks, and clean container shutdown. This is
+container CI evidence, not production TrueNAS runtime validation.
 
 **Depends on:** VB-092.
 
@@ -1345,7 +1349,7 @@ VB-001 ✓
 → VB-090 ✓ (independent MCP design track)
 → VB-091 ✓ (not NEXT)
 → VB-092 IMPLEMENTED
-→ VB-093 CONTAINER VALIDATION IMPLEMENTED / CI RUN PENDING
+→ VB-093 ✓
 ```
 
 VB-057 through VB-060 close the confirmed containment, native-Windows test-portability,
@@ -1367,7 +1371,7 @@ PROGRESS**. VB-082 remains partial: the initial catalog install/form/masking/Por
 ixVolume configuration, healthy-vault, and rotation-migration checks are operator-confirmed, while
 edit-form persistence, ixVolume uninstall semantics, a valid prior-state upgrade, and rollback remain
 open. VB-090 and VB-091 complete the read-only stdio MCP design and implementation. VB-092 adds the
-opt-in read-only Streamable HTTP path, and VB-093 adds the container gate whose first GitHub Actions
-run remains pending.
+opt-in read-only Streamable HTTP path, and VB-093 completes its container CI validation. This does
+not establish production TrueNAS runtime behavior.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

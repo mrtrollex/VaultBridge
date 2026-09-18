@@ -639,7 +639,7 @@ Milestone exit criteria:
 
 ---
 
-# Milestone 10 — MCP integration — IMPLEMENTED / DOCKER VALIDATION PENDING
+# Milestone 10 — MCP integration — COMPLETE
 
 **Goal:** add MCP as a small client/integration surface over existing VaultBridge services without
 replacing REST, duplicating domain logic, or creating a permanent runtime fork.
@@ -677,10 +677,10 @@ application limiter, and parent lifespan while delegating protocol and Host/Orig
 official SDK. Legacy HTTP+SSE, a second service/container, write tools, OAuth, Prompts, and
 VaultBridge subscription features remain outside the scope.
 
-VB-093 adds the remaining production-image CI gate: fresh disabled and enabled containers from the
-exact image built by the Docker job, with official-client protocol, read-only surface, REST,
-authentication, Host/Origin, clean-shutdown, and disposable-data checks. Its first successful
-GitHub Actions run is still required before the task is complete.
+VB-093 completes the production-image CI gate. PR #62 merged as `f03f48b`, and GitHub Actions run
+`35355236057` passed fresh disabled and enabled containers from the exact image built by the Docker
+job, with official-client protocol, read-only surface, REST, authentication, Host/Origin, clean
+shutdown, and disposable-data checks.
 
 Task sequence:
 
@@ -691,7 +691,7 @@ VB-091 read-only stdio MCP server ✓
    ↓
 VB-092 read-only Streamable HTTP implemented
    ↓
-VB-093 container-level MCP HTTP validation implemented; CI run pending
+VB-093 container-level MCP HTTP validation ✓
 ```
 
 Milestone exit criteria:
@@ -705,7 +705,7 @@ Milestone exit criteria:
   official SDK's in-memory and subprocess clients
 - [x] the VB-092 read-only Streamable HTTP surface is implemented and verified locally through the
   official modern MCP client under SDK v2.1.1 and v2.2.0
-- [ ] VB-093 container smoke passes against the Docker job's exact `vaultbridge:ci` image
+- [x] VB-093 container smoke passes against the Docker job's exact `vaultbridge:ci` image
 - [x] existing REST, dashboard, CLI, ChatGPT Action, Docker, and TrueNAS behavior remains unchanged
   after implementation; PR #55's Python job passes the full suite and compile check, and its Docker
   job passes Compose validation, Linux image build, MCP dependency import in that image, and MCP
@@ -713,7 +713,8 @@ Milestone exit criteria:
 
 This milestone remains an independent post-v1 integration track. VB-091 did not replace or alter
 VB-075's release-evidence criteria, which were completed separately on 2026-09-07. VB-092 and
-VB-093 add no release or TrueNAS catalog claim; VB-093's GitHub Actions container run remains open.
+VB-093 add no release or TrueNAS catalog claim; the successful gate is container CI evidence, not
+production TrueNAS runtime validation.
 
 ---
 
@@ -827,7 +828,7 @@ VB-091 ✓ (not NEXT)
    ↓
 VB-092 IMPLEMENTED
    ↓
-VB-093 CONTAINER VALIDATION IMPLEMENTED / CI RUN PENDING
+VB-093 ✓
 ```
 
 `v1.0.0` has shipped, and VB-070 through VB-074 complete Milestone 8's dashboard design,
@@ -849,7 +850,8 @@ prerequisite. Milestone 9 package definition, official Docker-backed validation,
 and initial real-catalog installation are complete. Milestone 9 remains open because VB-082 still has
 unresolved post-merge lifecycle gates. ADR 0004 completes VB-090's MCP design-only
 work, PR #55 CI completes VB-091's read-only stdio implementation verification, VB-092 adds the
-locally verified opt-in read-only HTTP transport, and VB-093 adds its pending container CI gate.
+opt-in read-only HTTP transport, and PR #62 CI completes VB-093's production-image container gate.
+This evidence does not claim production TrueNAS runtime validation.
 
 ---
 
