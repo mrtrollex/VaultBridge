@@ -50,3 +50,6 @@ jobs:
             --entrypoint sh \
             vaultbridge:ci \
             -c 'mkdir -p /tmp/vault /tmp/data && VAULT_PATH=/tmp/vault SEMANTIC_DATA_PATH=/tmp/data python -m app.mcp_server </dev/null'
+
+      - name: Smoke MCP Streamable HTTP in container
+        run: python3 scripts/smoke_mcp_http.py --image vaultbridge:ci

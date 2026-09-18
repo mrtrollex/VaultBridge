@@ -55,9 +55,10 @@ Completed:
 - VB-090 — MCP integration architecture / ADR
 - VB-091 — Read-only MCP stdio adapter
 
-Implemented with Docker validation pending:
+Implemented with container CI validation pending:
 
 - VB-092 — Opt-in read-only MCP Streamable HTTP transport
+- VB-093 — Container-level validation for MCP Streamable HTTP (CI run pending)
 
 Post-v1 development position:
 
@@ -160,6 +161,11 @@ Current post-v1 planning position:
 - VB-092 local tests pass against both installed historical SDK `2.1.1` and current stable `2.2.0`,
   including a modern `2026-07-28` official-client tool and Resource round trip; Docker/Compose build
   and container smoke remain unverified because Docker is unavailable on the implementation host
+- VB-093 adds a GitHub Actions smoke against the exact `vaultbridge:ci` image in fresh disabled and
+  enabled containers. It checks liveness, REST, the official Streamable HTTP client, the exact
+  read-only tool set, the synthetic note, current/previous authentication, Host/Origin rejection,
+  clean shutdown, and disposable cleanup. Completion awaits a successful Docker job; this is not
+  production TrueNAS evidence.
 - VB-075 is complete with exact-source CI and exact-image runtime evidence
 - MCP write tools, OAuth, Prompts, and VaultBridge subscription features remain deferred beyond the
   implemented read-only stdio and Streamable HTTP transports
@@ -219,7 +225,7 @@ Current milestones:
 - **Milestone 7 — Distribution and `v1.0.0` (complete)**
 - **Milestone 8 — Web Dashboard / operator experience (complete)**
 - **Milestone 9 — TrueNAS Community App distribution (upstream accepted; post-merge VB-082 lifecycle validation in progress)**
-- **Milestone 10 — MCP integration (implemented; VB-092 Docker validation pending)**
+- **Milestone 10 — MCP integration (implemented; VB-093 container CI run pending)**
 
 ## Working production characteristics
 
