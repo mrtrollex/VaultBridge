@@ -677,6 +677,11 @@ application limiter, and parent lifespan while delegating protocol and Host/Orig
 official SDK. Legacy HTTP+SSE, a second service/container, write tools, OAuth, Prompts, and
 VaultBridge subscription features remain outside the scope.
 
+VB-093 adds the remaining production-image CI gate: fresh disabled and enabled containers from the
+exact image built by the Docker job, with official-client protocol, read-only surface, REST,
+authentication, Host/Origin, clean-shutdown, and disposable-data checks. Its first successful
+GitHub Actions run is still required before the task is complete.
+
 Task sequence:
 
 ```text
@@ -684,7 +689,9 @@ VB-090 MCP architecture / ADR ✓
    ↓
 VB-091 read-only stdio MCP server ✓
    ↓
-VB-092 read-only Streamable HTTP implemented; Docker gate pending
+VB-092 read-only Streamable HTTP implemented
+   ↓
+VB-093 container-level MCP HTTP validation implemented; CI run pending
 ```
 
 Milestone exit criteria:
@@ -698,16 +705,15 @@ Milestone exit criteria:
   official SDK's in-memory and subprocess clients
 - [x] the VB-092 read-only Streamable HTTP surface is implemented and verified locally through the
   official modern MCP client under SDK v2.1.1 and v2.2.0
-- [ ] VB-092 Compose validation, image build, and container runtime smoke pass in a Docker-capable
-  environment
+- [ ] VB-093 container smoke passes against the Docker job's exact `vaultbridge:ci` image
 - [x] existing REST, dashboard, CLI, ChatGPT Action, Docker, and TrueNAS behavior remains unchanged
   after implementation; PR #55's Python job passes the full suite and compile check, and its Docker
   job passes Compose validation, Linux image build, MCP dependency import in that image, and MCP
   stdio EOF smoke
 
 This milestone remains an independent post-v1 integration track. VB-091 did not replace or alter
-VB-075's release-evidence criteria, which were completed separately on 2026-09-07. VB-092 adds no
-release or TrueNAS catalog claim; its Docker-capable validation gate remains open.
+VB-075's release-evidence criteria, which were completed separately on 2026-09-07. VB-092 and
+VB-093 add no release or TrueNAS catalog claim; VB-093's GitHub Actions container run remains open.
 
 ---
 
@@ -819,7 +825,9 @@ VB-090 ✓
    ↓
 VB-091 ✓ (not NEXT)
    ↓
-VB-092 IMPLEMENTED / DOCKER VALIDATION PENDING
+VB-092 IMPLEMENTED
+   ↓
+VB-093 CONTAINER VALIDATION IMPLEMENTED / CI RUN PENDING
 ```
 
 `v1.0.0` has shipped, and VB-070 through VB-074 complete Milestone 8's dashboard design,
@@ -840,8 +848,8 @@ and VB-055 remains optional rather than a dashboard
 prerequisite. Milestone 9 package definition, official Docker-backed validation, upstream acceptance,
 and initial real-catalog installation are complete. Milestone 9 remains open because VB-082 still has
 unresolved post-merge lifecycle gates. ADR 0004 completes VB-090's MCP design-only
-work, PR #55 CI completes VB-091's read-only stdio implementation verification, and VB-092 adds the
-locally verified opt-in read-only HTTP transport with its Docker-capable gate still open.
+work, PR #55 CI completes VB-091's read-only stdio implementation verification, VB-092 adds the
+locally verified opt-in read-only HTTP transport, and VB-093 adds its pending container CI gate.
 
 ---
 

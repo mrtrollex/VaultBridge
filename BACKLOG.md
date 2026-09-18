@@ -1276,6 +1276,29 @@ process and port without adding a service, index owner, write capability, or tra
 - write tools, OAuth, Prompts, VaultBridge subscription features, standalone HTTP+SSE, a second
   semantic store/indexer, TrueNAS catalog changes, release/version selection, or publication.
 
+### VB-093 — Container-level validation for MCP Streamable HTTP — P1
+
+**Status:** Implemented on 2026-09-18; completion is pending the first successful GitHub Actions
+Docker job because Docker is unavailable on the implementation host.
+
+**Depends on:** VB-092.
+
+**Goal:** exercise the built production image with MCP HTTP disabled and enabled, including the
+official MCP client and container-level authentication and transport-security failures.
+
+**Acceptance criteria**
+
+- preserve Compose validation, the `vaultbridge:ci` image build, MCP dependency verification, and
+  MCP stdio smoke;
+- run fresh disabled and enabled containers from that exact image with disposable vault and semantic
+  data, loopback-only dynamically allocated host ports, and clean shutdown/cleanup;
+- prove liveness and authenticated REST in both modes and prove `/mcp` is absent when disabled;
+- use the official Python MCP client over Streamable HTTP to initialize, list exactly the five
+  read-only tools, and list the synthetic Markdown note;
+- reject missing and invalid Bearer credentials, invalid Host, and invalid present Origin at the
+  container boundary, and accept `API_KEY_PREVIOUS`;
+- do not publish an image or claim production TrueNAS validation.
+
 ---
 
 ## Recommended Codex sequence
@@ -1321,7 +1344,8 @@ VB-001 ✓
 → VB-082 POST-MERGE LIFECYCLE VALIDATION IN PROGRESS / PARTIAL
 → VB-090 ✓ (independent MCP design track)
 → VB-091 ✓ (not NEXT)
-→ VB-092 IMPLEMENTED / DOCKER VALIDATION PENDING
+→ VB-092 IMPLEMENTED
+→ VB-093 CONTAINER VALIDATION IMPLEMENTED / CI RUN PENDING
 ```
 
 VB-057 through VB-060 close the confirmed containment, native-Windows test-portability,
@@ -1343,6 +1367,7 @@ PROGRESS**. VB-082 remains partial: the initial catalog install/form/masking/Por
 ixVolume configuration, healthy-vault, and rotation-migration checks are operator-confirmed, while
 edit-form persistence, ixVolume uninstall semantics, a valid prior-state upgrade, and rollback remain
 open. VB-090 and VB-091 complete the read-only stdio MCP design and implementation. VB-092 adds the
-opt-in read-only Streamable HTTP path; its Docker-capable validation gate remains open.
+opt-in read-only Streamable HTTP path, and VB-093 adds the container gate whose first GitHub Actions
+run remains pending.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.
