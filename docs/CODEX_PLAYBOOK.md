@@ -4,13 +4,20 @@ Use this file when working on VaultBridge in Codex.
 
 ## Source-of-truth order
 
-For every task, use repository context in this order:
+For every task, start with the smallest authoritative context:
 
 1. `AGENTS.md` — mandatory project rules and constraints
-2. `PROJECT_STATE.md` — factual current state
-3. `ARCHITECTURE.md` — current/target boundaries
-4. `ROADMAP.md` — milestone direction
-5. `BACKLOG.md` — authoritative scope and acceptance criteria for the exact task
+2. the exact relevant section of `BACKLOG.md` — authoritative task scope and acceptance criteria
+3. the relevant implementation files and tests
+
+Load additional project documents only when the task needs them:
+
+- `PROJECT_STATE.md` when current project status, compatibility, release state, or historical evidence
+  affects the task
+- `ARCHITECTURE.md` when module boundaries, lifecycle, ownership, architecture, or cross-cutting
+  behavior matters
+- `ROADMAP.md` when milestone direction or prioritization matters
+- relevant ADRs for architecture-sensitive work
 
 If these documents disagree, do not guess. Report the inconsistency before implementation.
 
@@ -40,11 +47,13 @@ Implement <TASK-ID> from BACKLOG.md.
 Before changing code:
 
 1. Read AGENTS.md.
-2. Read PROJECT_STATE.md.
-3. Read ARCHITECTURE.md.
-4. Read ROADMAP.md.
-5. Read the exact <TASK-ID> section in BACKLOG.md.
-6. Inspect the current implementation and relevant tests.
+2. Read the exact <TASK-ID> section in BACKLOG.md.
+3. Inspect the relevant implementation files and tests.
+4. Read PROJECT_STATE.md when current project status, compatibility, release state or historical
+   evidence affects the task.
+5. Read ARCHITECTURE.md and the relevant ADRs when module boundaries, lifecycle, ownership,
+   architecture or cross-cutting behavior matters.
+6. Read ROADMAP.md when milestone direction or prioritization matters.
 
 First provide a short implementation plan.
 
@@ -75,14 +84,15 @@ Do not implement the recommended next task.
 
 ## Current next task
 
-At the current project state, the next recommended task is:
+There is currently no automatically assignable next coding task.
 
-```text
-VB-075 — Publish and verify dashboard-capable VaultBridge image
-```
+VB-082 remains an incomplete milestone and lifecycle-validation item. Its remaining gates require
+live/operator TrueNAS evidence and must not be treated as a normal autonomous coding task. VB-091 is
+complete. VB-092 is implemented, and its production-image container validation is covered by the
+completed VB-093 task.
 
-VB-090's MCP architecture is complete, but VB-091 remains planned and is not the current next task.
-Always verify this against `PROJECT_STATE.md` and `BACKLOG.md` before starting.
+Always verify current task status against the relevant `BACKLOG.md` section and, when project status
+matters, `PROJECT_STATE.md` before starting.
 
 ## Index-maintenance CLI convention
 
@@ -132,14 +142,23 @@ Compose output.
 
 ## TrueNAS deployment convention
 
-Preserve the production compatibility paths under `/mnt/Apps/AppsData/ObsidianChatGPT*`, Compose
-service `obsidian-api`, container `obsidian-chatgpt`, runtime identity `568:568`, `/vault` and `/data`
-mounts, and `8765:8000` mapping unless a separate migration task says otherwise. The primary
-deployment uses a TrueNAS-managed Custom App whose YAML includes `truenas-install.yml`; shell-managed
-Compose is a distinct alternative and must not create a duplicate serving stack. Source bundles come
-from the existing `make-bundle.ps1` `git archive` helper, preserve `.env`, and never contain or
-overwrite the external vault/data datasets. Maintenance remains stopped-service and uses an isolated
-container with the same `.env`, mounts, and semantic settings.
+The accepted VaultBridge Community App through **Apps > Discover Apps** is the preferred normal
+TrueNAS installation path. It uses the catalog-generated configuration and storage choices, pulls the
+published VaultBridge image, and currently defaults its Web UI port to `30491`.
+
+The source-built / Custom App deployment remains supported as an advanced/manual compatibility path.
+For that path, preserve the compatibility locations under
+`/mnt/Apps/AppsData/ObsidianChatGPT*`, Compose service `obsidian-api`, container
+`obsidian-chatgpt`, runtime identity `568:568`, `/vault` and `/data` mounts, and `8765:8000` mapping
+unless a separate migration task says otherwise. Its TrueNAS-managed Custom App YAML includes
+`truenas-install.yml`; shell-managed Compose is a distinct alternative and must not create a
+duplicate serving stack. Source bundles come from the existing `make-bundle.ps1` `git archive`
+helper, preserve `.env`, and never contain or overwrite the external vault/data datasets.
+Maintenance remains stopped-service and uses an isolated container with the same `.env`, mounts, and
+semantic settings.
+
+Do not apply Community App defaults such as port `30491` to the source-built compatibility path, or
+copy legacy/custom values such as `8765:8000` into the Community App contract.
 
 ## Container publication convention
 
