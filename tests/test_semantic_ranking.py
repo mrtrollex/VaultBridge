@@ -11,6 +11,9 @@ from app.services.semantic_search import SemanticSearchService
 
 
 class QueryVectorEmbedder:
+    def resolve_embedding_fingerprint(self):
+        return "embedding-v1:" + ("0" * 64)
+
     def __init__(self, vector: Sequence[float] = (1.0, 0.0)) -> None:
         self.vector = np.asarray(vector, dtype=np.float32)
 

@@ -269,6 +269,22 @@ Semantic index lifecycle state is persisted in the SQLite `meta` table as
 the transitions; `SemanticRepository` only stores the value and index data.
 Schema availability and search readiness are separate conditions.
 
+Compatibility uses a deterministic `semantic-index-v2:` signature whose canonical JSON payload
+contains schema `2`, the `v3-heading-context` content contract, model name, effective chunk size and
+overlap, and an `embedding-v1:<sha256>` fingerprint. The embedding manifest hashes the exact resolved
+ONNX model, `config.json`, `tokenizer.json`, `tokenizer_config.json`, and
+`special_tokens_map.json`, plus the application-owned FastEmbed dense-text, attention-mask mean
+pooling, float32 flattening and VaultBridge L2-normalization contract. Cache roots, timestamps,
+embedding/index batch sizes, CPU memory-arena configuration, provider selection, ONNX Runtime
+version, watcher settings and ranking configuration are deliberately excluded.
+
+The startup synchronization resolves FastEmbed with lazy ONNX loading and fingerprints its exposed
+resolved model directory before repository preparation. Until that succeeds, persisted embeddings
+are not runtime-searchable. Resolution failure records an error without replacing the stored
+signature or deleting recoverable rows. Once the identity is known, a mismatch—including every
+legacy v3 signature or missing signature with existing rows—atomically invalidates derived rows and
+starts one full rebuild. A matching signature retains normal incremental synchronization.
+
 ### Operational index maintenance
 
 `python -m app.cli` is a standard-library local interface over existing domain services. `search`
@@ -285,10 +301,12 @@ offline derived-index writes; Markdown remains authoritative and unchanged.
 `python -m app.cli index check` is a stopped-service, persisted-storage administrative view. It uses an
 immutable SQLite connection and refuses inspection when WAL/SHM sidecars exist, so the complete
 semantic storage remains filesystem-unchanged. It checks only vault inspectability, SQLite
-schema/metadata and inexpensive physical counts. A check neither constructs FastEmbed nor creates or
-changes semantic storage, and a compatible legacy index with chunks remains standalone-searchable
-without persisting a missing lifecycle state. It does not infer live process availability; `/health`
-and `/health/ready` remain authoritative for that purpose.
+schema/metadata, the recorded signature shape/configuration and inexpensive physical counts. A check
+neither constructs FastEmbed nor creates or changes semantic storage; it therefore does not re-hash
+the current local artifacts. Runtime synchronization and semantic query startup perform the exact
+artifact comparison before exposing stored vectors. A compatible fingerprinted index with chunks but
+no lifecycle state remains structurally standalone-searchable without persisting that state. The
+check does not infer live process availability; `/health` and `/health/ready` remain authoritative.
 
 `python -m app.cli index rebuild` is an explicit offline operation. The CLI validates the vault
 before the repository atomically removes derived notes, chunks, and prior signature/state
@@ -616,15 +634,17 @@ The semantic store currently needs these concepts:
 - embedding model
 - chunking configuration
 - chunker/embedding-input format version (`v3-heading-context`)
+- embedding backend contract and effective ONNX/tokenizer artifact fingerprint
 - persisted lifecycle state (`uninitialized`, `indexing`, `ready`, `error`)
 - explicit per-sync progress such as current note, percentage, batch and ETA (planned)
 - last successful full synchronization
 
 The index is **derived data**. Migrations should be used when cheap; otherwise a safe automatic
-rebuild is acceptable. A chunker-format signature change clears incompatible notes/chunks and
-rebuilds them from Markdown without a SQLite schema migration. A targeted refresh that discovers an
-older signature performs the required full rebuild before it can restore the index to `ready`, so
-embedding generations are not mixed.
+rebuild is acceptable. A content-contract or embedding-fingerprint signature change clears
+incompatible notes/chunks and rebuilds them from Markdown without a SQLite schema migration. A
+targeted refresh that discovers an older signature performs the required full rebuild before it can
+restore the index to `ready`, so embedding generations are not mixed. Missing signature metadata is
+never adopted when derived rows already exist.
 
 ---
 

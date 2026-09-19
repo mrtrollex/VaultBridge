@@ -72,6 +72,9 @@ class EvaluationMetrics:
 
 class DeterministicConceptEmbedder:
     """Map EN/SK retrieval concepts to stable vectors without loading an ML model."""
+    def resolve_embedding_fingerprint(self):
+        return "embedding-v1:" + ("0" * 64)
+
 
     _CONCEPTS = (
         (("postgresql", "postgres", "relational database", "pg_dump", "wal"), ("databaz",)),

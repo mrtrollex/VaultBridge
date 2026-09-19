@@ -188,7 +188,15 @@ class SemanticRepository:
         current = connection.execute(
             "SELECT value FROM meta WHERE key='index_signature'"
         ).fetchone()
-        signature_changed = bool(current and current["value"] != index_signature)
+        has_derived_rows = bool(
+            connection.execute(
+                "SELECT EXISTS(SELECT 1 FROM notes) OR EXISTS(SELECT 1 FROM chunks)"
+            ).fetchone()[0]
+        )
+        signature_changed = bool(
+            (current and current["value"] != index_signature)
+            or (current is None and has_derived_rows)
+        )
         if signature_changed:
             connection.execute("DELETE FROM chunks")
             connection.execute("DELETE FROM notes")

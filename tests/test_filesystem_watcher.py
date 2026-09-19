@@ -22,6 +22,9 @@ from app.services.vault import VaultService
 
 
 class ConstantEmbedder:
+    def resolve_embedding_fingerprint(self):
+        return "embedding-v1:" + ("0" * 64)
+
     def embed(self, texts):
         return [np.array([1.0, 0.1], dtype=np.float32) for _ in texts]
 

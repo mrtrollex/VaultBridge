@@ -89,6 +89,9 @@ class FakeSemanticSearchService:
 
 
 class ConstantEmbedder:
+    def resolve_embedding_fingerprint(self):
+        return "embedding-v1:" + ("0" * 64)
+
     def embed(self, texts):
         import numpy as np
 

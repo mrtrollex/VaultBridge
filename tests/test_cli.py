@@ -35,6 +35,9 @@ from app.services.semantic_search import (
 
 
 class FakeEmbedder:
+    def resolve_embedding_fingerprint(self):
+        return "embedding-v1:" + ("0" * 64)
+
     def embed(self, texts):
         return [
             np.array(
@@ -59,6 +62,9 @@ class RecordingEmbedder(FakeEmbedder):
 
 
 class FailingEmbedder:
+    def resolve_embedding_fingerprint(self):
+        return "embedding-v1:" + ("0" * 64)
+
     def __init__(self, failure: Exception) -> None:
         self.failure = failure
 

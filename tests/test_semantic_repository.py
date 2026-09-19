@@ -258,6 +258,32 @@ def test_repository_invalidates_data_when_index_signature_changes(tmp_path):
     assert repository.get_metadata("last_successful_sync") is None
 
 
+def test_repository_never_adopts_existing_rows_with_missing_signature(tmp_path):
+    repository = SemanticRepository(tmp_path / "semantic-index.sqlite3")
+    repository.prepare_index(INDEX_SIGNATURE)
+    repository.set_metadata("index_state", "ready")
+    repository.set_metadata("last_successful_sync", "2026-08-23T12:00:00+00:00")
+    with repository.transaction() as session:
+        session.replace_note(stored_note(), [stored_chunk()])
+
+    connection = sqlite3.connect(repository.db_path)
+    try:
+        connection.execute("DELETE FROM meta WHERE key='index_signature'")
+        connection.commit()
+    finally:
+        connection.close()
+
+    status = repository.prepare_index("semantic-index-v2:current")
+
+    assert status.signature_changed is True
+    assert repository.load_chunks() == []
+    with repository.transaction() as session:
+        assert session.load_notes() == {}
+    assert repository.get_metadata("index_state") is None
+    assert repository.get_metadata("last_successful_sync") is None
+    assert repository.get_metadata("index_signature") == "semantic-index-v2:current"
+
+
 def test_repository_reset_preserves_previous_success_timestamp_until_finalization(tmp_path):
     repository = SemanticRepository(tmp_path / "semantic-index.sqlite3")
     repository.prepare_index(INDEX_SIGNATURE)
