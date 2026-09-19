@@ -51,6 +51,32 @@ the task is incomplete. TrueNAS/deployment and Action/OpenAPI changes may additi
 verification. The selector complements GitHub CI and does not replace its independent checks;
 `AGENTS.md` retains the underlying commands.
 
+Once those checks pass, prepare the context for an independent review with:
+
+```text
+python scripts/agent_review.py --task-file path/to/task.md --output review_packet.md
+# Or provide short task context inline:
+python scripts/agent_review.py --task "Implement the explicitly scoped change." --output review_packet.md
+```
+
+Exactly one task source is required: `--task-file` or `--task`. `agent_review.py` does not run
+verification or invoke Codex; it captures the repository state, affected areas, expected checks,
+bounded diff, and a stable review rubric.
+Start a fresh Codex session and provide only the generated packet, not the implementer's full
+conversation or history. The reviewer must not modify files during this pass. If it reports concrete
+findings, confirm and fix only those findings, rerun `agent_check.py`, and repeat review when the fix
+materially changes the implementation.
+
+```text
+implement
+-> agent_check.py
+-> agent_review.py
+-> fresh Codex review
+-> fix confirmed findings if necessary
+-> agent_check.py again
+-> PR / CI
+```
+
 ## Dashboard browser verification
 
 Install the development dependencies, then install the only supported E2E browser with
@@ -221,33 +247,13 @@ executor/background work carries it, and do not extend queue payloads with reque
 separate backlog decision. Uvicorn access/server logging remains outside VaultBridge's JSON event
 contract.
 
-## Review prompt
+## Fresh-agent review
 
-After a significant task is implemented, run a separate review before merging:
-
-```text
-Review the changes made for <TASK-ID> as a senior Python/FastAPI maintainer.
-
-Read AGENTS.md, PROJECT_STATE.md, ARCHITECTURE.md, ROADMAP.md and the exact
-task in BACKLOG.md first.
-
-Do not modify files.
-
-Look specifically for:
-
-- acceptance-criteria gaps,
-- API regressions,
-- path/security issues,
-- authentication regressions,
-- unnecessary abstractions,
-- concurrency/lifecycle problems,
-- SQLite/index corruption risks,
-- backward-compatibility problems,
-- missing failure-case tests,
-- accidental scope creep.
-
-Report findings ordered by severity.
-```
+Use the generated `agent_review.py` packet as the review prompt. Its bounded context replaces the
+older practice of loading the full project documentation and implementer history into the reviewer.
+The packet tells the reviewer to assume the change may be wrong, inspect concrete correctness and
+risk areas, order actionable findings by severity, avoid speculative noise, and finish with one
+`APPROVE` or `FIXES REQUIRED` recommendation.
 
 If findings are confirmed:
 

@@ -74,6 +74,20 @@ also report required agent verification that must be performed separately. See
 `docs/CODEX_PLAYBOOK.md` for browser acceptance guidance.
 The selector complements GitHub CI; it does not replace CI.
 
+After automated verification passes, prepare an independent-review packet with:
+
+```bash
+python scripts/agent_review.py --task-file path/to/task.md --output review_packet.md
+```
+
+For short task context, use `--task "..."` instead of `--task-file`; exactly one task source is
+required.
+
+Give that packet to a fresh Codex session without the implementer's conversation history. The
+reviewer inspects and reports findings only; it does not modify files or commit. The normal flow is
+`implement -> agent_check.py -> agent_review.py -> fresh Codex review -> fix confirmed findings if
+necessary -> agent_check.py again -> PR / CI`. See `docs/CODEX_PLAYBOOK.md` for handoff details.
+
 The underlying canonical Python checks remain:
 
 ```bash
