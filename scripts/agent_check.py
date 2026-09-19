@@ -64,6 +64,8 @@ class DiscoveryError(RuntimeError):
 class Discovery:
     files: tuple[str, ...]
     base: str
+    base_ref: str | None = None
+    merge_base: str | None = None
 
 
 @dataclass(frozen=True)
@@ -185,7 +187,12 @@ def discover_changed_files(
     files.update(_nul_paths(_git(root, "diff", "--cached", "--no-renames", "--name-only", "-z")))
     files.update(_nul_paths(_git(root, "diff", "--no-renames", "--name-only", "-z")))
     files.update(_nul_paths(_git(root, "ls-files", "--others", "--exclude-standard", "-z")))
-    return Discovery(files=tuple(sorted(files)), base=f"{base} (merge base {merge_base[:12]})")
+    return Discovery(
+        files=tuple(sorted(files)),
+        base=f"{base} (merge base {merge_base[:12]})",
+        base_ref=base,
+        merge_base=merge_base,
+    )
 
 
 def classify_file(path: str) -> set[str]:
