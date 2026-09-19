@@ -39,41 +39,47 @@ main
   +-- ...
 ```
 
-For final local verification after implementation, run:
+For the normal end-of-task workflow after implementation, run:
+
+```text
+python scripts/agent_finish.py --task-file path/to/task.md
+# Or provide short task context inline:
+python scripts/agent_finish.py --task "Implement the explicitly scoped change."
+```
+
+Exactly one task source is required: `--task-file` or `--task`. `agent_finish.py` removes its prior
+`.agent/review_packet.md`, runs the repository-local verification selector, and creates a fresh packet
+only after all selected checks pass. It does not invoke Codex or an external service.
+
+The underlying tools remain independently usable. Run verification alone with:
 
 ```text
 python scripts/agent_check.py
 ```
 
-The repository-local selector uses the affected files to run the canonical Python, semantic,
-Docker, deployment, MCP, and UI checks that apply. A failed or required-but-unavailable check means
-the task is incomplete. TrueNAS/deployment and Action/OpenAPI changes may additionally require Codex
-verification. The selector complements GitHub CI and does not replace its independent checks;
-`AGENTS.md` retains the underlying commands.
+The selector uses the affected files to run the canonical Python, semantic, Docker, deployment, MCP,
+and UI checks that apply. A failed or required-but-unavailable check means the task is incomplete.
+TrueNAS/deployment and Action/OpenAPI changes may additionally require Codex verification. The
+selector complements GitHub CI and does not replace its independent checks; `AGENTS.md` retains the
+underlying commands.
 
-Once those checks pass, prepare the context for an independent review with:
+After standalone verification passes, generate a packet directly with
+`python scripts/agent_review.py --task-file path/to/task.md --output review_packet.md`. The review
+tool also accepts `--task`; exactly one task source is required. It does not run verification or
+invoke Codex.
 
-```text
-python scripts/agent_review.py --task-file path/to/task.md --output review_packet.md
-# Or provide short task context inline:
-python scripts/agent_review.py --task "Implement the explicitly scoped change." --output review_packet.md
-```
-
-Exactly one task source is required: `--task-file` or `--task`. `agent_review.py` does not run
-verification or invoke Codex; it captures the repository state, affected areas, expected checks,
-bounded diff, and a stable review rubric.
-Start a fresh Codex session and provide only the generated packet, not the implementer's full
-conversation or history. The reviewer must not modify files during this pass. If it reports concrete
-findings, confirm and fix only those findings, rerun `agent_check.py`, and repeat review when the fix
-materially changes the implementation.
+Start a fresh Codex session and provide only `.agent/review_packet.md` from `agent_finish.py`, not the
+implementer's full conversation or history. The reviewer must not modify files during this pass. If
+it reports concrete findings, confirm and fix only those findings, rerun `agent_finish.py`, and
+repeat review when the fix materially changes the implementation.
 
 ```text
 implement
--> agent_check.py
--> agent_review.py
--> fresh Codex review
+-> agent_finish.py
+-> fresh Codex review of .agent/review_packet.md
 -> fix confirmed findings if necessary
--> agent_check.py again
+-> agent_finish.py again
+-> APPROVE
 -> PR / CI
 ```
 

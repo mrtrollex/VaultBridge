@@ -60,7 +60,20 @@ For every implementation task:
 
 ## Required checks
 
-For implementation work, use the repository-local selector from the repository root:
+For the normal end-of-task workflow, use the repository-local wrapper from the repository root:
+
+```bash
+python scripts/agent_finish.py --task-file path/to/task.md
+```
+
+For short task context, use `--task "..."` instead of `--task-file`; exactly one task source is
+required. The wrapper runs `agent_check.py`, stops without a review packet when verification fails
+or is required-but-unavailable, and otherwise writes `.agent/review_packet.md` with
+`agent_review.py`. It does not invoke Codex. Give that packet to a fresh Codex session without the
+implementer's conversation history.
+
+The underlying tools remain independently usable. To run only the repository-local verification
+selector:
 
 ```bash
 python scripts/agent_check.py
@@ -71,22 +84,19 @@ the affected surface. A task is not complete when it reports a failed or require
 check. UI changes include the Chromium Playwright regression suite; the selector reports missing
 Python or browser support without installing it. TrueNAS/deployment and Action/OpenAPI changes may
 also report required agent verification that must be performed separately. See
-`docs/CODEX_PLAYBOOK.md` for browser acceptance guidance.
-The selector complements GitHub CI; it does not replace CI.
+`docs/CODEX_PLAYBOOK.md` for browser acceptance guidance. The selector complements GitHub CI; it
+does not replace CI.
 
-After automated verification passes, prepare an independent-review packet with:
+After standalone verification passes, `agent_review.py` can still generate a packet directly:
 
 ```bash
 python scripts/agent_review.py --task-file path/to/task.md --output review_packet.md
 ```
 
-For short task context, use `--task "..."` instead of `--task-file`; exactly one task source is
-required.
-
-Give that packet to a fresh Codex session without the implementer's conversation history. The
-reviewer inspects and reports findings only; it does not modify files or commit. The normal flow is
-`implement -> agent_check.py -> agent_review.py -> fresh Codex review -> fix confirmed findings if
-necessary -> agent_check.py again -> PR / CI`. See `docs/CODEX_PLAYBOOK.md` for handoff details.
+The reviewer inspects and reports findings only; it does not modify files or commit. The normal flow
+is `implement -> agent_finish.py -> fresh Codex review of .agent/review_packet.md -> fix confirmed
+findings if necessary -> agent_finish.py again -> APPROVE -> PR / CI`. See
+`docs/CODEX_PLAYBOOK.md` for handoff details.
 
 The underlying canonical Python checks remain:
 
