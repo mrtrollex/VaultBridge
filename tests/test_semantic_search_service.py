@@ -11,11 +11,45 @@ import pytest
 from app.repositories.semantic import SemanticRepository
 from app.services.indexer import BackgroundSemanticIndexer
 from app.services.semantic_search import (
+    FastEmbedder,
     IndexState,
     SemanticSearchService,
     SemanticSearchUnavailableError,
     TargetedSynchronizationError,
 )
+
+
+def test_fastembedder_passes_memory_tuning_to_fastembed(tmp_path, monkeypatch):
+    constructor_calls = []
+    embed_calls = []
+
+    class RecordingModel:
+        def __init__(self, **kwargs):
+            constructor_calls.append(kwargs)
+
+        def embed(self, texts, *, batch_size):
+            embed_calls.append((texts, batch_size))
+            return [np.array([1.0, 2.0], dtype=np.float32) for _ in texts]
+
+    monkeypatch.setattr("fastembed.TextEmbedding", RecordingModel)
+    embedder = FastEmbedder(
+        "example/model",
+        tmp_path / "models",
+        batch_size=32,
+        enable_cpu_mem_arena=False,
+    )
+
+    assert constructor_calls == []
+    vectors = embedder.embed(["first", "second"])
+
+    assert constructor_calls == [{
+        "model_name": "example/model",
+        "cache_dir": str(tmp_path / "models"),
+        "providers": ["CPUExecutionProvider"],
+        "enable_cpu_mem_arena": False,
+    }]
+    assert embed_calls == [(["first", "second"], 32)]
+    assert [vector.tolist() for vector in vectors] == [[1.0, 2.0], [1.0, 2.0]]
 
 
 class FakeEmbedder:

@@ -70,9 +70,20 @@ class Embedder(Protocol):
 class FastEmbedder:
     """Load the ONNX embedding model only when semantic search is first used."""
 
-    def __init__(self, model_name: str, cache_dir: Path) -> None:
+    def __init__(
+        self,
+        model_name: str,
+        cache_dir: Path,
+        *,
+        batch_size: int = 4,
+        enable_cpu_mem_arena: bool = True,
+    ) -> None:
+        if batch_size <= 0:
+            raise ValueError("batch_size must be positive")
         self.model_name = model_name
         self.cache_dir = cache_dir
+        self.batch_size = batch_size
+        self.enable_cpu_mem_arena = enable_cpu_mem_arena
         self._model = None
         self._lock = threading.Lock()
 
@@ -90,6 +101,7 @@ class FastEmbedder:
                     model_name=self.model_name,
                     cache_dir=str(self.cache_dir),
                     providers=["CPUExecutionProvider"],
+                    enable_cpu_mem_arena=self.enable_cpu_mem_arena,
                 )
         return self._model
 
@@ -97,7 +109,10 @@ class FastEmbedder:
         if not texts:
             return []
         model = self._get_model()
-        return [np.asarray(vector, dtype=np.float32) for vector in model.embed(list(texts))]
+        return [
+            np.asarray(vector, dtype=np.float32)
+            for vector in model.embed(list(texts), batch_size=self.batch_size)
+        ]
 
 
 @dataclass(frozen=True)
@@ -203,6 +218,8 @@ class SemanticSearchService:
         max_note_bytes: int = 1_000_000,
         chunk_chars: int = 600,
         chunk_overlap: int = 100,
+        embed_batch_size: int = 4,
+        onnx_cpu_mem_arena: bool = True,
         index_batch_size: int = 25,
         embedder: Embedder | None = None,
     ) -> None:
@@ -216,7 +233,12 @@ class SemanticSearchService:
         if index_batch_size <= 0:
             raise ValueError("index_batch_size must be positive")
         self.index_batch_size = index_batch_size
-        self.embedder = embedder or FastEmbedder(model_name, self.cache_dir)
+        self.embedder = embedder or FastEmbedder(
+            model_name,
+            self.cache_dir,
+            batch_size=embed_batch_size,
+            enable_cpu_mem_arena=onnx_cpu_mem_arena,
+        )
         self._sync_lock = threading.Lock()
         self._configuration_lock = threading.Lock()
         self._availability_lock = threading.Lock()
@@ -1459,6 +1481,8 @@ def semantic_search_service_from_settings(
         max_note_bytes=settings.max_note_bytes,
         chunk_chars=settings.semantic_chunk_chars,
         chunk_overlap=settings.semantic_chunk_overlap,
+        embed_batch_size=settings.semantic_embed_batch_size,
+        onnx_cpu_mem_arena=settings.semantic_onnx_cpu_mem_arena,
         index_batch_size=settings.semantic_index_batch_size,
         embedder=embedder,
     )
