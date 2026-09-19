@@ -1259,8 +1259,9 @@ size comparison.
 
 **Status:** Implemented on 2026-09-17 with local Python, Ruff, compile, official MCP v2.1.1 and
 v2.2.0 client, in-process protocol coverage, and disposable loopback runtime coverage.
-Docker/Compose validation remains unverified on this host because the Docker command is unavailable;
-no release or catalog claim is made from the local evidence.
+The implementation host did not have Docker, so the original local evidence did not include
+Docker/Compose validation. VB-093 subsequently completed production-image/container validation on
+2026-09-18; neither task makes a release, catalog, or production TrueNAS runtime claim.
 
 **Depends on:** VB-090 and VB-091.
 
