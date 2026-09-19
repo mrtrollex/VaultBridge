@@ -229,7 +229,7 @@ def _normalized_real_path(path: Path) -> str:
     return os.path.normcase(os.path.realpath(path))
 
 
-def _paths_refer_to_same_file(first: Path, second: Path) -> bool:
+def paths_refer_to_same_file(first: Path, second: Path) -> bool:
     if _normalized_real_path(first) == _normalized_real_path(second):
         return True
     try:
@@ -261,7 +261,7 @@ def main(argv: Sequence[str] | None = None, *, root: Path = REPOSITORY_ROOT) -> 
     args = parser.parse_args(argv)
     try:
         if args.task_file and args.output:
-            if _paths_refer_to_same_file(args.task_file, args.output):
+            if paths_refer_to_same_file(args.task_file, args.output):
                 raise agent_check.DiscoveryError(
                     "--task-file and --output must refer to different files; "
                     "choose a separate output path"

@@ -60,6 +60,17 @@ For every implementation task:
 
 ## Required checks
 
+Before implementation, prepare a compact task packet from the repository root:
+
+```bash
+python scripts/agent_task.py --task-file path/to/task.md
+```
+
+For short task context, use `--task "..."` instead; exactly one task source is required. The tool
+writes `.agent/task_packet.md` by default and does not invoke Codex. Start the implementation session
+with that packet, then inspect task-relevant code and authoritative documentation as needed. Use
+repeatable `--context-file` arguments only for repository files known to be relevant.
+
 For the normal end-of-task workflow, use the repository-local wrapper from the repository root:
 
 ```bash
@@ -94,8 +105,9 @@ python scripts/agent_review.py --task-file path/to/task.md --output review_packe
 ```
 
 The reviewer inspects and reports findings only; it does not modify files or commit. The normal flow
-is `implement -> agent_finish.py -> fresh Codex review of .agent/review_packet.md -> fix confirmed
-findings if necessary -> agent_finish.py again -> APPROVE -> PR / CI`. See
+is `agent_task.py -> implementation session with .agent/task_packet.md -> implement ->
+agent_finish.py -> fresh Codex review of .agent/review_packet.md -> fix confirmed findings if
+necessary -> agent_finish.py again -> APPROVE -> PR / CI`. See
 `docs/CODEX_PLAYBOOK.md` for handoff details.
 
 The underlying canonical Python checks remain:
