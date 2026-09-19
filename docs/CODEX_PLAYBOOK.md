@@ -39,7 +39,21 @@ main
   +-- ...
 ```
 
-For the normal end-of-task workflow after implementation, run:
+Before implementation, prepare the compact implementation packet:
+
+```text
+python scripts/agent_task.py --task-file path/to/task.md
+# Or provide short task context inline:
+python scripts/agent_task.py --task "Implement the explicitly scoped change."
+```
+
+Exactly one task source is required. The tool writes `.agent/task_packet.md` by default, records the
+current branch and pre-existing working-tree changes, and can embed a known relevant repository file
+with a repeatable `--context-file`. It uses conservative size limits and does not infer requirements
+from branch names or Git history, scan the repository broadly, invoke Codex, or replace direct
+inspection of task-relevant code and authoritative documentation.
+
+Start the implementation Codex session with `.agent/task_packet.md`. After implementation, run:
 
 ```text
 python scripts/agent_finish.py --task-file path/to/task.md
@@ -74,6 +88,8 @@ it reports concrete findings, confirm and fix only those findings, rerun `agent_
 repeat review when the fix materially changes the implementation.
 
 ```text
+agent_task.py
+-> start implementation Codex session with .agent/task_packet.md
 implement
 -> agent_finish.py
 -> fresh Codex review of .agent/review_packet.md
