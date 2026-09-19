@@ -12,10 +12,11 @@ from scripts import agent_check
     ("path", "expected"),
     [
         ("docs/CODEX_PLAYBOOK.md", {"docs"}),
-        ("app/api/notes.py", {"python", "api"}),
+        ("app/api/notes.py", {"python", "api", "ui"}),
         ("app/services/semantic_search.py", {"python", "semantic"}),
         ("tests/eval/retrieval_cases.json", {"semantic"}),
         ("app/ui/assets/app.js", {"ui"}),
+        ("tests/e2e/test_dashboard.py", {"python", "ui"}),
         ("app/mcp_http.py", {"python", "mcp"}),
         ("app/core/config.py", {"python", "semantic", "api", "mcp"}),
         ("Dockerfile", {"docker"}),
@@ -106,8 +107,8 @@ def test_real_git_cross_domain_renames_preserve_source_requirements(tmp_path):
         "docs/app.js",
     } <= set(discovery.files)
     assert {"mcp", "ui"} <= areas
-    assert {"docker-build", "mcp-stdio", "mcp-http"} <= selected
-    assert agent_check.BROWSER_MANUAL in agent_check.select_manual_requirements(discovery.files, areas)
+    assert {"docker-build", "mcp-stdio", "mcp-http", "playwright-e2e"} <= selected
+    assert agent_check.select_manual_requirements(discovery.files, areas) == ()
 
 
 def test_check_selection_reuses_full_pytest_for_semantic_evaluation():
@@ -117,7 +118,32 @@ def test_check_selection_reuses_full_pytest_for_semantic_evaluation():
     ruff_check = next(check for check in agent_check.available_checks() if check.key == "ruff")
     assert ruff_check.command[-3:] == ("app", "tests", "scripts")
     pytest_check = next(check for check in agent_check.available_checks() if check.key == "pytest")
-    assert pytest_check.label == "pytest (includes tests/eval)"
+    assert pytest_check.label == "pytest (unit/integration, includes tests/eval)"
+    assert pytest_check.command[-1] == "--ignore=tests/e2e"
+
+
+def test_ui_selection_adds_playwright_e2e_with_chromium_only():
+    checks = agent_check.select_checks({"ui"})
+    keys = {check.key for check in checks}
+    e2e = next(check for check in checks if check.key == "playwright-e2e")
+
+    assert keys == {"ruff", "pytest", "compileall", "playwright-e2e"}
+    assert e2e.needs_playwright is True
+    assert e2e.needs_chromium is True
+    assert "--browser=chromium" in e2e.command
+    assert "--tracing=retain-on-failure" in e2e.command
+
+
+@pytest.mark.parametrize(
+    "path",
+    sorted(agent_check.UI_BACKEND_PATHS),
+)
+def test_dashboard_backend_dependencies_select_playwright_e2e(path):
+    areas = agent_check.classify_file(path)
+    keys = {check.key for check in agent_check.select_checks(areas, [path])}
+
+    assert "ui" in areas
+    assert "playwright-e2e" in keys
 
 
 def test_mcp_selection_adds_existing_container_smokes():
@@ -210,8 +236,9 @@ def test_dry_run_runs_no_verification_commands(capsys):
     output = capsys.readouterr().out
     assert exit_code == 0
     assert "Detected areas:\n  ui" in output
-    assert "WOULD RUN pytest (includes tests/eval)" in output
-    assert "MANUAL / AGENT VERIFICATION REQUIRED browser acceptance" in output
+    assert "WOULD RUN pytest (unit/integration, includes tests/eval)" in output
+    assert "WOULD RUN Playwright E2E (Chromium)" in output
+    assert "SKIP / NOT REQUIRED manual verification" in output
     assert "Overall: DRY RUN" in output
 
 
@@ -241,8 +268,78 @@ def test_failed_required_check_returns_one(capsys):
 
     output = capsys.readouterr().out
     assert exit_code == 1
-    assert "FAIL pytest (includes tests/eval) (exit 7)" in output
+    assert "FAIL pytest (unit/integration, includes tests/eval) (exit 7)" in output
     assert "Overall: FAIL" in output
+
+
+def test_ui_check_distinguishes_missing_playwright_package(capsys):
+    executed: list[str] = []
+
+    exit_code = agent_check.main(
+        ["--changed-file", "app/ui/assets/app.js"],
+        runner=lambda check: executed.append(check.key) or 0,
+        availability=lambda check: (
+            agent_check.PLAYWRIGHT_PACKAGE_UNAVAILABLE
+            if check.key == "playwright-e2e"
+            else None
+        ),
+    )
+
+    output = capsys.readouterr().out
+    assert exit_code == 3
+    assert "playwright-e2e" not in executed
+    assert "REQUIRED BUT UNAVAILABLE Playwright E2E (Chromium)" in output
+    assert "Playwright Python package unavailable" in output
+    assert "Overall: INCOMPLETE" in output
+
+
+def test_ui_check_distinguishes_missing_chromium(capsys):
+    exit_code = agent_check.main(
+        ["--changed-file", "tests/test_ui.py"],
+        runner=lambda check: 0,
+        availability=lambda check: (
+            agent_check.PLAYWRIGHT_CHROMIUM_UNAVAILABLE
+            if check.key == "playwright-e2e"
+            else None
+        ),
+    )
+
+    output = capsys.readouterr().out
+    assert exit_code == 3
+    assert "Playwright Chromium browser unavailable" in output
+    assert "python -m playwright install chromium" in output
+
+
+def test_default_availability_checker_detects_missing_playwright_package(monkeypatch):
+    monkeypatch.setattr(agent_check, "playwright_package_available", lambda: False)
+    check = next(check for check in agent_check.available_checks() if check.key == "playwright-e2e")
+
+    assert agent_check.default_availability_checker()(check) == agent_check.PLAYWRIGHT_PACKAGE_UNAVAILABLE
+
+
+def test_default_availability_checker_detects_missing_chromium(monkeypatch, tmp_path):
+    monkeypatch.setattr(agent_check, "playwright_package_available", lambda: True)
+    monkeypatch.setattr(
+        agent_check,
+        "playwright_chromium_executable",
+        lambda: tmp_path / "missing-chromium",
+    )
+    check = next(check for check in agent_check.available_checks() if check.key == "playwright-e2e")
+
+    assert agent_check.default_availability_checker()(check) == agent_check.PLAYWRIGHT_CHROMIUM_UNAVAILABLE
+
+
+@pytest.mark.parametrize(("e2e_return_code", "expected_status"), [(0, "PASS"), (7, "FAIL")])
+def test_ui_check_reports_e2e_success_or_failure(capsys, e2e_return_code, expected_status):
+    exit_code = agent_check.main(
+        ["--changed-file", "app/ui/index.html"],
+        runner=lambda check: e2e_return_code if check.key == "playwright-e2e" else 0,
+        availability=lambda check: None,
+    )
+
+    output = capsys.readouterr().out
+    assert f"{expected_status} Playwright E2E (Chromium)" in output
+    assert exit_code == (0 if e2e_return_code == 0 else 1)
 
 
 def test_command_start_failure_is_required_but_unavailable():
