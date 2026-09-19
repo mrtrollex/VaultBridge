@@ -92,6 +92,7 @@ app/semantic.py                 legacy compatibility facade
 - [x] **VB-022 — Retrieval evaluation fixture**
 - [x] **VB-023 — Retrieval benchmark command**
 - [x] **VB-024 — Tune hybrid ranking from evaluation data**
+- [x] **VB-025 — Fingerprint semantic embedding compatibility**
 - [x] **VB-040 — Structured JSON logging**
 - [x] **VB-041 — Request IDs and latency logging**
 - [x] **VB-043 — Lightweight rate limiting**
@@ -330,6 +331,13 @@ Candidate metrics:
 - Recall@5
 - Mean Reciprocal Rank
 - latency
+
+### VB-025 — Fingerprint semantic embedding compatibility — P0 ✅
+
+The semantic index now binds stored vectors to the effective FastEmbed mean-pooling adapter contract
+and exact resolved ONNX/tokenizer artifacts. Legacy or missing signatures rebuild once from Markdown;
+identity-resolution failures keep old derived rows intact but unavailable. Runtime batch, memory,
+provider and ranking settings do not cause unnecessary rebuilds.
 
 ## Milestone 3 exit criteria
 

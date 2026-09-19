@@ -16,6 +16,9 @@ from app.services.semantic_search import (
 
 
 class ConstantEmbedder:
+    def resolve_embedding_fingerprint(self):
+        return "embedding-v1:" + ("0" * 64)
+
     def embed(self, texts):
         return [np.array([1.0, 0.1], dtype=np.float32) for _ in texts]
 
@@ -374,6 +377,9 @@ def test_next_application_startup_recovers_markdown_dropped_from_shutdown_queue(
 
 def test_background_sync_failure_sets_error_and_can_be_retried(tmp_path):
     class FailingEmbedder:
+        def resolve_embedding_fingerprint(self):
+            return "embedding-v1:" + ("0" * 64)
+
         def embed(self, texts):
             raise RuntimeError("background embedding failure")
 

@@ -4,6 +4,7 @@ import sqlite3
 import threading
 from contextlib import contextmanager
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -11,12 +12,18 @@ import pytest
 from app.repositories.semantic import SemanticRepository
 from app.services.indexer import BackgroundSemanticIndexer
 from app.services.semantic_search import (
+    FASTEMBED_BACKEND_CONTRACT_ID,
+    EmbeddingFingerprintProvider,
     FastEmbedder,
     IndexState,
+    SemanticIndexOperationError,
     SemanticSearchService,
     SemanticSearchUnavailableError,
     TargetedSynchronizationError,
+    build_embedding_fingerprint,
 )
+
+TEST_EMBEDDING_FINGERPRINT = "embedding-v1:" + ("0" * 64)
 
 
 def test_fastembedder_passes_memory_tuning_to_fastembed(tmp_path, monkeypatch):
@@ -47,12 +54,112 @@ def test_fastembedder_passes_memory_tuning_to_fastembed(tmp_path, monkeypatch):
         "cache_dir": str(tmp_path / "models"),
         "providers": ["CPUExecutionProvider"],
         "enable_cpu_mem_arena": False,
+        "lazy_load": True,
     }]
     assert embed_calls == [(["first", "second"], 32)]
     assert [vector.tolist() for vector in vectors] == [[1.0, 2.0], [1.0, 2.0]]
 
 
+def artifact_fingerprint(
+    root: Path,
+    *,
+    backend_contract: str = FASTEMBED_BACKEND_CONTRACT_ID,
+    model_content: bytes = b"model-v1",
+    tokenizer_content: bytes = b"tokenizer-v1",
+) -> str:
+    root.mkdir(parents=True)
+    files = {
+        "model_optimized.onnx": model_content,
+        "config.json": b'{"pad_token_id": 0}',
+        "tokenizer.json": tokenizer_content,
+        "tokenizer_config.json": b'{"model_max_length": 512}',
+        "special_tokens_map.json": b'{"unk_token": "[UNK]"}',
+    }
+    for name, content in files.items():
+        (root / name).write_bytes(content)
+    return build_embedding_fingerprint(
+        model_dir=root,
+        model_file="model_optimized.onnx",
+        backend_contract_id=backend_contract,
+    )
+
+
+def test_embedding_fingerprint_hashes_effective_files_and_backend_contract(tmp_path):
+    baseline = artifact_fingerprint(tmp_path / "baseline")
+    same_files_elsewhere = artifact_fingerprint(tmp_path / "other-cache")
+    different_backend = artifact_fingerprint(
+        tmp_path / "different-backend",
+        backend_contract="fastembed-dense-text/cls/vaultbridge-float32-flat-l2/v1",
+    )
+    different_model = artifact_fingerprint(
+        tmp_path / "different-model",
+        model_content=b"model-v2",
+    )
+    different_tokenizer = artifact_fingerprint(
+        tmp_path / "different-tokenizer",
+        tokenizer_content=b"tokenizer-v2",
+    )
+
+    assert same_files_elsewhere == baseline
+    assert different_backend != baseline
+    assert different_model != baseline
+    assert different_tokenizer != baseline
+
+
+def test_embedding_fingerprint_ignores_cache_path_and_timestamps(tmp_path):
+    first_root = tmp_path / "first" / "snapshot"
+    second_root = tmp_path / "second" / "unrelated" / "snapshot"
+    first = artifact_fingerprint(first_root)
+    second = artifact_fingerprint(second_root)
+    for offset, path in enumerate(second_root.iterdir(), start=1):
+        os.utime(path, (1_000_000 + offset, 2_000_000 + offset))
+
+    assert build_embedding_fingerprint(
+        model_dir=second_root,
+        model_file="model_optimized.onnx",
+        backend_contract_id=FASTEMBED_BACKEND_CONTRACT_ID,
+    ) == second == first
+
+
+def test_fastembedder_fingerprint_uses_resolved_model_object(tmp_path, monkeypatch):
+    model_dir = tmp_path / "resolved-snapshot"
+    expected = artifact_fingerprint(model_dir)
+
+    class ResolvedModel:
+        def __init__(self):
+            self._model_dir = model_dir
+            self.model_description = SimpleNamespace(model_file="model_optimized.onnx")
+
+    resolved = ResolvedModel()
+    implementation = f"{type(resolved).__module__}.{type(resolved).__qualname__}"
+    monkeypatch.setattr(
+        "app.services.semantic_search.FASTEMBED_POOLED_IMPLEMENTATION",
+        implementation,
+    )
+    embedder = FastEmbedder(
+        "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+        tmp_path / "unused-cache-layout",
+    )
+    monkeypatch.setattr(embedder, "_get_model", lambda: SimpleNamespace(model=resolved))
+
+    assert embedder.resolve_embedding_fingerprint() == expected
+
+
+def test_fastembedder_compatibility_cache_invalidation_discards_lazy_backend(tmp_path):
+    embedder = FastEmbedder("example/model", tmp_path / "models")
+    embedder._model = object()
+    embedder._embedding_fingerprint = "embedding-v1:" + ("1" * 64)
+
+    embedder.invalidate_embedding_compatibility_cache()
+
+    assert embedder._model is None
+    assert embedder._embedding_fingerprint is None
+
+
 class FakeEmbedder:
+    def resolve_embedding_fingerprint(self):
+        return TEST_EMBEDDING_FINGERPRINT
+
     def embed(self, texts):
         vectors = []
         for text in texts:
@@ -130,18 +237,34 @@ def semantic_service(
     chunk_overlap: int = 50,
     index_batch_size: int = 25,
     repository=None,
+    embed_batch_size: int = 4,
+    onnx_cpu_mem_arena: bool = True,
+    embedding_fingerprint: str | None = None,
 ) -> SemanticSearchService:
     vault_root = tmp_path / "vault"
     vault_root.mkdir(exist_ok=True)
+
+    resolved_embedder = embedder or FakeEmbedder()
+
+    if (
+        embedding_fingerprint is None
+        and not isinstance(resolved_embedder, EmbeddingFingerprintProvider)
+    ):
+        embedding_fingerprint = TEST_EMBEDDING_FINGERPRINT
+
     return SemanticSearchService(
         vault_root=vault_root,
-        repository=repository or SemanticRepository(tmp_path / "data" / "semantic-index.sqlite3"),
+        repository=repository
+        or SemanticRepository(tmp_path / "data" / "semantic-index.sqlite3"),
         model_name=model_name,
         max_note_bytes=1_000_000,
         chunk_chars=chunk_chars,
         chunk_overlap=chunk_overlap,
+        embed_batch_size=embed_batch_size,
+        onnx_cpu_mem_arena=onnx_cpu_mem_arena,
         index_batch_size=index_batch_size,
-        embedder=embedder or FakeEmbedder(),
+        embedder=resolved_embedder,
+        embedding_fingerprint=embedding_fingerprint,
     )
 
 
@@ -208,7 +331,12 @@ def test_restart_converts_interrupted_indexing_state_to_error(tmp_path):
     restarted = semantic_service(tmp_path)
 
     assert restarted.state is IndexState.ERROR
-    assert restarted.repository.get_metadata("index_state") == "error"
+    assert restarted.repository.get_metadata("index_state") == "indexing"
+
+    restarted.sync()
+
+    assert restarted.state is IndexState.READY
+    assert restarted.repository.get_metadata("index_state") == "ready"
 
 
 def test_signature_mismatch_invalidates_index_and_resets_state(tmp_path):
@@ -216,15 +344,21 @@ def test_signature_mismatch_invalidates_index_and_resets_state(tmp_path):
     (service.vault_root / "note.md").write_text("TrueNAS backup storage.", encoding="utf-8")
     service.sync()
     assert service.state is IndexState.READY
+    old_chunks = service.repository.load_chunks()
 
     changed = semantic_service(tmp_path, model_name="different/model")
 
     assert changed.state is IndexState.UNINITIALIZED
     assert changed.is_storage_initialized() is True
-    assert changed.repository.load_chunks() == []
+    assert changed.repository.load_chunks() == old_chunks
 
-    changed.sync()
+    assert changed.sync() == {
+        "indexed": 1,
+        "unchanged": 0,
+        "removed": 0,
+    }
     assert changed.state is IndexState.READY
+    assert changed.repository.get_metadata("index_signature") == changed.index_signature
 
 
 def test_legacy_compatible_index_without_state_is_inferred_ready_once(tmp_path):
@@ -240,9 +374,16 @@ def test_legacy_compatible_index_without_state_is_inferred_ready_once(tmp_path):
 
     restarted = semantic_service(tmp_path)
 
+    # Read-only state inference must not mutate persisted lifecycle metadata.
     assert restarted.state is IndexState.READY
-    assert restarted.repository.get_metadata("index_state") == "ready"
+    assert restarted.repository.get_metadata("index_state") is None
 
+    assert restarted.sync() == {
+        "indexed": 0,
+        "unchanged": 1,
+        "removed": 0,
+    }
+    assert restarted.repository.get_metadata("index_state") == "ready"
 
 def test_sync_indexes_incrementally_without_loading_real_model(tmp_path):
     service = semantic_service(tmp_path)
@@ -1735,6 +1876,7 @@ def test_v2_heading_aware_signature_is_invalidated_without_schema_migration(tmp_
     service = semantic_service(tmp_path)
     (service.vault_root / "note.md").write_text("# Note\n\nBody.", encoding="utf-8")
     service.sync()
+    old_chunks = service.repository.load_chunks()
     service.repository.set_metadata(
         "index_signature",
         "v2-heading-aware|example/model|300|50",
@@ -1742,12 +1884,23 @@ def test_v2_heading_aware_signature_is_invalidated_without_schema_migration(tmp_
 
     restarted = semantic_service(tmp_path)
 
-    assert restarted.index_signature == "v3-heading-context|example/model|300|50"
+    assert restarted.index_signature.startswith("semantic-index-v2:")
+    assert '"content_contract":"v3-heading-context"' in restarted.index_signature
     assert restarted.state is IndexState.UNINITIALIZED
-    assert restarted.repository.load_chunks() == []
 
+    # Compatibility checks are read-only. Legacy derived rows survive until the
+    # synchronized rebuild has validated the replacement embedding backend.
+    assert restarted.repository.load_chunks() == old_chunks
 
-def test_compatible_v3_heading_context_index_is_reused(tmp_path):
+    assert restarted.sync() == {
+        "indexed": 1,
+        "unchanged": 0,
+        "removed": 0,
+    }
+    assert restarted.state is IndexState.READY
+    assert restarted.repository.get_metadata("index_signature") == restarted.index_signature
+
+def test_compatible_fingerprinted_heading_context_index_is_reused(tmp_path):
     service = semantic_service(tmp_path)
     note = service.vault_root / "note.md"
     note.write_text("# Note\n\nBody.", encoding="utf-8")
@@ -1761,6 +1914,337 @@ def test_compatible_v3_heading_context_index_is_reused(tmp_path):
     assert restarted.repository.load_chunks() == original_chunks
     assert restarted.sync() == {"indexed": 0, "unchanged": 1, "removed": 0}
     assert embedder.calls == []
+
+
+@pytest.mark.parametrize(
+    "changed_fingerprint",
+    [
+        pytest.param(
+            lambda root: artifact_fingerprint(
+                root,
+                backend_contract="fastembed-dense-text/cls/vaultbridge-float32-flat-l2/v1",
+            ),
+            id="backend-contract",
+        ),
+        pytest.param(
+            lambda root: artifact_fingerprint(root, model_content=b"model-v2"),
+            id="onnx-artifact",
+        ),
+        pytest.param(
+            lambda root: artifact_fingerprint(root, tokenizer_content=b"tokenizer-v2"),
+            id="tokenizer-artifact",
+        ),
+    ],
+)
+def test_embedding_fingerprint_change_invalidates_and_rebuilds_index(
+    tmp_path,
+    changed_fingerprint,
+):
+    baseline_fingerprint = artifact_fingerprint(tmp_path / "baseline-artifacts")
+    original = semantic_service(
+        tmp_path,
+        embedding_fingerprint=baseline_fingerprint,
+    )
+    (original.vault_root / "note.md").write_text("# Note\n\nBody.", encoding="utf-8")
+    original.sync()
+    old_chunks = original.repository.load_chunks()
+
+    recorder = RecordingEmbedder()
+    changed = semantic_service(
+        tmp_path,
+        embedder=recorder,
+        embedding_fingerprint=changed_fingerprint(tmp_path / "changed-artifacts"),
+    )
+
+    assert changed.health_status().search_available is False
+    assert changed.repository.load_chunks() == old_chunks
+    assert changed.sync() == {"indexed": 1, "unchanged": 0, "removed": 0}
+    assert len(recorder.calls) == 1
+    assert changed.repository.get_metadata("index_signature") == changed.index_signature
+
+
+@pytest.mark.parametrize(
+    "runtime_tuning",
+    [
+        pytest.param({"embed_batch_size": 32}, id="embedding-batch-size"),
+        pytest.param({"onnx_cpu_mem_arena": False}, id="cpu-memory-arena"),
+    ],
+)
+def test_identical_effective_artifacts_reuse_index_across_runtime_tuning_changes(
+    tmp_path,
+    runtime_tuning,
+):
+    first_fingerprint = artifact_fingerprint(tmp_path / "cache-a")
+    second_fingerprint = artifact_fingerprint(tmp_path / "cache-b")
+    original = semantic_service(
+        tmp_path,
+        embedding_fingerprint=first_fingerprint,
+        embed_batch_size=4,
+        onnx_cpu_mem_arena=True,
+    )
+    (original.vault_root / "note.md").write_text("# Note\n\nBody.", encoding="utf-8")
+    original.sync()
+    original_chunks = original.repository.load_chunks()
+
+    recorder = RecordingEmbedder()
+    restarted = semantic_service(
+        tmp_path,
+        embedder=recorder,
+        embedding_fingerprint=second_fingerprint,
+        **runtime_tuning,
+    )
+
+    assert restarted.index_signature == original.index_signature
+    assert restarted.state is IndexState.READY
+    assert restarted.sync() == {"indexed": 0, "unchanged": 1, "removed": 0}
+    assert restarted.repository.load_chunks() == original_chunks
+    assert recorder.calls == []
+
+
+def test_legacy_v3_signature_rebuilds_once_and_new_signature_is_reusable(tmp_path):
+    service = semantic_service(tmp_path)
+    (service.vault_root / "note.md").write_text("# Note\n\nBody.", encoding="utf-8")
+    service.sync()
+    service.repository.set_metadata(
+        "index_signature",
+        "v3-heading-context|example/model|300|50",
+    )
+
+    rebuilding_embedder = RecordingEmbedder()
+    migrated = semantic_service(tmp_path, embedder=rebuilding_embedder)
+    assert migrated.health_status().search_available is False
+    assert migrated.sync() == {"indexed": 1, "unchanged": 0, "removed": 0}
+    assert len(rebuilding_embedder.calls) == 1
+
+    reuse_embedder = RecordingEmbedder()
+    restarted = semantic_service(tmp_path, embedder=reuse_embedder)
+    assert restarted.sync() == {"indexed": 0, "unchanged": 1, "removed": 0}
+    assert reuse_embedder.calls == []
+
+
+def test_missing_signature_with_existing_rows_is_never_adopted(tmp_path):
+    service = semantic_service(tmp_path)
+    (service.vault_root / "note.md").write_text("# Note\n\nBody.", encoding="utf-8")
+    service.sync()
+    connection = sqlite3.connect(service.db_path)
+    try:
+        connection.execute("DELETE FROM meta WHERE key='index_signature'")
+        connection.commit()
+    finally:
+        connection.close()
+
+    recorder = RecordingEmbedder()
+    restarted = semantic_service(tmp_path, embedder=recorder)
+
+    assert restarted.health_status().search_available is False
+    assert restarted.sync() == {"indexed": 1, "unchanged": 0, "removed": 0}
+    assert len(recorder.calls) == 1
+    assert restarted.repository.get_metadata("index_signature") == restarted.index_signature
+
+
+def test_injected_embedder_without_fingerprint_is_rejected(tmp_path):
+    class UnfingerprintedEmbedder:
+        def embed(self, texts):
+            return [np.array([1.0, 0.0], dtype=np.float32) for _ in texts]
+
+    vault_root = tmp_path / "vault"
+    vault_root.mkdir()
+
+    service = SemanticSearchService(
+        vault_root=vault_root,
+        repository=SemanticRepository(
+            tmp_path / "data" / "semantic-index.sqlite3"
+        ),
+        embedder=UnfingerprintedEmbedder(),
+    )
+
+    with pytest.raises(
+        SemanticIndexOperationError,
+        match="cannot resolve a compatibility fingerprint",
+    ):
+        service.sync()
+
+def test_incompatible_backend_validation_failure_preserves_old_index_and_retry_recovers(
+    tmp_path,
+):
+    original = semantic_service(tmp_path)
+    (original.vault_root / "note.md").write_text("# Note\n\nBody.", encoding="utf-8")
+    original.sync()
+    original_signature = original.repository.get_metadata("index_signature")
+    original_last_successful_sync = original.repository.get_metadata(
+        "last_successful_sync"
+    )
+    with original.repository.transaction() as session:
+        original_notes = session.load_notes()
+    original_chunks = original.repository.load_chunks()
+
+    class RetryableValidationEmbedder(FakeEmbedder):
+        def __init__(self):
+            self.fail_validation = True
+            self.validation_calls = 0
+            self.fingerprint = "embedding-v1:" + ("1" * 64)
+
+        def resolve_embedding_fingerprint(self):
+            return self.fingerprint
+
+        def validate_embedding_backend(self):
+            self.validation_calls += 1
+            if self.fail_validation:
+                raise ValueError("readable but invalid ONNX backend")
+
+    embedder = RetryableValidationEmbedder()
+    restarted = semantic_service(tmp_path, embedder=embedder)
+
+    with pytest.raises(
+        SemanticIndexOperationError,
+        match="Embedding backend validation failed",
+    ):
+        restarted.sync()
+
+    assert embedder.validation_calls == 1
+    assert restarted.repository.get_metadata("index_signature") == original_signature
+    assert (
+        restarted.repository.get_metadata("last_successful_sync")
+        == original_last_successful_sync
+    )
+    with restarted.repository.transaction() as session:
+        assert session.load_notes() == original_notes
+    assert restarted.repository.load_chunks() == original_chunks
+    assert restarted.health_status().state is IndexState.ERROR
+    assert restarted.health_status().search_available is False
+
+    embedder.fail_validation = False
+    failed_fingerprint = embedder.fingerprint
+    embedder.fingerprint = "embedding-v1:" + ("2" * 64)
+
+    assert restarted.sync() == {
+        "indexed": 1,
+        "unchanged": 0,
+        "removed": 0,
+    }
+    assert embedder.validation_calls == 2
+    assert restarted.repository.get_metadata("index_signature") == restarted.index_signature
+    assert embedder.fingerprint in restarted.index_signature
+    assert failed_fingerprint not in restarted.index_signature
+    assert restarted.state is IndexState.READY
+
+
+    reuse_embedder = RecordingEmbedder()
+    reuse_embedder.resolve_embedding_fingerprint = lambda: embedder.fingerprint
+    compatible_restart = semantic_service(tmp_path, embedder=reuse_embedder)
+
+    assert compatible_restart.sync() == {
+        "indexed": 0,
+        "unchanged": 1,
+        "removed": 0,
+    }
+    assert reuse_embedder.calls == []
+
+
+def test_explicit_fingerprint_remains_authoritative_after_validation_failure(tmp_path):
+    original = semantic_service(tmp_path)
+    (original.vault_root / "note.md").write_text("# Note\n\nBody.", encoding="utf-8")
+    original.sync()
+
+    class ExplicitFingerprintValidator:
+        def __init__(self):
+            self.fail_validation = True
+
+        def validate_embedding_backend(self):
+            if self.fail_validation:
+                raise ValueError("backend unavailable")
+
+        def embed(self, texts):
+            return [np.array([1.0, 0.0], dtype=np.float32) for _ in texts]
+
+    embedder = ExplicitFingerprintValidator()
+    explicit_fingerprint = "embedding-v1:" + ("3" * 64)
+    restarted = semantic_service(
+        tmp_path,
+        embedder=embedder,
+        embedding_fingerprint=explicit_fingerprint,
+    )
+
+    with pytest.raises(SemanticIndexOperationError):
+        restarted.sync()
+
+    embedder.fail_validation = False
+    assert restarted.sync() == {"indexed": 1, "unchanged": 0, "removed": 0}
+    assert explicit_fingerprint in restarted.index_signature
+
+
+def test_unexpected_fingerprint_provider_error_propagates_unchanged(tmp_path):
+    class BrokenFingerprintProvider(FakeEmbedder):
+        def resolve_embedding_fingerprint(self):
+            raise AssertionError("provider invariant violated")
+
+    service = semantic_service(tmp_path, embedder=BrokenFingerprintProvider())
+
+    with pytest.raises(AssertionError, match="provider invariant violated"):
+        service.sync()
+
+
+def test_malformed_provider_fingerprint_is_an_operational_error(tmp_path):
+    class MalformedFingerprintProvider(FakeEmbedder):
+        def resolve_embedding_fingerprint(self):
+            return "not-a-fingerprint"
+
+    service = semantic_service(tmp_path, embedder=MalformedFingerprintProvider())
+
+    with pytest.raises(
+        SemanticIndexOperationError,
+        match="Embedding fingerprint resolution failed",
+    ) as raised:
+        service.sync()
+
+    assert isinstance(raised.value.__cause__, ValueError)
+
+
+def test_compatible_restart_does_not_force_backend_validation(tmp_path):
+    class CountingValidator(FakeEmbedder):
+        def __init__(self):
+            self.validation_calls = 0
+
+        def validate_embedding_backend(self):
+            self.validation_calls += 1
+
+    first_embedder = CountingValidator()
+    first = semantic_service(tmp_path, embedder=first_embedder)
+    (first.vault_root / "note.md").write_text("# Note\n\nBody.", encoding="utf-8")
+    first.sync()
+    assert first_embedder.validation_calls == 0
+
+    restarted_embedder = CountingValidator()
+    restarted = semantic_service(tmp_path, embedder=restarted_embedder)
+
+    assert restarted.sync() == {"indexed": 0, "unchanged": 1, "removed": 0}
+    assert restarted_embedder.validation_calls == 0
+
+
+def test_fingerprint_resolution_failure_preserves_rows_and_disables_search(tmp_path):
+    service = semantic_service(tmp_path)
+    (service.vault_root / "note.md").write_text("# Note\n\nBody.", encoding="utf-8")
+    service.sync()
+    original_signature = service.repository.get_metadata("index_signature")
+    original_chunks = service.repository.load_chunks()
+
+    class FailingFingerprintEmbedder(FakeEmbedder):
+        def resolve_embedding_fingerprint(self):
+            raise SemanticIndexOperationError("model artifact identity unavailable")
+
+    failed = semantic_service(tmp_path, embedder=FailingFingerprintEmbedder())
+
+    with pytest.raises(
+        SemanticIndexOperationError,
+        match="model artifact identity unavailable",
+    ):
+        failed.sync()
+
+    assert failed.repository.get_metadata("index_signature") == original_signature
+    assert failed.repository.load_chunks() == original_chunks
+    assert failed.health_status().state is IndexState.ERROR
+    assert failed.health_status().search_available is False
+    assert failed.use_persisted_index_for_read_only_search() is False
 
 
 @pytest.mark.parametrize(
@@ -1779,11 +2263,22 @@ def test_v3_index_configuration_changes_invalidate_all_chunks(
     service = semantic_service(tmp_path)
     (service.vault_root / "note.md").write_text("# Note\n\nBody.", encoding="utf-8")
     service.sync()
+    old_chunks = service.repository.load_chunks()
 
     changed = semantic_service(tmp_path, **changed_configuration)
 
     assert changed.state is IndexState.UNINITIALIZED
-    assert changed.repository.load_chunks() == []
+
+    # Read-side compatibility detection must preserve recoverable old rows.
+    assert changed.repository.load_chunks() == old_chunks
+
+    assert changed.sync() == {
+        "indexed": 1,
+        "unchanged": 0,
+        "removed": 0,
+    }
+    assert changed.state is IndexState.READY
+    assert changed.repository.get_metadata("index_signature") == changed.index_signature
 
 
 def test_targeted_refresh_against_v2_index_runs_safe_full_v3_rebuild(tmp_path, monkeypatch):

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import re
 import threading
@@ -12,7 +13,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from itertools import batched
 from pathlib import Path, PurePosixPath, PureWindowsPath
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 import numpy as np
 
@@ -31,6 +32,19 @@ DEFAULT_MODEL = DEFAULT_SEMANTIC_MODEL
 INDEX_STATE_METADATA_KEY = "index_state"
 LAST_SUCCESSFUL_SYNC_METADATA_KEY = "last_successful_sync"
 INDEX_FORMAT_VERSION = "v3-heading-context"
+INDEX_SIGNATURE_PREFIX = "semantic-index-v2:"
+EMBEDDING_FINGERPRINT_PREFIX = "embedding-v1:"
+FASTEMBED_BACKEND_CONTRACT_ID = (
+    "fastembed-dense-text/attention-mask-mean/"
+    "vaultbridge-float32-flat-l2/v1"
+)
+FASTEMBED_POOLED_IMPLEMENTATION = "fastembed.text.pooled_embedding.PooledEmbedding"
+TOKENIZER_ARTIFACT_FILES = (
+    "config.json",
+    "tokenizer.json",
+    "tokenizer_config.json",
+    "special_tokens_map.json",
+)
 HEADING_DIGEST_LENGTH = 12
 SEMANTIC_RANK_WEIGHT = 1.0
 LEXICAL_RANK_WEIGHT = 0.70
@@ -67,6 +81,81 @@ class Embedder(Protocol):
     def embed(self, texts: Sequence[str]) -> list[np.ndarray]: ...
 
 
+@runtime_checkable
+class EmbeddingFingerprintProvider(Protocol):
+    def resolve_embedding_fingerprint(self) -> str: ...
+
+
+@runtime_checkable
+class EmbeddingBackendValidator(Protocol):
+    def validate_embedding_backend(self) -> None: ...
+
+
+@runtime_checkable
+class EmbeddingCompatibilityCache(Protocol):
+    def invalidate_embedding_compatibility_cache(self) -> None: ...
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as artifact:
+        for block in iter(lambda: artifact.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def build_embedding_fingerprint(
+    *,
+    model_dir: Path,
+    model_file: str,
+    backend_contract_id: str,
+) -> str:
+    """Hash the effective inference files and explicit adapter contract."""
+    try:
+        resolved_model_dir = model_dir.resolve(strict=True)
+    except OSError:
+        raise SemanticIndexOperationError(
+            "FastEmbed resolved model directory is unavailable"
+        ) from None
+    logical_files = (model_file, *TOKENIZER_ARTIFACT_FILES)
+    artifacts: list[dict[str, str]] = []
+    for logical_name in logical_files:
+        normalized_name = PurePosixPath(logical_name.replace("\\", "/"))
+        if normalized_name.is_absolute() or ".." in normalized_name.parts:
+            raise SemanticIndexOperationError(
+                f"FastEmbed artifact path is invalid: {logical_name}"
+            )
+        artifact_path = resolved_model_dir / Path(*normalized_name.parts)
+        try:
+            artifact_is_file = artifact_path.is_file()
+        except OSError:
+            artifact_is_file = False
+        if not artifact_is_file:
+            raise SemanticIndexOperationError(
+                f"FastEmbed artifact is unavailable: {logical_name}"
+            )
+        try:
+            artifact_digest = _sha256_file(artifact_path)
+        except OSError:
+            raise SemanticIndexOperationError(
+                f"FastEmbed artifact could not be read: {logical_name}"
+            ) from None
+        artifacts.append({"name": normalized_name.as_posix(), "sha256": artifact_digest})
+
+    manifest = {
+        "artifacts": sorted(artifacts, key=lambda artifact: artifact["name"]),
+        "backend_contract": backend_contract_id,
+        "schema": 1,
+    }
+    encoded = json.dumps(
+        manifest,
+        ensure_ascii=True,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    return f"{EMBEDDING_FINGERPRINT_PREFIX}{hashlib.sha256(encoded).hexdigest()}"
+
+
 class FastEmbedder:
     """Load the ONNX embedding model only when semantic search is first used."""
 
@@ -85,6 +174,7 @@ class FastEmbedder:
         self.batch_size = batch_size
         self.enable_cpu_mem_arena = enable_cpu_mem_arena
         self._model = None
+        self._embedding_fingerprint: str | None = None
         self._lock = threading.Lock()
 
     def _get_model(self):
@@ -102,8 +192,83 @@ class FastEmbedder:
                     cache_dir=str(self.cache_dir),
                     providers=["CPUExecutionProvider"],
                     enable_cpu_mem_arena=self.enable_cpu_mem_arena,
+                    lazy_load=True,
                 )
         return self._model
+
+    def resolve_embedding_fingerprint(self) -> str:
+        if self._embedding_fingerprint is not None:
+            return self._embedding_fingerprint
+
+        model = self._get_model()
+        with self._lock:
+            if self._embedding_fingerprint is not None:
+                return self._embedding_fingerprint
+            resolved_model = getattr(model, "model", None)
+            implementation = (
+                f"{type(resolved_model).__module__}.{type(resolved_model).__qualname__}"
+            )
+            if (
+                self.model_name.casefold() == DEFAULT_MODEL.casefold()
+                and implementation != FASTEMBED_POOLED_IMPLEMENTATION
+            ):
+                raise SemanticIndexOperationError(
+                    "FastEmbed did not resolve the expected attention-mask mean-pooling "
+                    "implementation"
+                )
+            backend_contract_id = (
+                FASTEMBED_BACKEND_CONTRACT_ID
+                if implementation == FASTEMBED_POOLED_IMPLEMENTATION
+                else (
+                    "fastembed-dense-text/"
+                    f"model-specific:{implementation}/"
+                    "vaultbridge-float32-flat-l2/v1"
+                )
+            )
+            model_dir = getattr(resolved_model, "_model_dir", None)
+            description = getattr(resolved_model, "model_description", None)
+            model_file = getattr(description, "model_file", None)
+            if not isinstance(model_dir, Path) or not isinstance(model_file, str):
+                raise SemanticIndexOperationError(
+                    "FastEmbed did not expose the resolved model artifacts"
+                )
+            self._embedding_fingerprint = build_embedding_fingerprint(
+                model_dir=model_dir,
+                model_file=model_file,
+                backend_contract_id=backend_contract_id,
+            )
+            return self._embedding_fingerprint
+
+    def invalidate_embedding_compatibility_cache(self) -> None:
+        """Discard artifact identity and partially initialized lazy backend state."""
+        with self._lock:
+            self._embedding_fingerprint = None
+            self._model = None
+
+    def validate_embedding_backend(self) -> None:
+        """Force one real inference before an incompatible persisted index is discarded."""
+        try:
+            vectors = self.embed(("VaultBridge semantic compatibility probe",))
+        except SemanticIndexOperationError:
+            raise
+        except Exception as exc:
+            raise SemanticIndexOperationError(
+                "FastEmbed backend validation failed"
+            ) from exc
+
+        if len(vectors) != 1:
+            raise SemanticIndexOperationError(
+                "FastEmbed backend validation returned an unexpected vector count"
+            )
+        vector = np.asarray(vectors[0], dtype=np.float32).reshape(-1)
+        if (
+            vector.size == 0
+            or not np.all(np.isfinite(vector))
+            or float(np.linalg.norm(vector)) == 0
+        ):
+            raise SemanticIndexOperationError(
+                "FastEmbed backend validation returned an invalid embedding"
+            )
 
     def embed(self, texts: Sequence[str]) -> list[np.ndarray]:
         if not texts:
@@ -222,6 +387,7 @@ class SemanticSearchService:
         onnx_cpu_mem_arena: bool = True,
         index_batch_size: int = 25,
         embedder: Embedder | None = None,
+        embedding_fingerprint: str | None = None,
     ) -> None:
         self.vault_root = vault_root
         self.repository = repository
@@ -233,20 +399,31 @@ class SemanticSearchService:
         if index_batch_size <= 0:
             raise ValueError("index_batch_size must be positive")
         self.index_batch_size = index_batch_size
-        self.embedder = embedder or FastEmbedder(
-            model_name,
-            self.cache_dir,
-            batch_size=embed_batch_size,
-            enable_cpu_mem_arena=onnx_cpu_mem_arena,
-        )
+        if embedder is None:
+            self.embedder = FastEmbedder(
+                model_name,
+                self.cache_dir,
+                batch_size=embed_batch_size,
+                enable_cpu_mem_arena=onnx_cpu_mem_arena,
+            )
+        else:
+            self.embedder = embedder
         self._sync_lock = threading.Lock()
         self._configuration_lock = threading.Lock()
         self._availability_lock = threading.Lock()
         self._embed_lock = threading.Lock()
+        self._fingerprint_lock = threading.Lock()
         self._search_available = False
         self._persisted_read_only_search = False
         self._state_init_lock = threading.Lock()
         self._state_initialized = False
+        self._fingerprint_resolution_failed = False
+        self._explicit_index_signature = (
+            self._build_index_signature(embedding_fingerprint)
+            if embedding_fingerprint is not None
+            else None
+        )
+        self._resolved_index_signature = self._explicit_index_signature
 
     @property
     def db_path(self) -> Path:
@@ -254,7 +431,144 @@ class SemanticSearchService:
 
     @property
     def index_signature(self) -> str:
-        return f"{INDEX_FORMAT_VERSION}|{self.model_name}|{self.chunk_chars}|{self.chunk_overlap}"
+        return self._resolve_index_signature(persist_failure=False)
+
+    def _build_index_signature(self, embedding_fingerprint: str) -> str:
+        if not re.fullmatch(r"embedding-v1:[0-9a-f]{64}", embedding_fingerprint):
+            raise ValueError("Embedding fingerprint must use the embedding-v1 SHA-256 format")
+        payload = {
+            "chunk_chars": self.chunk_chars,
+            "chunk_overlap": self.chunk_overlap,
+            "content_contract": INDEX_FORMAT_VERSION,
+            "embedding_fingerprint": embedding_fingerprint,
+            "model": self.model_name,
+            "schema": 2,
+        }
+        return INDEX_SIGNATURE_PREFIX + json.dumps(
+            payload,
+            ensure_ascii=True,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+
+    def _stored_signature_matches_configuration(self, signature: str | None) -> bool:
+        if signature is None or not signature.startswith(INDEX_SIGNATURE_PREFIX):
+            return False
+        try:
+            payload = json.loads(signature.removeprefix(INDEX_SIGNATURE_PREFIX))
+        except (TypeError, ValueError):
+            return False
+        return (
+            isinstance(payload, dict)
+            and payload.get("schema") == 2
+            and payload.get("content_contract") == INDEX_FORMAT_VERSION
+            and payload.get("model") == self.model_name
+            and payload.get("chunk_chars") == self.chunk_chars
+            and payload.get("chunk_overlap") == self.chunk_overlap
+            and isinstance(payload.get("embedding_fingerprint"), str)
+            and re.fullmatch(
+                r"embedding-v1:[0-9a-f]{64}",
+                payload["embedding_fingerprint"],
+            )
+            is not None
+        )
+
+    def _resolve_index_signature(self, *, persist_failure: bool) -> str:
+        if self._resolved_index_signature is not None:
+            return self._resolved_index_signature
+        with self._fingerprint_lock:
+            if self._resolved_index_signature is not None:
+                return self._resolved_index_signature
+            try:
+                if not isinstance(self.embedder, EmbeddingFingerprintProvider):
+                    raise SemanticIndexOperationError(
+                        "Embedding backend cannot resolve a compatibility fingerprint"
+                    )
+                embedding_fingerprint = self.embedder.resolve_embedding_fingerprint()
+                try:
+                    resolved_signature = self._build_index_signature(
+                        embedding_fingerprint
+                    )
+                except (TypeError, ValueError) as exc:
+                    raise SemanticIndexOperationError(
+                        "Embedding fingerprint resolution failed"
+                    ) from exc
+            except SemanticIndexOperationError as exc:
+                self._fingerprint_resolution_failed = True
+                self._set_search_available(False)
+                if persist_failure and self.repository.storage_initialized():
+                    try:
+                        self._persist_state(IndexState.ERROR)
+                    except Exception:
+                        pass
+                log_event(
+                    logger,
+                    logging.ERROR,
+                    "semantic_embedding_fingerprint_failed",
+                    "Semantic embedding fingerprint resolution failed",
+                    index_state=IndexState.ERROR,
+                    error_type=type(exc).__name__,
+                )
+                raise
+
+            self._resolved_index_signature = resolved_signature
+            self._fingerprint_resolution_failed = False
+            return resolved_signature
+
+    def _invalidate_dynamic_compatibility_cache(self) -> None:
+        with self._fingerprint_lock:
+            if isinstance(self.embedder, EmbeddingCompatibilityCache):
+                self.embedder.invalidate_embedding_compatibility_cache()
+            self._resolved_index_signature = self._explicit_index_signature
+
+    def _validate_backend_before_destructive_prepare(
+        self,
+        *,
+        persist_failure: bool,
+    ) -> None:
+        if self._resolved_index_signature is None:
+            raise SemanticIndexOperationError(
+                "Embedding fingerprint has not been resolved"
+            )
+
+        storage = self.repository.read_status()
+        needs_validation = (
+            storage.storage_initialized
+            and not storage.storage_error
+            and storage.index_signature != self._resolved_index_signature
+            and bool(storage.indexed_notes or storage.semantic_chunks)
+        )
+        if not needs_validation or not isinstance(
+            self.embedder, EmbeddingBackendValidator
+        ):
+            return
+
+        try:
+            self.embedder.validate_embedding_backend()
+        except Exception as exc:
+            self._invalidate_dynamic_compatibility_cache()
+            self._fingerprint_resolution_failed = True
+            self._set_search_available(False)
+            if persist_failure and self.repository.storage_initialized():
+                try:
+                    self._persist_state(IndexState.ERROR)
+                except Exception:
+                    pass
+            log_event(
+                logger,
+                logging.ERROR,
+                "semantic_embedding_backend_validation_failed",
+                "Semantic embedding backend validation failed",
+                index_state=IndexState.ERROR,
+                error_type=type(exc).__name__,
+            )
+            if isinstance(exc, SemanticIndexOperationError):
+                raise
+            raise SemanticIndexOperationError(
+                "Embedding backend validation failed"
+            ) from exc
+
+        self._fingerprint_resolution_failed = False
 
     def _persist_state(self, state: IndexState) -> IndexState:
         self.repository.set_metadata(INDEX_STATE_METADATA_KEY, state.value)
@@ -268,14 +582,42 @@ class SemanticSearchService:
             return self._persist_state(IndexState.ERROR if value else IndexState.UNINITIALIZED)
 
     def _initialize_state(self, *, create_storage: bool) -> IndexState:
+        if self._resolved_index_signature is None:
+            try:
+                self._resolve_index_signature(persist_failure=create_storage)
+            except SemanticIndexOperationError:
+                if create_storage:
+                    raise
+                return IndexState.ERROR
+
+        if self._fingerprint_resolution_failed and not create_storage:
+            return IndexState.ERROR
         if self._state_initialized:
             return self._read_persisted_state()
 
         with self._state_init_lock:
             if self._state_initialized:
                 return self._read_persisted_state()
-            if not create_storage and not self.repository.storage_initialized():
-                return IndexState.UNINITIALIZED
+
+            if not create_storage:
+                storage = self.repository.read_status()
+                if not storage.storage_initialized:
+                    return IndexState.UNINITIALIZED
+                if storage.storage_error:
+                    return IndexState.ERROR
+                if storage.index_signature != self._resolved_index_signature:
+                    return IndexState.UNINITIALIZED
+                if storage.index_state is None:
+                    return (
+                        IndexState.READY
+                        if storage.semantic_chunks
+                        else IndexState.UNINITIALIZED
+                    )
+                try:
+                    state = IndexState(storage.index_state)
+                except ValueError:
+                    return IndexState.ERROR
+                return IndexState.ERROR if state is IndexState.INDEXING else state
 
             storage = self.repository.prepare_index(self.index_signature)
             if storage.signature_changed:
@@ -327,7 +669,8 @@ class SemanticSearchService:
         compatible_storage = (
             storage_initialized
             and not storage_error
-            and index_signature == self.index_signature
+            and self._resolved_index_signature is not None
+            and index_signature == self._resolved_index_signature
         )
         if not compatible_storage:
             return False
@@ -355,7 +698,8 @@ class SemanticSearchService:
         if not (
             storage_initialized
             and not storage_error
-            and index_signature == self.index_signature
+            and self._resolved_index_signature is not None
+            and index_signature == self._resolved_index_signature
         ):
             return False
         with self._availability_lock:
@@ -364,9 +708,13 @@ class SemanticSearchService:
 
     def _health_status_from_storage(self, storage: SemanticIndexStatus) -> SemanticHealthStatus:
         compatible_storage = (
-            storage.storage_initialized and storage.index_signature == self.index_signature
+            storage.storage_initialized
+            and self._resolved_index_signature is not None
+            and storage.index_signature == self._resolved_index_signature
         )
         if storage.storage_error:
+            state = IndexState.ERROR
+        elif self._fingerprint_resolution_failed:
             state = IndexState.ERROR
         elif not compatible_storage:
             state = IndexState.UNINITIALIZED
@@ -405,7 +753,7 @@ class SemanticSearchService:
         compatible_storage = (
             storage.storage_initialized
             and not storage.storage_error
-            and storage.index_signature == self.index_signature
+            and self._stored_signature_matches_configuration(storage.index_signature)
         )
         if storage.storage_error:
             state = IndexState.ERROR
@@ -427,12 +775,10 @@ class SemanticSearchService:
             signature_compatible=compatible_storage,
             persisted_state=storage.index_state,
             state=state,
-            search_available=self._stored_index_available_from_storage(
-                storage_initialized=storage.storage_initialized,
-                storage_error=storage.storage_error,
-                index_signature=storage.index_signature,
-                index_state=storage.index_state,
-                has_chunks=bool(storage.semantic_chunks),
+            search_available=compatible_storage
+            and (
+                storage.index_state == IndexState.READY.value
+                or (storage.index_state is None and bool(storage.semantic_chunks))
             ),
             indexed_notes=storage.indexed_notes,
             semantic_chunks=storage.semantic_chunks,
@@ -460,6 +806,10 @@ class SemanticSearchService:
 
     def use_persisted_index_for_read_only_search(self) -> bool:
         """Enable this instance to search a compatible persisted index without lifecycle writes."""
+        try:
+            self._resolve_index_signature(persist_failure=False)
+        except Exception:
+            return False
         try:
             storage = self.repository.read_immutable_status()
         except ImmutableIndexInspectionUnavailableError:
@@ -1326,6 +1676,8 @@ class SemanticSearchService:
     def sync(self, cancel_event: threading.Event | None = None) -> dict[str, int]:
         """Index only new/changed notes and remove deleted notes."""
         with self._sync_lock:
+            self._resolve_index_signature(persist_failure=True)
+            self._validate_backend_before_destructive_prepare(persist_failure=True)
             return self._run_synchronization_locked(
                 lambda: self._sync_all_locked(cancel_event),
                 operation_name="full",
@@ -1335,6 +1687,8 @@ class SemanticSearchService:
     def rebuild(self, cancel_event: threading.Event | None = None) -> dict[str, int]:
         """Discard derived semantic state and rebuild it from the Markdown vault."""
         with self._sync_lock:
+            self._resolve_index_signature(persist_failure=True)
+            self._validate_backend_before_destructive_prepare(persist_failure=True)
             self._set_search_available(False)
             self.repository.reset_index(self.index_signature, IndexState.UNINITIALIZED.value)
             with self._state_init_lock:
@@ -1356,6 +1710,8 @@ class SemanticSearchService:
             return {"indexed": 0, "unchanged": 0, "removed": 0}
 
         with self._sync_lock:
+            self._resolve_index_signature(persist_failure=True)
+            self._validate_backend_before_destructive_prepare(persist_failure=True)
             initial_state = self._initialize_state(create_storage=True)
             with self._availability_lock:
                 search_available = self._search_available

@@ -307,6 +307,23 @@ No arbitrary weight changes without before/after evaluation results.
 - controlled ablations prove semantic, lexical, heading-context and multilingual sensitivity,
 - no API, schema, embedding, chunking, index-signature or dependency change was introduced.
 
+### VB-025 — Fingerprint semantic embedding compatibility — P0 ✅
+
+**Status:** Completed on 2026-09-19.
+
+**Implemented behavior**
+
+- the versioned semantic signature retains the `v3-heading-context` content contract, model and
+  effective chunk settings and adds an embedding implementation fingerprint;
+- the fingerprint combines an application-owned FastEmbed attention-mask mean-pooling,
+  VaultBridge-float32/L2 contract with hashes of the exact resolved ONNX and tokenizer/config files;
+- FastEmbed is pinned to `0.8.0`, while runtime memory/batch/provider and ranking settings remain
+  outside compatibility;
+- legacy v3 or missing signatures with existing derived rows trigger one safe full rebuild and are
+  never exposed as compatible runtime search data;
+- artifact-resolution failure leaves recoverable rows/signature intact, reports semantic error state
+  and remains retryable.
+
 ---
 
 ## Knowledge operations

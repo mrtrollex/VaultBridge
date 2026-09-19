@@ -215,6 +215,9 @@ def test_application_logging_configuration_does_not_duplicate_json_handler():
 
 
 class ConstantEmbedder:
+    def resolve_embedding_fingerprint(self):
+        return "embedding-v1:" + ("0" * 64)
+
     def embed(self, texts: Sequence[str]) -> list[np.ndarray]:
         return [np.asarray([1.0, 0.0], dtype=np.float32) for _ in texts]
 
@@ -389,6 +392,9 @@ def test_semantic_lifecycle_logs_safe_start_completion_and_failure_events(tmp_pa
     assert "private semantic query" not in success_raw
 
     class FailingEmbedder:
+        def resolve_embedding_fingerprint(self):
+            return "embedding-v1:" + ("0" * 64)
+
         def embed(self, _texts):
             raise RuntimeError("private note content secret-api-key")
 

@@ -15,6 +15,9 @@ from app.services.vault import VaultService
 
 
 class FakeEmbedder:
+    def resolve_embedding_fingerprint(self):
+        return "embedding-v1:" + ("0" * 64)
+
     def embed(self, texts):
         vectors = []
         for text in texts:
@@ -700,6 +703,9 @@ def test_health_reports_ready_after_successful_empty_vault_index(tmp_path):
 
 def test_related_notes_returns_503_after_initial_background_index_failure(tmp_path):
     class FailingEmbedder:
+        def resolve_embedding_fingerprint(self):
+            return "embedding-v1:" + ("0" * 64)
+
         def embed(self, texts):
             raise RuntimeError("background embedding failure")
 

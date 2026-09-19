@@ -19,6 +19,9 @@ from app.services.vault import VaultService
 
 
 class ConstantEmbedder:
+    def resolve_embedding_fingerprint(self):
+        return "embedding-v1:" + ("0" * 64)
+
     def __init__(self) -> None:
         self.calls = 0
 
@@ -28,6 +31,9 @@ class ConstantEmbedder:
 
 
 class FailingEmbedder:
+    def resolve_embedding_fingerprint(self):
+        return "embedding-v1:" + ("0" * 64)
+
     def __init__(self) -> None:
         self.calls = 0
 
@@ -619,12 +625,24 @@ def test_readiness_short_circuits_semantic_storage_when_vault_is_missing(tmp_pat
 
 
 def test_readiness_accepts_compatible_legacy_index_without_persisted_state(tmp_path):
-    source_client, service = health_client(tmp_path, semantic_indexer=StatusOnlyIndexer())
-    (service.vault_root / "note.md").write_text("TrueNAS backup storage.", encoding="utf-8")
+    source_client, service = health_client(
+        tmp_path,
+        semantic_indexer=StatusOnlyIndexer(),
+    )
+    (service.vault_root / "note.md").write_text(
+        "TrueNAS backup storage.",
+        encoding="utf-8",
+    )
     service.sync()
+
     with sqlite3.connect(service.repository.db_path) as connection:
-        connection.execute("DELETE FROM meta WHERE key=?", (INDEX_STATE_METADATA_KEY,))
+        connection.execute(
+            "DELETE FROM meta WHERE key=?",
+            (INDEX_STATE_METADATA_KEY,),
+        )
         connection.commit()
+
+    embedder = ConstantEmbedder()
 
     restarted = SemanticSearchService(
         vault_root=service.vault_root,
@@ -634,7 +652,8 @@ def test_readiness_accepts_compatible_legacy_index_without_persisted_state(tmp_p
         chunk_chars=service.chunk_chars,
         chunk_overlap=service.chunk_overlap,
         index_batch_size=service.index_batch_size,
-        embedder=ConstantEmbedder(),
+        embedder=embedder,
+        embedding_fingerprint=embedder.resolve_embedding_fingerprint(),
     )
     application = main.create_app(
         settings=source_client.app.state.settings,
