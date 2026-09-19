@@ -24,9 +24,38 @@ jobs:
       - name: Tests
         env:
           PYTHONPATH: .
-        run: pytest -q
+        run: pytest -q --ignore=tests/e2e
       - name: Compile check
         run: python -m compileall -q app
+
+  dashboard-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Install Playwright Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Dashboard E2E
+        env:
+          PYTHONPATH: .
+        run: >-
+          pytest -q tests/e2e
+          --browser=chromium
+          --tracing=retain-on-failure
+          --output=test-results/playwright
+      - name: Upload Playwright failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-playwright-failure
+          path: test-results/playwright/
+          if-no-files-found: ignore
+          retention-days: 7
 
   docker:
     runs-on: ubuntu-latest

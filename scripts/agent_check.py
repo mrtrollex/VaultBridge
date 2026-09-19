@@ -10,6 +10,7 @@ or invocation failed, and 3 means a required check was unavailable. Dry-run exit
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import os
 import shutil
 import subprocess
@@ -35,10 +36,23 @@ TRUENAS_PATHS = {
     "truenas-install.yml",
 }
 TRUENAS_PREFIX = "ix-dev/community/vaultbridge/"
-BROWSER_MANUAL = "browser acceptance"
+UI_BACKEND_PATHS = {
+    "app/api/dependencies.py",
+    "app/api/health.py",
+    "app/api/notes.py",
+    "app/api/search.py",
+    "app/core/http_security.py",
+    "app/main.py",
+}
 TRUENAS_MANUAL = "TrueNAS deployment/package validation"
 ACTION_OPENAPI_MANUAL = (
     "ChatGPT Action/OpenAPI operation IDs must be checked against actual FastAPI endpoints"
+)
+PLAYWRIGHT_PACKAGE_UNAVAILABLE = (
+    "Playwright Python package unavailable; install development dependencies from requirements-dev.txt"
+)
+PLAYWRIGHT_CHROMIUM_UNAVAILABLE = (
+    "Playwright Chromium browser unavailable; run: python -m playwright install chromium"
 )
 
 
@@ -60,6 +74,8 @@ class Check:
     environment: tuple[tuple[str, str], ...] = ()
     needs_docker: bool = False
     needs_compose: bool = False
+    needs_playwright: bool = False
+    needs_chromium: bool = False
 
 
 @dataclass(frozen=True)
@@ -221,7 +237,12 @@ def classify_file(path: str) -> set[str]:
     ):
         areas.add("api")
 
-    if normalized.startswith("app/ui/") or normalized == "tests/test_ui.py":
+    if (
+        normalized.startswith("app/ui/")
+        or normalized.startswith("tests/e2e/")
+        or normalized == "tests/test_ui.py"
+        or normalized in UI_BACKEND_PATHS
+    ):
         areas.add("ui")
 
     if normalized in {
@@ -262,8 +283,6 @@ def classify_files(paths: Sequence[str]) -> set[str]:
 
 def select_manual_requirements(paths: Sequence[str], areas: set[str]) -> tuple[str, ...]:
     requirements: list[str] = []
-    if "ui" in areas:
-        requirements.append(BROWSER_MANUAL)
     if any(
         (path in TRUENAS_PATHS or path.startswith(TRUENAS_PREFIX))
         and path != "compose.truenas.yml"
@@ -280,8 +299,30 @@ def available_checks() -> tuple[Check, ...]:
     python_path = (("PYTHONPATH", str(REPOSITORY_ROOT)),)
     return (
         Check("ruff", "ruff", (python, "-m", "ruff", "check", "app", "tests", "scripts")),
-        Check("pytest", "pytest (includes tests/eval)", (python, "-m", "pytest", "-q"), python_path),
+        Check(
+            "pytest",
+            "pytest (unit/integration, includes tests/eval)",
+            (python, "-m", "pytest", "-q", "--ignore=tests/e2e"),
+            python_path,
+        ),
         Check("compileall", "compileall", (python, "-m", "compileall", "-q", "app")),
+        Check(
+            "playwright-e2e",
+            "Playwright E2E (Chromium)",
+            (
+                python,
+                "-m",
+                "pytest",
+                "-q",
+                "tests/e2e",
+                "--browser=chromium",
+                "--tracing=retain-on-failure",
+                "--output=test-results/playwright",
+            ),
+            python_path,
+            needs_playwright=True,
+            needs_chromium=True,
+        ),
         Check(
             "compose",
             "docker compose config",
@@ -357,6 +398,8 @@ def select_checks(areas: set[str], paths: Sequence[str] = ()) -> tuple[Check, ..
     selected: set[str] = set()
     if areas & {"python", "semantic", "api", "ui", "mcp", "docker"}:
         selected.update(("ruff", "pytest", "compileall"))
+    if "ui" in areas:
+        selected.add("playwright-e2e")
     if "docker" in areas:
         selected.update(("compose", "docker-build"))
     if "compose.truenas.yml" in paths:
@@ -377,10 +420,41 @@ def default_command_runner(check: Check) -> int:
     return completed.returncode
 
 
+def playwright_package_available() -> bool:
+    return (
+        importlib.util.find_spec("playwright") is not None
+        and importlib.util.find_spec("pytest_playwright") is not None
+    )
+
+
+def playwright_chromium_executable() -> Path:
+    from playwright.sync_api import sync_playwright
+
+    with sync_playwright() as playwright:
+        return Path(playwright.chromium.executable_path)
+
+
 def default_availability_checker() -> AvailabilityChecker:
     cache: dict[str, str | None] = {}
 
     def probe(check: Check) -> str | None:
+        if check.needs_playwright:
+            if "playwright" not in cache:
+                package_available = playwright_package_available()
+                cache["playwright"] = None if package_available else PLAYWRIGHT_PACKAGE_UNAVAILABLE
+            if cache["playwright"] is not None:
+                return cache["playwright"]
+            if check.needs_chromium:
+                if "chromium" not in cache:
+                    try:
+                        executable = playwright_chromium_executable()
+                        cache["chromium"] = (
+                            None if executable.is_file() else PLAYWRIGHT_CHROMIUM_UNAVAILABLE
+                        )
+                    except Exception:
+                        cache["chromium"] = PLAYWRIGHT_CHROMIUM_UNAVAILABLE
+                if cache["chromium"] is not None:
+                    return cache["chromium"]
         if not check.needs_docker:
             return None
         if "docker" not in cache:

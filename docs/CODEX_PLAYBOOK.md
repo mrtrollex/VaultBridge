@@ -47,9 +47,21 @@ python scripts/agent_check.py
 
 The repository-local selector uses the affected files to run the canonical Python, semantic,
 Docker, deployment, MCP, and UI checks that apply. A failed or required-but-unavailable check means
-the task is incomplete. UI, TrueNAS/deployment, and Action/OpenAPI changes may additionally require
-Codex verification. The selector complements GitHub CI and does not replace its independent checks;
+the task is incomplete. TrueNAS/deployment and Action/OpenAPI changes may additionally require Codex
+verification. The selector complements GitHub CI and does not replace its independent checks;
 `AGENTS.md` retains the underlying commands.
+
+## Dashboard browser verification
+
+Install the development dependencies, then install the only supported E2E browser with
+`python -m playwright install chromium`. The Playwright suite under `tests/e2e/` is persistent
+known-regression protection against a disposable local VaultBridge instance; it never uses an
+operator vault, credentials, semantic model download, Docker, or an external service.
+
+Codex browser inspection is exploratory acceptance verification for new user-visible behavior.
+Playwright passing does not replace that inspection when a significant new interaction benefits
+from it, but manual browser exploration is not a duplicate mandatory gate for every trivial UI or
+CSS change when the automated regression coverage is sufficient.
 
 ## Standard implementation prompt
 

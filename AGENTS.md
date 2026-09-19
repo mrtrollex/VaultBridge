@@ -68,15 +68,18 @@ python scripts/agent_check.py
 
 It discovers branch, staged, unstaged, and relevant untracked changes, then selects the checks for
 the affected surface. A task is not complete when it reports a failed or required-but-unavailable
-check. UI, TrueNAS/deployment, and Action/OpenAPI changes may also report required agent verification
-that must be performed separately.
+check. UI changes include the Chromium Playwright regression suite; the selector reports missing
+Python or browser support without installing it. TrueNAS/deployment and Action/OpenAPI changes may
+also report required agent verification that must be performed separately. See
+`docs/CODEX_PLAYBOOK.md` for browser acceptance guidance.
 The selector complements GitHub CI; it does not replace CI.
 
 The underlying canonical Python checks remain:
 
 ```bash
 ruff check app tests scripts
-PYTHONPATH=. pytest -q
+PYTHONPATH=. pytest -q --ignore=tests/e2e
+python -m pytest -q tests/e2e --browser=chromium
 python -m compileall -q app
 ```
 
