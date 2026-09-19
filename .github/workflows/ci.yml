@@ -19,6 +19,8 @@ jobs:
           cache: pip
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
+      - name: Ruff
+        run: ruff check app tests scripts
       - name: Tests
         env:
           PYTHONPATH: .

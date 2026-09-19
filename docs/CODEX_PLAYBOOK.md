@@ -39,6 +39,18 @@ main
   +-- ...
 ```
 
+For final local verification after implementation, run:
+
+```text
+python scripts/agent_check.py
+```
+
+The repository-local selector uses the affected files to run the canonical Python, semantic,
+Docker, deployment, MCP, and UI checks that apply. A failed or required-but-unavailable check means
+the task is incomplete. UI, TrueNAS/deployment, and Action/OpenAPI changes may additionally require
+Codex verification. The selector complements GitHub CI and does not replace its independent checks;
+`AGENTS.md` retains the underlying commands.
+
 ## Standard implementation prompt
 
 ```text

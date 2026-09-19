@@ -60,9 +60,22 @@ For every implementation task:
 
 ## Required checks
 
-From repository root:
+For implementation work, use the repository-local selector from the repository root:
 
 ```bash
+python scripts/agent_check.py
+```
+
+It discovers branch, staged, unstaged, and relevant untracked changes, then selects the checks for
+the affected surface. A task is not complete when it reports a failed or required-but-unavailable
+check. UI, TrueNAS/deployment, and Action/OpenAPI changes may also report required agent verification
+that must be performed separately.
+The selector complements GitHub CI; it does not replace CI.
+
+The underlying canonical Python checks remain:
+
+```bash
+ruff check app tests scripts
 PYTHONPATH=. pytest -q
 python -m compileall -q app
 ```
