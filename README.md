@@ -124,6 +124,18 @@ standards-based compatibility statement, not a claim that every browser/version 
 Actual browser and production-image evidence is tracked separately in
 [`docs/DASHBOARD_RELEASE_CHECKLIST.md`](docs/DASHBOARD_RELEASE_CHECKLIST.md).
 
+<p align="center">
+  <img src="docs/assets/vaultbridge-dashboard-overview.png" alt="VaultBridge dashboard Overview showing a ready local semantic index" width="720">
+</p>
+
+<p align="center">
+  <img src="docs/assets/vaultbridge-dashboard-about.png" alt="VaultBridge dashboard About view describing its local-first, API-first design" width="720">
+</p>
+
+These screenshots were captured from the running TrueNAS canary dashboard without browser chrome,
+API keys, note content, paths, or private host details. The Overview exposes only the same public
+health facts returned by `/health`.
+
 ### MCP
 
 VaultBridge can be launched as a local, read-only MCP server for MCP-capable clients:

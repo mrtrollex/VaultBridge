@@ -43,6 +43,13 @@ The ixVolume uninstall retain/remove choices, upgrade from a valid prior Communi
 rollback remain separate lifecycle gates; see
 [`docs/VB_082_TRUENAS_LIFECYCLE_RUNBOOK.md`](docs/VB_082_TRUENAS_LIFECYCLE_RUNBOOK.md).
 
+The repository includes sanitized, real canary captures of the public
+[Overview](docs/assets/vaultbridge-dashboard-overview.png) and
+[About](docs/assets/vaultbridge-dashboard-about.png) views for a future catalog metadata update.
+They contain no API key, note content, private path, or browser address. The currently accepted
+catalog metadata remains upstream-owned and will not display them until a separate `truenas/apps`
+change uploads the assets to the TrueNAS media CDN and references those supplied URLs.
+
 ## Source-built Custom App deployment
 
 The remainder of this guide documents the known-working source-built Custom App path. It remains a

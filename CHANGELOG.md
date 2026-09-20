@@ -6,6 +6,12 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ## [Unreleased]
 
+### Added
+
+- a branded dashboard favicon that reuses the existing bundled VaultBridge logo
+- sanitized real-application dashboard screenshots prepared for a future TrueNAS catalog metadata
+  update without changing the published `v1.2.0` release or accepted catalog package
+
 ## [1.2.0] - 2026-09-20
 
 ### Added
