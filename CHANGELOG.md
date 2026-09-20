@@ -6,6 +6,8 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-09-20
+
 ### Added
 
 - a branded dashboard favicon that reuses the existing bundled VaultBridge logo

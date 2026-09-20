@@ -17,9 +17,11 @@ Installing the Community App does not automatically migrate an existing source-b
 > **Apps > Discover Apps**. The accepted package runs VaultBridge `1.1.0`, has catalog package version
 > `1.0.0`, and defaults the Web UI to port `30491`.
 >
-> VaultBridge `v1.2.0` is the latest stable application and GHCR release. The accepted Community
-> catalog remains on application image `1.1.0`; publishing `v1.2.0` did not update the catalog or
-> complete the remaining VB-082 lifecycle gates. See the
+> VaultBridge `v1.2.0` is the latest stable application and GHCR release. Source metadata is prepared
+> for a future `v1.2.1` patch release, but it has not been published. The accepted Community catalog
+> remains on package `1.0.0` and application image `1.1.0`; a separate upstream review would target
+> package `1.0.1`, application image `1.2.1`, and reviewer-supplied TrueNAS CDN screenshot URLs.
+> Repository screenshot URLs are preview/source material only. See the
 > [`v1.2.0` release evidence](docs/RELEASE_CHECKLIST.md#v120-release-evidence).
 
 ## Preferred installation: TrueNAS Community App
