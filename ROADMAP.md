@@ -27,11 +27,12 @@
 
 ---
 
-# Current project state — `v1.1.0` released; `v1.0.0` history preserved
+# Current project state — `v1.2.0` source prepared; `v1.1.0` remains published
 
-VaultBridge `v1.1.0` is the current released application and image. Its release, exact-source CI,
-image, and immutable runtime evidence are verified. The completed `v1.0.0` release scope and evidence
-remain historical; current work continues without rewriting those release records.
+VaultBridge application metadata and documentation now target `v1.2.0`. No `v1.2.0` tag, GitHub
+Release, GHCR image, or TrueNAS Community catalog update exists yet. The verified `v1.1.0` image
+remains the current published image and the accepted Community App runtime; completed `v1.0.0` and
+`v1.1.0` release evidence remains historical and unchanged.
 
 ## Current architecture
 
@@ -690,6 +691,12 @@ VB-093 completes the production-image CI gate. PR #62 merged as `f03f48b`, and G
 job, with official-client protocol, read-only surface, REST, authentication, Host/Origin, clean
 shutdown, and disposable-data checks.
 
+A separate isolated TrueNAS smoke built main commit `8ae99d3` from source and passed liveness,
+authenticated REST and the official MCP client over Streamable HTTP protocol `2026-07-28` against
+synthetic `Smoke.md`, with exactly the five read-only tools. The existing production app on port
+`30491` remained healthy, and all disposable smoke resources were removed. This is not evidence that
+the production vault was used or that the Community catalog already ships `v1.2.0`.
+
 Task sequence:
 
 ```text
@@ -859,7 +866,10 @@ and initial real-catalog installation are complete. Milestone 9 remains open bec
 unresolved post-merge lifecycle gates. ADR 0004 completes VB-090's MCP design-only
 work, PR #55 CI completes VB-091's read-only stdio implementation verification, VB-092 adds the
 opt-in read-only HTTP transport, and PR #62 CI completes VB-093's production-image container gate.
-This evidence does not claim production TrueNAS runtime validation.
+An isolated source-built TrueNAS smoke also passes with synthetic data while the production app
+remains healthy. Source and version metadata for `v1.2.0` are prepared, but no corresponding tag,
+GitHub Release, GHCR image, or TrueNAS Community catalog update exists. VB-082's remaining lifecycle
+gates stay open.
 
 ---
 

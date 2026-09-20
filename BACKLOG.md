@@ -1303,6 +1303,12 @@ enabled MCP HTTP container smokes, the official Streamable HTTP client round tri
 authentication and invalid Bearer/Host/Origin checks, and clean container shutdown. This is
 container CI evidence, not production TrueNAS runtime validation.
 
+A separate disposable TrueNAS smoke built main commit `8ae99d3` from source and passed liveness,
+authenticated REST listing of synthetic `Smoke.md`, an official MCP Python client connection over
+Streamable HTTP protocol `2026-07-28`, the exact five read-only tools, and MCP `list_notes`. The
+production app on port `30491` remained healthy, and the disposable app, image, vault, and data were
+removed afterward. This did not use or validate the production vault.
+
 **Depends on:** VB-092.
 
 **Goal:** exercise the built production image with MCP HTTP disabled and enabled, including the
@@ -1320,6 +1326,20 @@ official MCP client and container-level authentication and transport-security fa
 - reject missing and invalid Bearer credentials, invalid Host, and invalid present Origin at the
   container boundary, and accept `API_KEY_PREVIOUS`;
 - do not publish an image or claim production TrueNAS validation.
+
+### v1.2.0 release preparation
+
+**Status:** Prepared on 2026-09-19 from main baseline `afce562`; publication remains pending.
+
+The package, FastAPI, and MCP server metadata target `1.2.0`, and the release documentation records
+the complete delta since `v1.1.0`, including read-only MCP, accepted TrueNAS packaging, retrieval
+benchmarking, lower-memory embedding defaults, artifact-aware semantic-index compatibility, and
+expanded repository verification. The new embedding signature causes one safe automatic rebuild of
+older derived indexes; Markdown and the SQLite schema are unchanged.
+
+No `v1.2.0` Git tag, GitHub Release, GHCR image, or TrueNAS Community catalog update exists yet. The
+accepted Community App therefore remains on application image `1.1.0`, and VB-082's edit-persistence,
+ixVolume-uninstall, valid-prior-state upgrade, and rollback gates remain open.
 
 ---
 
@@ -1390,6 +1410,9 @@ ixVolume configuration, healthy-vault, and rotation-migration checks are operato
 edit-form persistence, ixVolume uninstall semantics, a valid prior-state upgrade, and rollback remain
 open. VB-090 and VB-091 complete the read-only stdio MCP design and implementation. VB-092 adds the
 opt-in read-only Streamable HTTP path, and VB-093 completes its container CI validation. This does
-not establish production TrueNAS runtime behavior.
+not establish production TrueNAS runtime behavior. A separate isolated TrueNAS source-build smoke
+also passed against synthetic data without using the production vault. Source and version metadata
+for `v1.2.0` are prepared, but no corresponding tag, GitHub Release, GHCR image, or TrueNAS Community
+catalog update exists.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

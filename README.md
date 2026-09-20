@@ -30,17 +30,17 @@
   <img src="docs/assets/vaultbridge-architecture.webp" alt="VaultBridge architecture showing an AI client connected through VaultBridge to an Obsidian vault and a local semantic index" width="960">
 </p>
 
-> **Release status:** VaultBridge `v1.1.0` is the current released application and image. Its source,
-> GitHub Release, public GHCR image, and exact-image runtime were verified. The `v1.0.0` evidence
-> remains historical release evidence; see [`ROADMAP.md`](ROADMAP.md) for the current state.
+> **Release status:** VaultBridge source and version metadata are prepared for a future `v1.2.0`
+> release, but no `v1.2.0` Git tag, GitHub Release, or GHCR image exists yet. The verified `v1.1.0`
+> release remains the latest published application and image and is used by the accepted TrueNAS
+> Community App; see [`ROADMAP.md`](ROADMAP.md) for the current state.
 
-> **Current release:** `v1.1.0` includes a bundled Web Dashboard at `/ui/`
+> **Prepared source:** The source currently targeting `1.2.0` includes a bundled Web Dashboard at `/ui/`
 > with a public health-backed Overview, operator-supplied API-key unlock, and tab-scoped session
-> handling plus protected literal and semantic Search. The historical `v1.0.0` image predates this
-> dashboard. VaultBridge is also available through the TrueNAS Community train in Discover Apps;
-> the documented Docker and TrueNAS Custom App workflows remain independently usable.
-> The source tree also includes read-only MCP stdio plus an opt-in Streamable HTTP `/mcp` transport
-> on the existing application port; both are additive to REST, dashboard, and CLI behavior.
+> handling plus protected literal and semantic Search. It provides read-only MCP over local stdio
+> and, when explicitly enabled, Streamable HTTP at `/mcp` on the same FastAPI process and port.
+> Streamable HTTP is disabled by default. Both MCP transports remain additive to the compatible
+> REST, dashboard, and CLI surfaces.
 
 ## Why VaultBridge
 
@@ -261,7 +261,9 @@ rebuilt from the vault.
 Upgrading from the earlier fixed-size chunker or the VB-020 heading-aware embedding representation
 changes the semantic index signature. VaultBridge automatically discards incompatible derived chunks
 and rebuilds them from the Markdown vault; no manual SQLite migration is required. If a targeted
-refresh encounters an older signature, it safely performs the required full rebuild.
+refresh encounters an older signature, it safely performs the required full rebuild. Upgrading from
+`v1.1.0` to `v1.2.0` also performs one automatic rebuild because `v1.2.0` fingerprints the effective
+embedding backend and model artifacts before reusing persisted vectors. Markdown is not changed.
 
 Example:
 
@@ -353,8 +355,8 @@ Published GitHub Releases also produce the same Dockerfile-based application ima
 ghcr.io/<repository-owner>/vaultbridge:<version>
 ```
 
-Use the lowercase repository owner shown on the package page. For example, for the current `v1.1.0`
-release:
+Use the lowercase repository owner shown on the package page. Until `v1.2.0` is published, the
+current published image remains `v1.1.0`:
 
 ```bash
 docker pull ghcr.io/<repository-owner>/vaultbridge:1.1.0
