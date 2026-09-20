@@ -17,6 +17,12 @@ superseded upstream by default Web UI port `30491` and
 `https://media.sys.truenas.net/apps/vaultbridge/icons/icon.webp`. Do not treat this directory as a
 second authoritative catalog source.
 
+The only post-acceptance metadata preview maintained here is the pair of repository-owned dashboard
+screenshot URLs in `app.yaml` and `item.yaml`. The matching PNG files are sanitized captures from
+the running TrueNAS canary. They are source material for a future upstream catalog change, not proof
+that the currently accepted catalog entry displays screenshots; upstream submission must upload
+them to the TrueNAS media CDN and use the reviewer-supplied URLs.
+
 ## Production image contract
 
 The package consumes the published VaultBridge `1.1.0` image through the current upstream

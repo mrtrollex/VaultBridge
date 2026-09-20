@@ -1,7 +1,9 @@
 categories:
 - productivity
 icon_url: https://raw.githubusercontent.com/mrtrollex/VaultBridge/e39ed91db75f912f390c7ec915dea73369bb9252/docs/assets/vaultbridge-logo.webp
-screenshots: []
+screenshots:
+- https://raw.githubusercontent.com/mrtrollex/VaultBridge/main/docs/assets/vaultbridge-dashboard-overview.png
+- https://raw.githubusercontent.com/mrtrollex/VaultBridge/main/docs/assets/vaultbridge-dashboard-about.png
 tags:
 - obsidian
 - markdown

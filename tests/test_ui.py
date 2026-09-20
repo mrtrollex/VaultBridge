@@ -238,8 +238,16 @@ def test_html_shell_is_semantic_accessible_and_uses_only_local_assets(tmp_path):
     assert api_panel.count('id="api-key"') == 1
 
     scripts = [attrs for tag, attrs in elements if tag == "script"]
+    favicons = [attrs for tag, attrs in elements if tag == "link" and attrs.get("rel") == "icon"]
     stylesheets = [attrs for tag, attrs in elements if tag == "link" and attrs.get("rel") == "stylesheet"]
     assert scripts == [{"type": "module", "src": "assets/app.js"}]
+    assert favicons == [
+        {
+            "rel": "icon",
+            "type": "image/webp",
+            "href": "assets/vaultbridge-logo.webp",
+        }
+    ]
     assert stylesheets == [{"rel": "stylesheet", "href": "assets/app.css"}]
     assert parser.inline_script_text == []
     assert not re.search(r"\son[a-z]+\s*=", html, flags=re.IGNORECASE)
