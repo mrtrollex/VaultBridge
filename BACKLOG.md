@@ -1343,6 +1343,21 @@ the catalog or close VB-082. Its edit-persistence, ixVolume-uninstall, valid-pri
 rollback gates remain open. Upgrading the VaultBridge application from `v1.1.0` to `v1.2.0` performs
 one safe automatic derived-index rebuild; Markdown and the SQLite schema remain unchanged.
 
+### v1.2.1 release preparation
+
+**Status:** Prepared on 2026-09-20; publication remains pending.
+
+Package, FastAPI, and MCP server metadata target `1.2.1`. This backward-compatible patch contains
+only the already-merged dashboard favicon and two sanitized real TrueNAS canary screenshots. It
+adds no API, MCP tool, data format, migration, semantic-index contract, configuration, or deployment
+architecture change.
+
+No `v1.2.1` Git tag, GitHub Release, GHCR image, or upstream TrueNAS catalog update exists yet. The
+published `v1.2.0` tag, release source, image, digests, and evidence remain immutable. The local
+catalog metadata keeps repository screenshot URLs only as non-authoritative preview/source material;
+a future upstream review would target catalog package `1.0.1`, application image `1.2.1`, and final
+reviewer-supplied TrueNAS CDN screenshot URLs.
+
 ---
 
 ## Recommended Codex sequence
@@ -1413,8 +1428,10 @@ edit-form persistence, ixVolume uninstall semantics, a valid prior-state upgrade
 open. VB-090 and VB-091 complete the read-only stdio MCP design and implementation. VB-092 adds the
 opt-in read-only Streamable HTTP path, and VB-093 completes its container CI validation. This does
 not establish production TrueNAS runtime behavior. A separate isolated TrueNAS source-build smoke
-also passed against synthetic data without using the production vault. `v1.2.0` is the published and
-independently verified stable application/GHCR release; the accepted TrueNAS Community catalog still
-runs `1.1.0` and its remaining VB-082 gates stay open.
+also passed against synthetic data without using the production vault. Source metadata for the
+favicon-and-screenshot-only `v1.2.1` patch is prepared, but publication and the separate upstream
+catalog update remain pending. `v1.2.0` is still the published and independently verified stable
+application/GHCR release; the accepted TrueNAS Community catalog runs `1.1.0` and its remaining
+VB-082 gates stay open.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

@@ -30,13 +30,13 @@
   <img src="docs/assets/vaultbridge-architecture.webp" alt="VaultBridge architecture showing an AI client connected through VaultBridge to an Obsidian vault and a local semantic index" width="960">
 </p>
 
-> **Release status:** VaultBridge `v1.2.0` is the latest stable application and GHCR release. Its
-> exact source, immutable image, MCP transports, and full functional runtime gate are verified; see
-> [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md#v120-release-evidence) for the durable
-> evidence. The accepted TrueNAS Community App remains on application image `1.1.0`; publishing
-> `v1.2.0` did not update that catalog package or complete VB-082.
+> **Release status:** VaultBridge source and version metadata are prepared for a future `v1.2.1`
+> patch release, but no `v1.2.1` tag, GitHub Release, or GHCR image exists yet. Published `v1.2.0`
+> remains the latest stable application and GHCR release; its immutable evidence is recorded in
+> [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md#v120-release-evidence). The accepted
+> TrueNAS Community App remains on application image `1.1.0`.
 
-> **Current release:** `v1.2.0` includes a bundled Web Dashboard at `/ui/`
+> **Prepared source:** The source currently targeting `1.2.1` includes a bundled Web Dashboard at `/ui/`
 > with a public health-backed Overview, operator-supplied API-key unlock, and tab-scoped session
 > handling plus protected literal and semantic Search. It provides read-only MCP over local stdio
 > and, when explicitly enabled, Streamable HTTP at `/mcp` on the same FastAPI process and port.
@@ -134,7 +134,8 @@ Actual browser and production-image evidence is tracked separately in
 
 These screenshots were captured from the running TrueNAS canary dashboard without browser chrome,
 API keys, note content, paths, or private host details. The Overview exposes only the same public
-health facts returned by `/health`.
+health facts returned by `/health`. Their repository URLs are non-authoritative source/preview
+material; they are not evidence that the accepted TrueNAS catalog already displays them.
 
 ### MCP
 

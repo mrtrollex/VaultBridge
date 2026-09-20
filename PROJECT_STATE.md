@@ -98,6 +98,10 @@ Current post-v1 planning position:
   adding editing/index mutation or TrueNAS-specific UI behavior
 - local automated checks and a real Chrome audit passed with disposable synthetic data; connected
   Chrome screenshot capture remained unavailable, so no screenshot artifact is claimed
+- after the `v1.2.0` release, a branded favicon and two sanitized 1440x900 screenshots captured
+  from the real TrueNAS canary dashboard were added without changing dashboard behavior
+- repository screenshot URLs in the local catalog metadata are non-authoritative source/preview
+  material; the accepted upstream catalog does not yet display them
 - the normal Dockerfile image passed the disposable TrueNAS Phase B gate for health, bundled assets
   and headers, authenticated literal/semantic retrieval, CLI, safe logs, restart persistence, clean
   stop, and complete cleanup without touching production data or services
@@ -176,7 +180,16 @@ Current post-v1 planning position:
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
 
-Current stable `v1.2.0` release and distribution status:
+Current `v1.2.1` release-preparation status:
+
+- package, FastAPI, and MCP server metadata plus release documentation target `1.2.1`
+- the patch contains the already-merged dashboard favicon and sanitized TrueNAS canary screenshots;
+  it adds no API, MCP, data, migration, semantic-index, configuration, or deployment contract change
+- no `v1.2.1` Git tag, GitHub Release, GHCR image, or upstream TrueNAS catalog update exists yet
+- a future upstream catalog review would target package `1.0.1`, application image `1.2.1`, and
+  reviewer-supplied TrueNAS CDN screenshot URLs; repository URLs remain preview/source material
+
+Published `v1.2.0` release and distribution status:
 
 - `v1.2.0` is a published non-prerelease GitHub Release from source commit
   `375bf484fbe6a302424951d33c701f6fd9773e3f`; exact-source CI run `35497273752` passed
@@ -245,8 +258,9 @@ Current milestones:
 ## Working production characteristics
 
 - FastAPI application
-- package, FastAPI application, and MCP server metadata aligned to `1.2.0`; `v1.2.0` is the latest
-  published release and GHCR image, while the accepted TrueNAS Community App remains on `1.1.0`
+- package, FastAPI application, and MCP server metadata aligned to prepared source version `1.2.1`;
+  `v1.2.0` remains the latest published release and GHCR image, while the accepted TrueNAS
+  Community App remains on `1.1.0`
 - tracked source and reachable remote branch history passed the VB-060 public-exposure audit
 - public GitHub source was anonymously cloned and clean-built on TrueNAS SCALE / Linux amd64 with
   Docker Engine 28.3.1 using a disposable empty vault and isolated port `8876`
