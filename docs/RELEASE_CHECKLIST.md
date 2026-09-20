@@ -80,22 +80,30 @@ Stable release `v1.1.0` has been published from
 
 The sole publisher is [`.github/workflows/publish-ghcr.yml`](../.github/workflows/publish-ghcr.yml):
 
-- trigger: GitHub `release` event with type `published`;
-- source: the workflow checks out `github.event.release.tag_name` in both jobs;
+- trigger: GitHub `release` event with type `published`, plus a manual recovery dispatch that requires
+  an existing published release tag, its expected full source SHA, and matching prerelease state;
+- source: verification checks out the validated release tag and records its commit SHA; publication
+  checks out that verified SHA, including during manual recovery;
 - repository: `ghcr.io/${{ github.repository_owner }}/vaultbridge`, normalized to lowercase by the
   metadata action;
-- verification: pytest, application compilation, and Compose configuration must pass before publish;
+- verification: Ruff, isolated unit/integration pytest, separately installed Chromium Playwright E2E,
+  application compilation, and Compose configuration must pass before publish;
 - build: repository-root context and root `Dockerfile`, with no alternate TrueNAS image;
 - stable aliases from `v1.1.0`: `1.1.0`, `1.1`, `1`, and `latest`;
 - architecture: no `platforms` matrix is declared, so the current Ubuntu runner builds the native
   Linux/amd64 runtime; multi-architecture support remains out of scope;
 - OCI labels: `org.opencontainers.image.source`, `.revision`, `.version`, and `.licenses` are set to
-  repository URL, release-event SHA, release tag, and `MIT`;
+  repository URL, verified release-source SHA, release tag, and `MIT`;
 - artifact form: BuildKit minimal provenance is enabled and the build output digest is inspected.
   The prior stable publication produced an OCI index containing the runtime manifest and
   attestation; the verified `v1.1.0` values are recorded below.
 
-This audit found no release-blocking workflow defect, so the workflow remains unchanged.
+The manual recovery path reuses the same publish job and tag policy. Exact-version publication stays
+independent across release tags, while duplicate runs for one tag are serialized as one transaction.
+The separately serialized rolling-alias job resolves GitHub's current latest stable release
+immediately before pointing major/minor, major, and `latest` at that release's exact image. Pending
+alias work may coalesce safely because every surviving job converges on the current latest stable
+release. Prereleases publish only their exact version tag and skip rolling aliases.
 
 ### E. OCI alias, digest, and label verification
 
