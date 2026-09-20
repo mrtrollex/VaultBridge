@@ -1,9 +1,125 @@
 # VaultBridge release checklist
 
-This is the durable completed release evidence for VaultBridge `v1.0.0`. VB-056 established the
-audit, and the final stable publication and runtime verification closed every v1.0 release gate on
-2026-08-26. Later releases should add their own evidence without replacing the immutable `v1.0.0`
-tag, GitHub Release, or artifact record below.
+This is the durable completed release evidence for VaultBridge. VB-056 established the original
+`v1.0.0` audit, and each later release adds its own immutable record without replacing earlier tags,
+GitHub Releases, or artifact evidence.
+
+## `v1.2.0` release evidence
+
+Release date: 2026-09-20.
+
+VaultBridge `v1.2.0` is a published stable, non-prerelease GitHub Release from source commit
+`375bf484fbe6a302424951d33c701f6fd9773e3f`. Exact-source CI and independent inspection of the
+published immutable image passed. This section records both the initial pre-publication workflow
+failure and the successful recovery without confusing the release image source with the later
+workflow implementation commit.
+
+### Release gate ledger
+
+| Phase | Status | Evidence |
+|---|---|---|
+| Exact-source CI | **PASS** | CI run [`35497273752`](https://github.com/mrtrollex/VaultBridge/actions/runs/35497273752) passed on release source `375bf484fbe6a302424951d33c701f6fd9773e3f`. |
+| Stable GitHub Release | **PASS** | Published [`v1.2.0`](https://github.com/mrtrollex/VaultBridge/releases/tag/v1.2.0), prerelease false, at the recorded source commit. |
+| Initial GHCR publication | **FAIL — no image published** | Release-triggered run `35497653952` failed during source verification before image publication. |
+| Recovery publication | **PASS** | Manual recovery run [`35501442667`](https://github.com/mrtrollex/VaultBridge/actions/runs/35501442667) passed release verification, exact-image publication, and stable-alias publication. |
+| OCI identity and anonymous pull | **PASS** | All four aliases resolve to the recorded index; runtime manifest, provenance manifest, labels, platform, and anonymous exact-digest pull were independently verified. |
+| Immutable-image MCP verification | **PASS** | MCP 2.2.0 import, stdio lifecycle, disabled/enabled Streamable HTTP, REST compatibility, authentication and Host/Origin rejection, official client, exact five tools, synthetic-note access, and clean shutdown passed. |
+| Immutable-image functional gate | **PASS** | Exact digest passed dashboard, health, API, retrieval, CLI, persistence, privacy-safe logging, clean-stop, and cleanup checks at `2026-09-20T09:35:30Z`. |
+
+### Exact release source and publication recovery
+
+```text
+GitHub Release: https://github.com/mrtrollex/VaultBridge/releases/tag/v1.2.0
+release source commit: 375bf484fbe6a302424951d33c701f6fd9773e3f
+exact-source CI run: 35497273752
+exact-source CI URL: https://github.com/mrtrollex/VaultBridge/actions/runs/35497273752
+exact-source CI conclusion: success
+```
+
+The first release-triggered Publish GHCR image run, `35497653952`, failed before publishing any
+`v1.2.0` image. Its source-verification job ran the complete pytest tree in one process, which both
+collected Playwright E2E without installed Chromium and mixed that E2E runtime with tests using
+`asyncio.run()`.
+
+PR [#75](https://github.com/mrtrollex/VaultBridge/pull/75), merged as workflow implementation commit
+`604417732ee98b95c46a5a1de6e486d284a18c8d`, separated unit/integration tests from Chromium
+Playwright E2E and added explicit safe `workflow_dispatch` recovery. Recovery validates the existing
+published release, expected immutable source SHA, and prerelease state; publication checks out the
+verified release-source SHA. Exact-image publication is independent of rolling aliases, which
+converge on GitHub's current latest stable exact image.
+
+Recovery run `35501442667` used workflow source/main commit
+`604417732ee98b95c46a5a1de6e486d284a18c8d`, but verified and built release source
+`375bf484fbe6a302424951d33c701f6fd9773e3f`. `Verify release source`, `Build and publish`, and
+`Publish stable aliases` all passed. The former is the workflow hotfix commit; the latter is the
+immutable `v1.2.0` application/image source.
+
+### Published OCI evidence
+
+```text
+repository: ghcr.io/mrtrollex/vaultbridge
+verified aliases: 1.2.0, 1.2, 1, latest
+OCI index digest: sha256:b130399ddaafc0f8132febcf9a9209eb36ede287b911ffdf1e8a653fd5666102
+linux/amd64 runtime-manifest digest: sha256:f21cb016d3ccebc9df9b5ee33c9006396a1003db0d769721a495204bb34e2495
+BuildKit provenance attestation digest: sha256:5d9007af52b3101719be83686082293bb2481b16cf3cf27de9c6af40fc51687c
+platform: linux/amd64
+org.opencontainers.image.revision: 375bf484fbe6a302424951d33c701f6fd9773e3f
+org.opencontainers.image.version: v1.2.0
+org.opencontainers.image.source: https://github.com/mrtrollex/VaultBridge
+org.opencontainers.image.licenses: MIT
+```
+
+All four aliases resolved to the same OCI index digest. Anonymous pull passed with a temporary empty
+Docker configuration using this exact immutable reference:
+
+```text
+ghcr.io/mrtrollex/vaultbridge@sha256:b130399ddaafc0f8132febcf9a9209eb36ede287b911ffdf1e8a653fd5666102
+```
+
+### Immutable-image MCP verification
+
+Every check used the exact digest above, never a mutable tag. The image contained MCP package
+`2.2.0`, and importing `app.mcp_server` passed. `python -m app.mcp_server </dev/null` emitted clean
+start/stop events and exited successfully.
+
+`scripts/smoke_mcp_http.py --image <exact digest>` passed the MCP-disabled path, MCP-enabled path,
+REST compatibility, current and previous API keys, invalid Bearer/Host/present-Origin rejection,
+official MCP client, exact five read-only tools, `list_notes` access to a synthetic note, and clean
+shutdown.
+
+### Immutable-image full functional verification
+
+A disposable local adaptation of `scripts/verify-vb075-image.sh` was used as the verification
+harness and was not added to tracked repository state. The final successful gate used Docker
+`29.8.0` on `linux/amd64` and completed at `2026-09-20T09:35:30Z`.
+
+```text
+exact runtime reference: ghcr.io/mrtrollex/vaultbridge@sha256:b130399ddaafc0f8132febcf9a9209eb36ede287b911ffdf1e8a653fd5666102
+initial semantic readiness: 10 seconds
+restart semantic readiness: 2 seconds
+dashboard/assets/security headers: PASS
+liveness/readiness/rich health: PASS
+authenticated API/literal/semantic/read: PASS
+CLI availability: PASS
+derived semantic persistence/restart: PASS
+privacy-safe logs: PASS
+clean stop: PASS
+disposable cleanup: PASS
+```
+
+The final WSL harness ran as root only to remove model-cache files created through the bind mount by
+runtime UID 568. The VaultBridge container itself continued to run as UID:GID `568:568` with
+`--cap-drop ALL`; the application did not run as root.
+
+### Upgrade and TrueNAS boundaries
+
+Markdown remains authoritative and unchanged. No SQLite schema migration is required. Upgrading
+from `v1.1.0` to `v1.2.0` triggers one automatic rebuild of the derived semantic index because the
+effective embedding/backend-artifact fingerprint changed; this is not a manual data migration.
+
+Publishing `v1.2.0` did not update the accepted TrueNAS Community App and does not close VB-082. Its
+current contract remains catalog package `1.0.0`, application/image `1.1.0`, library `2.3.11`, and
+default Web UI port `30491`. No `v1.2.0` Community App lifecycle validation is claimed.
 
 ## `v1.1.0` release evidence — VB-075
 

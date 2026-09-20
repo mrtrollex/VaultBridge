@@ -4,7 +4,7 @@ This document is the current factual snapshot for future Codex sessions. It shou
 
 ## Baseline date
 
-2026-09-19
+2026-09-20
 
 ## Current development position
 
@@ -62,9 +62,12 @@ Post-v1 development position:
 - stable `v1.0.0` is released and all v1.0 release gates are complete
 - optional and future backlog work continues independently of the completed v1.0 release
 
-Completed release task:
+Completed release tasks:
 
 - **VB-075 — Prepare, publish, and verify the dashboard-capable VaultBridge `v1.1.0` image**
+- **VaultBridge `v1.2.0` publication and immutable-image verification** — stable release published
+  from source commit `375bf484fbe6a302424951d33c701f6fd9773e3f`; durable evidence is in
+  [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md#v120-release-evidence)
 
 Current post-v1 planning position:
 
@@ -173,29 +176,31 @@ Current post-v1 planning position:
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
 
-Current `v1.2.0` release-preparation status:
+Current stable `v1.2.0` release and distribution status:
 
-- package, FastAPI, and MCP server metadata plus release documentation target `1.2.0`
-- the release delta includes read-only MCP, accepted TrueNAS packaging, retrieval benchmarking,
-  lower-memory embedding defaults, artifact-aware semantic-index compatibility, and expanded
-  repository verification; upgrading from `v1.1.0` performs a safe automatic semantic rebuild
-- no `v1.2.0` Git tag, GitHub Release, GHCR image, or TrueNAS Community catalog update exists yet
-- the existing publish workflow remains gated on a published GitHub Release
+- `v1.2.0` is a published non-prerelease GitHub Release from source commit
+  `375bf484fbe6a302424951d33c701f6fd9773e3f`; exact-source CI run `35497273752` passed
+- the initial release-triggered GHCR run `35497653952` failed before publication; PR #75 and workflow
+  commit `604417732ee98b95c46a5a1de6e486d284a18c8d` added the safe recovery path without changing the
+  immutable release source
+- recovery run `35501442667` verified and built the release source, published `1.2.0`, `1.2`, `1`,
+  and `latest`, and converged all four aliases on OCI index
+  `sha256:b130399ddaafc0f8132febcf9a9209eb36ede287b911ffdf1e8a653fd5666102`
+- independent exact-digest inspection, anonymous pull, stdio and Streamable HTTP MCP checks, and the
+  complete dashboard/API/CLI/semantic/persistence/privacy/cleanup functional gate passed; exact
+  manifests, labels, runs, and timings are recorded in
+  [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md#v120-release-evidence)
+- upgrading from `v1.1.0` performs one automatic derived semantic-index rebuild; Markdown remains
+  authoritative and unchanged, and no SQLite schema migration is required
+- the accepted TrueNAS Community App remains catalog package `1.0.0`, application image `1.1.0`,
+  library `2.3.11`, and default Web UI port `30491`; `v1.2.0` publication did not update it or close
+  VB-082
 
-Published `v1.1.0` release and distribution status:
+Historical `v1.1.0` release and distribution status:
 
-- `v1.1.0` is published from source commit `e39ed91db75f912f390c7ec915dea73369bb9252`
-- GitHub Actions publish run `33641163374` generated aliases `1.1.0`, `1.1`, `1`, and `latest` in
-  `ghcr.io/mrtrollex/vaultbridge`
-- OCI index `sha256:753e613617d221c3dac311600a36cab3f2727b09f630321664eaa7b7ad6eb48c`,
-  `linux/amd64` manifest `sha256:62ddad69cf3e4af632d40c3bcdb8f9e601fa7c04009616350f9ab706a4171e92`,
-  and attestation `sha256:744fe630075b91cc576a18b37012c4d37d0b551b17a74cab8088a1448e5fc4a3`
-  are recorded
-- anonymous exact-index pull with an empty temporary Docker config passed; platform and required OCI
-  source/revision/version/license labels matched the supplied evidence
-- exact-source CI run `33640580398` passed both `python` and `docker` jobs on the release commit
-- the exact immutable image passed the disposable dashboard/API/CLI/semantic/persistence/safe-log/
-  clean-stop/cleanup gate at `2026-09-07T17:12:10Z` on Docker `28.3.3`; VB-075 is complete
+- `v1.1.0` release source, exact-source CI, workflow, aliases, OCI/runtime/attestation digests,
+  required labels, platform, anonymous exact-digest pull, and functional runtime gate remain
+  recorded in [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md#v110-release-evidence--vb-075)
 - VB-083 is complete after PR #5805 review, merge, independent upstream source/generated-entry
   verification, and operator-confirmed Discover Apps availability
 - VB-082 is in progress / partial validation; initial real-catalog install/form/masking/Portal,
@@ -240,8 +245,8 @@ Current milestones:
 ## Working production characteristics
 
 - FastAPI application
-- package, FastAPI application, and MCP server metadata aligned to the prepared `1.2.0` source; the
-  latest published release, GHCR image, and accepted TrueNAS Community App remain on `1.1.0`
+- package, FastAPI application, and MCP server metadata aligned to `1.2.0`; `v1.2.0` is the latest
+  published release and GHCR image, while the accepted TrueNAS Community App remains on `1.1.0`
 - tracked source and reachable remote branch history passed the VB-060 public-exposure audit
 - public GitHub source was anonymously cloned and clean-built on TrueNAS SCALE / Linux amd64 with
   Docker Engine 28.3.1 using a disposable empty vault and isolated port `8876`

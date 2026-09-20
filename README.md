@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/mrtrollex/VaultBridge/releases/tag/v1.1.0"><img src="https://img.shields.io/badge/stable-v1.1.0-2f6f5e" alt="Stable release v1.1.0"></a>
+  <a href="https://github.com/mrtrollex/VaultBridge/releases/tag/v1.2.0"><img src="https://img.shields.io/badge/stable-v1.2.0-2f6f5e" alt="Stable release v1.2.0"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-356a8a" alt="MIT License"></a>
   <a href="pyproject.toml"><img src="https://img.shields.io/badge/python-3.12-3776AB?logo=python&amp;logoColor=white" alt="Python 3.12"></a>
   <a href="https://github.com/mrtrollex/VaultBridge/pkgs/container/vaultbridge"><img src="https://img.shields.io/badge/container-GHCR-181717?logo=github" alt="VaultBridge container on GHCR"></a>
@@ -30,12 +30,13 @@
   <img src="docs/assets/vaultbridge-architecture.webp" alt="VaultBridge architecture showing an AI client connected through VaultBridge to an Obsidian vault and a local semantic index" width="960">
 </p>
 
-> **Release status:** VaultBridge source and version metadata are prepared for a future `v1.2.0`
-> release, but no `v1.2.0` Git tag, GitHub Release, or GHCR image exists yet. The verified `v1.1.0`
-> release remains the latest published application and image and is used by the accepted TrueNAS
-> Community App; see [`ROADMAP.md`](ROADMAP.md) for the current state.
+> **Release status:** VaultBridge `v1.2.0` is the latest stable application and GHCR release. Its
+> exact source, immutable image, MCP transports, and full functional runtime gate are verified; see
+> [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md#v120-release-evidence) for the durable
+> evidence. The accepted TrueNAS Community App remains on application image `1.1.0`; publishing
+> `v1.2.0` did not update that catalog package or complete VB-082.
 
-> **Prepared source:** The source currently targeting `1.2.0` includes a bundled Web Dashboard at `/ui/`
+> **Current release:** `v1.2.0` includes a bundled Web Dashboard at `/ui/`
 > with a public health-backed Overview, operator-supplied API-key unlock, and tab-scoped session
 > handling plus protected literal and semantic Search. It provides read-only MCP over local stdio
 > and, when explicitly enabled, Streamable HTTP at `/mcp` on the same FastAPI process and port.
@@ -355,11 +356,10 @@ Published GitHub Releases also produce the same Dockerfile-based application ima
 ghcr.io/<repository-owner>/vaultbridge:<version>
 ```
 
-Use the lowercase repository owner shown on the package page. Until `v1.2.0` is published, the
-current published image remains `v1.1.0`:
+Use the lowercase repository owner shown on the package page. The current stable image is `v1.2.0`:
 
 ```bash
-docker pull ghcr.io/<repository-owner>/vaultbridge:1.1.0
+docker pull ghcr.io/<repository-owner>/vaultbridge:1.2.0
 ```
 
 The publication workflow accepts v-prefixed semantic release tags. Every release receives the exact

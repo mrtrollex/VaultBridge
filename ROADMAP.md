@@ -27,12 +27,15 @@
 
 ---
 
-# Current project state — `v1.2.0` source prepared; `v1.1.0` remains published
+# Current project state — `v1.2.0` published and verified
 
-VaultBridge application metadata and documentation now target `v1.2.0`. No `v1.2.0` tag, GitHub
-Release, GHCR image, or TrueNAS Community catalog update exists yet. The verified `v1.1.0` image
-remains the current published image and the accepted Community App runtime; completed `v1.0.0` and
-`v1.1.0` release evidence remains historical and unchanged.
+VaultBridge `v1.2.0` is the latest stable application and GHCR release. Exact-source CI, publication,
+OCI metadata and anonymous pull, MCP transports, and the full immutable-image functional gate pass;
+the durable evidence is in
+[`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md#v120-release-evidence). The accepted TrueNAS
+Community App remains on application image `1.1.0`; publishing `v1.2.0` did not update that catalog
+package or complete VB-082. Completed `v1.0.0` and `v1.1.0` evidence remains historical and
+unchanged.
 
 ## Current architecture
 
@@ -867,9 +870,9 @@ unresolved post-merge lifecycle gates. ADR 0004 completes VB-090's MCP design-on
 work, PR #55 CI completes VB-091's read-only stdio implementation verification, VB-092 adds the
 opt-in read-only HTTP transport, and PR #62 CI completes VB-093's production-image container gate.
 An isolated source-built TrueNAS smoke also passes with synthetic data while the production app
-remains healthy. Source and version metadata for `v1.2.0` are prepared, but no corresponding tag,
-GitHub Release, GHCR image, or TrueNAS Community catalog update exists. VB-082's remaining lifecycle
-gates stay open.
+remains healthy. `v1.2.0` is now the published and independently verified stable application/GHCR
+release. The accepted TrueNAS Community catalog remains on application image `1.1.0`, and VB-082's
+remaining lifecycle gates stay open.
 
 ---
 
