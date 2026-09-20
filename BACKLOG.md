@@ -1327,19 +1327,21 @@ official MCP client and container-level authentication and transport-security fa
   container boundary, and accept `API_KEY_PREVIOUS`;
 - do not publish an image or claim production TrueNAS validation.
 
-### v1.2.0 release preparation
+### v1.2.0 release
 
-**Status:** Prepared on 2026-09-19 from main baseline `afce562`; publication remains pending.
+**Status:** Published and independently verified on 2026-09-20.
 
-The package, FastAPI, and MCP server metadata target `1.2.0`, and the release documentation records
-the complete delta since `v1.1.0`, including read-only MCP, accepted TrueNAS packaging, retrieval
-benchmarking, lower-memory embedding defaults, artifact-aware semantic-index compatibility, and
-expanded repository verification. The new embedding signature causes one safe automatic rebuild of
-older derived indexes; Markdown and the SQLite schema are unchanged.
+Stable GitHub Release `v1.2.0` and its GHCR image were published from release source commit
+`375bf484fbe6a302424951d33c701f6fd9773e3f`. Exact-source CI, the recovered publication workflow,
+all stable aliases and OCI metadata, anonymous exact-digest pull, both MCP transports, and the full
+immutable-image functional gate pass. The durable record, including the initial pre-publication
+workflow failure and the distinct workflow hotfix commit, is in
+[`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md#v120-release-evidence).
 
-No `v1.2.0` Git tag, GitHub Release, GHCR image, or TrueNAS Community catalog update exists yet. The
-accepted Community App therefore remains on application image `1.1.0`, and VB-082's edit-persistence,
-ixVolume-uninstall, valid-prior-state upgrade, and rollback gates remain open.
+The accepted TrueNAS Community App remains on application image `1.1.0`; this release did not update
+the catalog or close VB-082. Its edit-persistence, ixVolume-uninstall, valid-prior-state upgrade, and
+rollback gates remain open. Upgrading the VaultBridge application from `v1.1.0` to `v1.2.0` performs
+one safe automatic derived-index rebuild; Markdown and the SQLite schema remain unchanged.
 
 ---
 
@@ -1411,8 +1413,8 @@ edit-form persistence, ixVolume uninstall semantics, a valid prior-state upgrade
 open. VB-090 and VB-091 complete the read-only stdio MCP design and implementation. VB-092 adds the
 opt-in read-only Streamable HTTP path, and VB-093 completes its container CI validation. This does
 not establish production TrueNAS runtime behavior. A separate isolated TrueNAS source-build smoke
-also passed against synthetic data without using the production vault. Source and version metadata
-for `v1.2.0` are prepared, but no corresponding tag, GitHub Release, GHCR image, or TrueNAS Community
-catalog update exists.
+also passed against synthetic data without using the production vault. `v1.2.0` is the published and
+independently verified stable application/GHCR release; the accepted TrueNAS Community catalog still
+runs `1.1.0` and its remaining VB-082 gates stay open.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.
