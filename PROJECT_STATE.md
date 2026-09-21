@@ -4,7 +4,7 @@ This document is the current factual snapshot for future Codex sessions. It shou
 
 ## Baseline date
 
-2026-09-20
+2026-09-21
 
 ## Current development position
 
@@ -177,6 +177,13 @@ Current post-v1 planning position:
 - VB-075 is complete with exact-source CI and exact-image runtime evidence
 - MCP write tools, OAuth, Prompts, and VaultBridge subscription features remain deferred beyond the
   implemented read-only stdio and Streamable HTTP transports
+- Milestone 11 is planned as a read-first Obsidian relationship track derived from live Markdown;
+  VB-100 is the next recommended coding task, and no wikilink parser, relationship API/MCP tool,
+  dashboard relationship view, persistent graph/index, ranking change, or relationship write has
+  been implemented yet
+- VB-100 through VB-105 are read-only: they reuse `VaultService` containment and canonical live-note
+  verification, add no graph database or service, and reserve any Markdown mutation for the later
+  opt-in VB-034 task
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
 
@@ -254,6 +261,7 @@ Current milestones:
 - **Milestone 8 — Web Dashboard / operator experience (complete)**
 - **Milestone 9 — TrueNAS Community App distribution (upstream accepted; post-merge VB-082 lifecycle validation in progress)**
 - **Milestone 10 — MCP integration (complete)**
+- **Milestone 11 — Obsidian Knowledge Graph / Note Relationships (planned; VB-100 next)**
 
 ## Working production characteristics
 

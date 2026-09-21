@@ -384,7 +384,17 @@ Must include conflict detection/content hash if resumed.
 
 ### VB-034 — Opt-in verified backlink insertion — P2
 
-**Depends on:** VB-031
+**Status:** Planned / optional. Do not implement before the read-only relationship work.
+
+**Depends on:** VB-102
+
+**Goal:** add an explicitly requested backlink to an existing verified Markdown note only after the
+relationship resolver is established.
+
+This is the first task in the relationship track allowed to mutate Markdown. It must remain opt-in,
+must never invent or create a target note, and must define conflict detection, idempotency, write
+safety, and reindex behavior before implementation. Automatic backlink insertion remains out of
+scope.
 
 ---
 
@@ -1327,6 +1337,174 @@ official MCP client and container-level authentication and transport-security fa
   container boundary, and accept `API_KEY_PREVIOUS`;
 - do not publish an image or claim production TrueNAS validation.
 
+---
+
+## Obsidian Knowledge Graph / Note Relationships
+
+This track derives a read-first relationship view from live Obsidian Markdown. Markdown remains
+authoritative; relationship data is derived and non-authoritative. VB-100 through VB-105 perform no
+note mutation and initially use live Markdown inspection rather than a persistent graph or link
+index. VB-034 is the separately controlled, opt-in write task.
+
+### VB-100 — Parse and safely resolve Obsidian wikilinks — P1 ▶
+
+**Status:** Planned. Recommended next coding task.
+
+**Goal:** introduce one application/domain-level wikilink parser and resolver that later
+relationship features can reuse without creating a second filesystem-security implementation.
+
+**Dependencies:** existing `VaultService` path containment, Markdown verification, and canonical
+live-path behavior.
+
+**Acceptance criteria**
+
+- parse at minimum `[[Note]]`, `[[Folder/Note]]`, `[[Note|Alias]]`, `[[Note#Heading]]`, and
+  `[[Note#Heading|Alias]]`, preserving target, heading, and display alias as separate metadata;
+- ignore wikilink-looking text inside fenced code blocks and handle Unicode, folders, malformed or
+  incomplete links, and repeated links deterministically;
+- resolve only exact, unambiguous Markdown targets; do not use fuzzy matching or guess among
+  ambiguous candidates;
+- route every actual target through the existing `VaultService` containment and live-Markdown
+  verification boundary, returning its canonical vault-relative path when resolved;
+- reject absolute and traversal targets, non-Markdown targets, directories, external symlinks, and
+  broken symlinks; safe internal filesystem aliases may resolve only through the existing canonical
+  path behavior;
+- represent missing, unsafe, or ambiguous targets as unresolved without creating files or mutating
+  Markdown or semantic storage;
+- keep output ordering and resolution deterministic across repeated runs;
+- add focused tests for normal syntax, aliases, headings, Unicode, folders, malformed links, fenced
+  code, unresolved and ambiguous notes, traversal and absolute-path attempts, safe internal aliases
+  where the host supports them, external and broken symlinks, and deterministic behavior.
+
+**Out of scope**
+
+- a persistent relationship/graph index, Neo4j, Qdrant, Redis, another database, or another service;
+- REST endpoints, MCP tools, CLI behavior, dashboard UI, graph visualization, retrieval/ranking
+  changes, note creation, backlink insertion, or any other Markdown mutation.
+
+### VB-101 — Verified outgoing note relationships — P1
+
+**Status:** Planned.
+
+**Depends on:** VB-100
+
+**Goal:** expose domain/service-level outgoing wikilink relationships from one live, contained
+Markdown note.
+
+**Acceptance criteria**
+
+- read the source note only through `VaultService` and reuse the single VB-100 parser/resolver;
+- return resolved and unresolved relationships distinctly, with canonical resolved paths and target
+  heading/display-alias metadata where present;
+- preserve deterministic source order and define deterministic handling of duplicate links;
+- read no arbitrary or non-Markdown file and perform no write, reindex, or persistent graph update;
+- add focused service tests for contained source validation, resolved/unresolved output, metadata,
+  duplicates, ordering, size/read failures, and inherited VB-100 containment behavior.
+
+**Out of scope:** REST, MCP, CLI, dashboard presentation, backlinks, ranking changes, graph
+visualization, and note mutation.
+
+### VB-102 — Verified backlinks — P1
+
+**Status:** Planned.
+
+**Depends on:** VB-100 and VB-101
+
+**Goal:** determine which live, contained Markdown notes have verified outgoing relationships to a
+requested live note.
+
+**Acceptance criteria**
+
+- verify the requested target and enumerate only eligible contained Markdown notes through existing
+  vault boundaries;
+- reuse VB-100/VB-101 resolution and include a source only when its link resolves canonically to the
+  requested target, never from raw-text matching alone;
+- return deterministic, deduplicated results and preserve useful heading/display-alias metadata;
+- start with a measured live scan suitable for expected personal-vault sizes; document benchmark
+  evidence before proposing a persistent link index;
+- perform no writes and add focused tests for valid backlinks, same-name/ambiguous notes, unresolved
+  raw matches, containment and symlink failures, deterministic ordering, and an empty result.
+
+**Out of scope:** persistent graph/link storage, REST, MCP, dashboard UI, ranking changes, graph
+visualization, and note mutation.
+
+### VB-103 — REST and MCP note relationships — P1
+
+**Status:** Planned.
+
+**Depends on:** VB-101 and VB-102
+
+**Goal:** expose the implemented outgoing-link and backlink services through stable, read-only
+client adapters without adding a second relationship implementation.
+
+**Proposed contract to confirm before implementation**
+
+- REST: `GET /api/v1/notes/links?path=...` with operation ID `listNoteLinksV1`, and
+  `GET /api/v1/notes/backlinks?path=...` with operation ID `listNoteBacklinksV1`;
+- MCP: `note_links` and `note_backlinks` tools over the same injected domain services.
+
+**Acceptance criteria**
+
+- add only `/api/v1` REST routes; do not add legacy unversioned compatibility aliases without a
+  separate explicit justification and migration decision;
+- keep REST and MCP as thin adapters over the same VB-101/VB-102 services and response semantics;
+- preserve existing Bearer authentication, rate limiting, validation, safe logging, MCP transport,
+  and error boundaries;
+- keep both operations read-only and verify schemas, operation-ID uniqueness, official MCP client
+  behavior, and unchanged existing REST/MCP contracts with focused tests.
+
+**Out of scope:** relationship parsing/resolution in adapters, writes, graph storage, CLI or dashboard
+changes, graph visualization, and ranking changes.
+
+### VB-104 — Dashboard note relationships — P2
+
+**Status:** Planned.
+
+**Depends on:** VB-103
+
+**Goal:** add a small read-only outgoing-links/backlinks section for a note already selected or read
+in the dashboard, using the existing authenticated backend capabilities.
+
+**Acceptance criteria**
+
+- call the VB-103 `/api/v1` endpoints through the existing authenticated fetch/session boundary;
+- render bounded outgoing and backlink facts with explicit loading, empty, failure, logout, and
+  stale-request behavior while preserving text-only dynamic rendering and current privacy rules;
+- add no client-side relationship parsing, resolution, ranking, filtering, persistence, or mutation;
+- verify keyboard, focus, responsive layout, long Unicode paths/aliases/headings, reduced motion,
+  browser security, and current dashboard regressions through focused tests and browser acceptance.
+
+**Out of scope:** graph visualization, editing, file management, an Obsidian replacement, a second
+relationship implementation, and any API or note mutation.
+
+### VB-105 — Evaluate graph-aware retrieval signal — P1
+
+**Status:** Planned. Evaluation/design-first; it does not authorize a production ranking change.
+
+**Depends on:** VB-102 and the existing retrieval evaluation/benchmark infrastructure.
+
+**Goal:** measure whether verified Obsidian relationships improve retrieval quality relative to the
+accepted semantic/lexical baseline.
+
+**Acceptance criteria**
+
+- define sanitized relationship-aware cases, metrics, latency/cost observations, and before/after
+  evidence using the existing deterministic evaluation and benchmark paths;
+- preserve the current semantic/lexical baseline and compare any graph signal against it without
+  changing production weights or thresholds during evaluation;
+- reject a production graph signal when evidence does not demonstrate useful quality improvement;
+- if evidence supports a later ranking change, document weighting, failure behavior, rebuild/index
+  compatibility, and live-versus-derived-data implications as a separate implementation decision;
+- use only verified resolved relationships and add no persistent graph database/index merely for
+  the evaluation.
+
+**Out of scope:** an implicit production ranking change, model/chunking changes, graph storage or
+services, REST/MCP/dashboard changes, graph visualization, and note mutation.
+
+---
+
+## Release history
+
 ### v1.2.0 release
 
 **Status:** Published and independently verified on 2026-09-20.
@@ -1405,6 +1583,13 @@ VB-001 ✓
 → VB-091 ✓ (not NEXT)
 → VB-092 IMPLEMENTED
 → VB-093 ✓
+→ VB-100 NEXT
+→ VB-101
+→ VB-102
+→ VB-103
+→ VB-104
+→ VB-105
+→ VB-034 (optional opt-in write task)
 ```
 
 VB-057 through VB-060 close the confirmed containment, native-Windows test-portability,
@@ -1432,6 +1617,8 @@ also passed against synthetic data without using the production vault. Source me
 favicon-and-screenshot-only `v1.2.1` patch is prepared, but publication and the separate upstream
 catalog update remain pending. `v1.2.0` is still the published and independently verified stable
 application/GHCR release; the accepted TrueNAS Community catalog runs `1.1.0` and its remaining
-VB-082 gates stay open.
+VB-082 gates stay open. Milestone 11 is now planned as a read-first relationship track; VB-100 is
+the next recommended coding task, while VB-032/VB-033 remain deferred and VB-034 remains a later,
+opt-in write capability.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.
