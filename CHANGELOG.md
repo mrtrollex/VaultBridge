@@ -6,6 +6,11 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ## [Unreleased]
 
+### Added
+
+- a reusable read-only Obsidian wikilink parser/resolver with fenced-code exclusion, exact
+  ambiguity-safe matching, and canonical target verification through the existing vault boundary
+
 ## [1.2.1] - 2026-09-20
 
 ### Added

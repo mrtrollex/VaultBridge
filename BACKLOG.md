@@ -1346,9 +1346,9 @@ authoritative; relationship data is derived and non-authoritative. VB-100 throug
 note mutation and initially use live Markdown inspection rather than a persistent graph or link
 index. VB-034 is the separately controlled, opt-in write task.
 
-### VB-100 — Parse and safely resolve Obsidian wikilinks — P1 ▶
+### VB-100 — Parse and safely resolve Obsidian wikilinks — P1 ✅
 
-**Status:** Planned. Recommended next coding task.
+**Status:** Completed on 2026-09-21.
 
 **Goal:** introduce one application/domain-level wikilink parser and resolver that later
 relationship features can reuse without creating a second filesystem-security implementation.
@@ -1382,9 +1382,9 @@ live-path behavior.
 - REST endpoints, MCP tools, CLI behavior, dashboard UI, graph visualization, retrieval/ranking
   changes, note creation, backlink insertion, or any other Markdown mutation.
 
-### VB-101 — Verified outgoing note relationships — P1
+### VB-101 — Verified outgoing note relationships — P1 ▶
 
-**Status:** Planned.
+**Status:** Planned. Recommended next coding task.
 
 **Depends on:** VB-100
 
@@ -1583,8 +1583,8 @@ VB-001 ✓
 → VB-091 ✓ (not NEXT)
 → VB-092 IMPLEMENTED
 → VB-093 ✓
-→ VB-100 NEXT
-→ VB-101
+→ VB-100 ✓
+→ VB-101 NEXT
 → VB-102
 → VB-103
 → VB-104
@@ -1617,8 +1617,8 @@ also passed against synthetic data without using the production vault. Source me
 favicon-and-screenshot-only `v1.2.1` patch is prepared, but publication and the separate upstream
 catalog update remain pending. `v1.2.0` is still the published and independently verified stable
 application/GHCR release; the accepted TrueNAS Community catalog runs `1.1.0` and its remaining
-VB-082 gates stay open. Milestone 11 is now planned as a read-first relationship track; VB-100 is
-the next recommended coding task, while VB-032/VB-033 remain deferred and VB-034 remains a later,
-opt-in write capability.
+VB-082 gates stay open. Milestone 11 is now in progress as a read-first relationship track; VB-100
+is complete and VB-101 is the next recommended coding task, while VB-032/VB-033 remain deferred and
+VB-034 remains a later, opt-in write capability.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

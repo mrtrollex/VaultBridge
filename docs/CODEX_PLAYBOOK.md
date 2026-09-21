@@ -156,10 +156,10 @@ Do not implement the recommended next task.
 
 ## Current next task
 
-The next recommended coding task is **VB-100 — Parse and safely resolve Obsidian wikilinks**.
-Implement only the exact `BACKLOG.md` scope: one deterministic application/domain parser and
-resolver over the existing `VaultService` containment boundary. Do not start VB-101 or add REST,
-MCP, dashboard, ranking, persistence, or Markdown-mutation behavior as part of VB-100.
+The next recommended coding task is **VB-101 — Verified outgoing note relationships**. Implement
+only the exact `BACKLOG.md` scope by reusing the completed VB-100 parser/resolver and existing
+`VaultService` read boundary. Do not start VB-102 or add REST, MCP, dashboard, ranking, persistence,
+or Markdown-mutation behavior as part of VB-101.
 
 VB-082 remains an incomplete milestone and lifecycle-validation item. Its remaining gates require
 live/operator TrueNAS evidence and must not be treated as a normal autonomous coding task. VB-091 is

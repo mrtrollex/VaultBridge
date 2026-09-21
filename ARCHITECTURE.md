@@ -84,6 +84,7 @@ app/core/config.py   typed environment configuration
 app/core/logging.py  structured VaultBridge application logging
 app/core/observability.py request correlation and HTTP lifecycle timing
 app/services/vault.py safe path resolution, Markdown note operations and contained note counting
+app/services/wikilinks.py deterministic wikilink parsing and exact resolution through VaultService
 app/services/duplicate_candidates.py live-title and verified semantic candidate composition
 app/services/semantic_search.py embedding, incremental indexing, hybrid ranking and semantic health state
 app/services/indexer.py one in-process full/targeted synchronization worker and deduplicating path queue
@@ -551,6 +552,13 @@ dependencies and the MCP HTTP ASGI boundary.
 - Markdown read/write/append
 - note enumeration
 - content size validation
+
+### `services/wikilinks.py`
+
+- immutable wikilink metadata in Markdown source order
+- backtick/tilde fenced-code exclusion
+- exact, ambiguity-safe live-note resolution through `VaultService`
+- no note reads/writes, relationship persistence, semantic-index access, or protocol behavior
 
 ### `services/indexer.py`
 

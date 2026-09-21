@@ -25,6 +25,17 @@ def contained_markdown_files(
     discovery_root: Path | None = None,
 ) -> list[Path]:
     """Return unique Markdown files whose resolved targets remain inside the vault."""
+    files: dict[Path, None] = {}
+    for _, resolved_path in _contained_markdown_file_candidates(vault_root, discovery_root):
+        files[resolved_path] = None
+    return list(files)
+
+
+def _contained_markdown_file_candidates(
+    vault_root: Path,
+    discovery_root: Path | None = None,
+) -> list[tuple[Path, Path]]:
+    """Return discovered Markdown paths paired with their contained resolved targets."""
     vault_root = Path(vault_root)
     discovery_root = vault_root if discovery_root is None else Path(discovery_root)
     try:
@@ -35,18 +46,18 @@ def contained_markdown_files(
     if not resolved_discovery_root.exists():
         return []
 
-    files: dict[Path, None] = {}
+    files: list[tuple[Path, Path]] = []
     try:
         for discovered_path in resolved_discovery_root.rglob("*.md"):
             try:
-                path = _resolve_contained_path(discovered_path, resolved_root)
-                if path.suffix.lower() == ".md" and path.is_file():
-                    files[path] = None
+                resolved_path = _resolve_contained_path(discovered_path, resolved_root)
+                if resolved_path.suffix.lower() == ".md" and resolved_path.is_file():
+                    files.append((discovered_path, resolved_path))
             except (OSError, ValueError):
                 continue
     except OSError:
         pass
-    return list(files)
+    return files
 
 
 def eligible_markdown_files(vault_root: Path, max_note_bytes: int) -> list[Path]:
@@ -121,6 +132,14 @@ class NoteListResult:
     modified: str
 
 
+@dataclass(frozen=True)
+class LiveMarkdownPathCandidate:
+    """One exact discovered note spelling and its verified canonical path."""
+
+    discovered_path: str
+    canonical_path: str
+
+
 class VaultService:
     """Safe Markdown note operations scoped to one Obsidian vault root."""
 
@@ -164,7 +183,13 @@ class VaultService:
             return None
         return self._relative_path(path).replace("\\", "/")
 
-    def verify_existing_markdown_path(self, raw: str, *, folder: str = "") -> str | None:
+    def verify_existing_markdown_path(
+        self,
+        raw: str,
+        *,
+        folder: str = "",
+        exact_spelling: bool = False,
+    ) -> str | None:
         """Return one canonical live Markdown path contained by the vault and optional folder."""
         try:
             normalized = raw.strip().replace("\\", "/")
@@ -184,9 +209,23 @@ class VaultService:
                 path.relative_to(folder_path)
             if path.suffix.lower() != ".md" or not path.is_file():
                 return None
+            if exact_spelling and not self._has_exact_path_spelling(posix_path.parts):
+                return None
             return self._relative_path(path).replace("\\", "/")
         except (OSError, RuntimeError, ValueError, VaultValidationError):
             return None
+
+    def _has_exact_path_spelling(self, parts: tuple[str, ...]) -> bool:
+        current = self.vault_root
+        for part in parts:
+            try:
+                with os.scandir(current) as entries:
+                    if not any(entry.name == part for entry in entries):
+                        return False
+            except OSError:
+                return False
+            current /= part
+        return True
 
     def live_markdown_paths(self, *, folder: str = "") -> list[str]:
         """Return deterministic canonical paths for live user-note Markdown files."""
@@ -204,6 +243,41 @@ class VaultService:
                 continue
             paths.append(relative_path.as_posix())
         return sorted(paths, key=lambda path: (path.casefold(), path))
+
+    def live_markdown_path_candidates(self) -> list[LiveMarkdownPathCandidate]:
+        """Return exact discovered note spellings paired with verified canonical paths."""
+        candidates: list[LiveMarkdownPathCandidate] = []
+        for discovered_path, _ in _contained_markdown_file_candidates(self.vault_root):
+            try:
+                relative_path = discovered_path.relative_to(self.vault_root).as_posix()
+            except ValueError:
+                continue
+            if any(
+                part in SEMANTIC_EXCLUDED_DIRECTORIES
+                for part in PurePosixPath(relative_path).parts
+            ):
+                continue
+            canonical_path = self.verify_existing_markdown_path(relative_path)
+            if canonical_path is None:
+                continue
+            if any(
+                part in SEMANTIC_EXCLUDED_DIRECTORIES
+                for part in PurePosixPath(canonical_path).parts
+            ):
+                continue
+            candidates.append(
+                LiveMarkdownPathCandidate(
+                    discovered_path=relative_path,
+                    canonical_path=canonical_path,
+                )
+            )
+        return sorted(
+            candidates,
+            key=lambda candidate: (
+                candidate.discovered_path.casefold(),
+                candidate.discovered_path,
+            ),
+        )
 
     def create_note(
         self,
