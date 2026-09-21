@@ -742,7 +742,7 @@ production TrueNAS runtime validation.
 
 ---
 
-# Milestone 11 — Obsidian Knowledge Graph / Note Relationships — PLANNED
+# Milestone 11 — Obsidian Knowledge Graph / Note Relationships — IN PROGRESS
 
 **Goal:** establish a safe, read-first relationship layer derived from Obsidian wikilinks while
 keeping Markdown authoritative and existing VaultBridge clients and behavior compatible.
@@ -762,9 +762,9 @@ only as an evaluation candidate until evidence justifies a separate production r
 Task sequence:
 
 ```text
-VB-100 parse and safely resolve Obsidian wikilinks — NEXT
+VB-100 parse and safely resolve Obsidian wikilinks ✓
    ↓
-VB-101 verified outgoing note relationships
+VB-101 verified outgoing note relationships — NEXT
    ↓
 VB-102 verified backlinks
    ↓
@@ -784,7 +784,7 @@ write Markdown and must remain opt-in with conflict and write safety defined fir
 
 Milestone exit criteria:
 
-- [ ] one deterministic parser/resolver handles the supported wikilink forms, ignores fenced code,
+- [x] one deterministic parser/resolver handles the supported wikilink forms, ignores fenced code,
   and resolves only verified contained Markdown targets through existing vault security boundaries
 - [ ] outgoing links and backlinks distinguish resolved from unresolved relationships and perform
   no writes or persistent graph indexing
@@ -913,9 +913,9 @@ VB-092 IMPLEMENTED
 VB-093 ✓
    ↓
 OBSIDIAN KNOWLEDGE GRAPH / NOTE RELATIONSHIPS
-VB-100 NEXT
+VB-100 ✓
    ↓
-VB-101
+VB-101 NEXT
    ↓
 VB-102
    ↓
@@ -953,8 +953,9 @@ remains healthy. Source metadata for the favicon-and-screenshot-only `v1.2.1` pa
 no tag, GitHub Release, GHCR image, or upstream catalog update exists. `v1.2.0` remains the published
 and independently verified stable application/GHCR release. The accepted TrueNAS Community catalog
 remains on application image `1.1.0`, and VB-082's remaining lifecycle gates stay open.
-Milestone 11 is planned as the next coding track. VB-100 is the next recommended implementation
-task; VB-032/VB-033 remain deferred, and VB-034 remains a later optional write task.
+Milestone 11 is in progress. VB-100 implements the reusable read-only wikilink parser/resolver, and
+VB-101 is the next recommended implementation task; VB-032/VB-033 remain deferred, and VB-034
+remains a later optional write task.
 
 ---
 
