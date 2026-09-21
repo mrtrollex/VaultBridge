@@ -1382,9 +1382,9 @@ live-path behavior.
 - REST endpoints, MCP tools, CLI behavior, dashboard UI, graph visualization, retrieval/ranking
   changes, note creation, backlink insertion, or any other Markdown mutation.
 
-### VB-101 — Verified outgoing note relationships — P1 ▶
+### VB-101 — Verified outgoing note relationships — P1 ✅
 
-**Status:** Planned. Recommended next coding task.
+**Status:** Completed on 2026-09-21.
 
 **Depends on:** VB-100
 
@@ -1404,9 +1404,9 @@ Markdown note.
 **Out of scope:** REST, MCP, CLI, dashboard presentation, backlinks, ranking changes, graph
 visualization, and note mutation.
 
-### VB-102 — Verified backlinks — P1
+### VB-102 — Verified backlinks — P1 ▶
 
-**Status:** Planned.
+**Status:** Planned. Recommended next coding task.
 
 **Depends on:** VB-100 and VB-101
 
@@ -1584,8 +1584,8 @@ VB-001 ✓
 → VB-092 IMPLEMENTED
 → VB-093 ✓
 → VB-100 ✓
-→ VB-101 NEXT
-→ VB-102
+→ VB-101 ✓
+→ VB-102 NEXT
 → VB-103
 → VB-104
 → VB-105
@@ -1618,7 +1618,7 @@ favicon-and-screenshot-only `v1.2.1` patch is prepared, but publication and the 
 catalog update remain pending. `v1.2.0` is still the published and independently verified stable
 application/GHCR release; the accepted TrueNAS Community catalog runs `1.1.0` and its remaining
 VB-082 gates stay open. Milestone 11 is now in progress as a read-first relationship track; VB-100
-is complete and VB-101 is the next recommended coding task, while VB-032/VB-033 remain deferred and
-VB-034 remains a later, opt-in write capability.
+and VB-101 are complete and VB-102 is the next recommended coding task, while VB-032/VB-033 remain
+deferred and VB-034 remains a later, opt-in write capability.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

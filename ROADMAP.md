@@ -764,9 +764,9 @@ Task sequence:
 ```text
 VB-100 parse and safely resolve Obsidian wikilinks ✓
    ↓
-VB-101 verified outgoing note relationships — NEXT
+VB-101 verified outgoing note relationships ✓
    ↓
-VB-102 verified backlinks
+VB-102 verified backlinks — NEXT
    ↓
 VB-103 REST and MCP note relationships
    ↓
@@ -915,9 +915,9 @@ VB-093 ✓
 OBSIDIAN KNOWLEDGE GRAPH / NOTE RELATIONSHIPS
 VB-100 ✓
    ↓
-VB-101 NEXT
+VB-101 ✓
    ↓
-VB-102
+VB-102 NEXT
    ↓
 VB-103
    ↓
@@ -954,8 +954,9 @@ no tag, GitHub Release, GHCR image, or upstream catalog update exists. `v1.2.0` 
 and independently verified stable application/GHCR release. The accepted TrueNAS Community catalog
 remains on application image `1.1.0`, and VB-082's remaining lifecycle gates stay open.
 Milestone 11 is in progress. VB-100 implements the reusable read-only wikilink parser/resolver, and
-VB-101 is the next recommended implementation task; VB-032/VB-033 remain deferred, and VB-034
-remains a later optional write task.
+VB-101 adds verified outgoing relationships from one live contained note. VB-102 is the next
+recommended implementation task; VB-032/VB-033 remain deferred, and VB-034 remains a later optional
+write task.
 
 ---
 
