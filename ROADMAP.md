@@ -24,6 +24,9 @@
 13. **Protocol adapters share domain ownership.** MCP and future client protocols remain thin
     adapters over the same vault and semantic services; they do not call another adapter by default
     or create a second implementation of VaultBridge behavior.
+14. **Relationships are derived from Markdown.** Obsidian links may provide a read-first graph view,
+    but Markdown remains authoritative. Relationship features reuse the vault containment boundary
+    and begin with live inspection rather than a persistent graph store.
 
 ---
 
@@ -382,7 +385,9 @@ Do not implement before a resumed VB-032 decision; any future endpoint must incl
 
 ### VB-034 — Opt-in verified backlink insertion — P2
 
-No invented wikilink targets.
+This remains the first relationship task allowed to mutate Markdown. It depends on verified
+relationship resolution through VB-102, stays explicitly opt-in, never invents or creates a target
+note, and requires conflict/write-safety design before implementation.
 
 ---
 
@@ -737,6 +742,65 @@ production TrueNAS runtime validation.
 
 ---
 
+# Milestone 11 — Obsidian Knowledge Graph / Note Relationships — PLANNED
+
+**Goal:** establish a safe, read-first relationship layer derived from Obsidian wikilinks while
+keeping Markdown authoritative and existing VaultBridge clients and behavior compatible.
+
+The graph is a derived view, never a second source of truth. Initial parsing, outgoing-link, and
+backlink operations inspect live contained Markdown and reuse `VaultService` for target containment,
+Markdown verification, symlink protection, and canonical paths. No persistent relationship index,
+graph database, new service, automatic note creation, or Markdown mutation is introduced by
+VB-100 through VB-105. A persistent index may be considered only after measurement demonstrates
+that live inspection is insufficient.
+
+REST and MCP remain thin adapters over shared relationship services. The dashboard is limited to a
+small read-only outgoing-links/backlinks view associated with a selected note; it does not become a
+graph explorer, editor, file manager, or Obsidian replacement. Retrieval uses verified relationships
+only as an evaluation candidate until evidence justifies a separate production ranking decision.
+
+Task sequence:
+
+```text
+VB-100 parse and safely resolve Obsidian wikilinks — NEXT
+   ↓
+VB-101 verified outgoing note relationships
+   ↓
+VB-102 verified backlinks
+   ↓
+VB-103 REST and MCP note relationships
+   ↓
+VB-104 dashboard note relationships
+   ↓
+VB-105 evaluate graph-aware retrieval signal
+   ↓
+VB-034 opt-in verified backlink insertion (later write capability)
+```
+
+VB-032 and VB-033 remain deferred/optional and are not prerequisites for this sequence. VB-034
+remains in Milestone 4 as a P2 knowledge-maintenance operation, but its implementation is sequenced
+after verified read-only relationship resolution. It is the first relationship task allowed to
+write Markdown and must remain opt-in with conflict and write safety defined first.
+
+Milestone exit criteria:
+
+- [ ] one deterministic parser/resolver handles the supported wikilink forms, ignores fenced code,
+  and resolves only verified contained Markdown targets through existing vault security boundaries
+- [ ] outgoing links and backlinks distinguish resolved from unresolved relationships and perform
+  no writes or persistent graph indexing
+- [ ] `/api/v1` and MCP expose the same read-only domain capabilities without extending legacy REST
+  aliases or duplicating relationship logic
+- [ ] the dashboard provides a bounded read-only relationship section without graph visualization
+  or client-side relationship ownership
+- [ ] graph-aware retrieval is measured against the existing semantic/lexical baseline before any
+  production ranking decision
+- [ ] existing REST, MCP, CLI, dashboard, TrueNAS, semantic-search, authentication, containment, and
+  deployment behavior remains compatible
+- [ ] VB-034 remains separately controlled and no automatic backlink or Markdown mutation occurs
+  before it is explicitly implemented
+
+---
+
 # Post-1.0 candidates
 
 - pluggable embedding providers
@@ -748,7 +812,6 @@ production TrueNAS runtime validation.
 - multiple vaults
 - webhook/event integrations
 - frontmatter query language
-- graph-aware ranking using Obsidian links
 
 ---
 
@@ -848,6 +911,21 @@ VB-091 ✓ (not NEXT)
 VB-092 IMPLEMENTED
    ↓
 VB-093 ✓
+   ↓
+OBSIDIAN KNOWLEDGE GRAPH / NOTE RELATIONSHIPS
+VB-100 NEXT
+   ↓
+VB-101
+   ↓
+VB-102
+   ↓
+VB-103
+   ↓
+VB-104
+   ↓
+VB-105
+   ↓
+VB-034 (optional opt-in write task)
 ```
 
 `v1.0.0` has shipped, and VB-070 through VB-074 complete Milestone 8's dashboard design,
@@ -875,6 +953,8 @@ remains healthy. Source metadata for the favicon-and-screenshot-only `v1.2.1` pa
 no tag, GitHub Release, GHCR image, or upstream catalog update exists. `v1.2.0` remains the published
 and independently verified stable application/GHCR release. The accepted TrueNAS Community catalog
 remains on application image `1.1.0`, and VB-082's remaining lifecycle gates stay open.
+Milestone 11 is planned as the next coding track. VB-100 is the next recommended implementation
+task; VB-032/VB-033 remain deferred, and VB-034 remains a later optional write task.
 
 ---
 
