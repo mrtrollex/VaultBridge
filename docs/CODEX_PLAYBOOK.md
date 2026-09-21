@@ -156,10 +156,10 @@ Do not implement the recommended next task.
 
 ## Current next task
 
-The next recommended coding task is **VB-101 — Verified outgoing note relationships**. Implement
-only the exact `BACKLOG.md` scope by reusing the completed VB-100 parser/resolver and existing
-`VaultService` read boundary. Do not start VB-102 or add REST, MCP, dashboard, ranking, persistence,
-or Markdown-mutation behavior as part of VB-101.
+The next recommended coding task is **VB-102 — Verified backlinks**. Implement only the exact
+`BACKLOG.md` scope by reusing the completed VB-100 parser/resolver, VB-101 outgoing-relationship
+service, and existing `VaultService` boundaries. Do not start VB-103 or add REST, MCP, dashboard,
+ranking, persistence, or Markdown-mutation behavior as part of VB-102.
 
 VB-082 remains an incomplete milestone and lifecycle-validation item. Its remaining gates require
 live/operator TrueNAS evidence and must not be treated as a normal autonomous coding task. VB-091 is

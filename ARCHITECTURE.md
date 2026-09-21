@@ -560,6 +560,13 @@ dependencies and the MCP HTTP ASGI boundary.
 - exact, ambiguity-safe live-note resolution through `VaultService`
 - no note reads/writes, relationship persistence, semantic-index access, or protocol behavior
 
+### `services/relationships.py`
+
+- verified source-note reads through `VaultService`
+- immutable outgoing relationship occurrences in deterministic source order
+- resolved/unresolved state and VB-100 target, heading, alias, and canonical-path metadata
+- no backlinks, note writes, persistence, semantic-index access, or protocol behavior
+
 ### `services/indexer.py`
 
 - one in-process background synchronization worker
