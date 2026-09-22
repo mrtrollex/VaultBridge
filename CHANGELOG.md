@@ -16,6 +16,8 @@ The project intends to follow Semantic Versioning after the public repository ba
 - a read-only verified-backlink service that scans canonical live Markdown sources using one
   reusable resolution snapshot, returns deterministic deduplicated relationship metadata, and
   includes a synthetic 1,000-note benchmark without a CI latency gate or persistent graph index
+- protected versioned-only REST outgoing-link and backlink endpoints plus matching `note_links` and
+  `note_backlinks` MCP tools, all backed by the same read-only relationship domain service
 
 ## [1.2.1] - 2026-09-20
 

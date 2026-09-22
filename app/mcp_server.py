@@ -21,6 +21,7 @@ from app.core.config import Settings
 from app.core.logging import configure_application_logging, log_event
 from app.services.duplicate_candidates import DuplicateCandidateService
 from app.services.rate_limiter import FixedWindowRateLimiter
+from app.services.relationships import RelationshipService
 from app.services.semantic_search import (
     IndexState,
     SemanticSearchService,
@@ -131,6 +132,29 @@ class DuplicateCandidatesResult(MCPResult):
     results: list[DuplicateCandidateItem]
 
 
+class NoteLinkItem(MCPResult):
+    target: str
+    heading: str | None
+    alias: str | None
+    state: Literal["resolved", "unresolved"]
+    resolved_path: str | None
+
+
+class NoteLinksResult(MCPResult):
+    links: list[NoteLinkItem]
+
+
+class NoteBacklinkItem(MCPResult):
+    source_path: str
+    target: str
+    heading: str | None
+    alias: str | None
+
+
+class NoteBacklinksResult(MCPResult):
+    backlinks: list[NoteBacklinkItem]
+
+
 class SemanticIndexRebuildingError(RuntimeError):
     """The persisted semantic index is currently owned by a rebuilding process."""
 
@@ -218,6 +242,7 @@ class VaultBridgeMCPAdapter:
         vault_service: VaultService,
         semantic_search_service: SemanticSearchService,
         duplicate_candidate_service: DuplicateCandidateService,
+        relationship_service: RelationshipService,
         transport: MCPTransport,
         operation_rate_limiter: FixedWindowRateLimiter | None,
     ) -> None:
@@ -225,6 +250,7 @@ class VaultBridgeMCPAdapter:
         self.vault_service = vault_service
         self.semantic_search_service = semantic_search_service
         self.duplicate_candidate_service = duplicate_candidate_service
+        self.relationship_service = relationship_service
         self.transport = transport
         self.operation_rate_limiter = operation_rate_limiter
 
@@ -471,6 +497,49 @@ class VaultBridgeMCPAdapter:
             result_count=lambda result: len(result.results),
         )
 
+    def note_links(self, *, path: str) -> NoteLinksResult:
+        def action() -> NoteLinksResult:
+            relationships = self.relationship_service.outgoing_relationships(path)
+            return NoteLinksResult(
+                links=[
+                    NoteLinkItem(
+                        target=relationship.target,
+                        heading=relationship.heading,
+                        alias=relationship.alias,
+                        state=relationship.state,
+                        resolved_path=(
+                            _canonical_service_path(relationship.resolved_path)
+                            if relationship.resolved_path is not None
+                            else None
+                        ),
+                    )
+                    for relationship in relationships
+                ]
+            )
+
+        return self._execute("note_links", action, result_count=lambda result: len(result.links))
+
+    def note_backlinks(self, *, path: str) -> NoteBacklinksResult:
+        def action() -> NoteBacklinksResult:
+            backlinks = self.relationship_service.backlinks(path)
+            return NoteBacklinksResult(
+                backlinks=[
+                    NoteBacklinkItem(
+                        source_path=_canonical_service_path(backlink.source_path),
+                        target=backlink.target,
+                        heading=backlink.heading,
+                        alias=backlink.alias,
+                    )
+                    for backlink in backlinks
+                ]
+            )
+
+        return self._execute(
+            "note_backlinks",
+            action,
+            result_count=lambda result: len(result.backlinks),
+        )
+
     def read_note_resource(self, *, path: str, raw_uri: str) -> str:
         def action() -> str:
             if raw_uri != note_resource_uri(path):
@@ -494,6 +563,7 @@ def create_mcp_server(
     vault_service: VaultService | None = None,
     semantic_search_service: SemanticSearchService | None = None,
     duplicate_candidate_service: DuplicateCandidateService | None = None,
+    relationship_service: RelationshipService | None = None,
     rate_limiter: FixedWindowRateLimiter | None = None,
     transport: MCPTransport = "stdio",
 ) -> MCPServer:
@@ -507,6 +577,7 @@ def create_mcp_server(
         vault_service=app_vault_service,
         semantic_search_service=app_semantic_service,
     )
+    app_relationship_service = relationship_service or RelationshipService(app_vault_service)
     operation_rate_limiter = rate_limiter
     if transport == "stdio" and operation_rate_limiter is None:
         operation_rate_limiter = FixedWindowRateLimiter(
@@ -519,6 +590,7 @@ def create_mcp_server(
         vault_service=app_vault_service,
         semantic_search_service=app_semantic_service,
         duplicate_candidate_service=app_duplicate_service,
+        relationship_service=app_relationship_service,
         transport=transport,
         operation_rate_limiter=operation_rate_limiter,
     )
@@ -575,6 +647,16 @@ def create_mcp_server(
             limit=limit,
             min_score=min_score,
         )
+
+    @server.tool(annotations=READ_ONLY_ANNOTATIONS, structured_output=True)
+    def note_links(path: NotePath) -> NoteLinksResult:
+        """List outgoing relationships from one contained Markdown note."""
+        return adapter.note_links(path=path)
+
+    @server.tool(annotations=READ_ONLY_ANNOTATIONS, structured_output=True)
+    def note_backlinks(path: NotePath) -> NoteBacklinksResult:
+        """List verified backlinks to one contained Markdown note."""
+        return adapter.note_backlinks(path=path)
 
     @server.resource(
         NOTE_RESOURCE_TEMPLATE,

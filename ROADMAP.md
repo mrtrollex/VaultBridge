@@ -768,9 +768,9 @@ VB-101 verified outgoing note relationships ✓
    ↓
 VB-102 verified backlinks ✓
    ↓
-VB-103 REST and MCP note relationships — NEXT
+VB-103 REST and MCP note relationships ✓
    ↓
-VB-104 dashboard note relationships
+VB-104 dashboard note relationships — NEXT
    ↓
 VB-105 evaluate graph-aware retrieval signal
    ↓
@@ -788,7 +788,7 @@ Milestone exit criteria:
   and resolves only verified contained Markdown targets through existing vault security boundaries
 - [x] outgoing links and backlinks distinguish resolved from unresolved relationships and perform
   no writes or persistent graph indexing
-- [ ] `/api/v1` and MCP expose the same read-only domain capabilities without extending legacy REST
+- [x] `/api/v1` and MCP expose the same read-only domain capabilities without extending legacy REST
   aliases or duplicating relationship logic
 - [ ] the dashboard provides a bounded read-only relationship section without graph visualization
   or client-side relationship ownership
@@ -919,9 +919,9 @@ VB-101 ✓
    ↓
 VB-102 ✓
    ↓
-VB-103 NEXT
+VB-103 ✓
    ↓
-VB-104
+VB-104 NEXT
    ↓
 VB-105
    ↓
@@ -955,7 +955,8 @@ and independently verified stable application/GHCR release. The accepted TrueNAS
 remains on application image `1.1.0`, and VB-082's remaining lifecycle gates stay open.
 Milestone 11 is in progress. VB-100 implements the reusable read-only wikilink parser/resolver,
 VB-101 adds verified outgoing relationships from one live contained note, and VB-102 derives
-verified backlinks with a measured live scan. VB-103 is the next recommended implementation task;
+verified backlinks with a measured live scan, and VB-103 exposes both capabilities through
+versioned-only REST routes and the shared MCP server. VB-104 is the next recommended implementation task;
 VB-032/VB-033 remain deferred, and VB-034 remains a later optional write task.
 
 ---

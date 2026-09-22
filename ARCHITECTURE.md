@@ -484,7 +484,8 @@ the HTTP application. Semantic tools are available only when the existing read-o
 inspection confirms a compatible ready index.
 
 The five VB-091 tools are `list_notes`, `read_note`, `search_notes`, `related_notes`, and
-`duplicate_candidates`. `related_notes` is the single semantic-retrieval name; there is no duplicate
+`duplicate_candidates`; VB-103 adds `note_links` and `note_backlinks` over `RelationshipService`.
+`related_notes` is the single semantic-retrieval name; there is no duplicate
 `semantic_search` alias. Note content will also be readable as `text/markdown` through the contained
 `vaultbridge://note/{percent-encoded-vault-relative-path}` Resource template. The URI never exposes
 an absolute host path and is decoded through `VaultService`. No Prompts or write tools are included.
@@ -493,11 +494,11 @@ Streamable HTTP is mounted through the official MCP SDK at fixed `/mcp` only whe
 `MCP_HTTP_ENABLED=true`. The SDK owns protocol framing and DNS-rebinding protection through typed
 Host/Origin allowlists. VaultBridge applies its current/previous Bearer verification and the running
 application's direct-peer limiter before SDK dispatch. The adapter reuses the exact `VaultService`,
-`SemanticSearchService`, and `DuplicateCandidateService` objects wired by `create_app()`, so it sees
-the live index lifecycle without creating another index owner. The route remains outside REST
-OpenAPI.
+`SemanticSearchService`, `DuplicateCandidateService`, and `RelationshipService` objects wired by
+`create_app()`, so it sees the live index lifecycle and relationship behavior without creating
+another owner. The route remains outside REST OpenAPI.
 
-HTTP uses stateless JSON responses and the same five read-only tools and contained Resource. It has
+HTTP uses stateless JSON responses and the same seven read-only tools and contained Resource. It has
 no MCP operation limiter inside the adapter, preventing double counting with the HTTP boundary. The
 deprecated standalone HTTP+SSE transport, a custom transport, a second MCP service/container, and a
 new port are not implemented.
@@ -570,6 +571,12 @@ dependencies and the MCP HTTP ASGI boundary.
 - exact backlink deduplication by canonical source, written target, heading, and display alias while
   preserving canonical source-path order and source relationship order
 - no note writes, persistence, semantic-index access, or protocol behavior
+
+### `api/relationships.py`
+
+- protected `GET /api/v1/notes/links` and `GET /api/v1/notes/backlinks` adapters only
+- explicit safe response schemas over the injected `RelationshipService`
+- no unversioned aliases, relationship derivation, writes, or persistence
 
 ### `services/indexer.py`
 
