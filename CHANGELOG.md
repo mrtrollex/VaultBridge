@@ -13,6 +13,9 @@ The project intends to follow Semantic Versioning after the public repository ba
 - a read-only outgoing-relationship service that verifies and reads one source note through the
   vault boundary, preserves wikilink occurrences in source order, and distinguishes resolved
   canonical targets from unresolved links without graph persistence
+- a read-only verified-backlink service that scans canonical live Markdown sources using one
+  reusable resolution snapshot, returns deterministic deduplicated relationship metadata, and
+  includes a synthetic 1,000-note benchmark without a CI latency gate or persistent graph index
 
 ## [1.2.1] - 2026-09-20
 

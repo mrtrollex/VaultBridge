@@ -766,9 +766,9 @@ VB-100 parse and safely resolve Obsidian wikilinks ✓
    ↓
 VB-101 verified outgoing note relationships ✓
    ↓
-VB-102 verified backlinks — NEXT
+VB-102 verified backlinks ✓
    ↓
-VB-103 REST and MCP note relationships
+VB-103 REST and MCP note relationships — NEXT
    ↓
 VB-104 dashboard note relationships
    ↓
@@ -786,7 +786,7 @@ Milestone exit criteria:
 
 - [x] one deterministic parser/resolver handles the supported wikilink forms, ignores fenced code,
   and resolves only verified contained Markdown targets through existing vault security boundaries
-- [ ] outgoing links and backlinks distinguish resolved from unresolved relationships and perform
+- [x] outgoing links and backlinks distinguish resolved from unresolved relationships and perform
   no writes or persistent graph indexing
 - [ ] `/api/v1` and MCP expose the same read-only domain capabilities without extending legacy REST
   aliases or duplicating relationship logic
@@ -917,9 +917,9 @@ VB-100 ✓
    ↓
 VB-101 ✓
    ↓
-VB-102 NEXT
+VB-102 ✓
    ↓
-VB-103
+VB-103 NEXT
    ↓
 VB-104
    ↓
@@ -953,10 +953,10 @@ remains healthy. Source metadata for the favicon-and-screenshot-only `v1.2.1` pa
 no tag, GitHub Release, GHCR image, or upstream catalog update exists. `v1.2.0` remains the published
 and independently verified stable application/GHCR release. The accepted TrueNAS Community catalog
 remains on application image `1.1.0`, and VB-082's remaining lifecycle gates stay open.
-Milestone 11 is in progress. VB-100 implements the reusable read-only wikilink parser/resolver, and
-VB-101 adds verified outgoing relationships from one live contained note. VB-102 is the next
-recommended implementation task; VB-032/VB-033 remain deferred, and VB-034 remains a later optional
-write task.
+Milestone 11 is in progress. VB-100 implements the reusable read-only wikilink parser/resolver,
+VB-101 adds verified outgoing relationships from one live contained note, and VB-102 derives
+verified backlinks with a measured live scan. VB-103 is the next recommended implementation task;
+VB-032/VB-033 remain deferred, and VB-034 remains a later optional write task.
 
 ---
 

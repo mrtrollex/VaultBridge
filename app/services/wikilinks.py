@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import re
+from collections import defaultdict
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import PurePosixPath, PureWindowsPath
+from types import MappingProxyType
 
 from app.services.vault import LiveMarkdownPathCandidate, VaultService
 
@@ -17,6 +20,29 @@ class Wikilink:
     heading: str | None = None
     alias: str | None = None
     resolved_path: str | None = None
+
+
+@dataclass(frozen=True)
+class WikilinkResolutionSnapshot:
+    """Immutable exact-name lookup derived from one live candidate enumeration."""
+
+    unqualified_paths: Mapping[str, tuple[str, ...]]
+
+    @classmethod
+    def from_candidates(
+        cls,
+        candidates: Sequence[LiveMarkdownPathCandidate],
+    ) -> WikilinkResolutionSnapshot:
+        grouped: dict[str, list[str]] = defaultdict(list)
+        for candidate in candidates:
+            grouped[PurePosixPath(candidate.discovered_path).name].append(
+                candidate.canonical_path
+            )
+        return cls(
+            unqualified_paths=MappingProxyType(
+                {name: tuple(paths) for name, paths in grouped.items()}
+            )
+        )
 
 
 class WikilinkResolver:
@@ -55,12 +81,18 @@ class WikilinkResolver:
 
     def resolve(self, link: Wikilink) -> Wikilink:
         """Return a new link with a path only for one exact verified target."""
-        return self._resolve(link, self._vault_service.live_markdown_path_candidates())
+        return self._resolve(link, self.resolution_snapshot())
+
+    def resolution_snapshot(self) -> WikilinkResolutionSnapshot:
+        """Build one exact-name lookup from the current live Markdown candidates."""
+        return WikilinkResolutionSnapshot.from_candidates(
+            self._vault_service.live_markdown_path_candidates()
+        )
 
     def _resolve(
         self,
         link: Wikilink,
-        candidates: list[LiveMarkdownPathCandidate],
+        snapshot: WikilinkResolutionSnapshot,
     ) -> Wikilink:
         candidate = self._candidate_path(link.target)
         if candidate is None:
@@ -73,20 +105,20 @@ class WikilinkResolver:
                 exact_spelling=True,
             )
             return replace(link, resolved_path=verified)
-        else:
-            matches = [
-                item
-                for item in candidates
-                if PurePosixPath(item.discovered_path).name == normalized
-            ]
 
-        resolved_path = matches[0].canonical_path if len(matches) == 1 else None
+        matches = snapshot.unqualified_paths.get(normalized, ())
+        resolved_path = matches[0] if len(matches) == 1 else None
         return replace(link, resolved_path=resolved_path)
 
-    def resolve_markdown(self, markdown: str) -> tuple[Wikilink, ...]:
+    def resolve_markdown(
+        self,
+        markdown: str,
+        *,
+        snapshot: WikilinkResolutionSnapshot | None = None,
+    ) -> tuple[Wikilink, ...]:
         """Parse and resolve a Markdown string without mutating vault state."""
-        candidates = self._vault_service.live_markdown_path_candidates()
-        return tuple(self._resolve(link, candidates) for link in self.parse(markdown))
+        live_snapshot = self.resolution_snapshot() if snapshot is None else snapshot
+        return tuple(self._resolve(link, live_snapshot) for link in self.parse(markdown))
 
     @staticmethod
     def _parse_line(line: str) -> list[Wikilink]:
