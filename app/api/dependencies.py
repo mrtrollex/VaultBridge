@@ -7,6 +7,7 @@ from app.core.http_security import enforce_peer_rate_limit, verify_bearer_author
 from app.services.duplicate_candidates import DuplicateCandidateService
 from app.services.indexer import BackgroundSemanticIndexer
 from app.services.rate_limiter import FixedWindowRateLimiter
+from app.services.relationships import RelationshipService
 from app.services.semantic_search import SemanticSearchService
 from app.services.vault import VaultService
 
@@ -29,6 +30,10 @@ def get_semantic_indexer(request: Request) -> BackgroundSemanticIndexer:
 
 def get_duplicate_candidate_service(request: Request) -> DuplicateCandidateService:
     return request.app.state.duplicate_candidate_service
+
+
+def get_relationship_service(request: Request) -> RelationshipService:
+    return request.app.state.relationship_service
 
 
 def get_rate_limiter(request: Request) -> FixedWindowRateLimiter:

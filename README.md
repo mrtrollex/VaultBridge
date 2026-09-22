@@ -145,8 +145,8 @@ VaultBridge can be launched as a local, read-only MCP server for MCP-capable cli
 python -m app.mcp_server
 ```
 
-The stdio transport exposes `list_notes`, `read_note`, `search_notes`,
-`related_notes`, and `duplicate_candidates`, plus contained Markdown Resources such as
+The stdio transport exposes `list_notes`, `read_note`, `search_notes`, `related_notes`,
+`duplicate_candidates`, `note_links`, and `note_backlinks`, plus contained Markdown Resources such as
 `vaultbridge://note/Projects%2FLaunch%20plan.md`. The process reuses `VAULT_PATH`,
 `SEMANTIC_DATA_PATH`, model, size, and rate-limit settings. It does not require `API_KEY`; the local
 spawning process and filesystem permissions are the trust boundary.
@@ -165,7 +165,7 @@ args:
   - app.mcp_server
 ```
 
-The same five read-only tools and contained Markdown Resources can be exposed over Streamable HTTP
+The same seven read-only tools and contained Markdown Resources can be exposed over Streamable HTTP
 at `/mcp` on the existing application port. It is disabled by default. Enable it with
 `MCP_HTTP_ENABLED=true`, keep using `Authorization: Bearer <token>`, and configure
 `MCP_HTTP_ALLOWED_HOSTS` plus `MCP_HTTP_ALLOWED_ORIGINS` for the actual deployment. The defaults
@@ -199,6 +199,8 @@ New integrations should use the versioned application API:
 | POST | `/api/v1/notes/related` | `findRelatedNotesV1` |
 | POST | `/api/v1/notes/duplicates` | `findDuplicateCandidatesV1` |
 | GET | `/api/v1/notes/list` | `listNotesV1` |
+| GET | `/api/v1/notes/links` | `listNoteLinksV1` |
+| GET | `/api/v1/notes/backlinks` | `listNoteBacklinksV1` |
 
 Existing clients may continue using the unversioned compatibility layer:
 
@@ -212,10 +214,13 @@ Existing clients may continue using the unversioned compatibility layer:
 | `/notes/duplicates` | `findDuplicateCandidates` | `/api/v1/notes/duplicates` |
 | `/notes/list` | `listNotes` | `/api/v1/notes/list` |
 
-Both paths in each pair use the same authentication, validation, response, error, and domain-service
+Both paths in each compatibility pair use the same authentication, validation, response, error, and domain-service
 implementation. The checked-in ChatGPT Action schema remains on the legacy paths so existing Actions
 continue working without an immediate configuration change. Migrating that external configuration
 and removing the compatibility layer are separate future decisions; no removal date is set.
+
+The relationship endpoints are versioned-only and have no unversioned compatibility aliases. They
+return live derived link metadata and perform no Markdown or semantic-index mutation.
 
 Operational routes remain unversioned: `GET /health` (`healthCheck`), `GET /health/live`
 (`livenessCheck`), and `GET /health/ready` (`readinessCheck`). The public `GET /privacy` text endpoint

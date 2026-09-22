@@ -11,6 +11,7 @@ from starlette.types import ASGIApp
 
 from app.api.health import router as health_router
 from app.api.notes import router as notes_router
+from app.api.relationships import router as relationships_router
 from app.api.search import router as search_router
 from app.core.config import Settings
 from app.core.logging import configure_application_logging, log_event
@@ -20,6 +21,7 @@ from app.services.duplicate_candidates import DuplicateCandidateService
 from app.services.filesystem_watcher import SemanticFilesystemWatcher
 from app.services.indexer import BackgroundSemanticIndexer
 from app.services.rate_limiter import FixedWindowRateLimiter
+from app.services.relationships import RelationshipService
 from app.services.semantic_search import (
     SemanticSearchService,
     semantic_search_service_from_settings,
@@ -164,6 +166,7 @@ def create_app(
     semantic_indexer: BackgroundSemanticIndexer | None = None,
     semantic_watcher: SemanticFilesystemWatcher | None = None,
     rate_limiter: FixedWindowRateLimiter | None = None,
+    relationship_service: RelationshipService | None = None,
     vault_service: VaultService | None = None,
 ) -> FastAPI:
     app_settings = settings if settings is not None else Settings.from_env()
@@ -184,6 +187,11 @@ def create_app(
             vault_service=app_vault_service,
             semantic_search_service=app_semantic_search_service,
         )
+    )
+    app_relationship_service = (
+        relationship_service
+        if relationship_service is not None
+        else RelationshipService(app_vault_service)
     )
     app_semantic_indexer = (
         semantic_indexer
@@ -226,11 +234,13 @@ def create_app(
     application.state.semantic_indexer = app_semantic_indexer
     application.state.semantic_watcher = app_semantic_watcher
     application.state.rate_limiter = app_rate_limiter
+    application.state.relationship_service = app_relationship_service
     application.state.vault_service = app_vault_service
     application.state.mcp_server = None
     application.add_exception_handler(VaultServiceError, handle_vault_service_error)
     application.include_router(health_router)
     application.include_router(notes_router)
+    application.include_router(relationships_router)
     application.include_router(search_router)
     application.include_router(ui_router)
     if app_settings.mcp_http_enabled:
@@ -239,6 +249,7 @@ def create_app(
             vault_service=app_vault_service,
             semantic_search_service=app_semantic_search_service,
             duplicate_candidate_service=app_duplicate_candidate_service,
+            relationship_service=app_relationship_service,
             rate_limiter=app_rate_limiter,
         )
         application.state.mcp_server = mcp_server

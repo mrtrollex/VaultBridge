@@ -24,6 +24,8 @@ TOOLS = {
     "search_notes",
     "related_notes",
     "duplicate_candidates",
+    "note_links",
+    "note_backlinks",
 }
 API_KEY = "vb093-current-placeholder"
 PREVIOUS_API_KEY = "vb093-previous-placeholder"
