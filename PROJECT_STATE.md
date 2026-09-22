@@ -4,7 +4,7 @@ This document is the current factual snapshot for future Codex sessions. It shou
 
 ## Baseline date
 
-2026-09-21
+2026-09-22
 
 ## Current development position
 
@@ -58,6 +58,7 @@ Completed:
 - VB-093 — Container-level validation for MCP Streamable HTTP
 - VB-100 — Parse and safely resolve Obsidian wikilinks
 - VB-101 — Verified outgoing note relationships
+- VB-102 — Verified backlinks
 
 Post-v1 development position:
 
@@ -180,7 +181,7 @@ Current post-v1 planning position:
 - MCP write tools, OAuth, Prompts, and VaultBridge subscription features remain deferred beyond the
   implemented read-only stdio and Streamable HTTP transports
 - Milestone 11 is in progress as a read-first Obsidian relationship track derived from live
-  Markdown; VB-100 and VB-101 are complete and VB-102 is the next recommended coding task
+  Markdown; VB-100 through VB-102 are complete and VB-103 is the next recommended coding task
 - VB-100 provides one reusable read-only parser/resolver for the planned wikilink forms, preserves
   heading/display-alias metadata and repeated source order, ignores backtick/tilde fenced code, and
   returns a canonical path only for one exact target verified through `VaultService`
@@ -190,6 +191,14 @@ Current post-v1 planning position:
 - VB-101 reads one caller-selected source note only through `VaultService`, then derives immutable
   outgoing relationship occurrences through the VB-100 resolver with explicit resolved/unresolved
   state, canonical resolved paths, metadata, source ordering, and duplicates preserved
+- VB-102 verifies one exact requested target through `VaultService`, scans deterministic canonical
+  live-note paths, and returns immutable backlinks only for VB-100/VB-101 relationships whose
+  canonical resolved path equals that target; exact duplicate source/target/heading/alias tuples
+  collapse while distinct relationship metadata and per-source order remain visible
+- one immutable exact-name resolution snapshot is reused for the complete scan; the repeatable
+  synthetic command `.\.venv\Scripts\python.exe -m scripts.benchmark_backlinks --notes 1000`
+  scanned 1,000 Markdown notes and returned 999 backlinks in 2022.835 ms on CPython 3.12.10,
+  Windows AMD64; this local-filesystem result is architecture evidence, not a CI latency gate
 - VB-101 through VB-105 remain read-only and reserve any Markdown mutation for the later opt-in
   VB-034 task
 - VB-032 and VB-033 remain deferred optional future work
@@ -269,7 +278,7 @@ Current milestones:
 - **Milestone 8 — Web Dashboard / operator experience (complete)**
 - **Milestone 9 — TrueNAS Community App distribution (upstream accepted; post-merge VB-082 lifecycle validation in progress)**
 - **Milestone 10 — MCP integration (complete)**
-- **Milestone 11 — Obsidian Knowledge Graph / Note Relationships (in progress; VB-100 and VB-101 complete, VB-102 next)**
+- **Milestone 11 — Obsidian Knowledge Graph / Note Relationships (in progress; VB-100 through VB-102 complete, VB-103 next)**
 
 ## Working production characteristics
 

@@ -558,6 +558,7 @@ dependencies and the MCP HTTP ASGI boundary.
 - immutable wikilink metadata in Markdown source order
 - backtick/tilde fenced-code exclusion
 - exact, ambiguity-safe live-note resolution through `VaultService`
+- immutable exact-name candidate snapshots reusable across one bounded live scan
 - no note reads/writes, relationship persistence, semantic-index access, or protocol behavior
 
 ### `services/relationships.py`
@@ -565,7 +566,10 @@ dependencies and the MCP HTTP ASGI boundary.
 - verified source-note reads through `VaultService`
 - immutable outgoing relationship occurrences in deterministic source order
 - resolved/unresolved state and VB-100 target, heading, alias, and canonical-path metadata
-- no backlinks, note writes, persistence, semantic-index access, or protocol behavior
+- target-verified live backlink scans over deterministic canonical `VaultService` enumeration
+- exact backlink deduplication by canonical source, written target, heading, and display alias while
+  preserving canonical source-path order and source relationship order
+- no note writes, persistence, semantic-index access, or protocol behavior
 
 ### `services/indexer.py`
 
@@ -710,6 +714,29 @@ vault and optional folder survive; safe internal aliases become canonical vault-
 titles. Filtering is read-only and preserves surviving rank order. Semantic score, lexical score,
 combined score, heading, and snippet still reflect the indexed snapshot, so an externally edited
 live note can retain stale semantic fields until normal synchronization runs.
+
+### Verified backlinks
+
+```text
+requested target path
+  ↓
+exact live Markdown verification through VaultService
+  ↓
+deterministic canonical live-note enumeration + one VB-100 resolution snapshot
+  ↓
+VB-101 outgoing derivation for each source note
+  ↓
+canonical resolved-target equality
+  ↓
+stable, exact-deduplicated backlink metadata
+```
+
+The scan reads every eligible live source through `VaultService` and performs no raw-text backlink
+matching. Results are ordered by canonical source path and then source occurrence order. An exact
+duplicate has the same canonical source path, written target, heading, and display alias; only that
+duplicate collapses, so materially distinct link metadata remains visible. Expected source size or
+encoding failures and unexpected read failures remain explicit rather than becoming partial or
+empty results. The candidate snapshot is scan-local and immutable; no graph data is persisted.
 
 ### Duplicate-candidate discovery
 
