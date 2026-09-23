@@ -198,6 +198,8 @@ def test_sdk_v2_server_advertises_exact_read_only_surface_and_no_prompts(tmp_pat
         "search_notes",
         "related_notes",
         "duplicate_candidates",
+        "note_links",
+        "note_backlinks",
     ]
     assert not {"create_note", "append_note", "semantic_search"} & {
         tool.name for tool in tools.tools
@@ -226,6 +228,83 @@ def test_tool_schemas_keep_adr_defaults_and_bounds(tmp_path):
     assert by_name["related_notes"]["properties"]["text"]["minLength"] == 2
     assert by_name["related_notes"]["properties"]["min_score"]["default"] == 0.28
     assert by_name["duplicate_candidates"]["properties"]["title"]["maxLength"] == 180
+    assert by_name["note_links"]["properties"]["path"]["maxLength"] == 700
+    assert by_name["note_backlinks"]["properties"]["path"]["minLength"] == 1
+
+
+def test_note_relationship_tools_share_domain_semantics(tmp_path):
+    server, vault, _semantic = server_for(tmp_path)
+    vault_root = vault.vault_root
+    (vault_root / "Target.md").write_text("target", encoding="utf-8")
+    (vault_root / "Empty.md").write_text("empty", encoding="utf-8")
+    (vault_root / "A.md").write_text(
+        "[[Target#One|Display]] [[Missing]] [[Target#One|Display]]",
+        encoding="utf-8",
+    )
+
+    async def call(client):
+        return (
+            await client.call_tool("note_links", {"path": "A.md"}),
+            await client.call_tool("note_backlinks", {"path": "Target.md"}),
+            await client.call_tool("note_backlinks", {"path": "Empty.md"}),
+        )
+
+    links, backlinks, empty = run_client(server, call)
+    assert links.is_error is not True
+    assert links.structured_content == {
+        "links": [
+            {
+                "target": "Target",
+                "heading": "One",
+                "alias": "Display",
+                "state": "resolved",
+                "resolved_path": "Target.md",
+            },
+            {
+                "target": "Missing",
+                "heading": None,
+                "alias": None,
+                "state": "unresolved",
+                "resolved_path": None,
+            },
+            {
+                "target": "Target",
+                "heading": "One",
+                "alias": "Display",
+                "state": "resolved",
+                "resolved_path": "Target.md",
+            },
+        ]
+    }
+    assert backlinks.structured_content == {
+        "backlinks": [
+            {
+                "source_path": "A.md",
+                "target": "Target",
+                "heading": "One",
+                "alias": "Display",
+            }
+        ]
+    }
+    assert empty.structured_content == {"backlinks": []}
+
+
+def test_note_relationship_tools_sanitize_invalid_and_missing_paths(tmp_path):
+    server, _vault, _semantic = server_for(tmp_path)
+
+    invalid = run_client(
+        server,
+        lambda client: client.call_tool("note_links", {"path": "../Secret.md"}),
+    )
+    missing = run_client(
+        server,
+        lambda client: client.call_tool("note_backlinks", {"path": "Missing.md"}),
+    )
+
+    assert invalid.is_error is True
+    assert invalid.content[0].text == "invalid_path: Invalid vault-relative path."
+    assert missing.is_error is True
+    assert missing.content[0].text == "note_not_found: Note not found."
 
 
 def test_list_read_and_literal_search_delegate_and_return_resource_links(tmp_path):
@@ -620,10 +699,11 @@ def test_official_client_stdio_round_trip_and_clean_eof_shutdown(tmp_path):
             listed = await client.call_tool("list_notes", {})
             read = await client.call_tool("read_note", {"path": "Smoke.md"})
             searched = await client.call_tool("search_notes", {"query": "round trip"})
+            links = await client.call_tool("note_links", {"path": "Smoke.md"})
             resource = await client.read_resource(note_resource_uri("Smoke.md"))
-            return tools, prompts, templates, listed, read, searched, resource
+            return tools, prompts, templates, listed, read, searched, links, resource
 
-    tools, prompts, templates, listed, read, searched, resource = asyncio.run(
+    tools, prompts, templates, listed, read, searched, links, resource = asyncio.run(
         asyncio.wait_for(smoke(), timeout=20)
     )
     assert [tool.name for tool in tools.tools] == [
@@ -632,6 +712,8 @@ def test_official_client_stdio_round_trip_and_clean_eof_shutdown(tmp_path):
         "search_notes",
         "related_notes",
         "duplicate_candidates",
+        "note_links",
+        "note_backlinks",
     ]
     assert prompts.prompts == []
     assert [template.uri_template for template in templates.resource_templates] == [
@@ -640,5 +722,6 @@ def test_official_client_stdio_round_trip_and_clean_eof_shutdown(tmp_path):
     assert listed.structured_content["notes"][0]["path"] == "Smoke.md"
     assert read.structured_content["content"].endswith("protocol round trip")
     assert searched.structured_content["results"][0]["path"] == "Smoke.md"
+    assert links.structured_content == {"links": []}
     assert resource.contents[0].text.endswith("protocol round trip")
     assert semantic_data.exists() is False
