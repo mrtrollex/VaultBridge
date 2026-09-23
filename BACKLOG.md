@@ -1479,7 +1479,8 @@ relationship implementation, and any API or note mutation.
 
 ### VB-105 — Evaluate graph-aware retrieval signal — P1
 
-**Status:** Planned. Evaluation/design-first; it does not authorize a production ranking change.
+**Status:** Completed on 2026-09-23. Evaluation evidence does not support a production ranking
+change.
 
 **Depends on:** VB-102 and the existing retrieval evaluation/benchmark infrastructure.
 
@@ -1500,6 +1501,20 @@ accepted semantic/lexical baseline.
 
 **Out of scope:** an implicit production ranking change, model/chunking changes, graph storage or
 services, REST/MCP/dashboard changes, graph visualization, and note mutation.
+
+**Evidence and decision**
+
+- four sanitized relationship-intent cases compare the unchanged semantic/lexical baseline with an
+  evaluation-only verified one-hop interleaving candidate;
+- deterministic and real-model runs both moved every expected related note from absent in the top
+  five to rank 2 (Hit@3 `0%` to `100%`, MRR `0` to `0.5`), while the accepted VB-024 baseline stays
+  unchanged;
+- the real-model Windows AMD64 run added `55.481 ms` mean live relationship cost to a `93.903 ms`
+  mean baseline query on only 17 notes; the existing 1,000-note backlink measurement also warns
+  against synchronous live-scan scaling;
+- conclusion: **not supported for production ranking** because the narrow quality gain does not
+  establish acceptable cost or representative general-query benefit. No production weight,
+  threshold, API, storage, model, chunking, or index behavior changed.
 
 ---
 
@@ -1588,7 +1603,7 @@ VB-001 ✓
 → VB-102 ✓
 → VB-103 ✓
 → VB-104 ✓
-→ VB-105 NEXT
+→ VB-105 ✓ (production ranking not supported)
 → VB-034 (optional opt-in write task)
 ```
 
@@ -1617,8 +1632,8 @@ also passed against synthetic data without using the production vault. Source me
 favicon-and-screenshot-only `v1.2.1` patch is prepared, but publication and the separate upstream
 catalog update remain pending. `v1.2.0` is still the published and independently verified stable
 application/GHCR release; the accepted TrueNAS Community catalog runs `1.1.0` and its remaining
-VB-082 gates stay open. Milestone 11 is now in progress as a read-first relationship track; VB-100
-through VB-104 are complete and VB-105 is the next recommended task, while VB-032/VB-033 remain
-deferred and VB-034 remains a later, opt-in write capability.
+VB-082 gates stay open. Milestone 11 is complete as a read-first relationship track; VB-105 records
+evaluation evidence but does not support a production graph-ranking change, while VB-032/VB-033
+remain deferred and VB-034 remains a later, opt-in write capability.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

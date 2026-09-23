@@ -21,6 +21,10 @@ The project intends to follow Semantic Versioning after the public repository ba
 - a bounded read-only dashboard Relationships section for a successfully read note, with independent
   outgoing/backlink loading, empty, failure, logout, and stale-response handling through the existing
   authenticated session boundary and text-only rendering
+- a separate deterministic and real-model graph-retrieval evaluation over sanitized fixtures; it
+  records a verified one-hop quality signal and live-scan cost without changing the accepted
+  retrieval baseline or production behavior, and concludes that production graph ranking is not
+  supported by the current evidence
 
 ## [1.2.1] - 2026-09-20
 

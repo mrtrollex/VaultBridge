@@ -110,3 +110,61 @@ offline regression gate and contains no timings or real-model scores. VB-023 mea
 production model on the same public sanitized cases; its environment-dependent results are not
 written into `baseline.json` and do not alter process exit status.
 Focused tests reverse repository/chunk iteration and assert identical output.
+
+## VB-105 graph-aware retrieval evaluation
+
+VB-105 adds a separate, evaluation-only comparison over the original nine-note corpus plus eight
+sanitized relationship fixtures. The original corpus, `retrieval_cases.json`, `baseline.json`,
+production search implementation, ranking weights, thresholds, model, chunking, and index contract
+remain unchanged.
+
+Run the deterministic comparison with the normal evaluation suite. Run the real production model
+and live relationship scan with the graph benchmark:
+
+```bash
+python -m pytest -q tests/eval
+python -m tests.eval.graph_benchmark
+python -m tests.eval.graph_benchmark --format json
+```
+
+The four cases model two directions that semantic/lexical similarity alone cannot answer reliably:
+following a resolved outgoing link from a strongly retrieved map note, and finding the source of a
+verified backlink to a strongly retrieved topic note. The cases intentionally use relation-oriented
+queries whose expected related note is absent from the baseline top five. Ambiguous, missing,
+traversal, and fenced-code links are included in the fixtures but cannot contribute.
+
+The candidate preserves production search results as anchors and interleaves each anchor's verified
+one-hop outgoing targets, followed by verified backlink sources. It deduplicates by canonical
+vault-relative path and returns at most five paths. Relationships come only from
+`RelationshipService`; raw wikilink text never contributes. This is a deliberately simple candidate
+combination strategy for measuring the signal, not a proposed production weighting scheme.
+
+Deterministic evidence is checked in separately as `graph_comparison.json`:
+
+| Case | Expected path | Baseline rank | Graph-aware rank |
+|---|---|---:|---:|
+| outgoing-service-atlas | Web/FastAPI.md | null | 2 |
+| outgoing-storage-atlas | Storage/TrueNAS.md | null | 2 |
+| backlink-falcon-checklist | Procedures/Falcon Checklist.md | null | 2 |
+| backlink-compass-checklist | Procedures/Compass Checklist.md | null | 2 |
+
+| Variant | Cases | Hit@1 | Hit@3 | MRR |
+|---|---:|---:|---:|---:|
+| Semantic/lexical baseline | 4 | 0.00% | 0.00% | 0.00% |
+| Verified one-hop candidate | 4 | 0.00% | 100.00% | 50.00% |
+
+The same ranks and aggregate metrics were observed with FastEmbed `0.8.0` and
+`sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` on CPython `3.12.10`, Windows AMD64,
+on 2026-09-23. Mean baseline query time was `93.903 ms`; live relationship expansion added
+`55.481 ms`, for `149.384 ms` total. P95 values were `142.038 ms`, `78.605 ms`, and `220.560 ms`
+respectively. These timings are one environment-dependent measurement, not a CI threshold.
+
+**Conclusion: not supported for production ranking.** The narrow relation-intent fixture shows a
+real quality signal, but the evaluated live-scan strategy does not establish acceptable production
+cost or general retrieval benefit. It added about 59% mean latency on only 17 notes, while the
+separate VB-102 measurement already shows that one live backlink scan can take about 2 seconds for
+1,000 synthetic notes. The cases also do not measure ordinary non-relationship queries or false
+positive harm. VB-105 therefore does not recommend or authorize a production graph-ranking change.
+Any future reconsideration needs a separately approved design that measures a representative mixed
+query set, chooses weighting/fallback behavior, and resolves live-versus-derived graph cost plus
+rebuild/index compatibility without weakening verified relationship semantics.

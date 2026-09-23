@@ -1,0 +1,46 @@
+[
+  {
+    "id": "outgoing-service-atlas",
+    "language": "en",
+    "category": "outgoing-relationship",
+    "query": "Which implementation note is connected from the cobalt handoff ownership map?",
+    "expected": {
+      "path": "Web/FastAPI.md",
+      "heading": null,
+      "within_top_k": 3
+    }
+  },
+  {
+    "id": "outgoing-storage-atlas",
+    "language": "en",
+    "category": "outgoing-relationship",
+    "query": "Which detailed note is connected from the amber archive ownership map?",
+    "expected": {
+      "path": "Storage/TrueNAS.md",
+      "heading": null,
+      "within_top_k": 3
+    }
+  },
+  {
+    "id": "backlink-falcon-checklist",
+    "language": "en",
+    "category": "backlink-relationship",
+    "query": "Which related note is connected to the violet torque sequence and quartz gauge calibration material?",
+    "expected": {
+      "path": "Procedures/Falcon Checklist.md",
+      "heading": null,
+      "within_top_k": 3
+    }
+  },
+  {
+    "id": "backlink-compass-checklist",
+    "language": "en",
+    "category": "backlink-relationship",
+    "query": "Which related note is connected to the silver compass rehearsal and lantern checksum material?",
+    "expected": {
+      "path": "Procedures/Compass Checklist.md",
+      "heading": null,
+      "within_top_k": 3
+    }
+  }
+]

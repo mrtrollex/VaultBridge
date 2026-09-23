@@ -4,7 +4,7 @@ This document is the current factual snapshot for future Codex sessions. It shou
 
 ## Baseline date
 
-2026-09-22
+2026-09-23
 
 ## Current development position
 
@@ -61,6 +61,7 @@ Completed:
 - VB-102 — Verified backlinks
 - VB-103 — REST and MCP note relationships
 - VB-104 — Dashboard note relationships
+- VB-105 — Evaluate graph-aware retrieval signal
 
 Post-v1 development position:
 
@@ -157,6 +158,11 @@ Current post-v1 planning position:
   Docker/source-built Custom App deployment remains an advanced/manual compatibility path
 - VB-023 is complete: the sanitized real-model retrieval benchmark emits Markdown/JSON without
   changing the deterministic VB-022 baseline or production retrieval behavior
+- VB-105 is complete as evaluation/design evidence only: four sanitized outgoing/backlink cases
+  moved from no expected top-five baseline result to rank 2 under a verified one-hop candidate in
+  both deterministic and real-model runs, but the added live-scan cost and narrow query set do not
+  support a production graph-ranking change; production retrieval and the VB-024 baseline remain
+  unchanged
 - ADR 0004 is accepted and VB-090 is complete as design-only work; VB-091 now implements a
   read-only stdio MCP adapter with five tools and a contained note Resource template using official
   `mcp==2.1.1`
@@ -182,8 +188,8 @@ Current post-v1 planning position:
 - VB-075 is complete with exact-source CI and exact-image runtime evidence
 - MCP write tools, OAuth, Prompts, and VaultBridge subscription features remain deferred beyond the
   implemented read-only stdio and Streamable HTTP transports
-- Milestone 11 is in progress as a read-first Obsidian relationship track derived from live
-  Markdown; VB-100 through VB-104 are complete and VB-105 is the next recommended task
+- Milestone 11 is complete as a read-first Obsidian relationship track derived from live Markdown;
+  VB-105 found a verified graph signal but did not support a production ranking change
 - VB-100 provides one reusable read-only parser/resolver for the planned wikilink forms, preserves
   heading/display-alias metadata and repeated source order, ignores backtick/tilde fenced code, and
   returns a canonical path only for one exact target verified through `VaultService`
@@ -289,7 +295,7 @@ Current milestones:
 - **Milestone 8 — Web Dashboard / operator experience (complete)**
 - **Milestone 9 — TrueNAS Community App distribution (upstream accepted; post-merge VB-082 lifecycle validation in progress)**
 - **Milestone 10 — MCP integration (complete)**
-- **Milestone 11 — Obsidian Knowledge Graph / Note Relationships (in progress; VB-100 through VB-104 complete, VB-105 next)**
+- **Milestone 11 — Obsidian Knowledge Graph / Note Relationships (complete; production graph ranking not supported)**
 
 ## Working production characteristics
 

@@ -742,7 +742,7 @@ production TrueNAS runtime validation.
 
 ---
 
-# Milestone 11 — Obsidian Knowledge Graph / Note Relationships — IN PROGRESS
+# Milestone 11 — Obsidian Knowledge Graph / Note Relationships — COMPLETE
 
 **Goal:** establish a safe, read-first relationship layer derived from Obsidian wikilinks while
 keeping Markdown authoritative and existing VaultBridge clients and behavior compatible.
@@ -756,8 +756,10 @@ that live inspection is insufficient.
 
 REST and MCP remain thin adapters over shared relationship services. The dashboard is limited to a
 small read-only outgoing-links/backlinks view associated with a selected note; it does not become a
-graph explorer, editor, file manager, or Obsidian replacement. Retrieval uses verified relationships
-only as an evaluation candidate until evidence justifies a separate production ranking decision.
+graph explorer, editor, file manager, or Obsidian replacement. VB-105 evaluated verified
+relationships only as a candidate and found a narrow quality signal but insufficient cost and
+general-query evidence for a production ranking decision. Production retrieval therefore remains
+unchanged.
 
 Task sequence:
 
@@ -772,7 +774,7 @@ VB-103 REST and MCP note relationships ✓
    ↓
 VB-104 dashboard note relationships ✓
    ↓
-VB-105 evaluate graph-aware retrieval signal — NEXT
+VB-105 evaluate graph-aware retrieval signal ✓ (production ranking not supported)
    ↓
 VB-034 opt-in verified backlink insertion (later write capability)
 ```
@@ -792,11 +794,11 @@ Milestone exit criteria:
   aliases or duplicating relationship logic
 - [x] the dashboard provides a bounded read-only relationship section without graph visualization
   or client-side relationship ownership
-- [ ] graph-aware retrieval is measured against the existing semantic/lexical baseline before any
+- [x] graph-aware retrieval is measured against the existing semantic/lexical baseline before any
   production ranking decision
-- [ ] existing REST, MCP, CLI, dashboard, TrueNAS, semantic-search, authentication, containment, and
+- [x] existing REST, MCP, CLI, dashboard, TrueNAS, semantic-search, authentication, containment, and
   deployment behavior remains compatible
-- [ ] VB-034 remains separately controlled and no automatic backlink or Markdown mutation occurs
+- [x] VB-034 remains separately controlled and no automatic backlink or Markdown mutation occurs
   before it is explicitly implemented
 
 ---
@@ -923,7 +925,7 @@ VB-103 ✓
    ↓
 VB-104 ✓
    ↓
-VB-105 NEXT
+VB-105 ✓ (production ranking not supported)
    ↓
 VB-034 (optional opt-in write task)
 ```
@@ -953,11 +955,13 @@ remains healthy. Source metadata for the favicon-and-screenshot-only `v1.2.1` pa
 no tag, GitHub Release, GHCR image, or upstream catalog update exists. `v1.2.0` remains the published
 and independently verified stable application/GHCR release. The accepted TrueNAS Community catalog
 remains on application image `1.1.0`, and VB-082's remaining lifecycle gates stay open.
-Milestone 11 is in progress. VB-100 implements the reusable read-only wikilink parser/resolver,
+Milestone 11 is complete. VB-100 implements the reusable read-only wikilink parser/resolver,
 VB-101 adds verified outgoing relationships from one live contained note, and VB-102 derives
 verified backlinks with a measured live scan, VB-103 exposes both capabilities through
 versioned-only REST routes and the shared MCP server, and VB-104 adds their bounded read-only view to
-the selected-note dashboard workflow. VB-105 is the next recommended task;
+the selected-note dashboard workflow. VB-105 completes the evaluation track without recommending a
+production graph-ranking change because measured live-scan cost and narrow cases do not establish
+acceptable general benefit;
 VB-032/VB-033 remain deferred, and VB-034 remains a later optional write task.
 
 ---

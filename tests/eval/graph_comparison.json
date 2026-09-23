@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "method": "verified-one-hop-interleaving",
+  "result_limit": 5,
+  "summary": {
+    "baseline": {
+      "cases": 4,
+      "hit_at_1": 0.0,
+      "hit_at_3": 0.0,
+      "mrr": 0.0
+    },
+    "graph_aware": {
+      "cases": 4,
+      "hit_at_1": 0.0,
+      "hit_at_3": 1.0,
+      "mrr": 0.5
+    }
+  },
+  "cases": [
+    {
+      "case_id": "outgoing-service-atlas",
+      "expected_path": "Web/FastAPI.md",
+      "baseline_rank": null,
+      "graph_aware_rank": 2,
+      "graph_aware_results": [
+        {
+          "rank": 1,
+          "path": "Maps/Service Atlas.md",
+          "source": "baseline",
+          "anchor_path": null
+        },
+        {
+          "rank": 2,
+          "path": "Web/FastAPI.md",
+          "source": "outgoing",
+          "anchor_path": "Maps/Service Atlas.md"
+        }
+      ]
+    },
+    {
+      "case_id": "outgoing-storage-atlas",
+      "expected_path": "Storage/TrueNAS.md",
+      "baseline_rank": null,
+      "graph_aware_rank": 2,
+      "graph_aware_results": [
+        {
+          "rank": 1,
+          "path": "Maps/Storage Atlas.md",
+          "source": "baseline",
+          "anchor_path": null
+        },
+        {
+          "rank": 2,
+          "path": "Storage/TrueNAS.md",
+          "source": "outgoing",
+          "anchor_path": "Maps/Storage Atlas.md"
+        },
+        {
+          "rank": 3,
+          "path": "Maps/Service Atlas.md",
+          "source": "baseline",
+          "anchor_path": null
+        },
+        {
+          "rank": 4,
+          "path": "Web/FastAPI.md",
+          "source": "outgoing",
+          "anchor_path": "Maps/Service Atlas.md"
+        }
+      ]
+    },
+    {
+      "case_id": "backlink-falcon-checklist",
+      "expected_path": "Procedures/Falcon Checklist.md",
+      "baseline_rank": null,
+      "graph_aware_rank": 2,
+      "graph_aware_results": [
+        {
+          "rank": 1,
+          "path": "Topics/Marigold.md",
+          "source": "baseline",
+          "anchor_path": null
+        },
+        {
+          "rank": 2,
+          "path": "Procedures/Falcon Checklist.md",
+          "source": "backlink",
+          "anchor_path": "Topics/Marigold.md"
+        }
+      ]
+    },
+    {
+      "case_id": "backlink-compass-checklist",
+      "expected_path": "Procedures/Compass Checklist.md",
+      "baseline_rank": null,
+      "graph_aware_rank": 2,
+      "graph_aware_results": [
+        {
+          "rank": 1,
+          "path": "Topics/Juniper.md",
+          "source": "baseline",
+          "anchor_path": null
+        },
+        {
+          "rank": 2,
+          "path": "Procedures/Compass Checklist.md",
+          "source": "backlink",
+          "anchor_path": "Topics/Juniper.md"
+        }
+      ]
+    }
+  ]
+}
