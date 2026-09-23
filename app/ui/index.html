@@ -285,6 +285,42 @@
             aria-atomic="true"
           ></div>
           <pre id="note-reader-content" class="note-reader__content" hidden></pre>
+          <section
+            id="note-relationships"
+            class="note-relationships"
+            aria-labelledby="note-relationships-heading"
+            hidden
+          >
+            <header class="note-relationships__header">
+              <p class="eyebrow">Live vault relationships</p>
+              <h4 id="note-relationships-heading">Relationships</h4>
+              <p>Read-only facts reported by VaultBridge for this note.</p>
+            </header>
+            <div class="note-relationships__groups">
+              <section class="relationship-group" aria-labelledby="outgoing-links-heading">
+                <h5 id="outgoing-links-heading">Outgoing links</h5>
+                <p
+                  id="outgoing-links-status"
+                  class="relationship-group__status"
+                  role="status"
+                  aria-live="polite"
+                  aria-atomic="true"
+                ></p>
+                <ol id="outgoing-links-list" class="relationship-list"></ol>
+              </section>
+              <section class="relationship-group" aria-labelledby="backlinks-heading">
+                <h5 id="backlinks-heading">Backlinks</h5>
+                <p
+                  id="backlinks-status"
+                  class="relationship-group__status"
+                  role="status"
+                  aria-live="polite"
+                  aria-atomic="true"
+                ></p>
+                <ol id="backlinks-list" class="relationship-list"></ol>
+              </section>
+            </div>
+          </section>
         </section>
       </section>
 

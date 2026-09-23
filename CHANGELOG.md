@@ -18,6 +18,9 @@ The project intends to follow Semantic Versioning after the public repository ba
   includes a synthetic 1,000-note benchmark without a CI latency gate or persistent graph index
 - protected versioned-only REST outgoing-link and backlink endpoints plus matching `note_links` and
   `note_backlinks` MCP tools, all backed by the same read-only relationship domain service
+- a bounded read-only dashboard Relationships section for a successfully read note, with independent
+  outgoing/backlink loading, empty, failure, logout, and stale-response handling through the existing
+  authenticated session boundary and text-only rendering
 
 ## [1.2.1] - 2026-09-20
 

@@ -1458,7 +1458,7 @@ changes, graph visualization, and ranking changes.
 
 ### VB-104 — Dashboard note relationships — P2
 
-**Status:** Planned.
+**Status:** Complete.
 
 **Depends on:** VB-103
 
@@ -1587,8 +1587,8 @@ VB-001 ✓
 → VB-101 ✓
 → VB-102 ✓
 → VB-103 ✓
-→ VB-104 NEXT
-→ VB-105
+→ VB-104 ✓
+→ VB-105 NEXT
 → VB-034 (optional opt-in write task)
 ```
 
@@ -1618,7 +1618,7 @@ favicon-and-screenshot-only `v1.2.1` patch is prepared, but publication and the 
 catalog update remain pending. `v1.2.0` is still the published and independently verified stable
 application/GHCR release; the accepted TrueNAS Community catalog runs `1.1.0` and its remaining
 VB-082 gates stay open. Milestone 11 is now in progress as a read-first relationship track; VB-100
-through VB-103 are complete and VB-104 is the next recommended coding task, while VB-032/VB-033 remain
+through VB-104 are complete and VB-105 is the next recommended task, while VB-032/VB-033 remain
 deferred and VB-034 remains a later, opt-in write capability.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

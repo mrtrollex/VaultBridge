@@ -153,11 +153,13 @@ def e2e_server() -> Iterator[E2EServer]:
         semantic_data_path.mkdir()
         (vault_path / "Knowledge" / "Playwright Guide.md").write_text(
             "# Playwright Regression Guide\n\n"
-            "The quartz lighthouse phrase proves literal retrieval through the real dashboard.\n",
+            "The quartz lighthouse phrase proves literal retrieval through the real dashboard.\n\n"
+            "[[Unrelated Archive#Garden|Garden note]] [[Missing Plan|Open question]]\n",
             encoding="utf-8",
         )
         (vault_path / "Unrelated Archive.md").write_text(
-            "# Unrelated Archive\n\nThis note discusses offline garden planning.\n",
+            "# Unrelated Archive\n\nThis note discusses offline garden planning.\n\n"
+            "[[Knowledge/Playwright Guide#Regression|Guide alias]]\n",
             encoding="utf-8",
         )
 

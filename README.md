@@ -110,6 +110,8 @@ The vault is never replaced by the index, and there is no general filesystem end
 - strict browser security headers, local assets, and text-only dynamic rendering
 - protected literal and semantic Search using existing backend ranking and read-only result fields,
   with no query/history persistence
+- bounded outgoing-link and backlink facts for a successfully read note, using the existing
+  authenticated versioned endpoints without client-side relationship parsing or persistence
 - retrieval-only operator visibility: no note editor, index-maintenance controls, account system,
   or TrueNAS-specific behavior
 

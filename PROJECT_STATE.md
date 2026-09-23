@@ -60,6 +60,7 @@ Completed:
 - VB-101 — Verified outgoing note relationships
 - VB-102 — Verified backlinks
 - VB-103 — REST and MCP note relationships
+- VB-104 — Dashboard note relationships
 
 Post-v1 development position:
 
@@ -182,13 +183,12 @@ Current post-v1 planning position:
 - MCP write tools, OAuth, Prompts, and VaultBridge subscription features remain deferred beyond the
   implemented read-only stdio and Streamable HTTP transports
 - Milestone 11 is in progress as a read-first Obsidian relationship track derived from live
-  Markdown; VB-100 through VB-103 are complete and VB-104 is the next recommended coding task
+  Markdown; VB-100 through VB-104 are complete and VB-105 is the next recommended task
 - VB-100 provides one reusable read-only parser/resolver for the planned wikilink forms, preserves
   heading/display-alias metadata and repeated source order, ignores backtick/tilde fenced code, and
   returns a canonical path only for one exact target verified through `VaultService`
 - unsafe, missing, non-Markdown, directory, broken/external-symlink, and ambiguous exact targets stay
-  unresolved; no relationship dashboard view, persistent graph/index, ranking change, or
-  relationship write has been implemented
+  unresolved; no persistent graph/index, ranking change, or relationship write has been implemented
 - VB-101 reads one caller-selected source note only through `VaultService`, then derives immutable
   outgoing relationship occurrences through the VB-100 resolver with explicit resolved/unresolved
   state, canonical resolved paths, metadata, source ordering, and duplicates preserved
@@ -206,6 +206,10 @@ Current post-v1 planning position:
   `RelationshipService`, while stdio constructs that same domain service over its contained vault
 - local Ruff, non-E2E tests, compileall, Chromium E2E, Docker build, MCP dependency-in-image, and
   MCP stdio/HTTP container smokes pass for VB-103
+- VB-104 adds a bounded read-only Relationships section to the existing successful note-reader flow;
+  `search.js` uses the authenticated fetch boundary for the versioned links/backlinks routes, renders
+  at most 20 server-ordered items per group through text-only DOM APIs, and owns explicit independent
+  loading, empty, failure, logout, abort, and stale-response states without persisting relationship data
 - VB-101 through VB-105 remain read-only and reserve any Markdown mutation for the later opt-in
   VB-034 task
 - VB-032 and VB-033 remain deferred optional future work
@@ -285,7 +289,7 @@ Current milestones:
 - **Milestone 8 — Web Dashboard / operator experience (complete)**
 - **Milestone 9 — TrueNAS Community App distribution (upstream accepted; post-merge VB-082 lifecycle validation in progress)**
 - **Milestone 10 — MCP integration (complete)**
-- **Milestone 11 — Obsidian Knowledge Graph / Note Relationships (in progress; VB-100 through VB-103 complete, VB-104 next)**
+- **Milestone 11 — Obsidian Knowledge Graph / Note Relationships (in progress; VB-100 through VB-104 complete, VB-105 next)**
 
 ## Working production characteristics
 

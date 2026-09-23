@@ -21,6 +21,13 @@ const noteReaderTitle = document.querySelector("#note-reader-title");
 const noteReaderPath = document.querySelector("#note-reader-path");
 const noteReaderStatus = document.querySelector("#note-reader-status");
 const noteReaderContent = document.querySelector("#note-reader-content");
+const noteRelationships = document.querySelector("#note-relationships");
+const outgoingLinksStatus = document.querySelector("#outgoing-links-status");
+const outgoingLinksList = document.querySelector("#outgoing-links-list");
+const backlinksStatus = document.querySelector("#backlinks-status");
+const backlinksList = document.querySelector("#backlinks-list");
+
+const RELATIONSHIP_RENDER_LIMIT = 20;
 
 const scoreFormatter = new Intl.NumberFormat(undefined, {
   minimumFractionDigits: 0,
@@ -37,6 +44,8 @@ let requestGeneration = 0;
 let activeController = null;
 let noteRequestGeneration = 0;
 let activeNoteController = null;
+let relationshipRequestGeneration = 0;
+let activeRelationshipController = null;
 let returnFocusTarget = null;
 
 function setText(element, value) {
@@ -68,6 +77,9 @@ function abortActiveNote() {
   noteRequestGeneration += 1;
   activeNoteController?.abort();
   activeNoteController = null;
+  relationshipRequestGeneration += 1;
+  activeRelationshipController?.abort();
+  activeRelationshipController = null;
 }
 
 function setStatus(state, message, visible = true) {
@@ -81,6 +93,21 @@ function setReaderStatus(state, message) {
   setText(noteReaderStatus, message);
 }
 
+function setRelationshipStatus(element, state, message) {
+  element.dataset.relationshipState = state;
+  setText(element, message);
+}
+
+function clearRelationships() {
+  outgoingLinksList.replaceChildren();
+  backlinksList.replaceChildren();
+  setText(outgoingLinksStatus, "");
+  setText(backlinksStatus, "");
+  outgoingLinksStatus.removeAttribute("data-relationship-state");
+  backlinksStatus.removeAttribute("data-relationship-state");
+  noteRelationships.hidden = true;
+}
+
 function clearNoteReader() {
   setText(noteReaderTitle, "Note");
   setText(noteReaderPath, "");
@@ -88,6 +115,7 @@ function clearNoteReader() {
   noteReaderStatus.removeAttribute("data-note-state");
   setText(noteReaderContent, "");
   noteReaderContent.hidden = true;
+  clearRelationships();
   returnFocusTarget = null;
 }
 
@@ -204,6 +232,171 @@ function isNotePayload(value) {
     && typeof value.content === "string";
 }
 
+function isOutgoingLink(value) {
+  return isObject(value)
+    && typeof value.target === "string"
+    && isNullableString(value.heading)
+    && isNullableString(value.alias)
+    && (value.state === "resolved" || value.state === "unresolved")
+    && isNullableString(value.resolved_path)
+    && (value.state !== "resolved" || value.resolved_path !== null)
+    && (value.state !== "unresolved" || value.resolved_path === null);
+}
+
+function isBacklink(value) {
+  return isObject(value)
+    && typeof value.source_path === "string"
+    && typeof value.target === "string"
+    && isNullableString(value.heading)
+    && isNullableString(value.alias);
+}
+
+function isRelationshipPayload(value, collection, validator) {
+  return isObject(value)
+    && Array.isArray(value[collection])
+    && value[collection].every(validator);
+}
+
+function appendRelationshipFact(item, label, value) {
+  if (value !== null) {
+    appendTextElement(item, "p", "relationship-item__fact", `${label}: ${value}`);
+  }
+}
+
+function renderOutgoingLink(link) {
+  const item = document.createElement("li");
+  item.className = "relationship-item";
+  appendRelationshipFact(item, "Written target", link.target);
+  appendRelationshipFact(item, "State", link.state === "resolved" ? "Resolved" : "Unresolved");
+  appendRelationshipFact(item, "Resolved path", link.resolved_path);
+  appendRelationshipFact(item, "Heading", link.heading);
+  appendRelationshipFact(item, "Display alias", link.alias);
+  outgoingLinksList.appendChild(item);
+}
+
+function renderBacklink(backlink) {
+  const item = document.createElement("li");
+  item.className = "relationship-item";
+  appendRelationshipFact(item, "Source note", backlink.source_path);
+  appendRelationshipFact(item, "Heading", backlink.heading);
+  appendRelationshipFact(item, "Display alias", backlink.alias);
+  backlinksList.appendChild(item);
+}
+
+function renderRelationshipGroup(items, list, status, emptyMessage, noun, renderItem) {
+  list.replaceChildren();
+  if (items.length === 0) {
+    setRelationshipStatus(status, "empty", emptyMessage);
+    return;
+  }
+  items.slice(0, RELATIONSHIP_RENDER_LIMIT).forEach(renderItem);
+  const hiddenCount = items.length - RELATIONSHIP_RENDER_LIMIT;
+  const shownCount = Math.min(items.length, RELATIONSHIP_RENDER_LIMIT);
+  const suffix = hiddenCount > 0 ? ` ${hiddenCount} additional ${noun} not shown.` : "";
+  setRelationshipStatus(status, "ready", `${shownCount} ${noun} shown.${suffix}`);
+}
+
+function messageForRelationshipError(error) {
+  if (error.kind === "rate-limited") {
+    return error.retryAfter === null
+      ? "Relationship data is rate limited. Retry later."
+      : `Relationship data is rate limited. Retry in ${error.retryAfter} seconds.`;
+  }
+  if (error.kind === "network") {
+    return "Unable to load relationship data. Check the connection and try again.";
+  }
+  if (error.kind === "not-found") {
+    return "Relationship data is unavailable because the note no longer exists.";
+  }
+  return "Relationship data is temporarily unavailable.";
+}
+
+async function loadRelationshipGroup(
+  { endpoint, notePath, collection, validator, list, status, emptyMessage, noun, renderItem },
+  generation,
+  signal,
+) {
+  try {
+    const response = await authenticatedFetch(
+      `${endpoint}?path=${encodeURIComponent(notePath)}`,
+      { method: "GET", headers: { Accept: "application/json" }, signal },
+    );
+    let payload;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+    if (generation !== relationshipRequestGeneration || !unlocked || noteReader.hidden) {
+      return;
+    }
+    if (!isRelationshipPayload(payload, collection, validator)) {
+      list.replaceChildren();
+      setRelationshipStatus(status, "error", "VaultBridge returned unexpected relationship data.");
+      return;
+    }
+    renderRelationshipGroup(payload[collection], list, status, emptyMessage, noun, renderItem);
+  } catch (error) {
+    if (generation !== relationshipRequestGeneration || error.name === "StaleRequestError") {
+      return;
+    }
+    if (error.kind === "authentication-required") {
+      onAuthenticationRequired();
+      return;
+    }
+    list.replaceChildren();
+    setRelationshipStatus(status, "error", messageForRelationshipError(error));
+  }
+}
+
+async function loadRelationships(notePath) {
+  relationshipRequestGeneration += 1;
+  activeRelationshipController?.abort();
+  const generation = relationshipRequestGeneration;
+  const controller = new AbortController();
+  activeRelationshipController = controller;
+  outgoingLinksList.replaceChildren();
+  backlinksList.replaceChildren();
+  noteRelationships.hidden = false;
+  setRelationshipStatus(outgoingLinksStatus, "loading", "Loading outgoing links…");
+  setRelationshipStatus(backlinksStatus, "loading", "Loading backlinks…");
+
+  const groups = [
+    {
+      endpoint: "api/v1/notes/links",
+      notePath,
+      collection: "links",
+      validator: isOutgoingLink,
+      list: outgoingLinksList,
+      status: outgoingLinksStatus,
+      emptyMessage: "No outgoing links.",
+      noun: "outgoing links",
+      renderItem: renderOutgoingLink,
+    },
+    {
+      endpoint: "api/v1/notes/backlinks",
+      notePath,
+      collection: "backlinks",
+      validator: isBacklink,
+      list: backlinksList,
+      status: backlinksStatus,
+      emptyMessage: "No backlinks.",
+      noun: "backlinks",
+      renderItem: renderBacklink,
+    },
+  ];
+
+  try {
+    await Promise.all(groups.map((group) => (
+      loadRelationshipGroup(group, generation, controller.signal)
+    )));
+  } finally {
+    if (generation === relationshipRequestGeneration) {
+      activeRelationshipController = null;
+    }
+  }
+}
+
 function displayScore(value) {
   return value === null ? "Not available" : scoreFormatter.format(value);
 }
@@ -292,6 +485,7 @@ async function openNote(result, trigger) {
   setText(noteReaderPath, result.path);
   setText(noteReaderContent, "");
   noteReaderContent.hidden = true;
+  clearRelationships();
   setReaderStatus("loading", "Loading complete note…");
   noteReader.focus();
 
@@ -317,6 +511,7 @@ async function openNote(result, trigger) {
     setText(noteReaderContent, payload.content);
     noteReaderContent.hidden = false;
     setReaderStatus("ready", "Complete note loaded.");
+    void loadRelationships(payload.path);
   } catch (error) {
     if (generation !== noteRequestGeneration || error.name === "StaleRequestError") {
       return;

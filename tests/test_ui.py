@@ -790,6 +790,82 @@ def test_note_reader_uses_existing_read_endpoint_and_text_only_lifecycle(tmp_pat
         assert prohibited not in script
 
 
+def test_note_relationship_panel_uses_versioned_authenticated_bounded_text_rendering(tmp_path):
+    client = client_for(tmp_path)
+    document = client.get("/ui/").text
+    script = client.get("/ui/assets/search.js").text
+
+    for element_id in (
+        "note-relationships",
+        "outgoing-links-status",
+        "outgoing-links-list",
+        "backlinks-status",
+        "backlinks-list",
+    ):
+        assert f'id="{element_id}"' in document
+    assert 'aria-labelledby="note-relationships-heading"' in document
+    assert 'aria-labelledby="outgoing-links-heading"' in document
+    assert 'aria-labelledby="backlinks-heading"' in document
+    assert document.count('role="status"') >= 2
+
+    assert 'endpoint: "api/v1/notes/links"' in script
+    assert 'endpoint: "api/v1/notes/backlinks"' in script
+    assert '`${endpoint}?path=${encodeURIComponent(notePath)}`' in script
+    assert "authenticatedFetch(" in script
+    assert "Authorization" not in script
+    assert "const RELATIONSHIP_RENDER_LIMIT = 20" in script
+    assert "items.slice(0, RELATIONSHIP_RENDER_LIMIT).forEach(renderItem)" in script
+    assert ".sort(" not in script
+    assert ".filter(" not in script
+    assert "new Set(" not in script
+    assert "sessionStorage" not in script
+    assert "localStorage" not in script
+
+    for field in (
+        "link.target",
+        "link.state",
+        "link.resolved_path",
+        "link.heading",
+        "link.alias",
+        "backlink.source_path",
+        "backlink.heading",
+        "backlink.alias",
+    ):
+        assert field in script
+    assert 'link.state === "resolved" ? "Resolved" : "Unresolved"' in script
+    assert "appendTextElement(" in script
+    assert "textContent" in script
+    for prohibited in (
+        "innerHTML",
+        "outerHTML",
+        "insertAdjacentHTML",
+        "document.write",
+        "URLSearchParams",
+    ):
+        assert prohibited not in script
+
+
+def test_note_relationship_lifecycle_clears_stale_private_state_and_sanitizes_failures(tmp_path):
+    script = client_for(tmp_path).get("/ui/assets/search.js").text
+
+    assert "clearRelationships();" in script
+    assert "activeRelationshipController?.abort()" in script
+    assert "relationshipRequestGeneration += 1" in script
+    assert "generation !== relationshipRequestGeneration" in script
+    assert "!unlocked || noteReader.hidden" in script
+    assert 'setRelationshipStatus(outgoingLinksStatus, "loading", "Loading outgoing links…")' in script
+    assert 'setRelationshipStatus(backlinksStatus, "loading", "Loading backlinks…")' in script
+    assert 'emptyMessage: "No outgoing links."' in script
+    assert 'emptyMessage: "No backlinks."' in script
+    assert 'setRelationshipStatus(status, "error"' in script
+    assert "await Promise.all(" in script
+    assert "onAuthenticationRequired();" in script
+    assert "response.text(" not in script
+    assert "error.message" not in script
+    assert "noteReader.focus();" in script
+    assert "void loadRelationships(payload.path);" in script
+
+
 def test_search_uses_existing_auth_wrapper_and_preserves_session_on_non_auth_errors(tmp_path):
     app_script = client_for(tmp_path).get("/ui/assets/app.js").text
     search_script = client_for(tmp_path).get("/ui/assets/search.js").text
@@ -850,6 +926,12 @@ def test_ui_css_has_narrow_reflow_long_content_focus_and_reduced_motion_contract
     reduced_motion = css[css.index("@media (prefers-reduced-motion: reduce)") :]
     assert "animation: none" in reduced_motion
     assert "transition: none" in reduced_motion
+    relationship_css = css[css.index(".note-relationships {") : css.index(".overview-grid {")]
+    assert "grid-template-columns: repeat(2, minmax(0, 1fr))" in relationship_css
+    assert "min-width: 0" in relationship_css
+    assert "overflow-wrap: anywhere" in relationship_css
+    narrow_css = css[css.index("@media (max-width: 46rem)") : css.index("@media (max-width: 25rem)")]
+    assert ".note-relationships__groups { grid-template-columns: 1fr; }" in narrow_css
 
 
 def test_ui_resources_exclude_remote_dependencies_truenas_behavior_and_mutation_controls(tmp_path):
