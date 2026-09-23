@@ -365,10 +365,11 @@ ChatGPT / curl / scripts / integrations
 
 The current shell contains Overview, Search, API / Integration, and About areas. Overview
 automatically reads the existing public `GET /health` contract. Search uses the existing protected
-`POST /api/v1/notes/search` and `POST /api/v1/notes/related` contracts. Browser code formats and
-presents returned facts but does not duplicate health, lifecycle, counting, ranking, filtering,
-containment, thresholding, or live-note verification ownership. The API and CLI remain first-class
-and independently usable.
+`POST /api/v1/notes/search` and `POST /api/v1/notes/related` contracts. After a selected note is read,
+its bounded Relationships section uses protected `GET /api/v1/notes/links` and
+`GET /api/v1/notes/backlinks`. Browser code formats and presents returned facts but does not duplicate
+health, lifecycle, counting, ranking, filtering, containment, relationship resolution, thresholding,
+or live-note verification ownership. The API and CLI remain first-class and independently usable.
 
 The dashboard is served by the existing FastAPI application from the same repository and origin.
 Public `GET`/`HEAD /ui` redirects temporarily to canonical
@@ -379,7 +380,11 @@ React/Vue/Svelte dependency, second service, second container, or new frontend d
 Dockerfile's existing `COPY app ./app` instruction includes these assets without a Dockerfile change.
 The small browser module boundary keeps shell/session/navigation behavior and the authenticated
 fetch helper in `app.js`, public health fetching/validation/rendering in `overview.js`, and protected
-search mode/request/lifecycle/result rendering in `search.js`.
+  search mode/request/lifecycle/result rendering plus selected-note relationship presentation in
+  `search.js`. Relationship requests share the note-reader logout/abort/generation lifecycle, while
+  each group independently reports loading, empty, failure, and ready states. Rendering preserves
+  server order and duplicates, caps each group at 20 visible items, uses text-only DOM APIs, and adds
+  no browser persistence, relationship parsing, graph ownership, or mutation.
 
 The public shell contains no configured credential. Unlock and reload revalidation call
 `GET /api/v1/notes/list?limit=1`; a successful response allows the submitted key to be stored under

@@ -156,10 +156,10 @@ Do not implement the recommended next task.
 
 ## Current next task
 
-The next recommended coding task is **VB-104 — Dashboard note relationships**. Implement only the
-exact `BACKLOG.md` scope as a small read-only dashboard view over the completed VB-103 endpoints.
-Do not start VB-105 or add client-side relationship parsing, ranking changes, persistence, graph
-visualization, or Markdown-mutation behavior as part of VB-104.
+The next recommended task is **VB-105 — Evaluate graph-aware retrieval signal**. Treat it as the
+evaluation/design-first task defined in `BACKLOG.md`; it does not authorize a production ranking
+change. Do not add relationship persistence, graph visualization, client-side relationship
+ownership, or Markdown-mutation behavior as part of VB-105.
 
 VB-082 remains an incomplete milestone and lifecycle-validation item. Its remaining gates require
 live/operator TrueNAS evidence and must not be treated as a normal autonomous coding task. VB-091 is

@@ -815,6 +815,96 @@ button:disabled {
   white-space: pre-wrap;
 }
 
+.note-relationships {
+  border-top: 1px solid var(--border-strong);
+}
+
+.note-relationships__header {
+  max-width: 58rem;
+  padding: 1.5rem 1.5rem 1.1rem;
+}
+
+.note-relationships__header h4 {
+  margin-bottom: 0.45rem;
+  color: var(--heading-text);
+  font-family: var(--display-font);
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.note-relationships__header > p:last-child {
+  margin: 0;
+  color: var(--muted-text);
+}
+
+.note-relationships__groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid var(--border);
+}
+
+.relationship-group {
+  min-width: 0;
+  padding: 1.25rem 1.5rem 1.5rem;
+}
+
+.relationship-group + .relationship-group { border-left: 1px solid var(--border); }
+
+.relationship-group h5 {
+  margin-bottom: 0.65rem;
+  color: var(--heading-text);
+  font-family: var(--utility-font);
+  font-size: 0.82rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.relationship-group__status {
+  min-height: 1.35rem;
+  margin: 0;
+  color: var(--muted-text);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.relationship-group__status[data-relationship-state="loading"] { color: var(--info); }
+
+.relationship-group__status[data-relationship-state="error"] { color: var(--error); }
+
+.relationship-list {
+  display: grid;
+  gap: 0;
+  margin: 0.9rem 0 0;
+  padding: 0;
+  border-top: 1px solid var(--border);
+  list-style: none;
+}
+
+.relationship-list:empty { display: none; }
+
+.relationship-item {
+  min-width: 0;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.relationship-item__fact {
+  margin: 0.3rem 0 0;
+  color: var(--muted-text);
+  font-family: var(--utility-font);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.relationship-item__fact:first-child {
+  margin-top: 0;
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
 .overview-grid {
   display: grid;
   grid-template-columns: minmax(15rem, 0.68fr) minmax(0, 1.32fr);
@@ -1193,7 +1283,16 @@ code {
   .note-reader__back { margin-inline: 1rem; }
 
   .note-reader__header,
-  .note-reader__content { padding-inline: 1rem; }
+  .note-reader__content,
+  .note-relationships__header,
+  .relationship-group { padding-inline: 1rem; }
+
+  .note-relationships__groups { grid-template-columns: 1fr; }
+
+  .relationship-group + .relationship-group {
+    border-top: 1px solid var(--border);
+    border-left: 0;
+  }
 
   .search-result__scores > div {
     border-right: 0;
