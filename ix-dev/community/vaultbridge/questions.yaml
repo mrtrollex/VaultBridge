@@ -3,6 +3,8 @@ groups:
     description: Configure VaultBridge
   - name: User and Group Configuration
     description: Configure the non-root user and group for VaultBridge
+  - name: MCP Configuration
+    description: Configure the optional MCP Streamable HTTP endpoint
   - name: Network Configuration
     description: Configure network access for VaultBridge
   - name: Storage Configuration
@@ -50,6 +52,42 @@ questions:
             min: 1
             required: true
             show_if: [["watch_enabled", "=", true]]
+
+  - variable: mcp
+    label: ""
+    group: MCP Configuration
+    schema:
+      type: dict
+      attrs:
+        - variable: http_enabled
+          label: Enable MCP HTTP
+          description: Enable the Streamable HTTP MCP endpoint at /mcp on the existing VaultBridge Web Port.
+          schema:
+            type: boolean
+            default: false
+        - variable: write_enabled
+          label: Enable MCP Writes
+          description: Allow authenticated MCP clients to create and append Markdown notes inside the configured vault. This does not change REST writes or vault storage permissions.
+          schema:
+            type: boolean
+            default: false
+            show_if: [["http_enabled", "=", true]]
+        - variable: allowed_hosts
+          label: MCP Allowed Hosts
+          description: Comma-separated Host allowlist. External or reverse-proxied access must explicitly include its actual Host, such as truenas.example.test:*; wildcard * is unsafe.
+          schema:
+            type: string
+            default: 127.0.0.1:*,localhost:*,[::1]:*
+            required: true
+            show_if: [["http_enabled", "=", true]]
+        - variable: allowed_origins
+          label: MCP Allowed Origins
+          description: Comma-separated allowlist for present browser or client Origin headers. Server-to-server clients without Origin retain the existing transport behavior.
+          schema:
+            type: string
+            default: http://127.0.0.1:*,http://localhost:*,http://[::1]:*
+            required: true
+            show_if: [["http_enabled", "=", true]]
 
   - variable: run_as
     label: ""

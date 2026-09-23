@@ -141,7 +141,7 @@ material; they are not evidence that the accepted TrueNAS catalog already displa
 
 ### MCP
 
-VaultBridge can be launched as a local, read-only MCP server for MCP-capable clients:
+VaultBridge can be launched as a local MCP server for MCP-capable clients:
 
 ```text
 python -m app.mcp_server
@@ -153,10 +153,11 @@ The stdio transport exposes `list_notes`, `read_note`, `search_notes`, `related_
 `SEMANTIC_DATA_PATH`, model, size, and rate-limit settings. It does not require `API_KEY`; the local
 spawning process and filesystem permissions are the trust boundary.
 
-The adapter never starts FastAPI, a network listener, the background indexer, or the filesystem
-watcher. Literal list/read/search operations work independently of semantic storage. Semantic tools
-read only an existing compatible ready index and never synchronize, rebuild, or modify it; if a safe
-immutable index view is unavailable, those tools return a retryable error.
+With the default `MCP_WRITE_ENABLED=false`, the adapter never starts FastAPI, a network listener, a
+background indexer, or the filesystem watcher. Literal list/read/search operations work
+independently of semantic storage. Semantic tools read only an existing compatible ready index and
+never synchronize, rebuild, or modify it; if a safe immutable index view is unavailable, those
+tools return a retryable error.
 
 A generic client entry uses the current Python environment and repository as its working directory:
 
@@ -176,9 +177,22 @@ clients when its Host is allowed. The HTTP transport accepts the current `API_KE
 `API_KEY_PREVIOUS`, and shares the normal process-local peer rate limit and live application
 services/index lifecycle.
 
-The Streamable HTTP surface remains read-only and schema-hidden. It adds no port, service,
-container, OAuth flow, write tool, Prompt, subscription feature, or standalone HTTP+SSE endpoint.
-The stdio command remains supported and retains its local trust and independent operation budget.
+Set `MCP_WRITE_ENABLED=true` to add exactly `create_note` and `append_note` to either transport.
+They reuse the protected REST write behavior: create never overwrites, append supports an optional
+dedupe key, and only committed changes queue targeted semantic refresh. Stdio owns and shuts down a
+targeted index worker only in this mode; it does not start an unnecessary full sync. For remote
+read/write MCP, use all four explicit settings and terminate TLS at a trusted reverse proxy or use a
+private VPN:
+
+```env
+MCP_HTTP_ENABLED=true
+MCP_WRITE_ENABLED=true
+MCP_HTTP_ALLOWED_HOSTS=vaultbridge.example.test:*
+MCP_HTTP_ALLOWED_ORIGINS=https://vaultbridge.example.test
+```
+
+Do not use wildcard Host or Origin values. Streamable HTTP remains schema-hidden and adds no port,
+service, container, OAuth flow, Prompt, subscription feature, or standalone HTTP+SSE endpoint.
 
 ### 🐳 Deployment & operations
 
@@ -433,7 +447,8 @@ host PUID:PGID  ->  container process user and group
 | `RATE_LIMIT_REQUESTS` | `120` | Positive requests allowed per peer in one fixed window |
 | `RATE_LIMIT_WINDOW_SECONDS` | `60` | Positive fixed-window duration in seconds |
 | `RATE_LIMIT_MAX_CLIENTS` | `1024` | Positive hard cap on process-local peer state |
-| `MCP_HTTP_ENABLED` | `false` | Opt in to read-only Streamable HTTP at `/mcp` on the existing application port |
+| `MCP_HTTP_ENABLED` | `false` | Opt in to Streamable HTTP at `/mcp` on the existing application port |
+| `MCP_WRITE_ENABLED` | `false` | Add MCP `create_note` and `append_note`; the default seven-tool surface remains read-only |
 | `MCP_HTTP_ALLOWED_HOSTS` | loopback hosts with any port | Comma-separated Host allowlist enforced by the MCP SDK; external hosts must be explicit |
 | `MCP_HTTP_ALLOWED_ORIGINS` | loopback HTTP origins with any port | Comma-separated allowlist for a present Origin; external origins must be explicit |
 | `OBSIDIAN_VAULT_PATH` | `/path/to/your/Obsidian/Vault` | Required absolute host path to the vault |

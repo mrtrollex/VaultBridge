@@ -1516,6 +1516,31 @@ services, REST/MCP/dashboard changes, graph visualization, and note mutation.
   establish acceptable cost or representative general-query benefit. No production weight,
   threshold, API, storage, model, chunking, or index behavior changed.
 
+### VB-106 — MCP write parity and first-class TrueNAS MCP configuration — P1
+
+**Status:** Implemented on 2026-09-23; release image and upstream TrueNAS catalog update remain
+separate delivery work.
+
+**Goal:** add default-off MCP create/append parity with the protected REST note API and expose all
+supported MCP HTTP settings as first-class TrueNAS package fields.
+
+**Acceptance criteria**
+
+- keep the exact seven-tool MCP surface when `MCP_WRITE_ENABLED=false`, and add only `create_note`
+  and `append_note` when it is `true`;
+- reuse `VaultService` write behavior, safe MCP error mapping, and the existing post-commit targeted
+  semantic reindex rule without rolling back authoritative Markdown on queue failure;
+- use the live application indexer for Streamable HTTP and an owned, cleanly shut down targeted
+  indexer for write-enabled stdio without an unnecessary full synchronization;
+- expose safe default-off HTTP/write toggles and explicit non-wildcard Host/Origin allowlists in the
+  checked-in TrueNAS form and map them to the existing container and Web Port;
+- preserve Bearer rotation, rate limiting, Host/Origin enforcement, storage permissions, REST/API
+  compatibility, and the external upstream catalog boundary.
+
+**Out of scope:** delete, overwrite/edit-in-place, arbitrary file management, VB-034 backlink
+insertion, graph ranking/storage, OAuth, unauthenticated MCP, a second port, Apps SDK UI, and
+OpenAI-specific protocol behavior.
+
 ---
 
 ## Release history

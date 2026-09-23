@@ -158,6 +158,8 @@ Do not implement the recommended next task.
 
 No new autonomous relationship task is currently recommended. VB-105 is complete as
 evaluation/design evidence and does not support or authorize a production graph-ranking change.
+VB-106 is implemented as default-off MCP create/append parity plus checked-in TrueNAS MCP form
+source; its release-image and external catalog delivery remain separate gated work.
 VB-034 remains a separately scoped optional write capability and must not be inferred as the next
 task from sequence alone.
 

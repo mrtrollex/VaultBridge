@@ -32,6 +32,12 @@ Installing the Community App does not automatically migrate an existing source-b
    the intended Obsidian vault.
 4. After the app becomes healthy, open **Web UI** to reach the bundled `/ui/` dashboard.
 
+After the VB-106 application image and matching package update complete the normal upstream
+TrueNAS review, **Edit App** will include an **MCP Configuration** group with **Enable MCP HTTP**,
+**Enable MCP Writes**, **MCP Allowed Hosts**, and **MCP Allowed Origins**. Those fields use the same
+Web Port and remove the normal need for Additional Environment Variables. The currently accepted
+catalog package does not gain these fields merely because their source is checked in here.
+
 The catalog form masks secret API-key inputs. Masking prevents casual display in the form; a
 privileged TrueNAS or Docker administrator can still inspect deployed container configuration.
 The default semantic/derived-data storage is a TrueNAS-managed ixVolume, while an existing host path
@@ -151,6 +157,10 @@ RATE_LIMIT_ENABLED=true
 RATE_LIMIT_REQUESTS=120
 RATE_LIMIT_WINDOW_SECONDS=60
 RATE_LIMIT_MAX_CLIENTS=1024
+MCP_HTTP_ENABLED=false
+MCP_WRITE_ENABLED=false
+MCP_HTTP_ALLOWED_HOSTS=127.0.0.1:*,localhost:*,[::1]:*
+MCP_HTTP_ALLOWED_ORIGINS=http://127.0.0.1:*,http://localhost:*,http://[::1]:*
 SEMANTIC_WATCH_ENABLED=false
 SEMANTIC_WATCH_DEBOUNCE_SECONDS=1.0
 ```
@@ -170,6 +180,11 @@ SEMANTIC_INDEX_BATCH_SIZE=25
 
 Avoid casual use of `docker compose config`: resolved output can contain both API keys from `.env`.
 Never paste resolved Compose output or the complete container environment into a support request.
+
+For remote MCP read/write access, explicitly set both MCP toggles to `true`, add the real Host and
+any present client Origin to their allowlists, and use HTTPS through a trusted reverse proxy or a
+private VPN. Do not use wildcard allowlists. Enabling MCP writes does not change the vault mount's
+read-only setting or filesystem permissions.
 
 #### Rotate the API key safely
 

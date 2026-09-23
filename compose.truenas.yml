@@ -18,6 +18,10 @@ services:
       SEMANTIC_INDEX_BATCH_SIZE: "25"
       SEMANTIC_WATCH_ENABLED: ${SEMANTIC_WATCH_ENABLED:-false}
       SEMANTIC_WATCH_DEBOUNCE_SECONDS: ${SEMANTIC_WATCH_DEBOUNCE_SECONDS:-1.0}
+      MCP_HTTP_ENABLED: ${MCP_HTTP_ENABLED:-false}
+      MCP_WRITE_ENABLED: ${MCP_WRITE_ENABLED:-false}
+      MCP_HTTP_ALLOWED_HOSTS: ${MCP_HTTP_ALLOWED_HOSTS:-127.0.0.1:*,localhost:*,[::1]:*}
+      MCP_HTTP_ALLOWED_ORIGINS: ${MCP_HTTP_ALLOWED_ORIGINS:-http://127.0.0.1:*,http://localhost:*,http://[::1]:*}
     volumes:
       # Adjust these two host paths to your TrueNAS datasets/directories.
       - "/mnt/Apps/AppsData/ObsidianVault:/vault"

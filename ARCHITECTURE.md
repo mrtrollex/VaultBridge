@@ -480,9 +480,9 @@ MCP stdio adapter
                     persisted index
 ```
 
-The stdio entry point constructs only existing read services. It does not start FastAPI,
-`BackgroundSemanticIndexer`, `SemanticFilesystemWatcher`, synchronization, rebuild, or any semantic
-storage writer. Immutable SQLite status/chunk reads avoid creating schema objects or WAL/SHM
+With `MCP_WRITE_ENABLED=false`, the stdio entry point constructs only existing read services. It
+does not start FastAPI, `BackgroundSemanticIndexer`, `SemanticFilesystemWatcher`, synchronization,
+rebuild, or any semantic storage writer. Immutable SQLite status/chunk reads avoid creating schema objects or WAL/SHM
 sidecars. This preserves the current no-cross-process-index-writer boundary while allowing
 local MCP clients to list, read, search, find related notes, and request duplicate candidates without
 the HTTP application. Semantic tools are available only when the existing read-only persisted-index
@@ -493,26 +493,29 @@ The five VB-091 tools are `list_notes`, `read_note`, `search_notes`, `related_no
 `related_notes` is the single semantic-retrieval name; there is no duplicate
 `semantic_search` alias. Note content will also be readable as `text/markdown` through the contained
 `vaultbridge://note/{percent-encoded-vault-relative-path}` Resource template. The URI never exposes
-an absolute host path and is decoded through `VaultService`. No Prompts or write tools are included.
+an absolute host path and is decoded through `VaultService`. VB-106 conditionally adds `create_note`
+and `append_note` when `MCP_WRITE_ENABLED=true`; no Prompts are included.
 
 Streamable HTTP is mounted through the official MCP SDK at fixed `/mcp` only when
 `MCP_HTTP_ENABLED=true`. The SDK owns protocol framing and DNS-rebinding protection through typed
 Host/Origin allowlists. VaultBridge applies its current/previous Bearer verification and the running
 application's direct-peer limiter before SDK dispatch. The adapter reuses the exact `VaultService`,
-`SemanticSearchService`, `DuplicateCandidateService`, and `RelationshipService` objects wired by
+`SemanticSearchService`, `DuplicateCandidateService`, `RelationshipService`, and
+`BackgroundSemanticIndexer` objects wired by
 `create_app()`, so it sees the live index lifecycle and relationship behavior without creating
 another owner. The route remains outside REST OpenAPI.
 
-HTTP uses stateless JSON responses and the same seven read-only tools and contained Resource. It has
+HTTP uses stateless JSON responses and the same default seven read-only tools and contained Resource. It has
 no MCP operation limiter inside the adapter, preventing double counting with the HTTP boundary. The
 deprecated standalone HTTP+SSE transport, a custom transport, a second MCP service/container, and a
 new port are not implemented.
 
-Future `create_note` and `append_note` MCP tools may be added only through a separately approved
-in-process design that preserves `VaultService` writes and queues the committed path through the
-application-owned `BackgroundSemanticIndexer`. MCP cannot introduce overwrite, delete, section
-update, backlink mutation, arbitrary filesystem access, index maintenance, or a bypass of deferred
-VB-032/VB-033.
+When writes are enabled, both transports reuse `VaultService` and add only `create_note` and
+`append_note`. HTTP queues committed paths through the application-owned indexer. Stdio owns an
+indexer only in write mode, never starts a full sync merely to enable writes, and shuts it down with
+the server. Unchanged creates and deduplicated appends enqueue nothing; queue failure never rolls
+back authoritative Markdown. MCP cannot overwrite, delete, update sections, insert backlinks,
+manage arbitrary files, or bypass deferred VB-032/VB-033/VB-034 boundaries.
 
 ---
 

@@ -112,7 +112,19 @@ def settings_for(vault: Path, **overrides) -> Settings:
     return Settings.model_validate(values)
 
 
-def server_for(tmp_path: Path, *, semantic=None, limiter=None, settings=None):
+class RecordingIndexer:
+    def __init__(self, *, fail: bool = False) -> None:
+        self.paths: list[str] = []
+        self.fail = fail
+
+    def enqueue(self, path: str) -> bool:
+        self.paths.append(path)
+        if self.fail:
+            raise RuntimeError("private queue failure")
+        return True
+
+
+def server_for(tmp_path: Path, *, semantic=None, limiter=None, settings=None, indexer=None):
     vault_root = tmp_path / "vault"
     (vault_root / "Folder").mkdir(parents=True)
     (vault_root / "First note.md").write_text("# First\n\nLiteral needle.", encoding="utf-8")
@@ -132,6 +144,7 @@ def server_for(tmp_path: Path, *, semantic=None, limiter=None, settings=None):
             vault_service=vault,
             semantic_search_service=semantic_service,
             duplicate_candidate_service=duplicate_service,
+            semantic_indexer=indexer,
             rate_limiter=limiter,
         ),
         vault,
@@ -210,6 +223,159 @@ def test_sdk_v2_server_advertises_exact_read_only_surface_and_no_prompts(tmp_pat
         (NOTE_RESOURCE_TEMPLATE, "text/markdown")
     ]
     assert prompts.prompts == []
+
+
+def test_write_enabled_surface_adds_exact_write_tools_with_annotations(tmp_path):
+    vault_root = tmp_path / "vault"
+    settings = settings_for(vault_root, MCP_WRITE_ENABLED=True)
+    server, _vault, _semantic = server_for(
+        tmp_path,
+        settings=settings,
+        indexer=RecordingIndexer(),
+    )
+
+    tools = run_client(server, lambda client: client.list_tools()).tools
+    assert [tool.name for tool in tools] == [
+        "list_notes",
+        "read_note",
+        "search_notes",
+        "related_notes",
+        "duplicate_candidates",
+        "note_links",
+        "note_backlinks",
+        "create_note",
+        "append_note",
+    ]
+    by_name = {tool.name: tool for tool in tools}
+    create = by_name["create_note"]
+    append = by_name["append_note"]
+    assert create.annotations.read_only_hint is False
+    assert create.annotations.destructive_hint is False
+    assert create.annotations.idempotent_hint is True
+    assert create.annotations.open_world_hint is False
+    assert append.annotations.read_only_hint is False
+    assert append.annotations.destructive_hint is False
+    assert append.annotations.idempotent_hint is False
+    assert append.annotations.open_world_hint is False
+    assert create.input_schema["properties"]["folder"]["default"] == "Inbox"
+    assert create.input_schema["properties"]["content"]["default"] == ""
+    assert create.input_schema["properties"]["tags"]["default"] == []
+    assert append.input_schema["properties"]["dedupe_key"]["default"] is None
+
+
+def test_write_tools_share_rest_behavior_and_enqueue_only_committed_changes(tmp_path):
+    vault_root = tmp_path / "vault"
+    settings = settings_for(vault_root, MCP_WRITE_ENABLED=True)
+    indexer = RecordingIndexer()
+    server, vault, _semantic = server_for(tmp_path, settings=settings, indexer=indexer)
+
+    async def write(client):
+        created = await client.call_tool(
+            "create_note",
+            {
+                "title": "  MCP parity  ",
+                "folder": "Notes",
+                "content": "Initial body",
+                "tags": [" #one ", "one", "two"],
+            },
+        )
+        unchanged = await client.call_tool(
+            "create_note",
+            {
+                "title": "MCP parity",
+                "folder": "Notes",
+                "content": "Initial body",
+                "tags": ["one", "two"],
+            },
+        )
+        appended = await client.call_tool(
+            "append_note",
+            {"path": "Notes/MCP parity.md", "content": "More", "dedupe_key": "once"},
+        )
+        deduped = await client.call_tool(
+            "append_note",
+            {"path": "Notes/MCP parity.md", "content": "More", "dedupe_key": "once"},
+        )
+        repeated = await client.call_tool(
+            "append_note",
+            {"path": "Notes/MCP parity.md", "content": "Again"},
+        )
+        repeated_again = await client.call_tool(
+            "append_note",
+            {"path": "Notes/MCP parity.md", "content": "Again"},
+        )
+        return created, unchanged, appended, deduped, repeated, repeated_again
+
+    results = run_client(server, write)
+    assert [result.structured_content["status"] for result in results] == [
+        "created",
+        "unchanged",
+        "appended",
+        "already_applied",
+        "appended",
+        "appended",
+    ]
+    assert indexer.paths == [
+        "Notes/MCP parity.md",
+        "Notes/MCP parity.md",
+        "Notes/MCP parity.md",
+        "Notes/MCP parity.md",
+    ]
+    content = vault.read_note("Notes/MCP parity.md").content
+    assert 'tags: ["one", "two"]' in content
+    assert content.count("Again") == 2
+
+
+def test_write_tools_sanitize_expected_failures_and_queue_degradation(tmp_path):
+    vault_root = tmp_path / "vault"
+    settings = settings_for(vault_root, MCP_WRITE_ENABLED=True, MAX_NOTE_BYTES=300)
+    indexer = RecordingIndexer(fail=True)
+    server, _vault, _semantic = server_for(tmp_path, settings=settings, indexer=indexer)
+
+    created = run_client(
+        server,
+        lambda client: client.call_tool(
+            "create_note",
+            {"title": "Committed", "content": "safe body"},
+        ),
+    )
+    conflict = run_client(
+        server,
+        lambda client: client.call_tool(
+            "create_note",
+            {"title": "Committed", "content": "private conflicting body"},
+        ),
+    )
+    invalid = run_client(
+        server,
+        lambda client: client.call_tool(
+            "append_note",
+            {"path": "../Secret.md", "content": "private append"},
+        ),
+    )
+    missing = run_client(
+        server,
+        lambda client: client.call_tool(
+            "append_note",
+            {"path": "Missing.md", "content": "private append"},
+        ),
+    )
+    too_large = run_client(
+        server,
+        lambda client: client.call_tool(
+            "create_note",
+            {"title": "Large", "content": "x" * 250},
+        ),
+    )
+
+    assert created.is_error is not True
+    assert created.structured_content["status"] == "created"
+    assert indexer.paths == ["Inbox/Committed.md"]
+    assert conflict.content[0].text == "note_conflict: A note with this title already exists."
+    assert "private" not in conflict.content[0].text
+    assert invalid.content[0].text == "invalid_path: Invalid vault-relative path."
+    assert missing.content[0].text == "note_not_found: Note not found."
+    assert too_large.content[0].text.startswith("validation_error:")
 
 
 def test_tool_schemas_keep_adr_defaults_and_bounds(tmp_path):
@@ -669,6 +835,41 @@ def test_entry_point_invalid_configuration_is_bounded_nonzero_and_stdout_clean(t
     assert completed.stdout == ""
     assert "mcp_startup_failed" in completed.stderr
     assert str(missing) not in completed.stderr
+
+
+def test_write_enabled_stdio_owns_targeted_indexer_and_shuts_it_down(tmp_path, monkeypatch):
+    import app.mcp_server as mcp_module
+
+    vault = tmp_path / "vault"
+    vault.mkdir()
+    settings = settings_for(vault, MCP_WRITE_ENABLED=True)
+    refreshed: list[tuple[str, ...]] = []
+    captured = {}
+
+    class SemanticService:
+        def sync(self, _cancel_event):
+            raise AssertionError("stdio writes must not start an unnecessary full sync")
+
+        def sync_paths(self, paths, _cancel_event):
+            refreshed.append(tuple(paths))
+
+    class Server:
+        def run(self):
+            indexer = captured["indexer"]
+            assert indexer.enqueue("Inbox/Created.md") is True
+            indexer.wait(timeout=5)
+
+    def fake_create_mcp_server(**kwargs):
+        captured["indexer"] = kwargs["semantic_indexer"]
+        return Server()
+
+    monkeypatch.setattr(mcp_module.Settings, "from_env", lambda: settings)
+    monkeypatch.setattr(mcp_module, "semantic_search_service_from_settings", lambda _settings: SemanticService())
+    monkeypatch.setattr(mcp_module, "create_mcp_server", fake_create_mcp_server)
+
+    assert mcp_module.main() == 0
+    assert refreshed == [("Inbox/Created.md",)]
+    assert captured["indexer"].enqueue("Inbox/After shutdown.md") is False
 
 
 def test_official_client_stdio_round_trip_and_clean_eof_shutdown(tmp_path):
