@@ -140,6 +140,8 @@ def test_ui_routes_are_excluded_from_openapi_contract(tmp_path):
         "/api/v1/notes/related",
         "/api/v1/notes/duplicates",
         "/api/v1/notes/list",
+        "/api/v1/notes/links",
+        "/api/v1/notes/backlinks",
     }
 
 
@@ -905,6 +907,8 @@ def test_ui_preserves_exact_api_operation_id_contract(tmp_path):
         ("POST", "/api/v1/notes/related", "findRelatedNotesV1"),
         ("POST", "/api/v1/notes/duplicates", "findDuplicateCandidatesV1"),
         ("GET", "/api/v1/notes/list", "listNotesV1"),
+        ("GET", "/api/v1/notes/links", "listNoteLinksV1"),
+        ("GET", "/api/v1/notes/backlinks", "listNoteBacklinksV1"),
     }
 
 

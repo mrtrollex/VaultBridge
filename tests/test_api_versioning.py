@@ -174,7 +174,13 @@ def prepare_representative_failure(
 
 def test_openapi_contract_matrix_has_stable_unique_operation_ids_and_identical_shapes():
     schema = main.app.openapi()
-    expected_paths = {"/health", "/health/live", "/health/ready"}
+    expected_paths = {
+        "/health",
+        "/health/live",
+        "/health/ready",
+        "/api/v1/notes/links",
+        "/api/v1/notes/backlinks",
+    }
     operation_ids: list[str] = []
 
     for case in API_CONTRACT_CASES:

@@ -229,11 +229,12 @@ def test_official_client_modern_http_lists_and_calls_read_only_surface(tmp_path)
                     templates = await client.list_resource_templates()
                     listed = await client.call_tool("list_notes", {})
                     read = await client.call_tool("read_note", {"path": "Smoke.md"})
+                    links = await client.call_tool("note_links", {"path": "Smoke.md"})
                     resource = await client.read_resource("vaultbridge://note/Smoke.md")
-                    return tools, templates, listed, read, resource
+                    return tools, templates, listed, read, links, resource
 
     with capture_logs("vaultbridge.mcp") as log_stream:
-        tools, templates, listed, read, resource = asyncio.run(smoke())
+        tools, templates, listed, read, links, resource = asyncio.run(smoke())
 
     assert [tool.name for tool in tools.tools] == [
         "list_notes",
@@ -241,12 +242,15 @@ def test_official_client_modern_http_lists_and_calls_read_only_surface(tmp_path)
         "search_notes",
         "related_notes",
         "duplicate_candidates",
+        "note_links",
+        "note_backlinks",
     ]
     assert [template.uri_template for template in templates.resource_templates] == [
         NOTE_RESOURCE_TEMPLATE
     ]
     assert listed.structured_content["notes"][0]["path"] == "Smoke.md"
     assert read.structured_content["content"].endswith("protocol round trip")
+    assert links.structured_content == {"links": []}
     assert resource.contents[0].text.endswith("protocol round trip")
     operation_logs = [
         json.loads(line)
