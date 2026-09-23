@@ -19,6 +19,10 @@
 {% do app.environment.add_env("HF_HOME", values.consts.data_path ~ "/huggingface") %}
 {% do app.environment.add_env("SEMANTIC_WATCH_ENABLED", values.vaultbridge.watch_enabled) %}
 {% do app.environment.add_env("SEMANTIC_WATCH_DEBOUNCE_SECONDS", values.vaultbridge.watch_debounce_seconds) %}
+{% do app.environment.add_env("MCP_HTTP_ENABLED", values.mcp.http_enabled) %}
+{% do app.environment.add_env("MCP_WRITE_ENABLED", values.mcp.write_enabled) %}
+{% do app.environment.add_env("MCP_HTTP_ALLOWED_HOSTS", values.mcp.allowed_hosts) %}
+{% do app.environment.add_env("MCP_HTTP_ALLOWED_ORIGINS", values.mcp.allowed_origins) %}
 
 {% do app.add_port(values.network.web_port, {"container_port": values.consts.application_port}) %}
 

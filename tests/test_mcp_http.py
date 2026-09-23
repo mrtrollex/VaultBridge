@@ -43,10 +43,12 @@ def application_for(
     tmp_path: Path,
     *,
     enabled: bool = True,
+    write_enabled: bool = False,
     api_key: str = "test-current-secret",
     previous_api_key: str = "test-previous-secret",
     rate_limit_requests: int = 120,
     rate_limiter: FixedWindowRateLimiter | None = None,
+    semantic_indexer=None,
 ) -> FastAPI:
     settings = Settings(
         api_key=api_key,
@@ -54,6 +56,7 @@ def application_for(
         vault_path=tmp_path,
         semantic_data_path=tmp_path / ".test-semantic",
         mcp_http_enabled=enabled,
+        mcp_write_enabled=write_enabled,
         mcp_http_allowed_hosts=("testserver", "allowed.example.test"),
         mcp_http_allowed_origins=("https://allowed-origin.example.test",),
         rate_limit_requests=rate_limit_requests,
@@ -75,6 +78,7 @@ def application_for(
         vault_service=vault_service,
         semantic_search_service=semantic_service,
         rate_limiter=rate_limiter,
+        semantic_indexer=semantic_indexer,
     )
 
 
@@ -263,17 +267,64 @@ def test_official_client_modern_http_lists_and_calls_read_only_surface(tmp_path)
     assert "protocol round trip" not in log_stream.getvalue()
 
 
+def test_http_write_surface_uses_live_application_indexer(tmp_path):
+    indexer = RecordingIndexer()
+    application = application_for(
+        tmp_path,
+        write_enabled=True,
+        semantic_indexer=indexer,
+    )
+
+    async def write():
+        async with application.router.lifespan_context(application):
+            async with httpx2.AsyncClient(
+                transport=httpx2.ASGITransport(
+                    app=application,
+                    client=("198.51.100.40", 50000),
+                ),
+                base_url="http://testserver",
+                headers=auth(),
+            ) as http_client:
+                transport = streamable_http_client(
+                    "http://testserver/mcp",
+                    http_client=http_client,
+                    terminate_on_close=False,
+                )
+                async with Client(transport, mode="2026-07-28") as client:
+                    tools = await client.list_tools()
+                    created = await client.call_tool(
+                        "create_note",
+                        {"title": "HTTP write", "content": "body"},
+                    )
+                    appended = await client.call_tool(
+                        "append_note",
+                        {"path": "Inbox/HTTP write.md", "content": "more"},
+                    )
+                    return tools, created, appended
+
+    tools, created, appended = asyncio.run(write())
+    assert [tool.name for tool in tools.tools][-2:] == ["create_note", "append_note"]
+    assert created.structured_content["status"] == "created"
+    assert appended.structured_content["status"] == "appended"
+    assert indexer.paths == ["Inbox/HTTP write.md", "Inbox/HTTP write.md"]
+
+
 class RecordingIndexer:
     requires_full_sync = False
 
     def __init__(self) -> None:
         self.events: list[str] = []
+        self.paths: list[str] = []
 
     def start(self) -> None:
         self.events.append("indexer-start")
 
     def shutdown(self) -> None:
         self.events.append("indexer-stop")
+
+    def enqueue(self, path: str) -> bool:
+        self.paths.append(path)
+        return True
 
 
 def test_parent_lifespan_owns_enabled_mcp_session_manager():

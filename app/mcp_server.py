@@ -20,6 +20,12 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from app.core.config import Settings
 from app.core.logging import configure_application_logging, log_event
 from app.services.duplicate_candidates import DuplicateCandidateService
+from app.services.indexer import BackgroundSemanticIndexer
+from app.services.note_writes import (
+    clean_note_tags,
+    clean_note_title,
+    enqueue_after_committed_write,
+)
 from app.services.rate_limiter import FixedWindowRateLimiter
 from app.services.relationships import RelationshipService
 from app.services.semantic_search import (
@@ -29,6 +35,7 @@ from app.services.semantic_search import (
     semantic_search_service_from_settings,
 )
 from app.services.vault import (
+    NoteConflictError,
     NoteNotFoundError,
     NoteTooLargeError,
     VaultService,
@@ -50,6 +57,11 @@ LiteralQuery = Annotated[str, Field(min_length=1, max_length=300)]
 RelatedText = Annotated[str, Field(min_length=2, max_length=4000)]
 DuplicateTitle = Annotated[str, Field(min_length=1, max_length=180)]
 DuplicateText = Annotated[str, Field(max_length=4000)]
+CreateTitle = Annotated[str, Field(min_length=1, max_length=180)]
+CreateContent = Annotated[str, Field(max_length=800_000)]
+CreateTags = Annotated[list[str], Field(max_length=30)]
+AppendContent = Annotated[str, Field(min_length=1, max_length=800_000)]
+DedupeKey = Annotated[str, Field(max_length=120)]
 ListLimit = Annotated[int, Field(ge=1, le=200)]
 SearchLimit = Annotated[int, Field(ge=1, le=50)]
 SemanticLimit = Annotated[int, Field(ge=1, le=20)]
@@ -60,6 +72,18 @@ READ_ONLY_ANNOTATIONS = ToolAnnotations(
     readOnlyHint=True,
     destructiveHint=False,
     idempotentHint=True,
+    openWorldHint=False,
+)
+CREATE_NOTE_ANNOTATIONS = ToolAnnotations(
+    readOnlyHint=False,
+    destructiveHint=False,
+    idempotentHint=True,
+    openWorldHint=False,
+)
+APPEND_NOTE_ANNOTATIONS = ToolAnnotations(
+    readOnlyHint=False,
+    destructiveHint=False,
+    idempotentHint=False,
     openWorldHint=False,
 )
 
@@ -155,6 +179,12 @@ class NoteBacklinksResult(MCPResult):
     backlinks: list[NoteBacklinkItem]
 
 
+class NoteWriteResult(MCPResult):
+    success: bool
+    path: str
+    status: Literal["created", "unchanged", "appended", "already_applied"]
+
+
 class SemanticIndexRebuildingError(RuntimeError):
     """The persisted semantic index is currently owned by a rebuilding process."""
 
@@ -186,6 +216,7 @@ def _safe_tool_error(text: str) -> str:
     messages = {
         "invalid_path": "invalid_path: Invalid vault-relative path.",
         "note_not_found": "note_not_found: Note not found.",
+        "note_conflict": "note_conflict: A note with this title already exists.",
         "validation_error": "validation_error: Tool arguments or requested content are invalid.",
         "semantic_index_unavailable": (
             "semantic_index_unavailable: A compatible ready semantic index is unavailable."
@@ -243,6 +274,7 @@ class VaultBridgeMCPAdapter:
         semantic_search_service: SemanticSearchService,
         duplicate_candidate_service: DuplicateCandidateService,
         relationship_service: RelationshipService,
+        semantic_indexer: BackgroundSemanticIndexer | None,
         transport: MCPTransport,
         operation_rate_limiter: FixedWindowRateLimiter | None,
     ) -> None:
@@ -251,6 +283,7 @@ class VaultBridgeMCPAdapter:
         self.semantic_search_service = semantic_search_service
         self.duplicate_candidate_service = duplicate_candidate_service
         self.relationship_service = relationship_service
+        self.semantic_indexer = semantic_indexer
         self.transport = transport
         self.operation_rate_limiter = operation_rate_limiter
 
@@ -275,6 +308,9 @@ class VaultBridgeMCPAdapter:
         except NoteNotFoundError as exc:
             self._log_failure(operation, request_id, started_at, "note_not_found")
             raise ToolError("note_not_found: Note not found.") from exc
+        except NoteConflictError as exc:
+            self._log_failure(operation, request_id, started_at, "note_conflict")
+            raise ToolError("note_conflict: A note with this title already exists.") from exc
         except NoteTooLargeError as exc:
             self._log_failure(operation, request_id, started_at, "validation_error")
             raise ToolError("validation_error: Requested note exceeds the configured limit.") from exc
@@ -540,6 +576,50 @@ class VaultBridgeMCPAdapter:
             result_count=lambda result: len(result.backlinks),
         )
 
+    def create_note(
+        self,
+        *,
+        title: str,
+        folder: str,
+        content: str,
+        tags: list[str],
+    ) -> NoteWriteResult:
+        def action() -> NoteWriteResult:
+            result = self.vault_service.create_note(
+                title=clean_note_title(title),
+                folder=folder,
+                content=content,
+                tags=clean_note_tags(tags),
+            )
+            canonical_path = _canonical_service_path(result.path)
+            if result.status == "created":
+                assert self.semantic_indexer is not None
+                enqueue_after_committed_write(self.semantic_indexer, canonical_path)
+            return NoteWriteResult(success=True, path=canonical_path, status=result.status)
+
+        return self._execute("create_note", action, result_count=lambda _result: 1)
+
+    def append_note(
+        self,
+        *,
+        path: str,
+        content: str,
+        dedupe_key: str | None,
+    ) -> NoteWriteResult:
+        def action() -> NoteWriteResult:
+            result = self.vault_service.append_note(
+                path=path,
+                content=content,
+                dedupe_key=dedupe_key,
+            )
+            canonical_path = _canonical_service_path(result.path)
+            if result.status == "appended":
+                assert self.semantic_indexer is not None
+                enqueue_after_committed_write(self.semantic_indexer, canonical_path)
+            return NoteWriteResult(success=True, path=canonical_path, status=result.status)
+
+        return self._execute("append_note", action, result_count=lambda _result: 1)
+
     def read_note_resource(self, *, path: str, raw_uri: str) -> str:
         def action() -> str:
             if raw_uri != note_resource_uri(path):
@@ -564,6 +644,7 @@ def create_mcp_server(
     semantic_search_service: SemanticSearchService | None = None,
     duplicate_candidate_service: DuplicateCandidateService | None = None,
     relationship_service: RelationshipService | None = None,
+    semantic_indexer: BackgroundSemanticIndexer | None = None,
     rate_limiter: FixedWindowRateLimiter | None = None,
     transport: MCPTransport = "stdio",
 ) -> MCPServer:
@@ -578,6 +659,8 @@ def create_mcp_server(
         semantic_search_service=app_semantic_service,
     )
     app_relationship_service = relationship_service or RelationshipService(app_vault_service)
+    if app_settings.mcp_write_enabled and semantic_indexer is None:
+        raise ValueError("MCP writes require an owned semantic indexer")
     operation_rate_limiter = rate_limiter
     if transport == "stdio" and operation_rate_limiter is None:
         operation_rate_limiter = FixedWindowRateLimiter(
@@ -591,12 +674,17 @@ def create_mcp_server(
         semantic_search_service=app_semantic_service,
         duplicate_candidate_service=app_duplicate_service,
         relationship_service=app_relationship_service,
+        semantic_indexer=semantic_indexer,
         transport=transport,
         operation_rate_limiter=operation_rate_limiter,
     )
     server = MCPServer(
         MCP_SERVER_NAME,
-        description="Read-only local access to a contained Obsidian Markdown vault.",
+        description=(
+            "Contained read/write access to an Obsidian Markdown vault."
+            if app_settings.mcp_write_enabled
+            else "Read-only local access to a contained Obsidian Markdown vault."
+        ),
         version=MCP_SERVER_VERSION,
         log_level="CRITICAL",
         middleware=[_privacy_error_middleware],
@@ -658,6 +746,27 @@ def create_mcp_server(
         """List verified backlinks to one contained Markdown note."""
         return adapter.note_backlinks(path=path)
 
+    if app_settings.mcp_write_enabled:
+
+        @server.tool(annotations=CREATE_NOTE_ANNOTATIONS, structured_output=True)
+        def create_note(
+            title: CreateTitle,
+            folder: Folder = "Inbox",
+            content: CreateContent = "",
+            tags: CreateTags = [],
+        ) -> NoteWriteResult:
+            """Create a contained Markdown note without overwriting an existing note."""
+            return adapter.create_note(title=title, folder=folder, content=content, tags=tags)
+
+        @server.tool(annotations=APPEND_NOTE_ANNOTATIONS, structured_output=True)
+        def append_note(
+            path: NotePath,
+            content: AppendContent,
+            dedupe_key: DedupeKey | None = None,
+        ) -> NoteWriteResult:
+            """Append Markdown to one existing contained note."""
+            return adapter.append_note(path=path, content=content, dedupe_key=dedupe_key)
+
     @server.resource(
         NOTE_RESOURCE_TEMPLATE,
         name="note",
@@ -678,6 +787,7 @@ def create_mcp_server(
 
 def main() -> int:
     configure_application_logging()
+    semantic_indexer: BackgroundSemanticIndexer | None = None
     try:
         settings = Settings.from_env()
         vault_service = VaultService(
@@ -686,8 +796,21 @@ def main() -> int:
         )
         if not vault_service.vault_available():
             raise RuntimeError("vault unavailable")
-        server = create_mcp_server(settings=settings, vault_service=vault_service)
+        semantic_service = semantic_search_service_from_settings(settings)
+        if settings.mcp_write_enabled:
+            semantic_indexer = BackgroundSemanticIndexer(
+                semantic_service.sync,
+                semantic_service.sync_paths,
+            )
+        server = create_mcp_server(
+            settings=settings,
+            vault_service=vault_service,
+            semantic_search_service=semantic_service,
+            semantic_indexer=semantic_indexer,
+        )
     except Exception as exc:
+        if semantic_indexer is not None:
+            semantic_indexer.shutdown()
         log_event(
             logger,
             logging.ERROR,
@@ -720,6 +843,8 @@ def main() -> int:
         )
         return 1
     finally:
+        if semantic_indexer is not None:
+            semantic_indexer.shutdown()
         log_event(
             logger,
             logging.INFO,

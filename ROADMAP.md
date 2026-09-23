@@ -700,6 +700,13 @@ VB-093 completes the production-image CI gate. PR #62 merged as `f03f48b`, and G
 job, with official-client protocol, read-only surface, REST, authentication, Host/Origin, clean
 shutdown, and disposable-data checks.
 
+VB-106 extends the shared adapter with default-off `create_note` and `append_note` parity. The
+default surface remains the exact seven read-only tools after VB-103; write-enabled HTTP reuses the
+live application indexer, while stdio owns a targeted indexer only in write mode and shuts it down
+without starting a full sync. The checked-in TrueNAS package source adds first-class MCP HTTP,
+write, Host, and Origin fields on the existing Web Port. Publication of an application image and the
+separate upstream catalog package update remain delivery work, not implementation evidence.
+
 A separate isolated TrueNAS smoke built main commit `8ae99d3` from source and passed liveness,
 authenticated REST and the official MCP client over Streamable HTTP protocol `2026-07-28` against
 synthetic `Smoke.md`, with exactly the five read-only tools. The existing production app on port

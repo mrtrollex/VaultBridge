@@ -14,31 +14,15 @@ from app.api.dependencies import (
 from app.api.versioning import versioned_api_route
 from app.core.logging import log_event
 from app.services.indexer import BackgroundSemanticIndexer
+from app.services.note_writes import (
+    clean_note_tags,
+    clean_note_title,
+    enqueue_after_committed_write,
+)
 from app.services.vault import VaultService
 
 router = APIRouter()
 logger = logging.getLogger("vaultbridge.api.notes")
-
-
-def _enqueue_after_committed_write(
-    semantic_indexer: BackgroundSemanticIndexer,
-    path: str,
-) -> None:
-    try:
-        semantic_indexer.enqueue(path)
-    except Exception as exc:
-        # Markdown is authoritative and the next startup full sync can recover the write.
-        log_event(
-            logger,
-            logging.WARNING,
-            "targeted_reindex_queue_failed",
-            "Targeted semantic reindex could not be queued after a committed note write",
-            exc_info=(type(exc), exc, exc.__traceback__),
-            operation="targeted",
-            note_path=path,
-            error_type=type(exc).__name__,
-        )
-        return
 
 
 class CreateNoteRequest(BaseModel):
@@ -54,20 +38,12 @@ class CreateNoteRequest(BaseModel):
     @field_validator("title")
     @classmethod
     def clean_title(cls, value: str) -> str:
-        value = value.strip()
-        if not value:
-            raise ValueError("title cannot be empty")
-        return value
+        return clean_note_title(value)
 
     @field_validator("tags")
     @classmethod
     def clean_tags(cls, values: list[str]) -> list[str]:
-        cleaned: list[str] = []
-        for tag in values:
-            tag = tag.strip().lstrip("#")
-            if tag and tag not in cleaned:
-                cleaned.append(tag[:80])
-        return cleaned
+        return clean_note_tags(values)
 
 
 class AppendNoteRequest(BaseModel):
@@ -116,7 +92,7 @@ def create_note(
             operation="create",
             note_path=result.path,
         )
-        _enqueue_after_committed_write(semantic_indexer, result.path)
+        enqueue_after_committed_write(semantic_indexer, result.path)
     return NoteResult(success=True, path=result.path, status=result.status)
 
 
@@ -145,7 +121,7 @@ def append_note(
             operation="append",
             note_path=result.path,
         )
-        _enqueue_after_committed_write(semantic_indexer, result.path)
+        enqueue_after_committed_write(semantic_indexer, result.path)
     return NoteResult(success=True, path=result.path, status=result.status)
 
 

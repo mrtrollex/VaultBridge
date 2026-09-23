@@ -13,6 +13,7 @@ from app.core.config import Settings
 from app.core.http_security import enforce_peer_rate_limit, verify_bearer_authorization
 from app.mcp_server import create_mcp_server
 from app.services.duplicate_candidates import DuplicateCandidateService
+from app.services.indexer import BackgroundSemanticIndexer
 from app.services.rate_limiter import FixedWindowRateLimiter
 from app.services.relationships import RelationshipService
 from app.services.semantic_search import SemanticSearchService
@@ -68,6 +69,7 @@ def create_mcp_http_transport(
     semantic_search_service: SemanticSearchService,
     duplicate_candidate_service: DuplicateCandidateService,
     relationship_service: RelationshipService,
+    semantic_indexer: BackgroundSemanticIndexer,
     rate_limiter: FixedWindowRateLimiter,
 ) -> tuple[MCPServer, ASGIApp]:
     """Create the mounted SDK app over the live application's service objects."""
@@ -77,6 +79,7 @@ def create_mcp_http_transport(
         semantic_search_service=semantic_search_service,
         duplicate_candidate_service=duplicate_candidate_service,
         relationship_service=relationship_service,
+        semantic_indexer=semantic_indexer,
         transport="streamable-http",
     )
     security = TransportSecuritySettings(

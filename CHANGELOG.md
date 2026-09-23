@@ -8,6 +8,11 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ### Added
 
+- default-off MCP `create_note` and `append_note` tools with REST-equivalent validation and write
+  semantics, targeted semantic refresh after committed changes, and safe stdio/HTTP indexer ownership
+- first-class TrueNAS package fields for MCP HTTP, MCP writes, and explicit Host/Origin allowlists,
+  mapped to the existing application port without requiring normal Additional Environment Variables
+
 - a reusable read-only Obsidian wikilink parser/resolver with fenced-code exclusion, exact
   ambiguity-safe matching, and canonical target verification through the existing vault boundary
 - a read-only outgoing-relationship service that verifies and reads one source note through the

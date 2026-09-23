@@ -34,6 +34,7 @@ class Settings(BaseModel):
         "RATE_LIMIT_WINDOW_SECONDS",
         "RATE_LIMIT_MAX_CLIENTS",
         "MCP_HTTP_ENABLED",
+        "MCP_WRITE_ENABLED",
         "MCP_HTTP_ALLOWED_HOSTS",
         "MCP_HTTP_ALLOWED_ORIGINS",
     )
@@ -68,6 +69,7 @@ class Settings(BaseModel):
     rate_limit_window_seconds: int = Field(default=60, alias="RATE_LIMIT_WINDOW_SECONDS", gt=0)
     rate_limit_max_clients: int = Field(default=1024, alias="RATE_LIMIT_MAX_CLIENTS", gt=0)
     mcp_http_enabled: bool = Field(default=False, alias="MCP_HTTP_ENABLED")
+    mcp_write_enabled: bool = Field(default=False, alias="MCP_WRITE_ENABLED")
     mcp_http_allowed_hosts: tuple[str, ...] = Field(
         default=("127.0.0.1:*", "localhost:*", "[::1]:*"),
         alias="MCP_HTTP_ALLOWED_HOSTS",

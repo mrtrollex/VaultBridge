@@ -27,6 +27,7 @@ TOOLS = {
     "note_links",
     "note_backlinks",
 }
+WRITE_TOOLS = {"create_note", "append_note"}
 API_KEY = "vb093-current-placeholder"
 PREVIOUS_API_KEY = "vb093-previous-placeholder"
 MCP_SERVER_ALIAS = "vb093-server"
@@ -104,6 +105,7 @@ def start_container(
     data: Path,
     *,
     enabled: bool,
+    writes: bool = False,
 ) -> str:
     args = [
         "docker",
@@ -131,6 +133,8 @@ def start_container(
         "SEMANTIC_WATCH_ENABLED=false",
         "--env",
         f"MCP_HTTP_ENABLED={'true' if enabled else 'false'}",
+        "--env",
+        f"MCP_WRITE_ENABLED={'true' if writes else 'false'}",
     ]
     if enabled:
         args += [
@@ -186,8 +190,15 @@ def invalid_host_status(base_url: str) -> int:
         connection.close()
 
 
-def run_official_client(image: str, server_name: str, network: str, script: Path) -> None:
-    run(
+def run_official_client(
+    image: str,
+    server_name: str,
+    network: str,
+    script: Path,
+    *,
+    writes: bool = False,
+) -> None:
+    args = [
         "docker",
         "run",
         "--rm",
@@ -201,7 +212,10 @@ def run_official_client(image: str, server_name: str, network: str, script: Path
         "/tmp/smoke_mcp_http.py",
         "--client",
         f"http://{server_name}:8000/mcp",
-    )
+    ]
+    if writes:
+        args.append("--writes")
+    run(*args)
 
 
 def orchestrate(image: str) -> None:
@@ -217,6 +231,8 @@ def orchestrate(image: str) -> None:
             root / "disabled-data",
             root / "enabled-vault",
             root / "enabled-data",
+            root / "write-vault",
+            root / "write-data",
         )
         for directory in directories:
             directory.mkdir()
@@ -273,6 +289,31 @@ def orchestrate(image: str) -> None:
         run_official_client(image, MCP_SERVER_ALIAS, network, Path(__file__))
         stop_cleanly(enabled)
         containers.remove(enabled)
+
+        write_enabled = f"vb106-write-server-{suffix}"
+        containers.add(write_enabled)
+        write_url = start_container(
+            image,
+            write_enabled,
+            root / "write-vault",
+            root / "write-data",
+            enabled=True,
+            writes=True,
+        )
+        run("docker", "network", "connect", "--alias", MCP_SERVER_ALIAS, network, write_enabled)
+        wait_until_live(write_url, write_enabled)
+        run_official_client(
+            image,
+            MCP_SERVER_ALIAS,
+            network,
+            Path(__file__),
+            writes=True,
+        )
+        created_note = root / "write-vault" / "MCP Smoke" / "Created.md"
+        assert created_note.is_file(), "write-enabled MCP smoke did not create the synthetic note"
+        assert "deduped append" in created_note.read_text(encoding="utf-8")
+        stop_cleanly(write_enabled)
+        containers.remove(write_enabled)
     finally:
         for container in containers:
             subprocess.run(
@@ -290,7 +331,7 @@ def orchestrate(image: str) -> None:
         shutil.rmtree(root, ignore_errors=True)
 
 
-async def client_smoke(url: str) -> None:
+async def client_smoke(url: str, *, writes: bool = False) -> None:
     import httpx2
     from mcp import Client
     from mcp.client.streamable_http import streamable_http_client
@@ -307,22 +348,59 @@ async def client_smoke(url: str) -> None:
         async with Client(transport, mode="2026-07-28") as client:
             tools = await client.list_tools()
             names = {tool.name for tool in tools.tools}
-            assert names == TOOLS, f"unexpected MCP tools: {sorted(names)}"
+            expected_tools = TOOLS | WRITE_TOOLS if writes else TOOLS
+            assert names == expected_tools, f"unexpected MCP tools: {sorted(names)}"
             result = await client.call_tool("list_notes", {})
             paths = {note["path"] for note in result.structured_content["notes"]}
-            assert "Smoke.md" in paths
+            if writes:
+                created = await client.call_tool(
+                    "create_note",
+                    {
+                        "title": "Created",
+                        "folder": "MCP Smoke",
+                        "content": "synthetic body",
+                        "tags": ["smoke"],
+                    },
+                )
+                appended = await client.call_tool(
+                    "append_note",
+                    {
+                        "path": "MCP Smoke/Created.md",
+                        "content": "deduped append",
+                        "dedupe_key": "vb106-smoke",
+                    },
+                )
+                deduped = await client.call_tool(
+                    "append_note",
+                    {
+                        "path": "MCP Smoke/Created.md",
+                        "content": "deduped append",
+                        "dedupe_key": "vb106-smoke",
+                    },
+                )
+                read = await client.call_tool(
+                    "read_note",
+                    {"path": "MCP Smoke/Created.md"},
+                )
+                assert created.structured_content["status"] == "created"
+                assert appended.structured_content["status"] == "appended"
+                assert deduped.structured_content["status"] == "already_applied"
+                assert read.structured_content["content"].count("deduped append") == 1
+            else:
+                assert "Smoke.md" in paths
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--image", default="vaultbridge:ci")
     parser.add_argument("--client")
+    parser.add_argument("--writes", action="store_true")
     args = parser.parse_args()
     if args.client:
-        asyncio.run(client_smoke(args.client))
+        asyncio.run(client_smoke(args.client, writes=args.writes))
         return
     orchestrate(args.image)
-    print("VB-093 MCP HTTP container smoke: PASS")
+    print("VaultBridge MCP HTTP read-only and write-enabled container smoke: PASS")
 
 
 if __name__ == "__main__":

@@ -28,6 +28,7 @@ def test_configuration_defaults_match_existing_behavior():
     assert settings.rate_limit_window_seconds == 60
     assert settings.rate_limit_max_clients == 1024
     assert settings.mcp_http_enabled is False
+    assert settings.mcp_write_enabled is False
     assert settings.mcp_http_allowed_hosts == ("127.0.0.1:*", "localhost:*", "[::1]:*")
     assert settings.mcp_http_allowed_origins == (
         "http://127.0.0.1:*",
@@ -57,6 +58,7 @@ def test_configuration_environment_overrides(tmp_path):
             "RATE_LIMIT_WINDOW_SECONDS": "30",
             "RATE_LIMIT_MAX_CLIENTS": "256",
             "MCP_HTTP_ENABLED": "true",
+            "MCP_WRITE_ENABLED": "true",
             "MCP_HTTP_ALLOWED_HOSTS": "vault.example.test, vault.example.test:*",
             "MCP_HTTP_ALLOWED_ORIGINS": "https://client.example.test",
         }
@@ -80,6 +82,7 @@ def test_configuration_environment_overrides(tmp_path):
     assert settings.rate_limit_window_seconds == 30
     assert settings.rate_limit_max_clients == 256
     assert settings.mcp_http_enabled is True
+    assert settings.mcp_write_enabled is True
     assert settings.mcp_http_allowed_hosts == (
         "vault.example.test",
         "vault.example.test:*",
@@ -145,6 +148,7 @@ def test_semantic_search_service_uses_typed_configuration(tmp_path):
         ({"RATE_LIMIT_MAX_CLIENTS": "0"}, "RATE_LIMIT_MAX_CLIENTS"),
         ({"RATE_LIMIT_MAX_CLIENTS": "not-an-integer"}, "RATE_LIMIT_MAX_CLIENTS"),
         ({"MCP_HTTP_ENABLED": "sometimes"}, "MCP_HTTP_ENABLED"),
+        ({"MCP_WRITE_ENABLED": "sometimes"}, "MCP_WRITE_ENABLED"),
     ],
 )
 def test_invalid_numeric_configuration_fails_with_environment_name(environment, expected_error):

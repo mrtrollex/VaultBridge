@@ -186,8 +186,11 @@ Current post-v1 planning position:
   `list_notes`. The production app on port `30491` remained healthy, and the disposable app, image,
   vault, and data were removed afterward. The production vault was not used or validated.
 - VB-075 is complete with exact-source CI and exact-image runtime evidence
-- MCP write tools, OAuth, Prompts, and VaultBridge subscription features remain deferred beyond the
-  implemented read-only stdio and Streamable HTTP transports
+- VB-106 adds default-off `create_note` and `append_note` parity to both MCP transports. The disabled
+  surface remains the exact seven read-only tools; write-enabled stdio owns and shuts down a targeted
+  indexer, while HTTP reuses the live application indexer
+- OAuth, Prompts, delete/overwrite/file-management tools, VB-034 backlink insertion, and VaultBridge
+  subscription features remain unimplemented
 - Milestone 11 is complete as a read-first Obsidian relationship track derived from live Markdown;
   VB-105 found a verified graph signal but did not support a production ranking change
 - VB-100 provides one reusable read-only parser/resolver for the planned wikilink forms, preserves
@@ -216,6 +219,9 @@ Current post-v1 planning position:
   `search.js` uses the authenticated fetch boundary for the versioned links/backlinks routes, renders
   at most 20 server-ordered items per group through text-only DOM APIs, and owns explicit independent
   loading, empty, failure, logout, abort, and stale-response states without persisting relationship data
+- the checked-in TrueNAS package source now exposes MCP HTTP, MCP writes, and explicit Host/Origin
+  allowlists as first-class form values on the existing Web Port; a release image and separate
+  upstream `truenas/apps` package/catalog update are still required before operators see those fields
 - VB-101 through VB-105 remain read-only and reserve any Markdown mutation for the later opt-in
   VB-034 task
 - VB-032 and VB-033 remain deferred optional future work
