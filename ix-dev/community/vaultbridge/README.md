@@ -17,6 +17,19 @@ superseded upstream by default Web UI port `30491` and
 `https://media.sys.truenas.net/apps/vaultbridge/icons/icon.webp`. Do not treat this directory as a
 second authoritative catalog source.
 
+VB-106 updates this checked-in package source with first-class MCP HTTP, write, Host, and Origin
+form values. Making those fields available in **Edit App** still requires the application change to
+merge, a release image containing `MCP_WRITE_ENABLED`, and a normal upstream `truenas/apps` package
+update to that image/version. This source change does not update the public catalog by itself.
+
+Required delivery sequence:
+
+1. merge the VB-106 application and package-source changes;
+2. publish a VaultBridge release image containing `MCP_WRITE_ENABLED` support;
+3. update the TrueNAS Community App image/package through the normal upstream review;
+4. after that catalog update, configure MCP through **Edit App** without Additional Environment
+   Variables.
+
 The only post-acceptance metadata preview maintained here is the pair of repository-owned dashboard
 screenshot URLs in `app.yaml` and `item.yaml`. The matching PNG files are sanitized captures from
 the running TrueNAS canary. They are source material for a future upstream catalog change, not proof
