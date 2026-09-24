@@ -1543,6 +1543,50 @@ OpenAI-specific protocol behavior.
 
 ---
 
+## Portable PKM model
+
+### VB-110 — Define portable PKM document model / ADR — P1 ✅
+
+**Status:** Design accepted on 2026-09-24; no runtime implementation.
+
+**Goal:** define the portable, application-neutral domain semantics VaultBridge will use for
+Markdown documents, metadata, and relationships before frontmatter, aliases, tags, or additional
+Markdown relationship dialects are implemented.
+
+**Depends on:** the Roadmap v2 knowledge-space direction and the completed VB-100–VB-105
+read-first relationship boundary.
+
+**Acceptance criteria**
+
+- accept [`docs/adr/0005-portable-pkm-document-model.md`](docs/adr/0005-portable-pkm-document-model.md)
+  as the detailed design contract, clearly separating current implementation, accepted semantics,
+  and future work;
+- define authoritative Markdown and portable metadata versus live or persisted derived data, with
+  no new authoritative or persistent document store;
+- define canonical document identity as the verified vault-relative canonical Markdown path, with
+  separate title/display-title and non-unique alias semantics;
+- define conceptual headings, bounded YAML frontmatter and generic portable metadata, tags, links,
+  normalized relationships, dialect/origin metadata, and explicit unresolved/ambiguous states;
+- require conservative malformed-metadata behavior and explicit parser resource limits while
+  leaving concrete safe-parser and numeric-limit choices to VB-111;
+- preserve `VaultService` ownership of containment, canonical path verification, Markdown-only
+  restrictions, symlink safety, and read/write size boundaries;
+- preserve all current REST, MCP, CLI, dashboard, semantic-index, deployment, wikilink, and
+  TrueNAS compatibility contracts without a migration or dependency change;
+- sequence VB-111 bounded YAML frontmatter parsing, VB-112 portable aliases and tags, VB-113
+  contained standard Markdown relationships, and VB-114 a normalized relationship view without
+  pre-implementing their runtime contracts.
+
+**Out of scope:** runtime document-model code; frontmatter, alias, tag, or Markdown-link parsing;
+relationship normalization in runtime code; persistence/schema changes; API, MCP, CLI, or dashboard
+changes; semantic ranking; graph persistence; multi-space or non-Markdown providers; note mutation;
+knowledge capture; and hygiene diagnostics.
+
+**Next roadmap step:** scope VB-111 as a separate authoritative `BACKLOG.md` task before any
+implementation. VB-111 is not yet an accepted implementation contract.
+
+---
+
 ## Release history
 
 ### v1.2.0 release
@@ -1575,9 +1619,9 @@ Release-triggered workflow run `35507290152` passed release-source verification,
 publication, and stable-alias publication. The release did not update the accepted upstream TrueNAS
 catalog, which remains on catalog package `1.0.0` and application image `1.1.0`.
 
-### v1.3.0 release preparation
+### v1.3.0 release
 
-**Status:** Source metadata prepared on 2026-09-24; publication remains pending.
+**Status:** Published stable release on 2026-09-24.
 
 Package, FastAPI, and MCP server metadata target `1.3.0`. This backward-compatible feature release
 collects the completed VB-100 through VB-106 work: Obsidian wikilink parsing/resolution, outgoing
@@ -1585,9 +1629,13 @@ links and backlinks, REST and MCP relationship tools, the dashboard Relationship
 retrieval evaluation, default-off MCP `create_note`/`append_note`, and first-class TrueNAS MCP
 configuration source. The graph-aware evaluation did not change production ranking.
 
-No `v1.3.0` Git tag, GitHub Release, GHCR image/digest, or published stable aliases exist yet.
-Publishing the application image and updating the upstream TrueNAS catalog are separate later
-delivery tasks; the checked-in catalog source must not point at an unpublished `1.3.0` image.
+Stable GitHub Release `v1.3.0` was published from source commit
+`a7e14ece0de74632d1d9be599d53678931dc64b3`. The exact GHCR image is
+`ghcr.io/mrtrollex/vaultbridge:1.3.0` with OCI digest
+`sha256:5a1709c279c3731f891b59026adb7e8f5497c299687596b74b49ffd64a9f5a0e`; stable aliases `1.3`, `1`,
+and `latest` are published. This application release does not imply that the upstream TrueNAS
+Community App already contains the new v1.3.0 MCP configuration fields. TrueNAS catalog and package
+updates remain a separate delivery lifecycle.
 
 ---
 
@@ -1644,8 +1692,9 @@ VB-001 ✓
 → VB-105 ✓ (production ranking not supported)
 → VB-106 ✓
 → v1.2.1 ✓
-→ v1.3.0 PREPARED (publication pending)
-→ VB-034 (optional opt-in write task)
+→ v1.3.0 ✓ (published stable release)
+→ VB-110 ✓ (design accepted; no runtime implementation)
+→ VB-111 NEXT TO SCOPE (not yet authoritative in BACKLOG)
 ```
 
 VB-057 through VB-060 close the confirmed containment, native-Windows test-portability,
@@ -1670,12 +1719,19 @@ open. VB-090 and VB-091 complete the read-only stdio MCP design and implementati
 opt-in read-only Streamable HTTP path, and VB-093 completes its container CI validation. This does
 not establish production TrueNAS runtime behavior. A separate isolated TrueNAS source-build smoke
 also passed against synthetic data without using the production vault. The favicon-and-screenshot-only
-`v1.2.1` patch is a published stable GitHub/GHCR release. Source metadata now targets `v1.3.0`, but
-its tag, GitHub Release, GHCR image/digest, stable aliases, and separate upstream catalog update all
-remain pending. The accepted TrueNAS Community catalog runs `1.1.0` and its remaining VB-082 gates
-stay open. Milestone 11 is complete as a read-first relationship track; VB-105 records evaluation
+`v1.2.1` patch is a published stable GitHub/GHCR release. `v1.3.0` is also a published stable
+GitHub/GHCR release from source commit `a7e14ece0de74632d1d9be599d53678931dc64b3`; the exact image is
+`ghcr.io/mrtrollex/vaultbridge:1.3.0` with OCI digest
+`sha256:5a1709c279c3731f891b59026adb7e8f5497c299687596b74b49ffd64a9f5a0e`, and aliases `1.3`, `1`, and
+`latest` are published. The application release does not imply that the upstream TrueNAS Community
+App contains the new v1.3.0 MCP configuration fields. The accepted TrueNAS Community catalog runs
+`1.1.0`; catalog/package updates remain a separate delivery lifecycle, and its remaining VB-082
+gates stay open. Milestone 11 is complete as a read-first relationship track; VB-105 records evaluation
 evidence but does not support a production graph-ranking change, while VB-106 adds default-off MCP
-write parity and first-class TrueNAS MCP configuration source. VB-032/VB-033 remain deferred and
-VB-034 remains a later, opt-in write capability.
+write parity and first-class TrueNAS MCP configuration source. VB-110 is completed design work, and
+its accepted ADR governs later VB-111–VB-114 planning. The next roadmap step is to define VB-111 as
+a separate authoritative backlog task before implementation; VB-111–VB-114 remain roadmap-planned
+until independently scoped. VB-032/VB-033 remain deferred and VB-034 remains a later, opt-in write
+capability.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.
