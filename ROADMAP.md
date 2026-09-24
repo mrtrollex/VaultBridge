@@ -1,85 +1,151 @@
-# VaultBridge Roadmap
+# VaultBridge Roadmap v2
 
-> **Project goal:** turn VaultBridge into a small, reliable, client-agnostic, self-hosted application for safe Obsidian note operations and local semantic retrieval, suitable for public GitHub distribution and Docker deployment.
+> **Project goal:** build VaultBridge into a reliable, client-agnostic, self-hosted knowledge layer
+> for Markdown-based personal knowledge systems. Portable Markdown remains authoritative.
+> VaultBridge provides safe retrieval, metadata, relationships, controlled knowledge operations,
+> and AI/client integration without requiring migration into a proprietary knowledge store.
+>
+> Obsidian is an important supported Markdown/PKM workflow, not an architectural dependency. REST,
+> MCP, CLI, the Web Dashboard, and future integrations are adapters over shared knowledge-domain
+> services.
+
+VaultBridge is self-hosted, not local-only. It may run on a workstation, NAS, home server, VPS, or
+another operator-controlled host. "Local-first" describes the default privacy and processing model:
+no mandatory cloud AI, embedding, database, or knowledge service is required.
 
 ## Product principles
 
-1. **Markdown is the source of truth.** VaultBridge must never require importing the vault into a proprietary store.
-2. **Minimal API surface.** Expose only operations that are actually required.
-3. **Local-first semantic search.** Embeddings stay local by default; no external embedding API is required.
-4. **Safe by default.** No arbitrary filesystem access, no delete endpoint, no secret logging, and no unauthenticated writes.
-5. **Simple operations.** Docker + SQLite should remain enough for a normal personal vault.
-6. **Client agnostic.** ChatGPT is one client, not the architecture.
-7. **No premature infrastructure.** Do not add Redis, Celery, Qdrant, Kubernetes, or a message broker without measured need and an ADR.
-8. **Measured retrieval changes.** Ranking/model/chunking changes must be evaluated, not tuned only by intuition.
-9. **Derived semantic data.** The semantic index must always be rebuildable from the Markdown vault.
-10. **Platform-neutral core.** VaultBridge runtime behavior must not depend on TrueNAS. Platform
-    packaging may configure and launch the application, but it must not fork domain behavior.
-11. **Bundled operator UI, API-first architecture.** The Web Dashboard is another
-    first-party client of stable VaultBridge capabilities, not a replacement for the API or CLI.
-    AI clients, scripts, and other integrations remain first-class.
-12. **One distributable application.** The dashboard ships in the normal VaultBridge
-    production image. A second UI service/container requires a measured future need and an explicit
-    architecture decision.
-13. **Protocol adapters share domain ownership.** MCP and future client protocols remain thin
-    adapters over the same vault and semantic services; they do not call another adapter by default
-    or create a second implementation of VaultBridge behavior.
-14. **Relationships are derived from Markdown.** Obsidian links may provide a read-first graph view,
-    but Markdown remains authoritative. Relationship features reuse the vault containment boundary
-    and begin with live inspection rather than a persistent graph store.
+1. **Portable knowledge is authoritative.** Markdown files and portable metadata are the source of
+   truth. SQLite indexes, embeddings, relationship projections, caches, diagnostics, and other
+   machine-oriented structures are derived state. Derived state must remain rebuildable where
+   feasible and must never become a required proprietary replacement for the Markdown knowledge
+   base.
+2. **Markdown-native, not Obsidian-dependent.** Support Obsidian-compatible syntax where useful,
+   but do not make one application's dialect the architectural core. Dialect-specific parsing and
+   capabilities belong behind explicit boundaries that can feed shared domain representations.
+3. **Client agnostic.** REST, MCP, CLI, the Web Dashboard, AI agents, scripts, and future adapters
+   reuse domain services. No adapter, including MCP or the dashboard, becomes the product core or
+   calls another adapter by default.
+4. **Self-hosted and local-first, not local-only.** Local semantic processing remains the default
+   direction. No external AI, embedding, database, or cloud service is mandatory.
+5. **Safe knowledge operations.** Preserve vault-relative containment, symlink protection,
+   Markdown-only mutation boundaries, conservative non-overwriting writes, authentication,
+   idempotency, bounded inputs, minimal API surface, no arbitrary filesystem API, and no secret or
+   knowledge-content logging.
+6. **Measured derived intelligence.** Semantic ranking, relationship-aware retrieval, future graph
+   signals, models, chunking, and indexes require repeatable evaluation rather than intuition.
+   Derived relationship capability begins read-first and does not imply a graph database.
+7. **Platform-neutral core.** TrueNAS, Docker, and future distribution targets package and launch
+   the same application. They do not own or fork knowledge-domain behavior. The bundled dashboard
+   remains one first-party client in the normal application image, not a required control plane.
+8. **Simple operations; no premature infrastructure.** A single application plus SQLite should
+   remain enough for normal personal knowledge bases. Do not add Redis, Celery, Qdrant, Kubernetes,
+   a message broker, a second UI service, or distributed index coordination without measured need
+   and an explicit architecture decision.
+
+## Knowledge-space concept
+
+A **knowledge space** is the product-level boundary for a contained Markdown knowledge base and the
+policies/capabilities applied to it. Today VaultBridge supports exactly one knowledge space backed by
+one contained Markdown filesystem root. The existing "vault" is the first knowledge-space
+implementation and remains the name used by current classes, configuration, storage mounts, API
+fields, resource URIs, and compatibility contracts.
+
+Roadmap terminology does not authorize an immediate rename of `VaultService`, `VAULT_PATH`,
+API fields, MCP resources, paths, or other identifiers. Terminology should change in implementation
+only when it creates architectural value and a compatibility-safe migration has been designed.
+
+## Conceptual architecture direction
+
+This is the product direction, not a claim that generic `DocumentService`, `MetadataService`, or
+`KnowledgeSpace` abstractions already exist:
+
+```text
+                         Knowledge clients
+             +--------------+-------+--------------+
+             | REST / API   |  MCP  | CLI / UI     |
+             +--------------+-------+--------------+
+                            |
+                     protocol adapters
+                            |
+                            v
+                      VaultBridge core
+             +--------------+--------------+
+             |              |              |
+             v              v              v
+        documents /      retrieval /   relationships /
+           writes          search         metadata
+             +--------------+--------------+
+                            |
+                            v
+                 Markdown knowledge space
+                   /                    \
+                  v                      v
+     authoritative files          rebuildable derived state
+      Markdown / metadata        SQLite / embeddings / views
+```
+
+The direction is to normalize useful portable PKM semantics in the domain layer while keeping
+syntax-specific parsers and protocol-specific presentation at the edges. It does not introduce a
+second authoritative store.
 
 ---
 
-# Current project state — `v1.3.0` source prepared; `v1.2.1` published
+# Current project state — `v1.3.0` published
 
-VaultBridge application metadata and documentation now target the backward-compatible `v1.3.0`
-feature release containing the completed VB-100 through VB-106 work. No `v1.3.0` tag, GitHub
-Release, GHCR image, published stable aliases, or upstream TrueNAS catalog update exists yet.
-Published `v1.2.1` remains the latest stable application and GHCR release; preparation and
-publication boundaries are recorded in
-[`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md#v130-release-preparation). The accepted
-TrueNAS Community App remains on catalog package `1.0.0` and application image `1.1.0`.
+The published stable GitHub Release and GHCR application release are `v1.3.0`, built from source commit
+`a7e14ece0de74632d1d9be599d53678931dc64b3`. The exact image is
+`ghcr.io/mrtrollex/vaultbridge:1.3.0` with OCI digest
+`sha256:5a1709c279c3731f891b59026adb7e8f5497c299687596b74b49ffd64a9f5a0e`.
+Stable aliases `1.3`, `1`, and `latest` were also published.
 
-## Current architecture
+This application release does **not** prove that the upstream TrueNAS Community App contains the
+new v1.3.0 MCP configuration fields. Upstream TrueNAS package/image-version updates, including its
+automated image-update process, remain a separate distribution lifecycle. The unresolved VB-082
+post-merge validation gates also remain separate from application publication.
 
-```text
-Clients
-(Web Dashboard / ChatGPT / curl / CLI / integrations)
-                     |
-                     | HTTPS + Bearer token
-                     v
-                FastAPI app
-                     |
-                API routers
-          +----------+-----------+
-          |                      |
-          v                      v
-     VaultService       SemanticSearchService
-          |                      |
-          v                      v
-  Obsidian Markdown      SemanticRepository
-                                 |
-                                 v
-                         SQLite semantic index
-                                 |
-                                 v
-                    FastEmbed / ONNX Runtime
-```
-
-## Current implementation
+## Current implementation architecture
 
 ```text
-app/main.py                     application construction and dependency wiring
-app/api/                        health, note and search routers
-app/ui/                         bundled dashboard routes, HTML, CSS and vanilla JavaScript
-app/core/config.py              typed runtime configuration
-app/core/logging.py             safe structured application logging
-app/services/vault.py           safe Markdown/vault operations
-app/services/indexer.py         background synchronization ownership
-app/services/semantic_search.py semantic orchestration, embeddings, ranking, indexing
-app/repositories/semantic.py    SQLite semantic persistence
-app/semantic.py                 legacy compatibility facade
+Clients: REST / Web Dashboard / MCP / CLI / integrations
+                              |
+                        thin adapters
+                              |
+       +----------------------+-----------------------+
+       |                      |                       |
+       v                      v                       v
+  VaultService      SemanticSearchService    RelationshipService
+       |                      |                       |
+       |              SemanticRepository       WikilinkResolver
+       |                      |                       |
+       +----------------------+-----------------------+
+                              |
+                    one contained Markdown root
+                              |
+                +-------------+-------------+
+                |                           |
+                v                           v
+       authoritative `.md` files    derived SQLite / embeddings
 ```
+
+Current ownership is intentionally concrete:
+
+```text
+app/main.py                       application composition and dependency wiring
+app/api/                          health, note/search, and relationship REST adapters
+app/ui/                           bundled REST-backed dashboard client
+app/cli.py                        local read and stopped-service index operations
+app/mcp_server.py                 shared stdio/HTTP MCP adapter and optional safe writes
+app/services/vault.py             contained Markdown reads, writes, listing, and literal search
+app/services/semantic_search.py   chunking, embeddings, ranking, and index orchestration
+app/repositories/semantic.py      SQLite semantic persistence
+app/services/wikilinks.py         Obsidian-compatible wikilink parsing and safe resolution
+app/services/relationships.py     live outgoing relationships and verified backlinks
+app/services/duplicate_candidates.py advisory live-title and semantic duplicate evidence
+```
+
+There is no generic portable document model, normalized multi-dialect relationship store, metadata
+query engine, capture pipeline, hygiene engine, or multiple-knowledge-space runtime today.
 
 ## Completed foundation tasks
 
@@ -100,6 +166,8 @@ app/semantic.py                 legacy compatibility facade
 - [x] **VB-023 — Retrieval benchmark command**
 - [x] **VB-024 — Tune hybrid ranking from evaluation data**
 - [x] **VB-025 — Fingerprint semantic embedding compatibility**
+- [x] **VB-030 — Duplicate candidate service**
+- [x] **VB-031 — Verified related-note suggestions**
 - [x] **VB-040 — Structured JSON logging**
 - [x] **VB-041 — Request IDs and latency logging**
 - [x] **VB-043 — Lightweight rate limiting**
@@ -113,29 +181,23 @@ app/semantic.py                 legacy compatibility facade
 - [x] **VB-059 — Align v1.0 version metadata**
 - [x] **VB-060 — Public repository exposure audit**
 
-## Current verified baseline
+## Current verified release baselines
 
-At stable `v1.0.0` release completion:
-
-```text
-stable release source commit: 1a430996c9db331f448339d233e940d7aa7b3b6d
-exact-main CI run 32932765995: python PASS, docker PASS
-stable GitHub Release: v1.0.0
-GHCR publish workflow run 32932955416: Verify release source PASS, Build and publish PASS
-public package and repository linkage verified
-stable aliases and exact OCI digest verified for linux/amd64
-anonymous exact-digest TrueNAS disposable-vault runtime smoke test PASS
-```
-
-The immutable artifact values and complete release evidence are recorded in
-[`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md).
+The `v1.0.0` release established the public repository, exact-source CI, GHCR publication,
+anonymous exact-digest pull, and a disposable TrueNAS runtime smoke. The later `v1.3.0` stable
+release is identified above. Immutable artifact values and complete historical evidence remain in
+[`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md); this roadmap does not replace that record.
 
 ## Current known limitations
 
-1. External filesystem changes are automatically queued only when the optional watcher is enabled.
-2. The deterministic retrieval fixture does not measure real-model quality or latency.
-3. Multiple VaultBridge processes sharing one semantic index are not coordinated.
-4. AI clients can invent wikilinks unless they use verified note results.
+1. One configured filesystem root provides the only current knowledge space.
+2. External filesystem changes are automatically queued only when the optional watcher is enabled.
+3. The deterministic retrieval fixture does not by itself measure representative real-model quality
+   or latency.
+4. Multiple VaultBridge processes sharing one semantic index are not coordinated.
+5. Relationship extraction understands Obsidian-compatible wikilinks only; standard Markdown links,
+   portable aliases, tags, and general frontmatter metadata are not yet normalized domain features.
+6. Clients can still invent relationship targets unless they use verified VaultBridge results.
 
 ---
 
@@ -703,8 +765,9 @@ VB-106 extends the shared adapter with default-off `create_note` and `append_not
 default surface remains the exact seven read-only tools after VB-103; write-enabled HTTP reuses the
 live application indexer, while stdio owns a targeted indexer only in write mode and shuts it down
 without starting a full sync. The checked-in TrueNAS package source adds first-class MCP HTTP,
-write, Host, and Origin fields on the existing Web Port. Publication of an application image and the
-separate upstream catalog package update remain delivery work, not implementation evidence.
+write, Host, and Origin fields on the existing Web Port. The `v1.3.0` application image containing
+this work is now published; the separate upstream TrueNAS package/catalog update remains externally
+owned delivery work and is not implied by the application release.
 
 A separate isolated TrueNAS smoke built main commit `8ae99d3` from source and passed liveness,
 authenticated REST and the official MCP client over Streamable HTTP protocol `2026-07-28` against
@@ -748,29 +811,33 @@ production TrueNAS runtime validation.
 
 ---
 
-# Milestone 11 — Obsidian Knowledge Graph / Note Relationships — COMPLETE
+# Milestone 11 — PKM Relationship Foundation — COMPLETE
 
-**Goal:** establish a safe, read-first relationship layer derived from Obsidian wikilinks while
-keeping Markdown authoritative and existing VaultBridge clients and behavior compatible.
+**Goal:** establish a safe, read-first knowledge-relationship boundary derived from contained
+Markdown while keeping authoritative files and existing client behavior compatible.
 
-The graph is a derived view, never a second source of truth. Initial parsing, outgoing-link, and
-backlink operations inspect live contained Markdown and reuse `VaultService` for target containment,
-Markdown verification, symlink protection, and canonical paths. No persistent relationship index,
-graph database, new service, automatic note creation, or Markdown mutation is introduced by
-VB-100 through VB-105. A persistent index may be considered only after measurement demonstrates
-that live inspection is insufficient.
+VB-100 through VB-105 established the first relationship capability using Obsidian-compatible
+wikilinks. Wikilinks are the first supported relationship dialect, not the definition of the
+relationship architecture. Parsing, outgoing-link, and backlink operations inspect live contained
+Markdown and reuse `VaultService` for target containment, Markdown verification, symlink protection,
+and canonical paths. `WikilinkResolver` owns the supported syntax and resolution rules;
+`RelationshipService` owns the shared outgoing/backlink behavior.
 
-REST and MCP remain thin adapters over shared relationship services. The dashboard is limited to a
-small read-only outgoing-links/backlinks view associated with a selected note; it does not become a
-graph explorer, editor, file manager, or Obsidian replacement. VB-105 evaluated verified
-relationships only as a candidate and found a narrow quality signal but insufficient cost and
-general-query evidence for a production ranking decision. Production retrieval therefore remains
+The resulting relationships are a derived view, never a second source of truth. No persistent
+relationship index, graph database, automatic note creation, or Markdown mutation was introduced by
+VB-100 through VB-105. A persistent projection may be considered only after measurement shows that
+live inspection is insufficient. REST and MCP remain thin adapters, and the dashboard remains a
+bounded read-only consumer rather than a graph explorer, editor, file manager, or product core.
+
+VB-105 evaluated verified relationships as a retrieval candidate. It found a narrow quality signal,
+but the evidence did not justify a production ranking change because live-scan cost and
+representative general-query benefit remained unproven. Production retrieval therefore remains
 unchanged.
 
 Task sequence:
 
 ```text
-VB-100 parse and safely resolve Obsidian wikilinks ✓
+VB-100 parse and safely resolve Obsidian-compatible wikilinks ✓
    ↓
 VB-101 verified outgoing note relationships ✓
    ↓
@@ -780,19 +847,18 @@ VB-103 REST and MCP note relationships ✓
    ↓
 VB-104 dashboard note relationships ✓
    ↓
-VB-105 evaluate graph-aware retrieval signal ✓ (production ranking not supported)
-   ↓
-VB-034 opt-in verified backlink insertion (later write capability)
+VB-105 evaluate relationship-aware retrieval signal ✓ (production ranking not supported)
 ```
 
 VB-032 and VB-033 remain deferred/optional and are not prerequisites for this sequence. VB-034
 remains in Milestone 4 as a P2 knowledge-maintenance operation, but its implementation is sequenced
-after verified read-only relationship resolution. It is the first relationship task allowed to
-write Markdown and must remain opt-in with conflict and write safety defined first.
+after verified read-only relationship resolution. It remains optional rather than the primary
+strategic next step. It is the first relationship task allowed to write Markdown and must remain
+opt-in with conflict and write safety defined first.
 
 Milestone exit criteria:
 
-- [x] one deterministic parser/resolver handles the supported wikilink forms, ignores fenced code,
+- [x] one deterministic parser/resolver handles the first supported relationship dialect, ignores fenced code,
   and resolves only verified contained Markdown targets through existing vault security boundaries
 - [x] outgoing links and backlinks distinguish resolved from unresolved relationships and perform
   no writes or persistent graph indexing
@@ -800,7 +866,7 @@ Milestone exit criteria:
   aliases or duplicating relationship logic
 - [x] the dashboard provides a bounded read-only relationship section without graph visualization
   or client-side relationship ownership
-- [x] graph-aware retrieval is measured against the existing semantic/lexical baseline before any
+- [x] relationship-aware retrieval is measured against the existing semantic/lexical baseline before any
   production ranking decision
 - [x] existing REST, MCP, CLI, dashboard, TrueNAS, semantic-search, authentication, containment, and
   deployment behavior remains compatible
@@ -809,17 +875,288 @@ Milestone exit criteria:
 
 ---
 
-# Post-1.0 candidates
+# Milestone 12 — Portable PKM model — NEXT / DESIGN FIRST
+
+**Goal:** give VaultBridge a portable document/metadata model that understands useful PKM semantics
+without making any one Markdown application the architectural owner.
+
+This milestone is incremental and begins with an ADR. It must define the domain model, supported
+syntax boundaries, malformed-input behavior, resource limits, compatibility implications, and what
+remains live versus derived before implementation is selected. It must not create another
+authoritative database or require every conceptual field to be persisted.
+
+### Proposed task sequence
+
+These identifiers describe roadmap intent only. `BACKLOG.md` must define authoritative task scope
+and acceptance criteria before implementation begins.
+
+```text
+VB-110 define portable PKM document model / ADR
+   ↓
+VB-111 bounded YAML frontmatter parsing
+   ↓
+VB-112 portable aliases and tags
+   ↓
+VB-113 contained standard Markdown relationships
+   ↓
+VB-114 normalized relationship view
+```
+
+### VB-110 — Define portable PKM document model / ADR — PROPOSED NEXT
+
+Define a domain-level representation that can express, where available:
+
+- canonical path and identity;
+- title and aliases;
+- headings;
+- bounded frontmatter;
+- tags;
+- links and normalized relationships;
+- content-derived metadata.
+
+The ADR must distinguish authoritative portable data from rebuildable projections. It should favor
+an in-memory/domain representation unless persistence is justified by measured behavior. Existing
+`VaultService` containment and compatibility identifiers remain in place; the design should extend
+current ownership rather than rename it cosmetically.
+
+### YAML frontmatter
+
+Safely parse an explicitly supported subset/profile of YAML frontmatter into bounded metadata.
+Before implementation, decide how parser dependencies, unsafe YAML features, nesting/depth, scalar
+and document sizes, duplicate keys, malformed delimiters, encoding failures, and unsupported values
+behave. Malformed metadata must not bypass containment, make a note writable, or corrupt
+authoritative Markdown.
+
+### Aliases and canonical identity
+
+Portable aliases may participate in relationship and knowledge operations without weakening exact
+filesystem identity or containment. Alias ambiguity must be represented explicitly; VaultBridge
+must not guess between multiple live notes or silently make an alias authoritative over a path.
+
+### Tags
+
+Expose supported portable tags as structured knowledge metadata. Tag semantics remain domain data,
+not application-specific navigation or UI behavior.
+
+### Standard Markdown links
+
+Generalize relationship extraction beyond `[[wikilinks]]` to standard Markdown links that resolve
+to contained Markdown notes. Reuse the verified `VaultService` and `RelationshipService` boundary;
+do not duplicate containment or resolve arbitrary URLs/files as notes.
+
+### Relationship normalization
+
+Different supported syntax sources should be able to feed a shared derived representation such as:
+
+```text
+Relationship
+- source
+- target
+- type
+- origin / dialect
+- resolved
+```
+
+This is a conceptual domain shape, not a commitment to a new persisted schema. Dialect-specific
+metadata may remain available where needed, and source ordering/duplicate semantics require an
+explicit design decision rather than accidental normalization.
+
+Milestone exit direction:
+
+- portable document and relationship concepts are accepted in an ADR;
+- bounded frontmatter, aliases, and tags have explicit supported semantics and failure behavior;
+- standard Markdown internal links reuse the existing verified relationship boundary;
+- Markdown and portable metadata remain authoritative;
+- no current API, environment variable, resource URI, class, or mount is renamed without a
+  compatibility-safe reason.
+
+---
+
+# Milestone 13 — Knowledge Query Layer — PLANNED
+
+**Goal:** let clients query knowledge using semantic, structural, and metadata constraints through
+one safe domain capability.
+
+The future capability should compose supported constraints such as:
+
+- semantic and literal query text;
+- contained folder/path scope;
+- tags;
+- supported frontmatter metadata;
+- normalized relationship constraints;
+- modification or creation metadata only where it is reliably available and clearly defined.
+
+Conceptual request example:
+
+```json
+{
+  "query": "TrueNAS authentication",
+  "folder": "Projects",
+  "tags": ["homelab"],
+  "metadata": {
+    "status": "active"
+  }
+}
+```
+
+This is not a committed API schema. The layer must not expose arbitrary SQL, SQLite internals,
+arbitrary filesystem predicates, or an unbounded query language. REST, MCP, CLI, and the dashboard
+should eventually consume one domain query capability instead of implementing independent
+filtering/ranking semantics. Any frontmatter query language is part of this bounded capability, not
+a separate generic language feature.
+
+Proposed tasks, subject to `BACKLOG.md` definition after Milestone 12 establishes the model:
+
+```text
+VB-120 knowledge-query capability / ADR
+   ↓
+VB-121 bounded domain query implementation and evaluation
+   ↓
+VB-122 thin adapter adoption where separately approved
+```
+
+---
+
+# Milestone 14 — Knowledge Capture / Portable Memory — PLANNED
+
+**Goal:** allow clients and AI agents to capture knowledge safely into portable Markdown while
+retaining provenance and human/operator control.
+
+This is not a vector-memory database. The intended staged model is:
+
+```text
+capture
+   ↓
+portable Markdown inbox / draft
+   ↓
+duplicate / related analysis
+   ↓
+human or operator review
+   ↓
+explicit promote / append / create
+```
+
+Possible portable metadata includes source/provenance, creation timestamp, tags, and capture type.
+No proprietary memory schema is mandatory. Capture must not silently persist chat history, rewrite
+existing knowledge, assume every capture belongs in an authoritative note, or automatically merge,
+promote, or delete content. Any approved write path must remain compatible with the existing
+non-overwriting `create_note` and idempotent `append_note` safety model and post-commit indexing
+rules.
+
+Proposed tasks, to be refined after the query/model foundations:
+
+```text
+VB-130 capture and provenance model / ADR
+   ↓
+VB-131 portable inbox/draft capture
+   ↓
+VB-132 explicit review and promotion workflow
+```
+
+---
+
+# Milestone 15 — Knowledge Hygiene — PLANNED
+
+**Goal:** diagnose knowledge-base quality and safely propose maintenance actions before introducing
+aggressive automatic mutation.
+
+Potential read-first diagnostics include:
+
+- unresolved relationships and broken contained Markdown links;
+- orphan notes or notes without relationships, using explicit definitions;
+- near-duplicate notes, reusing `DuplicateCandidateService` and verified related-note behavior;
+- duplicate aliases and conflicting supported metadata;
+- empty or suspiciously empty notes;
+- stale derived-state diagnostics where staleness can be measured reliably.
+
+Relationship resolution, containment, duplicate evidence, and live-note verification remain owned
+by their existing domain boundaries. Diagnostics may later be consumed by the dashboard, but the
+dashboard must not become a general Markdown editor. This milestone authorizes no automatic delete,
+merge, rewrite, rename, or repair.
+
+Proposed tasks:
+
+```text
+VB-140 knowledge-hygiene definitions / ADR
+   ↓
+VB-141 bounded read-only diagnostic services
+   ↓
+VB-142 thin diagnostic adapters and optional dashboard views
+```
+
+---
+
+# Milestone 16 — Multiple Knowledge Spaces and Scope Policies — PLANNED
+
+**Goal:** support explicitly scoped access and retrieval across more than one contained Markdown
+knowledge space without weakening current safety or compatibility.
+
+Conceptual policy boundary:
+
+```text
+KnowledgeSpace
+- root
+- read policy
+- write policy
+- indexing policy
+- supported dialect / capabilities
+```
+
+Personal, work, research, and archive spaces are examples of future operator configuration, not
+current support claims. Cross-space retrieval and writes must be explicitly permission-aware;
+ambiguous identities must not be guessed across spaces. The design must preserve containment within
+each root and define adapter-visible scope without exposing host paths. The old multiple-vault and
+per-folder access-policy candidates are absorbed here; neither is current behavior.
+
+This milestone does not authorize multi-tenancy, account administration, a hosted SaaS control
+plane, or a dashboard user-management system. The current one-root vault configuration remains the
+only supported implementation until a design and compatibility/migration plan are accepted.
+
+Proposed tasks:
+
+```text
+VB-150 knowledge-space and scope-policy ADR
+   ↓
+VB-151 compatibility-safe multi-space domain boundary
+   ↓
+VB-152 permission-aware query and write adapter integration
+```
+
+---
+
+# Post-1.0 roadmap classification
+
+## Product capabilities
+
+Milestones 12–16 now own the portable PKM model, knowledge query, controlled capture, hygiene, and
+multiple-space/scoping directions. They are product capabilities, not storage-backend selections.
+VB-032/VB-033 remain deferred optional section mutation, and VB-034 remains an optional opt-in
+verified backlink write; none is the strategic NEXT item.
+
+## Domain architecture
+
+The proposed VB-110/VB-120/VB-130/VB-140/VB-150 design tasks establish domain semantics before
+runtime or adapter work. Their identifiers are not authoritative implementation contracts until
+they are added to `BACKLOG.md` with bounded acceptance criteria.
+
+## Deployment and integration candidates
+
+- read-only operating mode;
+- webhook/event integrations with explicit authentication, privacy, and delivery semantics;
+- optional multi-architecture image publication (existing VB-055);
+- remaining TrueNAS lifecycle validation (existing VB-082) and separately owned upstream package
+  updates.
+
+## Scale / optional backend candidates
+
+These are implementation/scaling choices, not product milestones. Promote one only when repeatable
+measurements show that the current local implementation cannot meet an accepted requirement:
 
 - pluggable embedding providers
 - alternative local embedding models
 - SQLite vector extension / HNSW acceleration
-- Qdrant adapter for very large vaults
-- read-only mode
-- per-folder access policies
-- multiple vaults
-- webhook/event integrations
-- frontmatter query language
+- Qdrant or another external vector backend for demonstrably large knowledge spaces
+- distributed semantic-index coordination
 
 ---
 
@@ -830,12 +1167,22 @@ Do not implement these unless requirements explicitly change:
 - arbitrary filesystem API
 - remote shell execution
 - automatic note deletion
-- mandatory cloud services
+- a proprietary knowledge database replacing authoritative Markdown and portable metadata
+- a mandatory Obsidian dependency or an attempt to become an Obsidian clone
+- a general-purpose Markdown editor
+- automatic AI-driven rewriting, merging, renaming, or deletion of authoritative knowledge
+- a hidden AI memory store that users cannot inspect and export as portable knowledge
+- silently converting chat history or every capture into permanent knowledge
+- mandatory cloud services or a mandatory cloud LLM/embedding provider
 - mandatory external embedding APIs
 - Kubernetes deployment
 - full Obsidian synchronization replacement
 - general-purpose vector database by default
 - distributed/multi-process semantic-index coordination before there is a real need
+- a premature generic storage-provider abstraction merely to advertise Notion, Google Docs, or
+  other non-Markdown systems
+- product claims for unsupported Markdown dialects or PKM applications
+- a multi-user SaaS/account platform without a demonstrated product need
 - making VaultBridge TrueNAS-only or creating a separate TrueNAS runtime fork
 - requiring the Web Dashboard for API or CLI use
 - turning the dashboard into an Obsidian replacement, graph explorer, WYSIWYG editor, general file
@@ -844,96 +1191,40 @@ Do not implement these unless requirements explicitly change:
 - exposing live semantic-index rebuild through HTTP without a separate concurrency/safety design
 - requiring Node/npm, a frontend framework, a second UI service/container, an external database, or
   Kubernetes for the initial dashboard
-- changing Markdown source-of-truth or local-first semantic behavior for platform packaging
+- changing authoritative Markdown or local-first semantic behavior for platform packaging
 
 ---
 
 # Recommended implementation path
 
 ```text
-FOUNDATION
-VB-001 ✓
+FOUNDATION ✓
    ↓
-VB-002 ✓
+INDEX / DERIVED KNOWLEDGE ✓
    ↓
-VB-004 ✓
+RETRIEVAL ✓
    ↓
-VB-003 ✓
+SAFE KNOWLEDGE OPERATIONS ✓ / optional writes remain controlled
    ↓
-VB-005 ✓
+PUBLIC API / CLI / DASHBOARD ✓
    ↓
-INDEX LIFECYCLE
-VB-010 ✓
+DISTRIBUTION / TRUENAS ✓ / lifecycle follow-up remains open
    ↓
-VB-011 ✓
+MCP ✓
    ↓
-VB-012 ✓
+PKM RELATIONSHIP FOUNDATION ✓
    ↓
-VB-013 ✓
+PORTABLE PKM MODEL — NEXT / design first
    ↓
-VB-015 ✓
+KNOWLEDGE QUERY LAYER
    ↓
-RETRIEVAL QUALITY
-VB-020 ✓
+KNOWLEDGE CAPTURE / PORTABLE MEMORY
    ↓
-VB-021 ✓
+KNOWLEDGE HYGIENE
    ↓
-VB-022 ✓
+MULTIPLE KNOWLEDGE SPACES / SCOPE POLICIES
    ↓
-VB-024  ✓
-   ↓
-OPERATIONS / KNOWLEDGE / DX
-...
-   ↓
-v1.0.0 ✓
-   ↓
-WEB DASHBOARD / OPERATOR EXPERIENCE
-VB-070 ✓
-   ↓
-VB-071 ✓
-   ↓
-VB-072 ✓
-   ↓
-VB-073 ✓
-   ↓
-VB-074 ✓
-   ↓
-VB-075 ✓
-   ↓
-TRUENAS COMMUNITY APP DISTRIBUTION
-VB-080 ✓
-   ↓
-VB-081 ✓
-   ↓
-VB-082 PRE-UPSTREAM GATES ✓
-   ↓
-VB-083 ✓
-   ↓
-VB-082 POST-MERGE LIFECYCLE VALIDATION IN PROGRESS / PARTIAL
-   ↓
-MCP INTEGRATION (independent post-v1 track)
-VB-090 ✓
-   ↓
-VB-091 ✓ (not NEXT)
-   ↓
-VB-092 IMPLEMENTED
-   ↓
-VB-093 ✓
-   ↓
-OBSIDIAN KNOWLEDGE GRAPH / NOTE RELATIONSHIPS
-VB-100 ✓
-   ↓
-VB-101 ✓
-   ↓
-VB-102 ✓
-   ↓
-VB-103 ✓
-   ↓
-VB-104 ✓
-   ↓
-VB-105 ✓ (production ranking not supported)
-   ↓
-VB-034 (optional opt-in write task)
+OPTIONAL SCALE / BACKEND WORK WHEN MEASURED
 ```
 
 `v1.0.0` has shipped, and VB-070 through VB-074 complete Milestone 8's dashboard design,
@@ -957,18 +1248,29 @@ unresolved post-merge lifecycle gates. ADR 0004 completes VB-090's MCP design-on
 work, PR #55 CI completes VB-091's read-only stdio implementation verification, VB-092 adds the
 opt-in read-only HTTP transport, and PR #62 CI completes VB-093's production-image container gate.
 An isolated source-built TrueNAS smoke also passes with synthetic data while the production app
-remains healthy. The favicon-and-screenshot-only `v1.2.1` patch is a published stable GitHub/GHCR
-release. Source metadata now targets `v1.3.0`, but no `v1.3.0` tag, GitHub Release, GHCR image,
-published stable aliases, or upstream catalog update exists. The accepted TrueNAS Community catalog
-remains on application image `1.1.0`, and VB-082's remaining lifecycle gates stay open.
-Milestone 11 is complete. VB-100 implements the reusable read-only wikilink parser/resolver,
+remains healthy. The favicon-and-screenshot-only `v1.2.1` patch remains historical release evidence.
+`v1.3.0` is now the published stable GitHub/GHCR release from source commit
+`a7e14ece0de74632d1d9be599d53678931dc64b3`; exact image tag `1.3.0`, aliases `1.3`, `1`, and
+`latest`, and OCI digest
+`sha256:5a1709c279c3731f891b59026adb7e8f5497c299687596b74b49ffd64a9f5a0e` are published. This does not
+claim that the upstream TrueNAS Community App already contains the new MCP settings. Upstream
+package/image updates remain separate, and VB-082's lifecycle gates stay open.
+
+Milestone 11 is complete as the PKM relationship foundation. VB-100 implements the reusable
+read-only Obsidian-compatible wikilink parser/resolver,
 VB-101 adds verified outgoing relationships from one live contained note, and VB-102 derives
 verified backlinks with a measured live scan, VB-103 exposes both capabilities through
 versioned-only REST routes and the shared MCP server, and VB-104 adds their bounded read-only view to
 the selected-note dashboard workflow. VB-105 completes the evaluation track without recommending a
-production graph-ranking change because measured live-scan cost and narrow cases do not establish
-acceptable general benefit;
-VB-032/VB-033 remain deferred, and VB-034 remains a later optional write task.
+production relationship-ranking change because measured live-scan cost and narrow cases do not
+establish acceptable general benefit. Wikilinks remain the first supported relationship dialect,
+not the architectural definition.
+
+The strategic continuation is Milestone 12, beginning with proposed design task VB-110 after an
+authoritative `BACKLOG.md` contract is reviewed. VB-032/VB-033 remain deferred, and VB-034 remains a
+later optional write task rather than NEXT. The proposed VB-110–VB-114, VB-120–VB-122,
+VB-130–VB-132, VB-140–VB-142, and VB-150–VB-152 identifiers reserve no implementation scope by
+themselves.
 
 ---
 
