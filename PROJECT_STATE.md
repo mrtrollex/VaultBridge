@@ -4,7 +4,7 @@ This document is the current factual snapshot for future Codex sessions. It shou
 
 ## Baseline date
 
-2026-09-23
+2026-09-24
 
 ## Current development position
 
@@ -62,6 +62,7 @@ Completed:
 - VB-103 — REST and MCP note relationships
 - VB-104 — Dashboard note relationships
 - VB-105 — Evaluate graph-aware retrieval signal
+- VB-106 — MCP write parity and first-class TrueNAS MCP configuration
 
 Post-v1 development position:
 
@@ -74,6 +75,8 @@ Completed release tasks:
 - **VaultBridge `v1.2.0` publication and immutable-image verification** — stable release published
   from source commit `375bf484fbe6a302424951d33c701f6fd9773e3f`; durable evidence is in
   [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md#v120-release-evidence)
+- **VaultBridge `v1.2.1` publication** — stable GitHub Release and GHCR image published from source
+  commit `59666d75b6ec1d4ca01430d61669f212d46180b5` by workflow run `35507290152`
 
 Current post-v1 planning position:
 
@@ -227,14 +230,25 @@ Current post-v1 planning position:
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
 
-Current `v1.2.1` release-preparation status:
+Current `v1.3.0` release-preparation status:
 
-- package, FastAPI, and MCP server metadata plus release documentation target `1.2.1`
-- the patch contains the already-merged dashboard favicon and sanitized TrueNAS canary screenshots;
-  it adds no API, MCP, data, migration, semantic-index, configuration, or deployment contract change
-- no `v1.2.1` Git tag, GitHub Release, GHCR image, or upstream TrueNAS catalog update exists yet
-- a future upstream catalog review would target package `1.0.1`, application image `1.2.1`, and
-  reviewer-supplied TrueNAS CDN screenshot URLs; repository URLs remain preview/source material
+- package, FastAPI, and MCP server metadata plus release documentation target `1.3.0`
+- this backward-compatible feature release contains the completed VB-100 through VB-106 work:
+  verified wikilink relationships across REST, MCP, and the dashboard; evaluation-only graph-aware
+  retrieval evidence; default-off MCP create/append; and first-class TrueNAS MCP configuration source
+- graph-aware evaluation did not change production ranking, model, chunking, or index/storage format
+- no `v1.3.0` Git tag, GitHub Release, GHCR image/digest, or published stable aliases exist yet
+- publishing the application image and updating the upstream TrueNAS catalog remain separate later
+  delivery work; the accepted catalog stays on package `1.0.0` and application image `1.1.0`
+
+Published `v1.2.1` release and distribution status:
+
+- `v1.2.1` is a published stable, non-prerelease GitHub Release from source commit
+  `59666d75b6ec1d4ca01430d61669f212d46180b5`
+- release-triggered workflow run `35507290152` passed release-source verification, image publication,
+  and stable-alias publication
+- the patch contains only the branded dashboard favicon and sanitized TrueNAS canary screenshots
+- `v1.2.1` publication did not update the accepted upstream TrueNAS catalog
 
 Published `v1.2.0` release and distribution status:
 
@@ -306,8 +320,8 @@ Current milestones:
 ## Working production characteristics
 
 - FastAPI application
-- package, FastAPI application, and MCP server metadata aligned to prepared source version `1.2.1`;
-  `v1.2.0` remains the latest published release and GHCR image, while the accepted TrueNAS
+- package, FastAPI application, and MCP server metadata aligned to prepared source version `1.3.0`;
+  `v1.2.1` remains the latest published release and GHCR image, while the accepted TrueNAS
   Community App remains on `1.1.0`
 - tracked source and reachable remote branch history passed the VB-060 public-exposure audit
 - public GitHub source was anonymously cloned and clean-built on TrueNAS SCALE / Linux amd64 with

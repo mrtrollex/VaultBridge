@@ -4,6 +4,64 @@ This is the durable completed release evidence for VaultBridge. VB-056 establish
 `v1.0.0` audit, and each later release adds its own immutable record without replacing earlier tags,
 GitHub Releases, or artifact evidence.
 
+## `v1.3.0` release preparation
+
+Preparation date: 2026-09-24.
+
+VaultBridge source metadata targets the backward-compatible `v1.3.0` feature release. This is a
+pre-publication record only: no `v1.3.0` Git tag, GitHub Release, GHCR image or digest, published
+stable aliases, or upstream TrueNAS catalog deployment exists yet.
+
+### Release scope
+
+- VB-100 through VB-104 add contained Obsidian wikilink parsing/resolution, verified outgoing links
+  and backlinks, shared REST/MCP relationship tools, and the dashboard Relationships UI.
+- VB-105 adds separate graph-aware retrieval evaluation. Its evidence did not authorize or change
+  production semantic ranking, model, chunking, or index/storage format.
+- VB-106 adds default-off MCP `create_note` and `append_note` parity and first-class TrueNAS MCP
+  configuration source. It does not update the accepted upstream catalog.
+- Existing REST compatibility and release-workflow behavior remain unchanged.
+
+### Preparation gate ledger
+
+| Gate | Preparation status | Required evidence |
+|---|---|---|
+| Source version alignment | **PASS** | `pyproject.toml`, FastAPI metadata, MCP server metadata, and the intentional application-version regression assertion all target `1.3.0`. |
+| Release notes and state | **PASS** | Empty Unreleased section, dated `1.3.0` changelog entry, published `v1.2.1` state, and explicit application/catalog delivery boundary. |
+| Local source validation | **PASS — 2026-09-24** | Focused metadata test, Ruff, non-E2E pytest, compileall, and `git diff --check` passed. `agent_check.py` additionally passed six Chromium E2E tests, Docker build, MCP dependency import, and stdio/HTTP container smokes. Its TrueNAS manual gate was bounded to a diff inspection: no catalog/runtime template changed, and package `1.0.0` / image `1.1.0` remain intact. |
+| Git tag and GitHub Release | **PENDING — later publication task** | Create and verify immutable `v1.3.0` tag/release from the approved source commit. |
+| GHCR image, digest, and stable aliases | **PENDING — later publication task** | Successful release workflow, exact image/digest and OCI-label inspection, anonymous pull, and stable-alias verification. |
+| Upstream TrueNAS catalog | **PENDING — separate delivery task** | Only after a verified `1.3.0` image exists; update, validate, and deliver upstream catalog metadata independently. |
+
+Expected local preparation validation:
+
+```text
+python -m ruff check app tests scripts
+python -m pytest -q tests/test_api.py -k application_metadata
+python -m pytest -q --ignore=tests/e2e
+python -m compileall -q app
+git diff --check
+python scripts/agent_check.py
+python scripts/agent_finish.py --task "Prepare VaultBridge v1.3.0 release metadata and documentation only; preserve runtime behavior and TrueNAS catalog versions; do not commit, tag, publish, or update upstream catalog."
+```
+
+The accepted TrueNAS Community App remains catalog package `1.0.0` with application image `1.1.0`.
+This preparation must not change those values or point the package at the unpublished `1.3.0`
+image. Application image publication and upstream catalog delivery remain separate later steps.
+
+## `v1.2.1` release evidence
+
+Release date: 2026-09-20.
+
+VaultBridge `v1.2.1` is a published stable, non-prerelease GitHub Release from source commit
+`59666d75b6ec1d4ca01430d61669f212d46180b5`. Release-triggered workflow run
+[`35507290152`](https://github.com/mrtrollex/VaultBridge/actions/runs/35507290152) passed release-source
+verification, image publication, and stable-alias publication. The release contains the dashboard
+favicon and sanitized TrueNAS canary screenshots prepared in the source release diff.
+
+Publishing `v1.2.1` did not update the accepted TrueNAS Community App. Its catalog package remains
+`1.0.0` and its application image remains `1.1.0`.
+
 ## `v1.2.0` release evidence
 
 Release date: 2026-09-20.
