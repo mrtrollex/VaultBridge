@@ -112,7 +112,7 @@ class RaisingIndexer(RecordingIndexer):
 
 def test_application_metadata():
     assert main.app.title == "VaultBridge"
-    assert main.app.version == "1.2.1"
+    assert main.app.version == "1.3.0"
     assert main.app.description == "Self-hosted REST and semantic search API for an Obsidian vault."
     assert main.app.docs_url is None
     assert main.app.redoc_url is None

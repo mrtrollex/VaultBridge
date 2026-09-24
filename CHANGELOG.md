@@ -6,13 +6,12 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-09-24
+
 ### Added
 
 - default-off MCP `create_note` and `append_note` tools with REST-equivalent validation and write
   semantics, targeted semantic refresh after committed changes, and safe stdio/HTTP indexer ownership
-- first-class TrueNAS package fields for MCP HTTP, MCP writes, and explicit Host/Origin allowlists,
-  mapped to the existing application port without requiring normal Additional Environment Variables
-
 - a reusable read-only Obsidian wikilink parser/resolver with fenced-code exclusion, exact
   ambiguity-safe matching, and canonical target verification through the existing vault boundary
 - a read-only outgoing-relationship service that verifies and reads one source note through the
@@ -26,10 +25,13 @@ The project intends to follow Semantic Versioning after the public repository ba
 - a bounded read-only dashboard Relationships section for a successfully read note, with independent
   outgoing/backlink loading, empty, failure, logout, and stale-response handling through the existing
   authenticated session boundary and text-only rendering
+- first-class TrueNAS package-source fields for MCP HTTP, default-off MCP writes, and explicit
+  Host/Origin allowlists, mapped to the existing application port without claiming that the accepted
+  upstream catalog has been updated
 - a separate deterministic and real-model graph-retrieval evaluation over sanitized fixtures; it
   records a verified one-hop quality signal and live-scan cost without changing the accepted
-  retrieval baseline or production behavior, and concludes that production graph ranking is not
-  supported by the current evidence
+  retrieval baseline or production ranking, and concludes that a production graph-ranking change is
+  not supported by the current evidence
 
 ## [1.2.1] - 2026-09-20
 

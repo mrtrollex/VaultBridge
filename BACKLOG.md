@@ -1561,20 +1561,33 @@ the catalog or close VB-082. Its edit-persistence, ixVolume-uninstall, valid-pri
 rollback gates remain open. Upgrading the VaultBridge application from `v1.1.0` to `v1.2.0` performs
 one safe automatic derived-index rebuild; Markdown and the SQLite schema remain unchanged.
 
-### v1.2.1 release preparation
+### v1.2.1 release
 
-**Status:** Prepared on 2026-09-20; publication remains pending.
+**Status:** Published as a stable GitHub Release on 2026-09-20.
 
-Package, FastAPI, and MCP server metadata target `1.2.1`. This backward-compatible patch contains
-only the already-merged dashboard favicon and two sanitized real TrueNAS canary screenshots. It
-adds no API, MCP tool, data format, migration, semantic-index contract, configuration, or deployment
-architecture change.
+Package, FastAPI, and MCP server metadata target `1.2.1` at release source commit
+`59666d75b6ec1d4ca01430d61669f212d46180b5`. This backward-compatible patch contains only the
+already-merged dashboard favicon and two sanitized real TrueNAS canary screenshots. It adds no API,
+MCP tool, data format, migration, semantic-index contract, configuration, or deployment architecture
+change.
 
-No `v1.2.1` Git tag, GitHub Release, GHCR image, or upstream TrueNAS catalog update exists yet. The
-published `v1.2.0` tag, release source, image, digests, and evidence remain immutable. The local
-catalog metadata keeps repository screenshot URLs only as non-authoritative preview/source material;
-a future upstream review would target catalog package `1.0.1`, application image `1.2.1`, and final
-reviewer-supplied TrueNAS CDN screenshot URLs.
+Release-triggered workflow run `35507290152` passed release-source verification, GHCR image
+publication, and stable-alias publication. The release did not update the accepted upstream TrueNAS
+catalog, which remains on catalog package `1.0.0` and application image `1.1.0`.
+
+### v1.3.0 release preparation
+
+**Status:** Source metadata prepared on 2026-09-24; publication remains pending.
+
+Package, FastAPI, and MCP server metadata target `1.3.0`. This backward-compatible feature release
+collects the completed VB-100 through VB-106 work: Obsidian wikilink parsing/resolution, outgoing
+links and backlinks, REST and MCP relationship tools, the dashboard Relationships UI, graph-aware
+retrieval evaluation, default-off MCP `create_note`/`append_note`, and first-class TrueNAS MCP
+configuration source. The graph-aware evaluation did not change production ranking.
+
+No `v1.3.0` Git tag, GitHub Release, GHCR image/digest, or published stable aliases exist yet.
+Publishing the application image and updating the upstream TrueNAS catalog are separate later
+delivery tasks; the checked-in catalog source must not point at an unpublished `1.3.0` image.
 
 ---
 
@@ -1629,6 +1642,9 @@ VB-001 ✓
 → VB-103 ✓
 → VB-104 ✓
 → VB-105 ✓ (production ranking not supported)
+→ VB-106 ✓
+→ v1.2.1 ✓
+→ v1.3.0 PREPARED (publication pending)
 → VB-034 (optional opt-in write task)
 ```
 
@@ -1653,12 +1669,13 @@ edit-form persistence, ixVolume uninstall semantics, a valid prior-state upgrade
 open. VB-090 and VB-091 complete the read-only stdio MCP design and implementation. VB-092 adds the
 opt-in read-only Streamable HTTP path, and VB-093 completes its container CI validation. This does
 not establish production TrueNAS runtime behavior. A separate isolated TrueNAS source-build smoke
-also passed against synthetic data without using the production vault. Source metadata for the
-favicon-and-screenshot-only `v1.2.1` patch is prepared, but publication and the separate upstream
-catalog update remain pending. `v1.2.0` is still the published and independently verified stable
-application/GHCR release; the accepted TrueNAS Community catalog runs `1.1.0` and its remaining
-VB-082 gates stay open. Milestone 11 is complete as a read-first relationship track; VB-105 records
-evaluation evidence but does not support a production graph-ranking change, while VB-032/VB-033
-remain deferred and VB-034 remains a later, opt-in write capability.
+also passed against synthetic data without using the production vault. The favicon-and-screenshot-only
+`v1.2.1` patch is a published stable GitHub/GHCR release. Source metadata now targets `v1.3.0`, but
+its tag, GitHub Release, GHCR image/digest, stable aliases, and separate upstream catalog update all
+remain pending. The accepted TrueNAS Community catalog runs `1.1.0` and its remaining VB-082 gates
+stay open. Milestone 11 is complete as a read-first relationship track; VB-105 records evaluation
+evidence but does not support a production graph-ranking change, while VB-106 adds default-off MCP
+write parity and first-class TrueNAS MCP configuration source. VB-032/VB-033 remain deferred and
+VB-034 remains a later, opt-in write capability.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

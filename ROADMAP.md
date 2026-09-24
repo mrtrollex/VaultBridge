@@ -30,16 +30,15 @@
 
 ---
 
-# Current project state — `v1.2.1` source prepared; `v1.2.0` remains published
+# Current project state — `v1.3.0` source prepared; `v1.2.1` published
 
-VaultBridge application metadata and documentation now target the `v1.2.1` patch release containing
-the already-merged dashboard favicon and sanitized TrueNAS canary screenshots. No `v1.2.1` tag,
-GitHub Release, GHCR image, or upstream TrueNAS catalog update exists yet. Published `v1.2.0`
-remains the latest stable application and GHCR release; its exact-source, immutable-image, and
-runtime evidence remains in
-[`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md#v120-release-evidence). The accepted TrueNAS
-Community App remains on application image `1.1.0`, and completed earlier release evidence remains
-historical and unchanged.
+VaultBridge application metadata and documentation now target the backward-compatible `v1.3.0`
+feature release containing the completed VB-100 through VB-106 work. No `v1.3.0` tag, GitHub
+Release, GHCR image, published stable aliases, or upstream TrueNAS catalog update exists yet.
+Published `v1.2.1` remains the latest stable application and GHCR release; preparation and
+publication boundaries are recorded in
+[`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md#v130-release-preparation). The accepted
+TrueNAS Community App remains on catalog package `1.0.0` and application image `1.1.0`.
 
 ## Current architecture
 
@@ -958,9 +957,9 @@ unresolved post-merge lifecycle gates. ADR 0004 completes VB-090's MCP design-on
 work, PR #55 CI completes VB-091's read-only stdio implementation verification, VB-092 adds the
 opt-in read-only HTTP transport, and PR #62 CI completes VB-093's production-image container gate.
 An isolated source-built TrueNAS smoke also passes with synthetic data while the production app
-remains healthy. Source metadata for the favicon-and-screenshot-only `v1.2.1` patch is prepared, but
-no tag, GitHub Release, GHCR image, or upstream catalog update exists. `v1.2.0` remains the published
-and independently verified stable application/GHCR release. The accepted TrueNAS Community catalog
+remains healthy. The favicon-and-screenshot-only `v1.2.1` patch is a published stable GitHub/GHCR
+release. Source metadata now targets `v1.3.0`, but no `v1.3.0` tag, GitHub Release, GHCR image,
+published stable aliases, or upstream catalog update exists. The accepted TrueNAS Community catalog
 remains on application image `1.1.0`, and VB-082's remaining lifecycle gates stay open.
 Milestone 11 is complete. VB-100 implements the reusable read-only wikilink parser/resolver,
 VB-101 adds verified outgoing relationships from one live contained note, and VB-102 derives
