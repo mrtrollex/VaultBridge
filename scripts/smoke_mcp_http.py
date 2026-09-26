@@ -34,6 +34,18 @@ API_KEY = "vb093-current-placeholder"
 PREVIOUS_API_KEY = "vb093-previous-placeholder"
 MCP_SERVER_ALIAS = "vb093-server"
 DISPOSABLE_ROOT_PREFIX = "vaultbridge-vb093-"
+CLEANUP_MOUNT = "/cleanup"
+CLEANUP_COMMAND = """\
+import shutil
+from pathlib import Path
+
+root = Path("/cleanup")
+for child in root.iterdir():
+    if child.is_symlink() or child.is_file():
+        child.unlink()
+    else:
+        shutil.rmtree(child)
+"""
 
 
 def run(*args: str, capture: bool = False) -> subprocess.CompletedProcess[str]:
@@ -234,7 +246,7 @@ def _retry_removal_after_chmod(
     function(path)
 
 
-def cleanup_disposable_root(root: Path, *, expected_root: Path) -> None:
+def cleanup_disposable_root(root: Path, *, expected_root: Path, image: str) -> None:
     temporary_parent = Path(tempfile.gettempdir()).resolve()
     resolved_root = root.resolve()
     if (
@@ -246,7 +258,24 @@ def cleanup_disposable_root(root: Path, *, expected_root: Path) -> None:
         raise ValueError(f"refusing unsafe disposable cleanup target: {root}")
 
     if os.path.lexists(resolved_root):
-        shutil.rmtree(resolved_root, onexc=_retry_removal_after_chmod)
+        try:
+            shutil.rmtree(resolved_root, onexc=_retry_removal_after_chmod)
+        except PermissionError:
+            run(
+                "docker",
+                "run",
+                "--rm",
+                "--user",
+                "0:0",
+                "--volume",
+                f"{resolved_root}:{CLEANUP_MOUNT}:rw",
+                "--entrypoint",
+                "python",
+                image,
+                "-c",
+                CLEANUP_COMMAND,
+            )
+            resolved_root.rmdir()
     assert not os.path.lexists(resolved_root), (
         f"disposable cleanup left temporary root behind: {resolved_root}"
     )
@@ -371,7 +400,7 @@ def orchestrate(image: str) -> None:
             stderr=subprocess.DEVNULL,
             check=False,
         )
-        cleanup_disposable_root(root, expected_root=expected_root)
+        cleanup_disposable_root(root, expected_root=expected_root, image=image)
         print(f"Disposable cleanup: PASS ({expected_root})")
 
 
