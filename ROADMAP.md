@@ -876,23 +876,25 @@ Milestone exit criteria:
 
 ---
 
-# Milestone 12 — Portable PKM model — NEXT / DESIGN FIRST
+# Milestone 12 — Portable PKM model — IN PROGRESS / VB-111 NEXT
 
 **Goal:** give VaultBridge a portable document/metadata model that understands useful PKM semantics
 without making any one Markdown application the architectural owner.
 
-This milestone is incremental and begins with an ADR. It must define the domain model, supported
+This milestone is incremental. VB-110 accepted
+[ADR 0005](docs/adr/0005-portable-pkm-document-model.md), which defines the domain model, supported
 syntax boundaries, malformed-input behavior, resource limits, compatibility implications, and what
-remains live versus derived before implementation is selected. It must not create another
-authoritative database or require every conceptual field to be persisted.
+remains live versus derived. The remaining tasks must not create another authoritative database or
+require every conceptual field to be persisted.
 
-### Proposed task sequence
+### Task sequence
 
-These identifiers describe roadmap intent only. `BACKLOG.md` must define authoritative task scope
-and acceptance criteria before implementation begins.
+VB-110 is complete under its authoritative `BACKLOG.md` contract. VB-111 is the next implementation
+task but still requires its own authoritative backlog scope; VB-112 through VB-114 remain roadmap
+intent only until separately defined.
 
 ```text
-VB-110 define portable PKM document model / ADR
+VB-110 define portable PKM document model / ADR ✓
    ↓
 VB-111 bounded YAML frontmatter parsing
    ↓
@@ -903,7 +905,7 @@ VB-113 contained standard Markdown relationships
 VB-114 normalized relationship view
 ```
 
-### VB-110 — Define portable PKM document model / ADR — PROPOSED NEXT
+### VB-110 — Define portable PKM document model / ADR — ACCEPTED
 
 Define a domain-level representation that can express, where available:
 
@@ -915,10 +917,12 @@ Define a domain-level representation that can express, where available:
 - links and normalized relationships;
 - content-derived metadata.
 
-The ADR must distinguish authoritative portable data from rebuildable projections. It should favor
-an in-memory/domain representation unless persistence is justified by measured behavior. Existing
-`VaultService` containment and compatibility identifiers remain in place; the design should extend
-current ownership rather than rename it cosmetically.
+[ADR 0005](docs/adr/0005-portable-pkm-document-model.md) distinguishes authoritative Markdown and
+portable metadata from live parsed domain values and rebuildable projections. It selects a bounded
+in-memory/domain representation, conservative ambiguity and malformed-input behavior, and explicit
+resource limits without authorizing persistence. Existing `VaultService` containment and
+compatibility identifiers remain in place; no cosmetic service or knowledge-space rename is
+authorized.
 
 ### YAML frontmatter
 
@@ -1136,9 +1140,10 @@ verified backlink write; none is the strategic NEXT item.
 
 ## Domain architecture
 
-The proposed VB-110/VB-120/VB-130/VB-140/VB-150 design tasks establish domain semantics before
-runtime or adapter work. Their identifiers are not authoritative implementation contracts until
-they are added to `BACKLOG.md` with bounded acceptance criteria.
+Accepted VB-110 and the proposed VB-120/VB-130/VB-140/VB-150 design tasks establish domain
+semantics before runtime or adapter work. VB-110 is authoritative in `BACKLOG.md`; the remaining
+identifiers are not implementation contracts until they receive bounded backlog acceptance
+criteria.
 
 ## Deployment and integration candidates
 
@@ -1215,7 +1220,7 @@ MCP ✓
    ↓
 PKM RELATIONSHIP FOUNDATION ✓
    ↓
-PORTABLE PKM MODEL — NEXT / design first
+PORTABLE PKM MODEL — IN PROGRESS / VB-111 NEXT (unimplemented)
    ↓
 KNOWLEDGE QUERY LAYER
    ↓
@@ -1267,11 +1272,11 @@ production relationship-ranking change because measured live-scan cost and narro
 establish acceptable general benefit. Wikilinks remain the first supported relationship dialect,
 not the architectural definition.
 
-The strategic continuation is Milestone 12, beginning with proposed design task VB-110 after an
-authoritative `BACKLOG.md` contract is reviewed. VB-032/VB-033 remain deferred, and VB-034 remains a
-later optional write task rather than NEXT. The proposed VB-110–VB-114, VB-120–VB-122,
-VB-130–VB-132, VB-140–VB-142, and VB-150–VB-152 identifiers reserve no implementation scope by
-themselves.
+The strategic continuation is Milestone 12. VB-110 and ADR 0005 are accepted; VB-111 bounded YAML
+frontmatter parsing is next but remains unimplemented pending its own authoritative `BACKLOG.md`
+contract. VB-032/VB-033 remain deferred, and VB-034 remains a later optional write task rather than
+NEXT. The still-proposed VB-111–VB-114, VB-120–VB-122, VB-130–VB-132, VB-140–VB-142, and
+VB-150–VB-152 identifiers reserve no implementation scope by themselves.
 
 ---
 
