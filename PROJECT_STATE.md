@@ -4,7 +4,7 @@ This document is the current factual snapshot for future Codex sessions. It shou
 
 ## Baseline date
 
-2026-09-24
+2026-09-25
 
 ## Current development position
 
@@ -77,6 +77,9 @@ Completed release tasks:
   [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md#v120-release-evidence)
 - **VaultBridge `v1.2.1` publication** — stable GitHub Release and GHCR image published from source
   commit `59666d75b6ec1d4ca01430d61669f212d46180b5` by workflow run `35507290152`
+- **VaultBridge `v1.3.0` publication and immutable-image verification** — stable release published
+  from source commit `a7e14ece0de74632d1d9be599d53678931dc64b3`; durable evidence is in
+  [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md#v130-release-evidence)
 
 Current post-v1 planning position:
 
@@ -130,9 +133,9 @@ Current post-v1 planning position:
   reviewed and merged on 2026-09-16 at merge commit
   `fd185603de32444f9e36f872dbcd84af44509115`
 - accepted source now exists in upstream `master` under `ix-dev/community/vaultbridge/`, and the
-  generated catalog entry exists under `trains/community/vaultbridge/1.0.0/`
+  current generated catalog entry exists under `trains/community/vaultbridge/1.0.2/`
 - the accepted Community package is `vaultbridge` / **VaultBridge** on the `community` train, catalog
-  package `1.0.0`, app/image `1.1.0`, library `2.3.11`, default Web UI port `30491`, Portal path
+  package `1.0.2`, app/image `1.3.0`, library `2.3.11`, default Web UI port `30491`, Portal path
   `/ui/`, and icon `https://media.sys.truenas.net/apps/vaultbridge/icons/icon.webp`
 - VaultBridge is available through the TrueNAS Community train / Discover Apps delivery path
 - VB-082 is in progress / partial validation: a fresh TrueNAS `25.10.6` custom-YAML install of the
@@ -223,23 +226,26 @@ Current post-v1 planning position:
   at most 20 server-ordered items per group through text-only DOM APIs, and owns explicit independent
   loading, empty, failure, logout, abort, and stale-response states without persisting relationship data
 - the checked-in TrueNAS package source now exposes MCP HTTP, MCP writes, and explicit Host/Origin
-  allowlists as first-class form values on the existing Web Port; a release image and separate
-  upstream `truenas/apps` package/catalog update are still required before operators see those fields
+  allowlists as first-class form values on the existing Web Port; the released image contains the
+  runtime support, but current upstream package `1.0.2` still lacks those form fields
 - VB-101 through VB-105 remain read-only and reserve any Markdown mutation for the later opt-in
   VB-034 task
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
 
-Current `v1.3.0` release-preparation status:
+Published `v1.3.0` release and distribution status:
 
-- package, FastAPI, and MCP server metadata plus release documentation target `1.3.0`
+- `v1.3.0` is a published stable, non-prerelease GitHub Release from source commit
+  `a7e14ece0de74632d1d9be599d53678931dc64b3`
 - this backward-compatible feature release contains the completed VB-100 through VB-106 work:
   verified wikilink relationships across REST, MCP, and the dashboard; evaluation-only graph-aware
   retrieval evidence; default-off MCP create/append; and first-class TrueNAS MCP configuration source
 - graph-aware evaluation did not change production ranking, model, chunking, or index/storage format
-- no `v1.3.0` Git tag, GitHub Release, GHCR image/digest, or published stable aliases exist yet
-- publishing the application image and updating the upstream TrueNAS catalog remain separate later
-  delivery work; the accepted catalog stays on package `1.0.0` and application image `1.1.0`
+- release workflow `36019163750` passed all three jobs; exact OCI index
+  `sha256:5a1709c279c3731f891b59026adb7e8f5497c299687596b74b49ffd64a9f5a0e`, runtime manifest,
+  attestation, labels, aliases, anonymous pull, MCP smoke, and full functional gate were verified
+- current upstream TrueNAS package `1.0.2` selects image `1.3.0`, but its source/generated form still
+  omits the four first-class MCP fields; form delivery and live lifecycle validation remain separate
 
 Published `v1.2.1` release and distribution status:
 
@@ -266,9 +272,9 @@ Published `v1.2.0` release and distribution status:
   [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md#v120-release-evidence)
 - upgrading from `v1.1.0` performs one automatic derived semantic-index rebuild; Markdown remains
   authoritative and unchanged, and no SQLite schema migration is required
-- the accepted TrueNAS Community App remains catalog package `1.0.0`, application image `1.1.0`,
-  library `2.3.11`, and default Web UI port `30491`; `v1.2.0` publication did not update it or close
-  VB-082
+- at the `v1.2.0` release point, the accepted TrueNAS Community App was catalog package `1.0.0`,
+  application image `1.1.0`, library `2.3.11`, and default Web UI port `30491`; that publication did
+  not update it or close VB-082
 
 Historical `v1.1.0` release and distribution status:
 
@@ -320,9 +326,9 @@ Current milestones:
 ## Working production characteristics
 
 - FastAPI application
-- package, FastAPI application, and MCP server metadata aligned to prepared source version `1.3.0`;
-  `v1.2.1` remains the latest published release and GHCR image, while the accepted TrueNAS
-  Community App remains on `1.1.0`
+- package, FastAPI application, and MCP server metadata align to published stable version `1.3.0`;
+  the current TrueNAS Community package `1.0.2` also selects image `1.3.0`, while its first-class MCP
+  form fields and live lifecycle verification remain separate delivery evidence
 - tracked source and reachable remote branch history passed the VB-060 public-exposure audit
 - public GitHub source was anonymously cloned and clean-built on TrueNAS SCALE / Linux amd64 with
   Docker Engine 28.3.1 using a disposable empty vault and isolated port `8876`

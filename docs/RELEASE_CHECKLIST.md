@@ -4,13 +4,14 @@ This is the durable completed release evidence for VaultBridge. VB-056 establish
 `v1.0.0` audit, and each later release adds its own immutable record without replacing earlier tags,
 GitHub Releases, or artifact evidence.
 
-## `v1.3.0` release preparation
+## `v1.3.0` release evidence
 
-Preparation date: 2026-09-24.
+Release date: 2026-09-24. Independent verification date: 2026-09-25.
 
-VaultBridge source metadata targets the backward-compatible `v1.3.0` feature release. This is a
-pre-publication record only: no `v1.3.0` Git tag, GitHub Release, GHCR image or digest, published
-stable aliases, or upstream TrueNAS catalog deployment exists yet.
+VaultBridge `v1.3.0` is a published stable, non-prerelease GitHub Release from source commit
+`a7e14ece0de74632d1d9be599d53678931dc64b3`. The release workflow, immutable GHCR image,
+stable aliases, OCI metadata, anonymous exact-digest pull, MCP smoke, and full functional gate were
+independently verified after publication.
 
 ### Release scope
 
@@ -19,35 +20,120 @@ stable aliases, or upstream TrueNAS catalog deployment exists yet.
 - VB-105 adds separate graph-aware retrieval evaluation. Its evidence did not authorize or change
   production semantic ranking, model, chunking, or index/storage format.
 - VB-106 adds default-off MCP `create_note` and `append_note` parity and first-class TrueNAS MCP
-  configuration source. It does not update the accepted upstream catalog.
+  configuration source.
 - Existing REST compatibility and release-workflow behavior remain unchanged.
 
-### Preparation gate ledger
+### Release gate ledger
 
-| Gate | Preparation status | Required evidence |
+| Gate | Status | Evidence |
 |---|---|---|
 | Source version alignment | **PASS** | `pyproject.toml`, FastAPI metadata, MCP server metadata, and the intentional application-version regression assertion all target `1.3.0`. |
-| Release notes and state | **PASS** | Empty Unreleased section, dated `1.3.0` changelog entry, published `v1.2.1` state, and explicit application/catalog delivery boundary. |
-| Local source validation | **PASS — 2026-09-24** | Focused metadata test, Ruff, non-E2E pytest, compileall, and `git diff --check` passed. `agent_check.py` additionally passed six Chromium E2E tests, Docker build, MCP dependency import, and stdio/HTTP container smokes. Its TrueNAS manual gate was bounded to a diff inspection: no catalog/runtime template changed, and package `1.0.0` / image `1.1.0` remain intact. |
-| Git tag and GitHub Release | **PENDING — later publication task** | Create and verify immutable `v1.3.0` tag/release from the approved source commit. |
-| GHCR image, digest, and stable aliases | **PENDING — later publication task** | Successful release workflow, exact image/digest and OCI-label inspection, anonymous pull, and stable-alias verification. |
-| Upstream TrueNAS catalog | **PENDING — separate delivery task** | Only after a verified `1.3.0` image exists; update, validate, and deliver upstream catalog metadata independently. |
+| Stable GitHub Release | **PASS** | [`v1.3.0`](https://github.com/mrtrollex/VaultBridge/releases/tag/v1.3.0) is published, non-draft, non-prerelease, and its annotated tag resolves to the exact release source. |
+| Release workflow | **PASS** | Run [`36019163750`](https://github.com/mrtrollex/VaultBridge/actions/runs/36019163750) completed successfully at the release source; `Verify release source`, `Build and publish`, and `Publish stable aliases` all passed. |
+| OCI identity and aliases | **PASS** | Exact OCI index, `linux/amd64` runtime manifest, BuildKit attestation, platform, and required OCI labels match the release. Tags `1.3.0`, `1.3`, `1`, and `latest` all resolve to the recorded index. |
+| Anonymous pull | **PASS** | The exact digest was pulled successfully with a new empty Docker configuration, without operator credentials. |
+| Immutable-image MCP verification | **PASS** | The exact digest passed disabled HTTP, the seven-tool read-only surface, official-client Streamable HTTP sessions with both current and previous keys, invalid Bearer/Host/Origin rejection, structured outgoing-link/backlink calls, the write-enabled nine-tool surface, disposable create/append/deduplication, clean shutdown, and fail-visible disposable-root cleanup with an explicit absence assertion. |
+| Immutable-image functional gate | **PASS** | The exact digest passed health, dashboard/assets/security headers, authenticated list/read/literal/semantic retrieval, real semantic readiness, relationship endpoints, CLI, restart persistence, privacy-safe logs, clean stop, and disposable cleanup. |
+| Upstream TrueNAS delivery | **PARTIAL / SEPARATE LIFECYCLE** | At upstream `truenas/apps` master commit `f39f282e8a58fe57372ca0f005123c84b2ecee31`, package `1.0.2` selects application image `1.3.0`. The upstream source/generated form still lacks the four first-class MCP fields, so that UI delivery remains separate. No live TrueNAS upgrade/runtime validation is claimed here. |
 
-Expected local preparation validation:
+### Exact release source and workflow
 
 ```text
-python -m ruff check app tests scripts
-python -m pytest -q tests/test_api.py -k application_metadata
-python -m pytest -q --ignore=tests/e2e
-python -m compileall -q app
-git diff --check
-python scripts/agent_check.py
-python scripts/agent_finish.py --task "Prepare VaultBridge v1.3.0 release metadata and documentation only; preserve runtime behavior and TrueNAS catalog versions; do not commit, tag, publish, or update upstream catalog."
+GitHub Release: https://github.com/mrtrollex/VaultBridge/releases/tag/v1.3.0
+annotated tag object: 72fdecb09790b1399773de53a0192cf878f13440
+release source commit: a7e14ece0de74632d1d9be599d53678931dc64b3
+release workflow: 36019163750
+release workflow URL: https://github.com/mrtrollex/VaultBridge/actions/runs/36019163750
+release workflow conclusion: success
 ```
 
-The accepted TrueNAS Community App remains catalog package `1.0.0` with application image `1.1.0`.
-This preparation must not change those values or point the package at the unpublished `1.3.0`
-image. Application image publication and upstream catalog delivery remain separate later steps.
+The public GitHub API reported `draft=false`, `prerelease=false`, publication at
+`2026-09-24T15:18:06Z`, and an annotated tag whose target object is the exact commit above. The
+workflow run used that same `head_sha`; all three release jobs completed successfully.
+
+### Published OCI evidence
+
+```text
+repository: ghcr.io/mrtrollex/vaultbridge
+verified aliases: 1.3.0, 1.3, 1, latest
+OCI index digest: sha256:5a1709c279c3731f891b59026adb7e8f5497c299687596b74b49ffd64a9f5a0e
+linux/amd64 runtime-manifest digest: sha256:13d41a301b9a43a460227c55ecc2e3244bd7ca3036301a1f405d60cbd08ebec3
+BuildKit provenance attestation digest: sha256:e4a25b57865abfea0d39264c018036fbc571666e25145fa2a86662641b794094
+platform: linux/amd64
+org.opencontainers.image.revision: a7e14ece0de74632d1d9be599d53678931dc64b3
+org.opencontainers.image.version: v1.3.0
+org.opencontainers.image.source: https://github.com/mrtrollex/VaultBridge
+org.opencontainers.image.licenses: MIT
+```
+
+All four tags resolved to the same OCI index. The exact immutable reference below was anonymously
+pulled with an empty Docker configuration and used for every container verification:
+
+```text
+ghcr.io/mrtrollex/vaultbridge@sha256:5a1709c279c3731f891b59026adb7e8f5497c299687596b74b49ffd64a9f5a0e
+```
+
+### Immutable-image MCP verification
+
+`scripts/smoke_mcp_http.py --image <exact digest>` passed. With MCP disabled, `/mcp` remained
+unavailable. With it enabled, the official Streamable HTTP client saw exactly seven read-only tools.
+Separate official-client sessions authenticated with the current key and `API_KEY_PREVIOUS`; each
+successfully called `list_notes` and asserted the structured note list contained the disposable
+`Smoke.md`. Missing and invalid Bearer credentials, invalid Host, invalid present Origin, REST
+compatibility, and clean shutdown behaved as required.
+
+With writes enabled, the surface added exactly `create_note` and `append_note`. The client created
+sanitized `MCP Smoke/Relationship Target.md` and `MCP Smoke/Relationship Source.md` notes. A
+`note_links` call on the source asserted structured content containing one resolved relationship
+whose target was `MCP Smoke/Relationship Target`, heading was `Verified Section`, alias was
+`Synthetic target`, and canonical `resolved_path` was `MCP Smoke/Relationship Target.md`. A
+`note_backlinks` call on the target asserted structured content containing the canonical
+`MCP Smoke/Relationship Source.md` source path with the same target, heading, and alias metadata.
+The disposable create, append, duplicate-append suppression, read-back, and clean shutdown checks
+also passed. The corrected verification run completed at `2026-09-25T16:25:31Z` against the exact
+digest above. It created only
+`C:\Users\619ri\AppData\Local\Temp\vaultbridge-vb093-7jevvbpx`, restored removal permissions for
+the deliberately restricted `Smoke.md` when required, removed that root, and passed the harness's
+explicit post-removal absence assertion. An independent `Test-Path -LiteralPath` check after the
+process exited returned `False`. Earlier MCP smoke runs are not used as successful cleanup evidence;
+their unrelated historical temporary roots were left untouched.
+
+### Immutable-image full functional verification
+
+A disposable local stream adaptation of the historical `scripts/verify-vb075-image.sh` behavior was
+used without modifying that tracked evidence script. The final gate ran the VaultBridge container
+as UID:GID `568:568` with all capabilities dropped; WSL root was used only so the harness could
+remove model-cache files owned through the bind mount. The gate passed at `2026-09-25T15:15:02Z`
+with Docker `29.8.0` on `linux/amd64`.
+
+```text
+initial semantic readiness: 22 seconds
+restart semantic readiness: 4 seconds
+liveness/readiness/rich health: PASS
+dashboard/assets/security headers: PASS
+authenticated API/list/read/literal/semantic: PASS
+real semantic retrieval: PASS
+outgoing links/backlinks on sanitized synthetic wikilinks: PASS
+CLI availability: PASS
+derived semantic persistence/restart: PASS
+privacy-safe logs: PASS
+clean stop: PASS
+disposable cleanup: PASS
+```
+
+Only disposable synthetic Markdown, credentials, and derived data were used. No operator vault,
+credential, semantic-data directory, or running production instance was accessed.
+
+### Current TrueNAS boundary
+
+The packet's task-start expectation was package `1.0.1` with image `1.2.1`, but upstream changed
+independently before this verification completed. On 2026-09-25, `truenas/apps` master commit
+`f39f282e8a58fe57372ca0f005123c84b2ecee31` and generated `catalog.json` reported Community
+package `1.0.2`, application image `1.3.0`, and library `2.3.11`. Both upstream source and generated
+package forms still omit `MCP_HTTP_ENABLED`, `MCP_WRITE_ENABLED`, `MCP_HTTP_ALLOWED_HOSTS`, and
+`MCP_HTTP_ALLOWED_ORIGINS`. Thus the catalog now selects the v1.3.0 image, but first-class MCP form
+delivery and live TrueNAS lifecycle verification remain separate from this completed application
+release evidence.
 
 ## `v1.2.1` release evidence
 
@@ -59,8 +145,8 @@ VaultBridge `v1.2.1` is a published stable, non-prerelease GitHub Release from s
 verification, image publication, and stable-alias publication. The release contains the dashboard
 favicon and sanitized TrueNAS canary screenshots prepared in the source release diff.
 
-Publishing `v1.2.1` did not update the accepted TrueNAS Community App. Its catalog package remains
-`1.0.0` and its application image remains `1.1.0`.
+Publishing `v1.2.1` did not update the accepted TrueNAS Community App. At that release point, its
+catalog package was `1.0.0` and its application image was `1.1.0`.
 
 ## `v1.2.0` release evidence
 
@@ -175,9 +261,9 @@ Markdown remains authoritative and unchanged. No SQLite schema migration is requ
 from `v1.1.0` to `v1.2.0` triggers one automatic rebuild of the derived semantic index because the
 effective embedding/backend-artifact fingerprint changed; this is not a manual data migration.
 
-Publishing `v1.2.0` did not update the accepted TrueNAS Community App and does not close VB-082. Its
-current contract remains catalog package `1.0.0`, application/image `1.1.0`, library `2.3.11`, and
-default Web UI port `30491`. No `v1.2.0` Community App lifecycle validation is claimed.
+Publishing `v1.2.0` did not update the accepted TrueNAS Community App and did not close VB-082. Its
+contract at that release point was catalog package `1.0.0`, application/image `1.1.0`, library
+`2.3.11`, and default Web UI port `30491`. No `v1.2.0` Community App lifecycle validation is claimed.
 
 ## `v1.1.0` release evidence — VB-075
 

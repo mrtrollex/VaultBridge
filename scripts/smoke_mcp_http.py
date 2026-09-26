@@ -7,6 +7,7 @@ import argparse
 import asyncio
 import http.client
 import json
+import os
 import shutil
 import stat
 import subprocess
@@ -16,6 +17,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+from collections.abc import Callable
 from pathlib import Path
 
 TOOLS = {
@@ -31,6 +33,7 @@ WRITE_TOOLS = {"create_note", "append_note"}
 API_KEY = "vb093-current-placeholder"
 PREVIOUS_API_KEY = "vb093-previous-placeholder"
 MCP_SERVER_ALIAS = "vb093-server"
+DISPOSABLE_ROOT_PREFIX = "vaultbridge-vb093-"
 
 
 def run(*args: str, capture: bool = False) -> subprocess.CompletedProcess[str]:
@@ -196,6 +199,7 @@ def run_official_client(
     network: str,
     script: Path,
     *,
+    token_kind: str = "current",
     writes: bool = False,
 ) -> None:
     args = [
@@ -212,10 +216,40 @@ def run_official_client(
         "/tmp/smoke_mcp_http.py",
         "--client",
         f"http://{server_name}:8000/mcp",
+        "--token-kind",
+        token_kind,
     ]
     if writes:
         args.append("--writes")
     run(*args)
+
+
+def _retry_removal_after_chmod(
+    function: Callable[[str], object], path: str, _: BaseException
+) -> None:
+    candidate = Path(path)
+    candidate.chmod(
+        candidate.stat().st_mode | stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
+    )
+    function(path)
+
+
+def cleanup_disposable_root(root: Path, *, expected_root: Path) -> None:
+    temporary_parent = Path(tempfile.gettempdir()).resolve()
+    resolved_root = root.resolve()
+    if (
+        resolved_root != expected_root
+        or resolved_root.parent != temporary_parent
+        or not resolved_root.name.startswith(DISPOSABLE_ROOT_PREFIX)
+        or resolved_root.name == DISPOSABLE_ROOT_PREFIX
+    ):
+        raise ValueError(f"refusing unsafe disposable cleanup target: {root}")
+
+    if os.path.lexists(resolved_root):
+        shutil.rmtree(resolved_root, onexc=_retry_removal_after_chmod)
+    assert not os.path.lexists(resolved_root), (
+        f"disposable cleanup left temporary root behind: {resolved_root}"
+    )
 
 
 def orchestrate(image: str) -> None:
@@ -223,7 +257,9 @@ def orchestrate(image: str) -> None:
     suffix = uuid.uuid4().hex[:12]
     network = f"vaultbridge-vb093-{suffix}"
     containers: set[str] = set()
-    root = Path(tempfile.mkdtemp(prefix="vaultbridge-vb093-"))
+    root = Path(tempfile.mkdtemp(prefix=DISPOSABLE_ROOT_PREFIX))
+    expected_root = root.resolve()
+    print(f"Disposable root: {expected_root}")
     try:
         run("docker", "network", "create", network)
         directories = (
@@ -287,6 +323,13 @@ def orchestrate(image: str) -> None:
 
         # The client URL host must match both the Docker alias and MCP_HTTP_ALLOWED_HOSTS.
         run_official_client(image, MCP_SERVER_ALIAS, network, Path(__file__))
+        run_official_client(
+            image,
+            MCP_SERVER_ALIAS,
+            network,
+            Path(__file__),
+            token_kind="previous",
+        )
         stop_cleanly(enabled)
         containers.remove(enabled)
 
@@ -328,17 +371,21 @@ def orchestrate(image: str) -> None:
             stderr=subprocess.DEVNULL,
             check=False,
         )
-        shutil.rmtree(root, ignore_errors=True)
+        cleanup_disposable_root(root, expected_root=expected_root)
+        print(f"Disposable cleanup: PASS ({expected_root})")
 
 
-async def client_smoke(url: str, *, writes: bool = False) -> None:
+async def client_smoke(
+    url: str, *, token_kind: str = "current", writes: bool = False
+) -> None:
     import httpx2
     from mcp import Client
     from mcp.client.streamable_http import streamable_http_client
 
+    token = PREVIOUS_API_KEY if token_kind == "previous" else API_KEY
     async with httpx2.AsyncClient(
         headers={
-            "Authorization": f"Bearer {API_KEY}",
+            "Authorization": f"Bearer {token}",
             "Origin": "https://vb093-client.invalid",
         }
     ) as http_client:
@@ -353,6 +400,33 @@ async def client_smoke(url: str, *, writes: bool = False) -> None:
             result = await client.call_tool("list_notes", {})
             paths = {note["path"] for note in result.structured_content["notes"]}
             if writes:
+                target = await client.call_tool(
+                    "create_note",
+                    {
+                        "title": "Relationship Target",
+                        "folder": "MCP Smoke",
+                        "content": "# Relationship target\n\nSanitized synthetic target.",
+                    },
+                )
+                source = await client.call_tool(
+                    "create_note",
+                    {
+                        "title": "Relationship Source",
+                        "folder": "MCP Smoke",
+                        "content": (
+                            "# Relationship source\n\n"
+                            "[[MCP Smoke/Relationship Target#Verified Section|Synthetic target]]"
+                        ),
+                    },
+                )
+                links = await client.call_tool(
+                    "note_links",
+                    {"path": "MCP Smoke/Relationship Source.md"},
+                )
+                backlinks = await client.call_tool(
+                    "note_backlinks",
+                    {"path": "MCP Smoke/Relationship Target.md"},
+                )
                 created = await client.call_tool(
                     "create_note",
                     {
@@ -382,6 +456,29 @@ async def client_smoke(url: str, *, writes: bool = False) -> None:
                     "read_note",
                     {"path": "MCP Smoke/Created.md"},
                 )
+                assert target.structured_content["status"] == "created"
+                assert source.structured_content["status"] == "created"
+                assert links.structured_content == {
+                    "links": [
+                        {
+                            "target": "MCP Smoke/Relationship Target",
+                            "heading": "Verified Section",
+                            "alias": "Synthetic target",
+                            "state": "resolved",
+                            "resolved_path": "MCP Smoke/Relationship Target.md",
+                        }
+                    ]
+                }
+                assert backlinks.structured_content == {
+                    "backlinks": [
+                        {
+                            "source_path": "MCP Smoke/Relationship Source.md",
+                            "target": "MCP Smoke/Relationship Target",
+                            "heading": "Verified Section",
+                            "alias": "Synthetic target",
+                        }
+                    ]
+                }
                 assert created.structured_content["status"] == "created"
                 assert appended.structured_content["status"] == "appended"
                 assert deduped.structured_content["status"] == "already_applied"
@@ -394,10 +491,13 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--image", default="vaultbridge:ci")
     parser.add_argument("--client")
+    parser.add_argument("--token-kind", choices=("current", "previous"), default="current")
     parser.add_argument("--writes", action="store_true")
     args = parser.parse_args()
     if args.client:
-        asyncio.run(client_smoke(args.client, writes=args.writes))
+        asyncio.run(
+            client_smoke(args.client, token_kind=args.token_kind, writes=args.writes)
+        )
         return
     orchestrate(args.image)
     print("VaultBridge MCP HTTP read-only and write-enabled container smoke: PASS")
