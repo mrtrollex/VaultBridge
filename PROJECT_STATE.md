@@ -4,7 +4,7 @@ This document is the current factual snapshot for future Codex sessions. It shou
 
 ## Baseline date
 
-2026-09-25
+2026-09-26
 
 ## Current development position
 
@@ -63,6 +63,7 @@ Completed:
 - VB-104 — Dashboard note relationships
 - VB-105 — Evaluate graph-aware retrieval signal
 - VB-106 — MCP write parity and first-class TrueNAS MCP configuration
+- VB-110 — Define portable PKM document model / ADR
 
 Post-v1 development position:
 
@@ -230,6 +231,13 @@ Current post-v1 planning position:
   runtime support, but current upstream package `1.0.2` still lacks those form fields
 - VB-101 through VB-105 remain read-only and reserve any Markdown mutation for the later opt-in
   VB-034 task
+- VB-110 is complete as design-only work: ADR 0005 accepts the portable document and normalized
+  relationship concepts, keeps canonical vault-relative Markdown paths as identity, preserves
+  `VaultService` and `RelationshipService` ownership, and defines bounded conservative frontmatter,
+  metadata, ambiguity, ordering, duplicate, failure, and derived-state rules
+- VB-110 changes no runtime behavior, dependency, API/MCP surface, database/index format,
+  deployment package, or release artifact; VB-111 bounded YAML frontmatter parsing is the next
+  Milestone 12 implementation task and remains unimplemented
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
 

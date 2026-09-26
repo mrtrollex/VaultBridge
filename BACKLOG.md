@@ -1543,6 +1543,51 @@ OpenAI-specific protocol behavior.
 
 ---
 
+## Portable PKM model
+
+### VB-110 — Define portable PKM document model / ADR — P1 ✅
+
+**Status:** Complete. ADR 0005 is accepted; VB-111 is the next implementation task in this
+milestone.
+
+**Goal:** define a portable, bounded domain model for Markdown notes, metadata, headings, and
+relationships without introducing a second authoritative store or changing current runtime
+behavior.
+
+**Acceptance criteria**
+
+- accept `docs/adr/0005-portable-pkm-document-model.md` as the conceptual contract for VB-111
+  through VB-114;
+- retain the verified canonical vault-relative Markdown path as note identity and keep containment,
+  symlink protection, note-size enforcement, and note reads owned by `VaultService`;
+- define title precedence, ordered headings, aliases, tags, bounded portable frontmatter, and a
+  normalized relationship occurrence that preserves source, written target, resolved/unresolved
+  state, dialect, type, fragment, label, source order, and dialect-specific metadata;
+- distinguish authoritative Markdown and metadata stored in it from live parsed domain values and
+  rebuildable projections; do not require persistence or a public schema for every conceptual
+  field;
+- specify deterministic source ordering, occurrence-preserving duplicate behavior, explicit exact
+  deduplication views, and conservative ambiguity handling that never guesses among paths, aliases,
+  or targets;
+- specify strict UTF-8 input and explicit document, frontmatter, scalar, container-depth, and item
+  bounds for later parsing;
+- define safe single-document YAML behavior for duplicate keys, malformed delimiters, anchors,
+  aliases, custom tags, executable constructors, nested maps/lists, supported scalar types, and
+  unknown safe keys;
+- keep note content available when metadata is malformed or unsupported unless the existing
+  document safety boundary rejects the note, and never alter authoritative Markdown on a parse
+  failure;
+- preserve current REST, MCP, CLI, dashboard, `VAULT_PATH`, resource URI, class-name, semantic
+  index, and packaging contracts; do not cosmetically rename `VaultService` or introduce generic
+  `DocumentService` / `KnowledgeSpace` runtime abstractions.
+
+**Out of scope:** runtime Python or parser implementation; dependencies; REST, MCP, CLI, or
+dashboard changes; database, semantic-index, or persistent-graph changes; production relationship
+ranking; multiple knowledge spaces; VB-034 backlink insertion; TrueNAS packaging/lifecycle work;
+release work; and authoritative task contracts or implementation for VB-111 through VB-114.
+
+---
+
 ## Release history
 
 ### v1.2.0 release
@@ -1652,6 +1697,8 @@ VB-001 ✓
 → VB-106 ✓
 → v1.2.1 ✓
 → v1.3.0 ✓
+→ VB-110 ✓ (accepted portable PKM document model / ADR)
+→ VB-111 NEXT (bounded YAML frontmatter parsing)
 → VB-034 (optional opt-in write task)
 ```
 
@@ -1684,6 +1731,7 @@ image `1.3.0` but still lacks the first-class MCP form fields, and the remaining
 open. Milestone 11 is complete as a read-first relationship track; VB-105 records evaluation
 evidence but does not support a production graph-ranking change, while VB-106 adds default-off MCP
 write parity and first-class TrueNAS MCP configuration source. VB-032/VB-033 remain deferred and
-VB-034 remains a later, opt-in write capability.
+VB-034 remains a later, opt-in write capability. VB-110 accepts ADR 0005 as the portable PKM
+document-model contract; VB-111 is the next implementation task and remains unimplemented.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.
