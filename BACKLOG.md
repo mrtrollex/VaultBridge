@@ -977,6 +977,34 @@ Dashboard so downstream packaging can consume an immutable dashboard-capable art
 - exact-source CI and release workflow PASS, GHCR tag/digest/metadata verification, anonymous pull,
   and a disposable exact-image TrueNAS runtime gate with sanitized recorded evidence.
 
+### VB-076 — Persistent Web Dashboard session — P1 ✅
+
+**Status:** Completed on 2026-09-26.
+
+**Goal:** replace the dashboard's browser-held Bearer credential with a stateless, server-issued,
+HttpOnly session cookie while preserving external REST and MCP Bearer authentication unchanged.
+
+**Implemented behavior**
+
+- `POST /ui/session` applies the shared protected-peer rate limit and current/previous API-key
+  verification, then issues a seven-day, current-key-derived HMAC-SHA256 session containing only
+  version and bounded timestamps;
+- `GET /ui/session` validates and renews the same-origin session, while `DELETE /ui/session`
+  idempotently clears it; session responses are non-cacheable;
+- the cookie is `HttpOnly`, `SameSite=Strict`, `Path=/`, has explicit bounded expiry, no `Domain`,
+  and is `Secure` when the effective request scheme is HTTPS;
+- protected API routes accept the cookie only with `X-VaultBridge-UI-Request: 1`; cookie-only and
+  marker-only requests remain unauthorized, existing Bearer requests remain unchanged, and the
+  shared peer rate limit still runs first;
+- the dashboard stores no raw credential, session token, or Bearer header in browser-readable
+  storage and preserves its existing cancellation, stale-response, safe-rendering, and
+  authentication-versus-transient-error behavior;
+- rotation of the current API key invalidates existing UI sessions; an accepted previous key may
+  unlock a new session, but that session is always signed from the current key.
+
+**Out of scope:** accounts, OAuth/OIDC, a session database, Redis, cross-origin sharing, TrueNAS
+packaging changes, REST/MCP Bearer changes, and VB-111.
+
 ---
 
 ## TrueNAS Community App distribution
@@ -1679,6 +1707,7 @@ VB-001 ✓
 → VB-073 ✓
 → VB-074 ✓
 → VB-075 ✓
+→ VB-076 ✓
 → VB-080 ✓
 → VB-081 ✓
 → VB-082 PRE-UPSTREAM GATES ✓
@@ -1706,9 +1735,10 @@ VB-057 through VB-060 close the confirmed containment, native-Windows test-porta
 release-version alignment, and repository-exposure-safety blockers. Stable `v1.0.0` and its final
 distribution gates are complete; immutable evidence remains recorded in `docs/RELEASE_CHECKLIST.md`.
 
-VB-070 through VB-074 complete the bundled Web Dashboard architecture, shell/session, public
-health-backed Overview, protected literal/semantic Search, and final usability/accessibility/image
-hardening. VB-080 completes the version-neutral Community App packaging design, and VB-081 is
+VB-070 through VB-076 complete the bundled Web Dashboard architecture, shell, public health-backed
+Overview, protected literal/semantic Search, usability/accessibility/image hardening, publication,
+and the persistent HttpOnly session replacement. VB-080 completes the version-neutral Community
+App packaging design, and VB-081 is
 complete with the released `1.1.0` image, current upstream metadata, officially generated artifacts,
 and Docker-backed render/deploy validation. VB-083 is complete after PR #5805 review/merge, accepted
 source and generated-entry verification, and operator-confirmed Discover Apps availability. The

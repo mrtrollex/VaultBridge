@@ -601,12 +601,11 @@ def test_javascript_implements_session_auth_status_and_safe_rendering_contract(t
     assert 'locked: "LOCKED"' in script
     assert 'unlocked: "UNLOCKED"' in script
     assert "Ready — unlocked" not in script
-    assert 'const SESSION_STORAGE_KEY = "vaultbridge.ui.apiKey"' in script
-    assert "sessionStorage.getItem(SESSION_STORAGE_KEY)" in script
-    assert "sessionStorage.setItem(SESSION_STORAGE_KEY, credential)" in script
-    assert "sessionStorage.removeItem(SESSION_STORAGE_KEY)" in script
-    assert 'authenticatedFetch("api/v1/notes/list?limit=1", { credential })' in script
-    assert 'headers.set("Authorization", `Bearer ${credential}`)' in script
+    assert 'sessionRequest("POST", credential)' in script
+    assert 'sessionRequest("GET")' in script
+    assert 'sessionRequest("DELETE")' in script
+    assert 'headers.set("X-VaultBridge-UI-Request", "1")' in script
+    assert 'credentials: "same-origin"' in script
     assert "document.baseURI" in script
     assert "new URL(`../${relativePath}`, document.baseURI)" in script
     assert "response.status === 401" in script
@@ -620,6 +619,7 @@ def test_javascript_implements_session_auth_status_and_safe_rendering_contract(t
     assert "textContent" in all_scripts
 
     for prohibited in (
+        "sessionStorage",
         "localStorage",
         "indexedDB",
         "innerHTML",
@@ -632,6 +632,8 @@ def test_javascript_implements_session_auth_status_and_safe_rendering_contract(t
         "setInterval(",
         "console.",
         "document.cookie",
+        'headers.set("Authorization"',
+        "Bearer ${",
         "serviceWorker",
         "caches.",
     ):
@@ -643,9 +645,9 @@ def test_session_focus_management_distinguishes_actions_from_reload(tmp_path):
 
     assert "if (focusAfterSuccess)" in script
     assert "logoutButton.focus();" in script
-    assert "void validateCredential(credential, false, true);" in script
-    assert "void validateCredential(storedCredential.value, true, true);" in script
-    assert "void validateCredential(initialCredential.value, true, false);" in script
+    assert "void unlockSession(credential, true);" in script
+    assert "void restoreSession(true);" in script
+    assert "void restoreSession();" in script
     assert 'setSessionState("checking-session", "Revalidating the saved session.", true);' in script
     assert 'apiKeyInput.setAttribute("aria-invalid", "true")' in script
     assert 'apiKeyInput.removeAttribute("aria-invalid")' in script
@@ -872,7 +874,7 @@ def test_search_uses_existing_auth_wrapper_and_preserves_session_on_non_auth_err
 
     assert "Authorization" not in search_script
     assert "authenticatedFetch" in search_script
-    assert 'headers.set("Authorization", `Bearer ${credential}`)' in app_script
+    assert 'headers.set("X-VaultBridge-UI-Request", "1")' in app_script
     assert "callerSignal?.addEventListener" in app_script
     assert "callerSignal?.removeEventListener" in app_script
     assert 'error.kind === "authentication-required"' in search_script
@@ -882,7 +884,7 @@ def test_search_uses_existing_auth_wrapper_and_preserves_session_on_non_auth_err
     assert "clearCredentialState()" not in search_script
 
 
-def test_unlock_probe_reuses_existing_authentication_without_a_ui_auth_endpoint(tmp_path):
+def test_ui_session_endpoint_reuses_current_and_previous_authentication(tmp_path):
     client = client_for(tmp_path, previous_api_key="test-previous-secret")
 
     assert client.get("/api/v1/notes/list", params={"limit": 1}).status_code == 401
@@ -901,7 +903,12 @@ def test_unlock_probe_reuses_existing_authentication_without_a_ui_auth_endpoint(
         params={"limit": 1},
         headers={"Authorization": "Bearer test-previous-secret"},
     ).status_code == 200
-    assert client.post("/ui/auth").status_code == 404
+    assert client.post("/ui/session", json={"api_key": "invalid"}).status_code == 401
+    assert client.post("/ui/session", json={"api_key": "test-secret"}).status_code == 200
+    assert client.post(
+        "/ui/session",
+        json={"api_key": "test-previous-secret"},
+    ).status_code == 200
 
 
 def test_ui_css_has_narrow_reflow_long_content_focus_and_reduced_motion_contract(tmp_path):

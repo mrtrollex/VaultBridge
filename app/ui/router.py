@@ -1,11 +1,25 @@
 from __future__ import annotations
 
+from collections.abc import Callable, Coroutine
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
-from fastapi import APIRouter, Request, status
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.routing import APIRoute
+from pydantic import BaseModel, ConfigDict, SecretStr
 
-router = APIRouter(include_in_schema=False)
+from app.api.dependencies import enforce_rate_limit, get_settings
+from app.core.config import Settings
+from app.core.http_security import verify_api_key
+from app.core.ui_session import (
+    UI_SESSION_COOKIE_NAME,
+    UI_SESSION_LIFETIME_SECONDS,
+    create_ui_session_token,
+    validate_ui_session_token,
+)
 
 _UI_ROOT = Path(__file__).resolve().parent
 _ASSET_ROOT = _UI_ROOT / "assets"
@@ -26,6 +40,109 @@ UI_SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",
 }
+_NO_STORE_HEADERS = {"Cache-Control": "no-store"}
+_INVALID_SESSION_REQUEST = {"detail": "Invalid session request"}
+
+
+class UISessionRoute(APIRoute):
+    """Keep all UI-session responses non-cacheable and validation errors private."""
+
+    def get_route_handler(self) -> Callable[[Request], Coroutine[Any, Any, Response]]:
+        route_handler = super().get_route_handler()
+
+        async def private_session_handler(request: Request) -> Response:
+            try:
+                return await route_handler(request)
+            except RequestValidationError:
+                return JSONResponse(
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                    content=_INVALID_SESSION_REQUEST,
+                    headers=_NO_STORE_HEADERS,
+                )
+            except HTTPException as exc:
+                return JSONResponse(
+                    status_code=exc.status_code,
+                    content={"detail": exc.detail},
+                    headers={**(exc.headers or {}), **_NO_STORE_HEADERS},
+                )
+
+        return private_session_handler
+
+
+router = APIRouter(include_in_schema=False)
+session_router = APIRouter(include_in_schema=False, route_class=UISessionRoute)
+
+
+class UISessionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    api_key: SecretStr
+
+
+def _is_https(request: Request) -> bool:
+    return request.url.scheme == "https"
+
+
+def _set_session_cookie(response: JSONResponse, request: Request, settings: Settings) -> None:
+    expires_at = int(datetime.now(tz=timezone.utc).timestamp()) + UI_SESSION_LIFETIME_SECONDS
+    response.set_cookie(
+        key=UI_SESSION_COOKIE_NAME,
+        value=create_ui_session_token(settings),
+        max_age=UI_SESSION_LIFETIME_SECONDS,
+        expires=datetime.fromtimestamp(expires_at, tz=timezone.utc),
+        path="/",
+        secure=_is_https(request),
+        httponly=True,
+        samesite="strict",
+    )
+
+
+def _clear_session_cookie(response: JSONResponse, request: Request) -> None:
+    response.delete_cookie(
+        key=UI_SESSION_COOKIE_NAME,
+        path="/",
+        secure=_is_https(request),
+        httponly=True,
+        samesite="strict",
+    )
+
+
+@session_router.post("/ui/session", dependencies=[Depends(enforce_rate_limit)])
+def create_session(
+    payload: UISessionRequest,
+    request: Request,
+    settings: Settings = Depends(get_settings),
+) -> JSONResponse:
+    verify_api_key(payload.api_key.get_secret_value(), settings)
+    response = JSONResponse({"authenticated": True}, headers=_NO_STORE_HEADERS)
+    _set_session_cookie(response, request, settings)
+    return response
+
+
+@session_router.get("/ui/session")
+def restore_session(
+    request: Request,
+    settings: Settings = Depends(get_settings),
+) -> JSONResponse:
+    if not validate_ui_session_token(request.cookies.get(UI_SESSION_COOKIE_NAME), settings):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+            headers=_NO_STORE_HEADERS,
+        )
+    response = JSONResponse({"authenticated": True}, headers=_NO_STORE_HEADERS)
+    _set_session_cookie(response, request, settings)
+    return response
+
+
+@session_router.delete("/ui/session")
+def delete_session(request: Request) -> JSONResponse:
+    response = JSONResponse({"authenticated": False}, headers=_NO_STORE_HEADERS)
+    _clear_session_cookie(response, request)
+    return response
+
+
+router.include_router(session_router)
 
 
 @router.api_route("/ui", methods=["GET", "HEAD"], name="ui_redirect")

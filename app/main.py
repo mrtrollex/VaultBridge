@@ -16,6 +16,7 @@ from app.api.search import router as search_router
 from app.core.config import Settings
 from app.core.logging import configure_application_logging, log_event
 from app.core.observability import RequestObservabilityMiddleware
+from app.core.ui_session import UISessionNoStoreMiddleware
 from app.mcp_http import create_mcp_http_transport
 from app.services.duplicate_candidates import DuplicateCandidateService
 from app.services.filesystem_watcher import SemanticFilesystemWatcher
@@ -48,7 +49,8 @@ class VaultBridgeApplication(FastAPI):
     """Keep request observability outside FastAPI's server-error boundary."""
 
     def build_middleware_stack(self) -> ASGIApp:
-        return RequestObservabilityMiddleware(super().build_middleware_stack())
+        application = UISessionNoStoreMiddleware(super().build_middleware_stack())
+        return RequestObservabilityMiddleware(application)
 
 
 @asynccontextmanager
