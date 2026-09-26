@@ -99,10 +99,10 @@ The published stable GitHub Release and GHCR application release are `v1.3.0`, b
 `sha256:5a1709c279c3731f891b59026adb7e8f5497c299687596b74b49ffd64a9f5a0e`.
 Stable aliases `1.3`, `1`, and `latest` were also published.
 
-This application release does **not** prove that the upstream TrueNAS Community App contains the
-new v1.3.0 MCP configuration fields. Upstream TrueNAS package/image-version updates, including its
-automated image-update process, remain a separate distribution lifecycle. The unresolved VB-082
-post-merge validation gates also remain separate from application publication.
+Current upstream TrueNAS package `1.0.2` selects application image `1.3.0`, but its source and
+generated forms do **not** contain the new first-class MCP configuration fields. Delivering those
+fields and completing the unresolved VB-082 post-merge validation gates remain separate from
+application publication.
 
 ## Current implementation architecture
 
@@ -766,8 +766,9 @@ default surface remains the exact seven read-only tools after VB-103; write-enab
 live application indexer, while stdio owns a targeted indexer only in write mode and shuts it down
 without starting a full sync. The checked-in TrueNAS package source adds first-class MCP HTTP,
 write, Host, and Origin fields on the existing Web Port. The `v1.3.0` application image containing
-this work is now published; the separate upstream TrueNAS package/catalog update remains externally
-owned delivery work and is not implied by the application release.
+this work is now published. Upstream package `1.0.2` selects that image through the catalog's
+automated image update, but its form still lacks those fields; their source update remains externally
+owned delivery work.
 
 A separate isolated TrueNAS smoke built main commit `8ae99d3` from source and passed liveness,
 authenticated REST and the official MCP client over Streamable HTTP protocol `2026-07-28` against
@@ -1252,9 +1253,9 @@ remains healthy. The favicon-and-screenshot-only `v1.2.1` patch remains historic
 `v1.3.0` is now the published stable GitHub/GHCR release from source commit
 `a7e14ece0de74632d1d9be599d53678931dc64b3`; exact image tag `1.3.0`, aliases `1.3`, `1`, and
 `latest`, and OCI digest
-`sha256:5a1709c279c3731f891b59026adb7e8f5497c299687596b74b49ffd64a9f5a0e` are published. This does not
-claim that the upstream TrueNAS Community App already contains the new MCP settings. Upstream
-package/image updates remain separate, and VB-082's lifecycle gates stay open.
+`sha256:5a1709c279c3731f891b59026adb7e8f5497c299687596b74b49ffd64a9f5a0e` are published. Current
+upstream TrueNAS package `1.0.2` selects image `1.3.0`, but it does not yet contain the first-class
+MCP form fields. Their delivery remains separate, and VB-082's lifecycle gates stay open.
 
 Milestone 11 is complete as the PKM relationship foundation. VB-100 implements the reusable
 read-only Obsidian-compatible wikilink parser/resolver,

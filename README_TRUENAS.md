@@ -14,15 +14,14 @@ Versioned GHCR images remain the runtime artifact for both the Community App and
 Installing the Community App does not automatically migrate an existing source-built Custom App.
 
 > **Current availability:** VaultBridge is available from the TrueNAS Community catalog through
-> **Apps > Discover Apps**. The accepted package runs VaultBridge `1.1.0`, has catalog package version
-> `1.0.0`, and defaults the Web UI to port `30491`.
+> **Apps > Discover Apps**. Current upstream `truenas/apps` master has catalog package `1.0.2`,
+> selects VaultBridge `1.3.0`, and defaults the Web UI to port `30491`.
 >
-> VaultBridge `v1.2.1` is the latest stable application and GHCR release. Source metadata is prepared
-> for a future `v1.3.0` feature release, but no `v1.3.0` tag, GitHub Release, or GHCR image exists yet.
-> The accepted Community catalog remains on package `1.0.0` and application image `1.1.0`. Publishing
-> the `v1.3.0` image and updating the upstream catalog are separate later delivery steps; repository
-> package-source changes are not catalog deployment evidence. See the
-> [`v1.3.0` release preparation](docs/RELEASE_CHECKLIST.md#v130-release-preparation).
+> VaultBridge `v1.3.0` is the latest stable application and GHCR release. The catalog's automated
+> image update does not include the checked-in first-class MCP form fields: current upstream source
+> and generated package forms still omit them. That form delivery and live TrueNAS lifecycle
+> verification remain separate work. See the
+> [`v1.3.0` release evidence](docs/RELEASE_CHECKLIST.md#v130-release-evidence).
 
 ## Preferred installation: TrueNAS Community App
 
@@ -32,11 +31,11 @@ Installing the Community App does not automatically migrate an existing source-b
    the intended Obsidian vault.
 4. After the app becomes healthy, open **Web UI** to reach the bundled `/ui/` dashboard.
 
-After the VB-106 application image and matching package update complete the normal upstream
-TrueNAS review, **Edit App** will include an **MCP Configuration** group with **Enable MCP HTTP**,
-**Enable MCP Writes**, **MCP Allowed Hosts**, and **MCP Allowed Origins**. Those fields use the same
-Web Port and remove the normal need for Additional Environment Variables. The currently accepted
-catalog package does not gain these fields merely because their source is checked in here.
+The checked-in VB-106 package source defines an **MCP Configuration** group with **Enable MCP
+HTTP**, **Enable MCP Writes**, **MCP Allowed Hosts**, and **MCP Allowed Origins**. Those fields use
+the same Web Port and remove the normal need for Additional Environment Variables. Current upstream
+package `1.0.2` selects image `1.3.0` but still lacks these form fields; they require a separate
+reviewed `truenas/apps` source update rather than only an automated image-version bump.
 
 The catalog form masks secret API-key inputs. Masking prevents casual display in the form; a
 privileged TrueNAS or Docker administrator can still inspect deployed container configuration.
