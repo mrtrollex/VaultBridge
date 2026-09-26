@@ -8,21 +8,34 @@ from app.core.config import Settings
 from app.services.rate_limiter import FixedWindowRateLimiter
 
 
-def verify_bearer_authorization(authorization: str | None, settings: Settings) -> None:
-    """Apply the shared current/previous API-key Bearer contract."""
-    api_key = settings.api_key.get_secret_value()
-    if not api_key:
+def _verify_presented_api_key(
+    presented: bytes,
+    settings: Settings,
+    *,
+    prefix: bytes = b"",
+) -> None:
+    current_api_key = settings.api_key.get_secret_value()
+    if not current_api_key:
         raise HTTPException(status_code=500, detail="Server API_KEY is not configured")
 
-    presented = (authorization or "").encode("utf-8")
-    current_matches = hmac.compare_digest(presented, f"Bearer {api_key}".encode("utf-8"))
+    current_matches = hmac.compare_digest(presented, prefix + current_api_key.encode("utf-8"))
     previous_api_key = settings.previous_api_key.get_secret_value()
     previous_matches = bool(previous_api_key) and hmac.compare_digest(
         presented,
-        f"Bearer {previous_api_key}".encode("utf-8"),
+        prefix + previous_api_key.encode("utf-8"),
     )
     if not (current_matches | previous_matches):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
+
+
+def verify_api_key(api_key: str, settings: Settings) -> None:
+    """Apply the shared current/previous raw API-key credential contract."""
+    _verify_presented_api_key(api_key.encode("utf-8"), settings)
+
+
+def verify_bearer_authorization(authorization: str | None, settings: Settings) -> None:
+    """Apply the shared current/previous API-key Bearer contract."""
+    _verify_presented_api_key((authorization or "").encode("utf-8"), settings, prefix=b"Bearer ")
 
 
 def enforce_peer_rate_limit(

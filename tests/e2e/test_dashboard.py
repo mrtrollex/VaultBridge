@@ -14,7 +14,12 @@ EXPECTED_PATH = str(Path("Knowledge") / "Playwright Guide.md")
 EXPECTED_CONTENT = "The quartz lighthouse phrase proves literal retrieval"
 
 
-def open_dashboard(page: Page, server: E2EServer) -> None:
+def open_dashboard(
+    page: Page,
+    server: E2EServer,
+    browser_failures: BrowserFailureMonitor,
+) -> None:
+    browser_failures.allow_http_failure("GET", 401, f"{server.base_url}/ui/session")
     page.goto(f"{server.base_url}/ui/")
     expect(page).to_have_title("VaultBridge Dashboard")
 
@@ -38,7 +43,7 @@ def test_overview_loads_and_protected_access_unlocks(
     e2e_server: E2EServer,
     browser_failures: BrowserFailureMonitor,
 ) -> None:
-    open_dashboard(page, e2e_server)
+    open_dashboard(page, e2e_server, browser_failures)
 
     expect(page.get_by_role("heading", name="Overview")).to_be_visible()
     expect(page.get_by_role("status").filter(has_text="Health information updated.")).to_be_visible()
@@ -49,9 +54,9 @@ def test_overview_loads_and_protected_access_unlocks(
     page.get_by_role("button", name="API / Integration").click()
     page.get_by_label("API key").fill("definitely-wrong-e2e-key")
     browser_failures.allow_http_failure(
-        "GET",
+        "POST",
         401,
-        f"{e2e_server.base_url}/api/v1/notes/list?limit=1",
+        f"{e2e_server.base_url}/ui/session",
     )
     page.get_by_role("button", name="Unlock").click()
     expect(page.get_by_text("Authentication required", exact=True)).to_be_visible()
@@ -60,7 +65,7 @@ def test_overview_loads_and_protected_access_unlocks(
     page.get_by_label("API key").fill(E2E_API_KEY)
     page.get_by_role("button", name="Unlock").click()
     expect(page.get_by_text("UNLOCKED", exact=True)).to_be_visible()
-    expect(page.get_by_text("Protected requests are available for this browser-tab session.")).to_be_visible()
+    expect(page.get_by_text("Protected requests are available for this browser session.")).to_be_visible()
     browser_failures.assert_clean()
 
 
@@ -69,7 +74,7 @@ def test_literal_search_reads_note_and_returns_to_results(
     e2e_server: E2EServer,
     browser_failures: BrowserFailureMonitor,
 ) -> None:
-    open_dashboard(page, e2e_server)
+    open_dashboard(page, e2e_server, browser_failures)
     unlock(page)
     search_for_fixture(page)
 
@@ -102,7 +107,7 @@ def test_same_tab_reload_restores_session(
     e2e_server: E2EServer,
     browser_failures: BrowserFailureMonitor,
 ) -> None:
-    open_dashboard(page, e2e_server)
+    open_dashboard(page, e2e_server, browser_failures)
     unlock(page)
 
     page.reload()
@@ -117,7 +122,7 @@ def test_logout_clears_protected_data_and_survives_reload(
     e2e_server: E2EServer,
     browser_failures: BrowserFailureMonitor,
 ) -> None:
-    open_dashboard(page, e2e_server)
+    open_dashboard(page, e2e_server, browser_failures)
     unlock(page)
     search_for_fixture(page)
 
@@ -126,6 +131,8 @@ def test_logout_clears_protected_data_and_survives_reload(
     expect(reader.get_by_role("heading", name=EXPECTED_TITLE)).to_be_visible()
     expect(reader.get_by_text(EXPECTED_PATH, exact=True)).to_be_visible()
     expect(reader.get_by_text(EXPECTED_CONTENT, exact=False)).to_be_visible()
+    expect(reader.get_by_text("Written target: Unrelated Archive", exact=True)).to_be_visible()
+    expect(reader.get_by_text("Source note: Unrelated Archive.md", exact=True)).to_be_visible()
 
     page.get_by_role("button", name="Logout").first.click()
 
@@ -134,6 +141,7 @@ def test_logout_clears_protected_data_and_survives_reload(
     expect(reader.get_by_text(EXPECTED_PATH, exact=True)).not_to_be_visible()
     expect(reader.get_by_text(EXPECTED_CONTENT, exact=False)).not_to_be_visible()
     expect(reader.get_by_role("heading", name="Relationships")).not_to_be_visible()
+    browser_failures.allow_http_failure("GET", 401, f"{e2e_server.base_url}/ui/session")
     page.reload()
     expect(page.get_by_text("LOCKED", exact=True)).to_be_visible()
     expect(page.get_by_role("heading", name=EXPECTED_TITLE)).not_to_be_visible()
@@ -154,7 +162,7 @@ def test_relationship_panel_handles_empty_failure_bounded_unicode_and_inert_text
 
     page.route("**/api/v1/notes/links?*", hold_relationship_response)
     page.route("**/api/v1/notes/backlinks?*", hold_relationship_response)
-    open_dashboard(page, e2e_server)
+    open_dashboard(page, e2e_server, browser_failures)
     unlock(page)
     search_for_fixture(page)
     page.get_by_role("button", name=EXPECTED_TITLE).click()
@@ -296,7 +304,13 @@ def test_relationship_responses_are_authenticated_encoded_and_cannot_overwrite_a
         note_path = parse_qs(parsed.query)["path"][0]
         endpoint = parsed.path.rsplit("/", 1)[-1]
         observed_requests.append(
-            (parsed.path, parsed.query, note_path, route.request.headers.get("authorization"))
+            (
+                parsed.path,
+                parsed.query,
+                note_path,
+                route.request.headers.get("authorization"),
+                route.request.headers.get("x-vaultbridge-ui-request"),
+            )
         )
         if note_path == EXPECTED_PATH:
             pending_first_note[endpoint] = route
@@ -319,7 +333,7 @@ def test_relationship_responses_are_authenticated_encoded_and_cannot_overwrite_a
 
     page.route("**/api/v1/notes/links?*", route_relationships)
     page.route("**/api/v1/notes/backlinks?*", route_relationships)
-    open_dashboard(page, e2e_server)
+    open_dashboard(page, e2e_server, browser_failures)
     unlock(page)
     search_for_fixture(page)
     page.get_by_role("button", name=EXPECTED_TITLE).click()
@@ -372,11 +386,12 @@ def test_relationship_responses_are_authenticated_encoded_and_cannot_overwrite_a
     expect(page.get_by_text("STALE NOTE A SOURCE", exact=False)).not_to_be_visible()
 
     assert {
-        path for path, _, _, _ in observed_requests
+        path for path, _, _, _, _ in observed_requests
     } == {"/api/v1/notes/links", "/api/v1/notes/backlinks"}
-    assert all(auth == f"Bearer {E2E_API_KEY}" for _, _, _, auth in observed_requests)
+    assert all(auth is None for _, _, _, auth, _ in observed_requests)
+    assert all(marker == "1" for _, _, _, _, marker in observed_requests)
     first_queries = [
-        query for _, query, note_path, _ in observed_requests if note_path == EXPECTED_PATH
+        query for _, query, note_path, _, _ in observed_requests if note_path == EXPECTED_PATH
     ]
     assert first_queries == [
         f"path={quote(EXPECTED_PATH, safe='')}",

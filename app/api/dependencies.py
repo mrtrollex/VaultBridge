@@ -4,6 +4,11 @@ from fastapi import Depends, Header, Request
 
 from app.core.config import Settings
 from app.core.http_security import enforce_peer_rate_limit, verify_bearer_authorization
+from app.core.ui_session import (
+    UI_REQUEST_HEADER_VALUE,
+    UI_SESSION_COOKIE_NAME,
+    validate_ui_session_token,
+)
 from app.services.duplicate_candidates import DuplicateCandidateService
 from app.services.indexer import BackgroundSemanticIndexer
 from app.services.rate_limiter import FixedWindowRateLimiter
@@ -52,7 +57,13 @@ def enforce_rate_limit(
 def require_auth(
     authorization: str | None = Header(default=None),
     settings: Settings = Depends(get_settings),
+    request: Request = None,
+    ui_request: str | None = Header(default=None, alias="X-VaultBridge-UI-Request"),
 ) -> None:
+    if request is not None and authorization is None and ui_request == UI_REQUEST_HEADER_VALUE:
+        token = request.cookies.get(UI_SESSION_COOKIE_NAME)
+        if validate_ui_session_token(token, settings):
+            return
     verify_bearer_authorization(authorization, settings)
 
 
