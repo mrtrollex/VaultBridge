@@ -74,6 +74,22 @@ class MarkdownBacklink:
     label: str
 
 
+@dataclass(frozen=True)
+class RelationshipOccurrence:
+    """One immutable normalized note-link occurrence from a verified source."""
+
+    source_path: str
+    written_target: str
+    resolved_path: str | None
+    resolution: Literal["resolved", "missing", "ambiguous", "unsafe"]
+    origin: Literal["obsidian_wikilink", "markdown_link"]
+    relationship_type: Literal["note_link"]
+    fragment: str | None
+    label: str | None
+    source_order: int
+    origin_metadata: tuple[tuple[str, str], ...] = ()
+
+
 class RelationshipService:
     """Derive read-only note relationships from live vault Markdown."""
 
@@ -219,4 +235,139 @@ class RelationshipService:
                         label=relationship.label,
                     )
                 )
+        return tuple(results)
+
+    def normalized_outgoing_relationships(
+        self,
+        source_path: str,
+    ) -> tuple[RelationshipOccurrence, ...]:
+        """Return both supported relationship dialects in true document order."""
+        source = self._vault_service.read_note(source_path)
+        return self._derive_normalized_relationships(
+            source.content,
+            source_path=source.path.replace("\\", "/"),
+        )
+
+    def _derive_normalized_relationships(
+        self,
+        markdown: str,
+        *,
+        source_path: str,
+        wikilink_snapshot: WikilinkResolutionSnapshot | None = None,
+    ) -> tuple[RelationshipOccurrence, ...]:
+        snapshot = (
+            self._wikilink_resolver.resolution_snapshot(include_unsafe=True)
+            if wikilink_snapshot is None
+            else wikilink_snapshot
+        )
+        positioned: list[
+            tuple[
+                int,
+                Literal["obsidian_wikilink", "markdown_link"],
+                Wikilink | MarkdownLink,
+                Literal["resolved", "missing", "ambiguous", "unsafe"],
+            ]
+        ] = []
+
+        for link in self._wikilink_resolver.parse(markdown):
+            resolved, resolution = self._wikilink_resolver.resolve_with_reason(
+                link,
+                snapshot=snapshot,
+            )
+            positioned.append(
+                (link._source_position, "obsidian_wikilink", resolved, resolution)
+            )
+
+        for link in self._markdown_link_resolver.parse(markdown):
+            resolved, resolution = self._markdown_link_resolver.resolve_with_reason(
+                link,
+                source_path=source_path,
+            )
+            positioned.append(
+                (link._source_position, "markdown_link", resolved, resolution)
+            )
+
+        positioned.sort(key=lambda item: item[0])
+        relationships: list[RelationshipOccurrence] = []
+        for source_order, (_, origin, resolved, resolution) in enumerate(positioned):
+            if isinstance(resolved, Wikilink):
+                written_target = resolved.target
+                fragment = resolved.heading
+                label = resolved.alias
+            else:
+                written_target = resolved.destination
+                fragment = resolved.fragment
+                label = resolved.label
+            relationships.append(
+                RelationshipOccurrence(
+                    source_path=source_path,
+                    written_target=written_target,
+                    resolved_path=resolved.resolved_path,
+                    resolution=resolution,
+                    origin=origin,
+                    relationship_type="note_link",
+                    fragment=fragment,
+                    label=label,
+                    source_order=source_order,
+                )
+            )
+        return tuple(relationships)
+
+    def normalized_backlinks(
+        self,
+        target_path: str,
+    ) -> tuple[RelationshipOccurrence, ...]:
+        """Return exact distinct normalized occurrences resolving to one live target."""
+        canonical_target = self._vault_service.verify_existing_markdown_path(
+            target_path,
+            exact_spelling=True,
+        )
+        if canonical_target is None:
+            self._vault_service.read_note(target_path)
+            raise NoteNotFoundError("Note not found")
+
+        snapshot = self._wikilink_resolver.resolution_snapshot()
+        source_paths = sorted(
+            set(self._vault_service.live_markdown_paths()),
+            key=lambda path: (path.casefold(), path),
+        )
+        results: list[RelationshipOccurrence] = []
+        seen: set[
+            tuple[
+                str,
+                str,
+                str | None,
+                str,
+                str,
+                str,
+                str | None,
+                str | None,
+                tuple[tuple[str, str], ...],
+            ]
+        ] = set()
+        for source_path in source_paths:
+            source = self._vault_service.read_note(source_path)
+            relationships = self._derive_normalized_relationships(
+                source.content,
+                source_path=source.path.replace("\\", "/"),
+                wikilink_snapshot=snapshot,
+            )
+            for relationship in relationships:
+                if relationship.resolved_path != canonical_target:
+                    continue
+                key = (
+                    relationship.source_path,
+                    relationship.written_target,
+                    relationship.resolved_path,
+                    relationship.resolution,
+                    relationship.origin,
+                    relationship.relationship_type,
+                    relationship.fragment,
+                    relationship.label,
+                    relationship.origin_metadata,
+                )
+                if key in seen:
+                    continue
+                seen.add(key)
+                results.append(relationship)
         return tuple(results)

@@ -141,12 +141,12 @@ app/services/semantic_search.py   chunking, embeddings, ranking, and index orche
 app/repositories/semantic.py      SQLite semantic persistence
 app/services/wikilinks.py         Obsidian-compatible wikilink parsing and safe resolution
 app/services/markdown_links.py    bounded standard Markdown note-link parsing and safe resolution
-app/services/relationships.py     dialect-specific live outgoing relationships and backlinks
+app/services/relationships.py     dialect-specific and normalized live relationships/backlinks
 app/services/duplicate_candidates.py advisory live-title and semantic duplicate evidence
 ```
 
-There is no generic portable document model, normalized multi-dialect relationship store, metadata
-query engine, capture pipeline, hygiene engine, or multiple-knowledge-space runtime today.
+There is no generic portable document runtime, persisted relationship store, metadata query engine,
+capture pipeline, hygiene engine, or multiple-knowledge-space runtime today.
 
 ## Completed foundation tasks
 
@@ -196,10 +196,9 @@ release is identified above. Immutable artifact values and complete historical e
 3. The deterministic retrieval fixture does not by itself measure representative real-model quality
    or latency.
 4. Multiple VaultBridge processes sharing one semantic index are not coordinated.
-5. `RelationshipService` has separate domain views for Obsidian-compatible wikilinks and bounded
-   contained standard Markdown links, but no normalized multi-dialect view. Public relationship
-   adapters remain wikilink-only. Portable aliases and tags are read-only domain values without
-   lookup, query, or public exposure.
+5. `RelationshipService` has dialect-specific views plus one immutable normalized multi-dialect
+   domain view. Public relationship adapters remain wikilink-only. Portable aliases and tags are
+   read-only domain values without lookup, query, or public exposure.
 6. Clients can still invent relationship targets unless they use verified VaultBridge results.
 
 ---
@@ -879,21 +878,22 @@ Milestone exit criteria:
 
 ---
 
-# Milestone 12 — Portable PKM model — IN PROGRESS / VB-114 NEXT
+# Milestone 12 — Portable PKM model — COMPLETE
 
 **Goal:** give VaultBridge a portable document/metadata model that understands useful PKM semantics
 without making any one Markdown application the architectural owner.
 
-This milestone is incremental. VB-110 accepted
+This milestone was delivered incrementally. VB-110 accepted
 [ADR 0005](docs/adr/0005-portable-pkm-document-model.md), which defines the domain model, supported
 syntax boundaries, malformed-input behavior, resource limits, compatibility implications, and what
-remains live versus derived. The remaining tasks must not create another authoritative database or
-require every conceptual field to be persisted.
+remains live versus derived. VB-111 through VB-114 implement its bounded metadata and relationship
+foundation without creating another authoritative database or requiring conceptual fields to be
+persisted.
 
 ### Task sequence
 
-VB-110 through VB-113 are complete under their authoritative `BACKLOG.md` contracts. VB-114 is the
-next Portable PKM task but remains roadmap intent until separately defined.
+VB-110 through VB-114 are complete under their authoritative `BACKLOG.md` contracts. Milestone 13
+is next in the roadmap, but remains planned only and does not authorize VB-120 implementation.
 
 ```text
 VB-110 define portable PKM document model / ADR ✓
@@ -904,7 +904,7 @@ VB-112 portable aliases and tags ✓
    ↓
 VB-113 contained standard Markdown relationships ✓
    ↓
-VB-114 normalized relationship view NEXT / CONTRACT REQUIRED
+VB-114 normalized relationship view ✓
 ```
 
 ### VB-110 — Define portable PKM document model / ADR — ACCEPTED
@@ -964,28 +964,32 @@ syntax. Local `.md` paths resolve relative to the verified canonical source dire
 semantics and REST, MCP, CLI, dashboard, persistence, semantic, index, and write behavior remain
 unchanged.
 
-### VB-114 — Normalized relationship view — NEXT / CONTRACT REQUIRED
+### VB-114 — Normalized relationship view — IMPLEMENTED
 
-Different supported syntax sources should be able to feed a shared derived representation such as:
+The existing wikilink and standard Markdown-link parsers feed one immutable live-derived domain
+occurrence with this implemented shape:
 
 ```text
-Relationship
-- source
-- target
-- type
-- origin / dialect
-- resolved
+RelationshipOccurrence
+- canonical source path
+- written target and verified canonical resolved path
+- explicit resolved / missing / ambiguous / unsafe state
+- origin dialect and note-link type
+- fragment, label, true mixed source order, and minimal immutable origin metadata
 ```
 
-This is a conceptual domain shape, not a commitment to a new persisted schema. Dialect-specific
-metadata may remain available where needed, and source ordering/duplicate semantics require an
-explicit design decision rather than accidental normalization.
+`RelationshipService` exposes additive normalized outgoing and backlink methods while preserving
+duplicates, origin identity, canonical-only backlink inclusion, deterministic ordering, and exact
+stable deduplication. `VaultService` owns typed containment and path classification. Existing
+dialect-specific methods and REST, MCP, CLI, dashboard, semantic, persistence, and write behavior
+remain unchanged; no normalized public adapter or stored graph was added.
 
 Milestone exit direction:
 
 - portable document and relationship concepts are accepted in an ADR;
 - bounded frontmatter, aliases, and tags have explicit supported semantics and failure behavior;
 - standard Markdown internal links reuse the existing verified relationship boundary;
+- supported relationship dialects share one immutable, ordered, live normalized domain view;
 - Markdown and portable metadata remain authoritative;
 - no current API, environment variable, resource URI, class, or mount is renamed without a
   compatibility-safe reason.
@@ -1235,9 +1239,9 @@ MCP ✓
    ↓
 PKM RELATIONSHIP FOUNDATION ✓
    ↓
-PORTABLE PKM MODEL — IN PROGRESS / VB-114 NEXT
+PORTABLE PKM MODEL ✓
    ↓
-KNOWLEDGE QUERY LAYER
+KNOWLEDGE QUERY LAYER — PLANNED / CONTRACT REQUIRED
    ↓
 KNOWLEDGE CAPTURE / PORTABLE MEMORY
    ↓
@@ -1287,12 +1291,12 @@ production relationship-ranking change because measured live-scan cost and narro
 establish acceptable general benefit. Wikilinks remain the first supported relationship dialect,
 not the architectural definition.
 
-The strategic continuation is Milestone 12. VB-110 and ADR 0005 are accepted, and VB-111 through
-VB-113 are implemented without public-surface changes. VB-114 is next but requires its own
-authoritative contract. VB-032/VB-033 remain deferred, and VB-034 remains a later optional write
-task rather than NEXT. VB-114,
-VB-120–VB-122, VB-130–VB-132, VB-140–VB-142, and VB-150–VB-152 remain proposed and reserve no
-implementation scope by themselves.
+Milestone 12 is complete: VB-110 and ADR 0005 are accepted, and VB-111 through VB-114 are
+implemented without public-surface changes. Milestone 13 is the next roadmap milestone, but its
+proposed VB-120 through VB-122 sequence has no authoritative implementation contract and reserves
+no scope by itself. VB-032/VB-033 remain deferred, and VB-034 remains a later optional write task
+rather than NEXT. VB-120–VB-122, VB-130–VB-132, VB-140–VB-142, and VB-150–VB-152 remain proposed
+and reserve no implementation scope by themselves.
 
 ---
 

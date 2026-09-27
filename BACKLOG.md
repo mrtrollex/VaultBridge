@@ -1575,8 +1575,8 @@ OpenAI-specific protocol behavior.
 
 ### VB-110 — Define portable PKM document model / ADR — P1 ✅
 
-**Status:** Complete. ADR 0005 is accepted, and VB-111 through VB-113 are implemented. VB-114 is
-the next Portable PKM task and still requires its own authoritative contract before implementation.
+**Status:** Complete. ADR 0005 is accepted, and VB-111 through VB-114 are implemented under their
+authoritative contracts.
 
 **Goal:** define a portable, bounded domain model for Markdown notes, metadata, headings, and
 relationships without introducing a second authoritative store or changing current runtime
@@ -1798,8 +1798,8 @@ Existing public and deployment behavior remains unchanged.
 **Status:** Completed on 2026-09-27. `MarkdownLinkResolver` provides bounded inline note-link
 parsing and source-relative resolution through `VaultService`; additive `RelationshipService`
 methods derive outgoing Markdown relationships and verified backlinks without changing existing
-wikilink-backed adapters. Focused and full non-E2E validation pass. VB-114 remains separately
-scoped.
+wikilink-backed adapters. Focused and full non-E2E validation pass. VB-114 later added the shared
+normalized domain view without changing these dialect-specific methods.
 
 **Goal:** add a bounded parser/resolver for inline standard Markdown links that target contained
 Markdown notes, plus domain-only outgoing/backlink derivation through `RelationshipService`.
@@ -1883,6 +1883,101 @@ remain unchanged until a later task deliberately adopts a normalized multi-diale
 resolution; reference links or full CommonMark; percent-decoded paths; fragment heading validation;
 relationship persistence or graph/index storage; semantic ranking; writes/backlink insertion;
 multiple knowledge spaces; dependency, Docker, TrueNAS, packaging, publication, or release work.
+
+---
+
+### VB-114 — Implement normalized multi-dialect relationship view — P1
+
+**Status:** Completed on 2026-09-27. `RelationshipOccurrence` and additive `RelationshipService`
+methods now normalize both existing dialects with true mixed source order and explicit bounded
+resolution reasons. `VaultService` owns typed containment/path classification, legacy and public
+adapters remain unchanged, and focused/full non-E2E plus real-symlink WSL validation pass.
+
+**Goal:** normalize the already-supported Obsidian wikilink and standard Markdown-link dialects
+into one immutable, live-derived domain view. Markdown remains authoritative, canonical
+vault-relative path remains note identity, `VaultService` retains filesystem-safety ownership, and
+`RelationshipService` owns relationship-domain composition.
+
+**Normalized occurrence**
+
+- Add one immutable occurrence type containing `source_path`, `written_target`, optional verified
+  canonical `resolved_path`, explicit `resolution`, `origin`, `relationship_type`, optional
+  `fragment`, optional `label`, zero-based cross-dialect `source_order`, and immutable bounded
+  `origin_metadata`.
+- `resolution` must distinguish at least `resolved`, `missing`, `ambiguous`, and `unsafe` without
+  exposing absolute host paths, exception strings, symlink destinations, metadata content, or
+  other private filesystem details. `ambiguous` applies only when current unqualified wikilink
+  exact-name semantics find multiple valid candidates. `unsafe` covers traversal, absolute,
+  external or broken symlink, out-of-vault, and other security-invalid targets. A safe supported
+  local target without one exact live Markdown note is `missing`.
+- `origin` is exactly `obsidian_wikilink` or `markdown_link`, and is part of relationship identity.
+  `relationship_type` is exactly `note_link`. Keep `origin_metadata` minimal and use one shared
+  immutable empty representation when no additional dialect-specific fact is required.
+- Preserve duplicates and raw Unicode. Do not case-fold, normalize, slugify, or rewrite written
+  target, fragment, or label values.
+
+**Dialect mapping and source order**
+
+- Wikilinks map `Wikilink.target`, `heading`, `alias`, and `resolved_path` to `written_target`,
+  `fragment`, `label`, and `resolved_path`, with origin `obsidian_wikilink`.
+- Standard Markdown links map `MarkdownLink.destination`, `fragment`, `label`, and `resolved_path`
+  to the corresponding normalized fields, with origin `markdown_link`.
+- Preserve true document order across both dialects, including alternating and same-line
+  occurrences; do not concatenate all wikilinks before all Markdown links. Assign contiguous
+  zero-based `source_order` across the combined supported occurrences.
+- Reuse the existing dialect parsers. If merging requires source positions, add only the smallest
+  internal immutable fact without changing existing semantic equality or public compatibility. Do
+  not add a third parser.
+- Preserve current wikilink global exact-name/ambiguity semantics and current Markdown-link
+  source-relative exact-path semantics. Unsupported or malformed syntax remains excluded by its
+  owning parser and does not become a normalized error occurrence.
+
+**Resolution and ownership**
+
+- `VaultService` remains the sole owner of containment, exact-path verification, canonicalization,
+  Markdown file/type checks, and symlink safety. If explicit classification is needed, add only a
+  small internal typed verification result/helper there and reuse it from both dialect resolvers.
+- Safe internal symlinks resolve to the canonical contained target. External and broken symlinks
+  are unsafe. Do not infer filesystem reasons from host exceptions in parsers.
+- Do not use aliases, titles, tags, heading existence, frontmatter mutation, or metadata heuristics
+  for resolution.
+
+**RelationshipService integration**
+
+- Add additive methods for normalized outgoing relationships from one verified source note and
+  normalized backlinks to one verified target note. Existing `outgoing_relationships()`,
+  `backlinks()`, `outgoing_markdown_relationships()`, and `markdown_backlinks()` outputs and
+  behavior remain unchanged.
+- Outgoing normalization reads the source through `VaultService`, derives both dialects from the
+  same content snapshot, parses each dialect at most once, preserves duplicates, and returns one
+  immutable tuple in true source order.
+- Normalized backlinks verify the requested target through `VaultService`, enumerate source notes
+  in deterministic canonical order, derive normalized outgoing occurrences from each source
+  snapshot, and include only occurrences whose verified `resolved_path` equals the requested
+  canonical target. Raw-text or unresolved matches never count.
+- Backlink order is deterministic source-note order followed by source occurrence order. Stable
+  deduplication removes only exact duplicate normalized occurrences. Wikilink and Markdown-link
+  occurrences that resolve to the same note remain distinct because origin is part of identity.
+- The normalized view is derived live from current Markdown. Add no persistence, cache, graph or
+  relationship index, and perform no extra full-vault scan beyond the normalized backlink operation.
+
+**Required tests**
+
+- Cover exact field mapping for both dialects; resolved, missing, ambiguous, and unsafe outcomes;
+  fragments, labels, and Unicode; immutable result/model/origin metadata; no alias/title/tag
+  lookup; safe internal symlinks; and external/broken symlinks without host-detail leakage.
+- Cover alternating dialects, multiple same-line and multi-line occurrences, duplicates,
+  deterministic repeated runs, and contiguous true cross-dialect source order.
+- Cover normalized backlinks from both dialects, both origins from one source, verified-path-only
+  inclusion, deterministic source/path ordering, exact deduplication, and preserved source order.
+- Prove existing wikilink, Markdown-link, legacy relationship, REST/OpenAPI, MCP, CLI, dashboard,
+  VB-111, VB-112, semantic/index/persistence, and write behavior remains unchanged.
+
+**Compatibility / explicit non-goals:** no REST/OpenAPI endpoint, operation ID, schema, MCP tool or
+resource, CLI, or dashboard exposure; no alias/title resolution, tag relationships, heading
+validation, persistence/cache/graph storage, semantic ranking/index-signature changes, note writes
+or backlink insertion, multiple knowledge spaces, dependency, Docker, TrueNAS, packaging,
+publication, or release work. VB-114 does not implement Milestone 13, VB-120, or any later task.
 
 ---
 
@@ -2000,7 +2095,7 @@ VB-001 ✓
 → VB-111 ✓ (bounded YAML frontmatter parsing)
 → VB-112 ✓ (portable aliases and tags projection)
 → VB-113 ✓ (contained standard Markdown note relationships)
-→ VB-114 NEXT (contract required before implementation)
+→ VB-114 ✓ (normalized multi-dialect relationship domain view)
 → VB-034 (optional opt-in write task)
 ```
 
@@ -2038,7 +2133,8 @@ VB-034 remains a later, opt-in write capability. VB-110 accepts ADR 0005 as the 
 document-model contract. VB-111 implements its bounded read-only YAML frontmatter parser, and
 VB-112 implements immutable field-local alias/tag projection without changing public behavior, and
 VB-113 implements bounded contained standard Markdown relationships at the domain layer without
-changing wikilink-backed public adapters. VB-114 is next in the Portable PKM sequence but requires
-an authoritative contract before any implementation.
+changing wikilink-backed public adapters. VB-114 completes the Portable PKM milestone with an
+immutable live normalized relationship view and no public adapter or persistence change. Milestone
+13 remains planned only; its proposed tasks require their own authoritative contracts.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

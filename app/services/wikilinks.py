@@ -3,9 +3,10 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from pathlib import PurePosixPath, PureWindowsPath
 from types import MappingProxyType
+from typing import Literal
 
 from app.services.vault import LiveMarkdownPathCandidate, VaultService
 
@@ -20,6 +21,7 @@ class Wikilink:
     heading: str | None = None
     alias: str | None = None
     resolved_path: str | None = None
+    _source_position: int = field(default=-1, compare=False, repr=False)
 
 
 @dataclass(frozen=True)
@@ -27,11 +29,14 @@ class WikilinkResolutionSnapshot:
     """Immutable exact-name lookup derived from one live candidate enumeration."""
 
     unqualified_paths: Mapping[str, tuple[str, ...]]
+    unsafe_unqualified_names: frozenset[str] = frozenset()
 
     @classmethod
     def from_candidates(
         cls,
         candidates: Sequence[LiveMarkdownPathCandidate],
+        *,
+        unsafe_unqualified_names: frozenset[str] = frozenset(),
     ) -> WikilinkResolutionSnapshot:
         grouped: dict[str, list[str]] = defaultdict(list)
         for candidate in candidates:
@@ -41,7 +46,8 @@ class WikilinkResolutionSnapshot:
         return cls(
             unqualified_paths=MappingProxyType(
                 {name: tuple(paths) for name, paths in grouped.items()}
-            )
+            ),
+            unsafe_unqualified_names=unsafe_unqualified_names,
         )
 
 
@@ -58,7 +64,10 @@ class WikilinkResolver:
         fence_character: str | None = None
         fence_length = 0
 
-        for line in markdown.splitlines():
+        source_offset = 0
+        for raw_line in markdown.splitlines(keepends=True):
+            split_line = raw_line.splitlines()
+            line = split_line[0] if split_line else ""
             fence_match = _FENCE_PATTERN.match(line)
             if fence_match:
                 marker = fence_match.group(1)
@@ -72,19 +81,51 @@ class WikilinkResolver:
                 ):
                     fence_character = None
                     fence_length = 0
+                source_offset += len(raw_line)
                 continue
 
             if fence_character is None:
-                links.extend(WikilinkResolver._parse_line(line))
+                links.extend(
+                    WikilinkResolver._parse_line(line, source_offset=source_offset)
+                )
+            source_offset += len(raw_line)
 
         return tuple(links)
 
     def resolve(self, link: Wikilink) -> Wikilink:
         """Return a new link with a path only for one exact verified target."""
-        return self._resolve(link, self.resolution_snapshot())
+        return self._resolve_with_reason(link, self.resolution_snapshot())[0]
 
-    def resolution_snapshot(self) -> WikilinkResolutionSnapshot:
+    def resolve_with_reason(
+        self,
+        link: Wikilink,
+        *,
+        snapshot: WikilinkResolutionSnapshot | None = None,
+    ) -> tuple[Wikilink, Literal["resolved", "missing", "ambiguous", "unsafe"]]:
+        """Resolve one link and return its bounded privacy-safe outcome."""
+        live_snapshot = (
+            self.resolution_snapshot(include_unsafe=True)
+            if snapshot is None
+            else snapshot
+        )
+        return self._resolve_with_reason(link, live_snapshot)
+
+    def resolution_snapshot(
+        self,
+        *,
+        include_unsafe: bool = False,
+    ) -> WikilinkResolutionSnapshot:
         """Build one exact-name lookup from the current live Markdown candidates."""
+        if include_unsafe:
+            candidate_snapshot = (
+                self._vault_service.markdown_path_candidate_snapshot()
+            )
+            return WikilinkResolutionSnapshot.from_candidates(
+                candidate_snapshot.live_candidates,
+                unsafe_unqualified_names=(
+                    candidate_snapshot.unsafe_unqualified_names
+                ),
+            )
         return WikilinkResolutionSnapshot.from_candidates(
             self._vault_service.live_markdown_path_candidates()
         )
@@ -94,21 +135,39 @@ class WikilinkResolver:
         link: Wikilink,
         snapshot: WikilinkResolutionSnapshot,
     ) -> Wikilink:
+        return self._resolve_with_reason(link, snapshot)[0]
+
+    def _resolve_with_reason(
+        self,
+        link: Wikilink,
+        snapshot: WikilinkResolutionSnapshot,
+    ) -> tuple[Wikilink, Literal["resolved", "missing", "ambiguous", "unsafe"]]:
         candidate = self._candidate_path(link.target)
         if candidate is None:
-            return replace(link, resolved_path=None)
+            return replace(link, resolved_path=None), "unsafe"
 
         normalized = candidate.replace("\\", "/")
         if "/" in normalized:
-            verified = self._vault_service.verify_existing_markdown_path(
+            verification = self._vault_service.verify_existing_markdown_path_result(
                 candidate,
                 exact_spelling=True,
             )
-            return replace(link, resolved_path=verified)
+            return (
+                replace(link, resolved_path=verification.resolved_path),
+                verification.resolution,
+            )
 
         matches = snapshot.unqualified_paths.get(normalized, ())
-        resolved_path = matches[0] if len(matches) == 1 else None
-        return replace(link, resolved_path=resolved_path)
+        if len(matches) == 1:
+            return replace(link, resolved_path=matches[0]), "resolved"
+        if len(matches) > 1:
+            return replace(link, resolved_path=None), "ambiguous"
+        resolution: Literal["missing", "unsafe"] = (
+            "unsafe"
+            if normalized in snapshot.unsafe_unqualified_names
+            else "missing"
+        )
+        return replace(link, resolved_path=None), resolution
 
     def resolve_markdown(
         self,
@@ -121,7 +180,7 @@ class WikilinkResolver:
         return tuple(self._resolve(link, live_snapshot) for link in self.parse(markdown))
 
     @staticmethod
-    def _parse_line(line: str) -> list[Wikilink]:
+    def _parse_line(line: str, *, source_offset: int = 0) -> list[Wikilink]:
         links: list[Wikilink] = []
         cursor = 0
         while True:
@@ -136,7 +195,7 @@ class WikilinkResolver:
             if "[[" not in body:
                 parsed = WikilinkResolver._parse_body(body)
                 if parsed is not None:
-                    links.append(parsed)
+                    links.append(replace(parsed, _source_position=source_offset + start))
             cursor = end + 2
 
     @staticmethod

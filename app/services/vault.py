@@ -140,6 +140,22 @@ class LiveMarkdownPathCandidate:
     canonical_path: str
 
 
+@dataclass(frozen=True)
+class MarkdownPathCandidateSnapshot:
+    """One immutable scan of verified live and unsafe Markdown candidates."""
+
+    live_candidates: tuple[LiveMarkdownPathCandidate, ...]
+    unsafe_unqualified_names: frozenset[str]
+
+
+@dataclass(frozen=True)
+class MarkdownPathVerification:
+    """Privacy-safe outcome for one VaultService-owned Markdown path check."""
+
+    resolution: Literal["resolved", "missing", "unsafe"]
+    resolved_path: str | None = None
+
+
 class VaultService:
     """Safe Markdown note operations scoped to one Obsidian vault root."""
 
@@ -191,6 +207,20 @@ class VaultService:
         exact_spelling: bool = False,
     ) -> str | None:
         """Return one canonical live Markdown path contained by the vault and optional folder."""
+        return self.verify_existing_markdown_path_result(
+            raw,
+            folder=folder,
+            exact_spelling=exact_spelling,
+        ).resolved_path
+
+    def verify_existing_markdown_path_result(
+        self,
+        raw: str,
+        *,
+        folder: str = "",
+        exact_spelling: bool = False,
+    ) -> MarkdownPathVerification:
+        """Classify one vault-relative Markdown path without leaking host details."""
         try:
             normalized = raw.strip().replace("\\", "/")
             posix_path = PurePosixPath(normalized)
@@ -202,18 +232,23 @@ class VaultService:
                 or windows_path.drive
                 or ".." in posix_path.parts
             ):
-                return None
+                return MarkdownPathVerification("unsafe")
             path = self.resolve_path(raw)
             if folder:
                 folder_path = self.resolve_path(folder)
                 path.relative_to(folder_path)
+            if self._has_broken_symlink(posix_path.parts):
+                return MarkdownPathVerification("unsafe")
             if path.suffix.lower() != ".md" or not path.is_file():
-                return None
+                return MarkdownPathVerification("missing")
             if exact_spelling and not self._has_exact_path_spelling(posix_path.parts):
-                return None
-            return self._relative_path(path).replace("\\", "/")
+                return MarkdownPathVerification("missing")
+            return MarkdownPathVerification(
+                "resolved",
+                self._relative_path(path).replace("\\", "/"),
+            )
         except (OSError, RuntimeError, ValueError, VaultValidationError):
-            return None
+            return MarkdownPathVerification("unsafe")
 
     def verify_source_relative_markdown_path(
         self,
@@ -221,13 +256,25 @@ class VaultService:
         target_path: str,
     ) -> str | None:
         """Verify an exact Markdown target relative to one canonical source note."""
+        return self.verify_source_relative_markdown_path_result(
+            source_path,
+            target_path,
+        ).resolved_path
+
+    def verify_source_relative_markdown_path_result(
+        self,
+        source_path: str,
+        target_path: str,
+    ) -> MarkdownPathVerification:
+        """Classify one source-relative Markdown path without leaking host details."""
         try:
-            source = self.verify_existing_markdown_path(
+            source_result = self.verify_existing_markdown_path_result(
                 source_path,
                 exact_spelling=True,
             )
+            source = source_result.resolved_path
             if source is None:
-                return None
+                return MarkdownPathVerification(source_result.resolution)
 
             normalized_target = target_path.replace("\\", "/")
             target = PurePosixPath(normalized_target)
@@ -238,19 +285,40 @@ class VaultService:
                 or windows_target.is_absolute()
                 or windows_target.drive
             ):
-                return None
+                return MarkdownPathVerification("unsafe")
 
             source_directory = PurePosixPath(source).parent
             written_parts = source_directory.parts + target.parts
             candidate = "/".join(written_parts)
             resolved = self.resolve_path(candidate)
+            if self._has_broken_symlink(written_parts):
+                return MarkdownPathVerification("unsafe")
             if resolved.suffix.lower() != ".md" or not resolved.is_file():
-                return None
+                return MarkdownPathVerification("missing")
             if not self._has_exact_relative_path_spelling(written_parts):
-                return None
-            return self._relative_path(resolved).replace("\\", "/")
+                return MarkdownPathVerification("missing")
+            return MarkdownPathVerification(
+                "resolved",
+                self._relative_path(resolved).replace("\\", "/"),
+            )
         except (OSError, RuntimeError, ValueError, VaultValidationError):
-            return None
+            return MarkdownPathVerification("unsafe")
+
+    def _has_broken_symlink(self, parts: tuple[str, ...]) -> bool:
+        current = self.vault_root
+        for part in parts:
+            if part == ".":
+                continue
+            if part == "..":
+                current = current.parent
+                continue
+            current /= part
+            try:
+                if current.is_symlink():
+                    current.resolve(strict=True)
+            except (OSError, RuntimeError):
+                return True
+        return False
 
     def _has_exact_path_spelling(self, parts: tuple[str, ...]) -> bool:
         current = self.vault_root
@@ -300,37 +368,57 @@ class VaultService:
 
     def live_markdown_path_candidates(self) -> list[LiveMarkdownPathCandidate]:
         """Return exact discovered note spellings paired with verified canonical paths."""
+        return list(self.markdown_path_candidate_snapshot().live_candidates)
+
+    def markdown_path_candidate_snapshot(self) -> MarkdownPathCandidateSnapshot:
+        """Scan once for live candidates and unsafe filenames under the vault."""
         candidates: list[LiveMarkdownPathCandidate] = []
-        for discovered_path, _ in _contained_markdown_file_candidates(self.vault_root):
-            try:
-                relative_path = discovered_path.relative_to(self.vault_root).as_posix()
-            except ValueError:
-                continue
-            if any(
-                part in SEMANTIC_EXCLUDED_DIRECTORIES
-                for part in PurePosixPath(relative_path).parts
-            ):
-                continue
-            canonical_path = self.verify_existing_markdown_path(relative_path)
-            if canonical_path is None:
-                continue
-            if any(
-                part in SEMANTIC_EXCLUDED_DIRECTORIES
-                for part in PurePosixPath(canonical_path).parts
-            ):
-                continue
-            candidates.append(
-                LiveMarkdownPathCandidate(
-                    discovered_path=relative_path,
-                    canonical_path=canonical_path,
+        unsafe_names: set[str] = set()
+        try:
+            for discovered_path in self.vault_root.rglob("*.md"):
+                try:
+                    relative_path = discovered_path.relative_to(
+                        self.vault_root
+                    ).as_posix()
+                except ValueError:
+                    continue
+                relative_parts = PurePosixPath(relative_path).parts
+                if any(
+                    part in SEMANTIC_EXCLUDED_DIRECTORIES for part in relative_parts
+                ):
+                    continue
+                verification = self.verify_existing_markdown_path_result(
+                    relative_path,
+                    exact_spelling=True,
                 )
-            )
-        return sorted(
-            candidates,
-            key=lambda candidate: (
-                candidate.discovered_path.casefold(),
-                candidate.discovered_path,
+                canonical_path = verification.resolved_path
+                if canonical_path is not None:
+                    if any(
+                        part in SEMANTIC_EXCLUDED_DIRECTORIES
+                        for part in PurePosixPath(canonical_path).parts
+                    ):
+                        continue
+                    candidates.append(
+                        LiveMarkdownPathCandidate(
+                            discovered_path=relative_path,
+                            canonical_path=canonical_path,
+                        )
+                    )
+                elif verification.resolution == "unsafe":
+                    unsafe_names.add(PurePosixPath(relative_path).name)
+        except OSError:
+            pass
+        return MarkdownPathCandidateSnapshot(
+            live_candidates=tuple(
+                sorted(
+                    candidates,
+                    key=lambda candidate: (
+                        candidate.discovered_path.casefold(),
+                        candidate.discovered_path,
+                    ),
+                )
             ),
+            unsafe_unqualified_names=frozenset(unsafe_names),
         )
 
     def create_note(
