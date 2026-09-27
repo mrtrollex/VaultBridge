@@ -235,10 +235,15 @@ Current post-v1 planning position:
   relationship concepts, keeps canonical vault-relative Markdown paths as identity, preserves
   `VaultService` and `RelationshipService` ownership, and defines bounded conservative frontmatter,
   metadata, ambiguity, ordering, duplicate, failure, and derived-state rules
-- VB-111 now has an authoritative `BACKLOG.md` implementation contract under ADR 0005 for its exact
-  envelope, YAML 1.2 Core safe profile, resource bounds, immutable absent/valid/invalid result, and
-  privacy-safe diagnostics; it remains unimplemented and changes no runtime behavior, dependency,
-  API/MCP surface, database/index format, deployment package, or release artifact
+- VB-111 is implemented as a focused decoded-content-only `FrontmatterParser`: exact BOM/LF/CRLF/EOF
+  envelope handling, YAML 1.2 Core scalar semantics, immutable ordered metadata, exact resource
+  bounds, and privacy-safe absent/valid/invalid results are covered by focused tests
+- the parser uses bounded PyYAML events without YAML object construction or default implicit
+  resolution; anchors, aliases, merge keys, tags, duplicate keys, multiple documents, unsupported
+  values, and exceeded bounds invalidate metadata without changing the original Markdown
+- VB-111 is not wired into REST, MCP, CLI, dashboard, title derivation, relationships, persistence,
+  semantic indexing, or note writes; `VaultService` remains the sole filesystem, containment,
+  whole-note size, and UTF-8 decoding owner, and VB-112 is the next Portable PKM task
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
 

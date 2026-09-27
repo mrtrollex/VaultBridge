@@ -562,6 +562,17 @@ dependencies and the MCP HTTP ASGI boundary.
 - note enumeration
 - content size validation
 
+### `services/frontmatter.py`
+
+- decoded-Markdown-only recognition of the ADR 0005 frontmatter envelope
+- immutable absent, ordered bounded valid, or privacy-safe invalid domain results
+- YAML 1.2 Core scalar resolution, duplicate detection, safe-feature rejection, and exact metadata
+  bounds without filesystem access, adapter exposure, persistence, or note mutation
+- PyYAML is a direct bounded runtime dependency because the standard library has no YAML parser and
+  a handwritten YAML grammar would be unsafe and costly to maintain; only its event parser is used,
+  never object construction or default implicit resolution, and it adds no service or network
+  dependency
+
 ### `services/wikilinks.py`
 
 - immutable wikilink metadata in Markdown source order

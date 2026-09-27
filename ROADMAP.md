@@ -876,7 +876,7 @@ Milestone exit criteria:
 
 ---
 
-# Milestone 12 — Portable PKM model — IN PROGRESS / VB-111 NEXT
+# Milestone 12 — Portable PKM model — IN PROGRESS / VB-112 NEXT
 
 **Goal:** give VaultBridge a portable document/metadata model that understands useful PKM semantics
 without making any one Markdown application the architectural owner.
@@ -889,16 +889,15 @@ require every conceptual field to be persisted.
 
 ### Task sequence
 
-VB-110 is complete under its authoritative `BACKLOG.md` contract. VB-111 now has an authoritative
-implementation contract and is ready for a separate implementation task; its runtime remains
-unimplemented. VB-112 through VB-114 remain roadmap intent only until separately defined.
+VB-110 and VB-111 are complete under their authoritative `BACKLOG.md` contracts. VB-112 is the next
+Portable PKM task; VB-112 through VB-114 remain roadmap intent only until separately defined.
 
 ```text
 VB-110 define portable PKM document model / ADR ✓
    ↓
-VB-111 bounded YAML frontmatter parsing
+VB-111 bounded YAML frontmatter parsing ✓
    ↓
-VB-112 portable aliases and tags
+VB-112 portable aliases and tags NEXT
    ↓
 VB-113 contained standard Markdown relationships
    ↓
@@ -924,12 +923,14 @@ resource limits without authorizing persistence. Existing `VaultService` contain
 compatibility identifiers remain in place; no cosmetic service or knowledge-space rename is
 authorized.
 
-### VB-111 — Bounded YAML frontmatter parsing — DEFINED / UNIMPLEMENTED
+### VB-111 — Bounded YAML frontmatter parsing — IMPLEMENTED
 
-The authoritative `BACKLOG.md` contract now fixes the exact envelope, YAML 1.2 Core scalar profile,
-safe-feature exclusions, bounds, result states, diagnostics, ownership, compatibility, and test
-requirements. Implementation remains separate and must not bypass containment, make a note
-writable, corrupt authoritative Markdown, or pull VB-112 through VB-114 into scope.
+The focused read-only parser implements the authoritative `BACKLOG.md` envelope, YAML 1.2 Core
+scalar profile, safe-feature exclusions, exact bounds, immutable result states, ordering, and
+privacy-safe diagnostics. PyYAML is used only for bounded parsing events; VaultBridge performs
+scalar resolution and immutable value construction without aliases or general YAML object
+construction. `VaultService` ownership, authoritative Markdown, public behavior, title behavior,
+and later VB-112 through VB-114 scope remain unchanged.
 
 ### Aliases and canonical identity
 
@@ -1219,7 +1220,7 @@ MCP ✓
    ↓
 PKM RELATIONSHIP FOUNDATION ✓
    ↓
-PORTABLE PKM MODEL — IN PROGRESS / VB-111 NEXT (unimplemented)
+PORTABLE PKM MODEL — IN PROGRESS / VB-112 NEXT
    ↓
 KNOWLEDGE QUERY LAYER
    ↓
@@ -1271,10 +1272,10 @@ production relationship-ranking change because measured live-scan cost and narro
 establish acceptable general benefit. Wikilinks remain the first supported relationship dialect,
 not the architectural definition.
 
-The strategic continuation is Milestone 12. VB-110 and ADR 0005 are accepted; VB-111 bounded YAML
-frontmatter parsing now has an authoritative `BACKLOG.md` contract and is ready for a separate
-implementation task, but remains unimplemented. VB-032/VB-033 remain deferred, and VB-034 remains a
-later optional write task rather than NEXT. VB-112–VB-114, VB-120–VB-122, VB-130–VB-132,
+The strategic continuation is Milestone 12. VB-110 and ADR 0005 are accepted, and VB-111 bounded
+YAML frontmatter parsing is implemented without public-surface changes. VB-112 is the next Portable
+PKM task but still needs its own authoritative contract. VB-032/VB-033 remain deferred, and VB-034
+remains a later optional write task rather than NEXT. VB-112–VB-114, VB-120–VB-122, VB-130–VB-132,
 VB-140–VB-142, and VB-150–VB-152 remain proposed and reserve no implementation scope by themselves.
 
 ---
