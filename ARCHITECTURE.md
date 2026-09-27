@@ -85,6 +85,7 @@ app/core/logging.py  structured VaultBridge application logging
 app/core/observability.py request correlation and HTTP lifecycle timing
 app/services/vault.py safe path resolution, Markdown note operations and contained note counting
 app/services/wikilinks.py deterministic wikilink parsing and exact resolution through VaultService
+app/services/markdown_links.py bounded inline Markdown note-link parsing and source-relative resolution
 app/services/duplicate_candidates.py live-title and verified semantic candidate composition
 app/services/semantic_search.py embedding, incremental indexing, hybrid ranking and semantic health state
 app/services/indexer.py one in-process full/targeted synchronization worker and deduplicating path queue
@@ -558,6 +559,7 @@ dependencies and the MCP HTTP ASGI boundary.
 ### `services/vault.py`
 
 - safe path resolution
+- exact contained source-relative Markdown target verification
 - Markdown read/write/append
 - note enumeration
 - content size validation
@@ -581,14 +583,26 @@ dependencies and the MCP HTTP ASGI boundary.
 - immutable exact-name candidate snapshots reusable across one bounded live scan
 - no note reads/writes, relationship persistence, semantic-index access, or protocol behavior
 
+### `services/markdown_links.py`
+
+- immutable written destination, fragment, label, and optional canonical resolution metadata
+- bounded inline-link scanning with fenced-code, inline-code, image, external, and non-Markdown
+  exclusions
+- exact source-relative resolution through `VaultService`, without percent decoding, alias/title
+  lookup, filesystem access in the parser, or full CommonMark claims
+- no note reads/writes, relationship persistence, semantic-index access, or protocol behavior
+
 ### `services/relationships.py`
 
 - verified source-note reads through `VaultService`
-- immutable outgoing relationship occurrences in deterministic source order
-- resolved/unresolved state and VB-100 target, heading, alias, and canonical-path metadata
+- immutable dialect-specific outgoing relationship occurrences in deterministic source order
+- unchanged VB-100 wikilink target/heading/alias behavior plus additive VB-113 Markdown
+  destination/fragment/label behavior
 - target-verified live backlink scans over deterministic canonical `VaultService` enumeration
-- exact backlink deduplication by canonical source, written target, heading, and display alias while
-  preserving canonical source-path order and source relationship order
+- exact dialect-specific backlink deduplication while preserving canonical source-path order and
+  source relationship order
+- public REST/MCP relationship adapters continue to call only the existing wikilink-backed methods;
+  multi-dialect normalization remains VB-114 scope
 - no note writes, persistence, semantic-index access, or protocol behavior
 
 ### `api/relationships.py`

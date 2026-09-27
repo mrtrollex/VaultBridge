@@ -28,6 +28,8 @@ MAX_SCALAR_BYTES = 8_192
 MAX_MAPPING_KEY_BYTES = 256
 MAX_CONTAINER_DEPTH = 8
 MAX_ITEMS = 1_024
+MAX_PORTABLE_FIELD_VALUES = 256
+MAX_PORTABLE_VALUE_BYTES = 1_024
 
 FrontmatterReason: TypeAlias = Literal[
     "malformed_envelope",
@@ -47,6 +49,15 @@ FrontmatterReason: TypeAlias = Literal[
 FrontmatterState: TypeAlias = Literal["absent", "valid", "invalid"]
 PortableScalar: TypeAlias = str | None | bool | int | float
 PortableValue: TypeAlias = PortableScalar | Mapping[str, "PortableValue"] | tuple["PortableValue", ...]
+PortableFieldName: TypeAlias = Literal["aliases", "tags"]
+PortableFieldReason: TypeAlias = Literal[
+    "field_type",
+    "member_type",
+    "source_value_count",
+    "value_size",
+    "empty_value",
+]
+PortableFieldState: TypeAlias = Literal["absent", "valid", "invalid"]
 
 _NULL_PATTERN = re.compile(r"^(?:~|null|Null|NULL)?$")
 _BOOL_PATTERN = re.compile(r"^(?:true|True|TRUE|false|False|FALSE)$")
@@ -88,6 +99,152 @@ class FrontmatterResult:
         }
         if not valid_shape[self.state]:
             raise ValueError("frontmatter result fields do not match its state")
+
+
+@dataclass(frozen=True, slots=True)
+class PortableFieldOccurrence:
+    """One exact usable value and its index in the source field."""
+
+    value: str
+    source_index: int
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.value, str):
+            raise TypeError("portable field occurrence value must be a string")
+        if self.source_index < 0:
+            raise ValueError("source_index must be non-negative")
+
+
+@dataclass(frozen=True, slots=True)
+class PortableFieldDiagnostic:
+    """One bounded alias/tag diagnostic containing no source value."""
+
+    reason: PortableFieldReason
+    field: PortableFieldName
+    source_index: int | None = None
+
+    def __post_init__(self) -> None:
+        indexed_reasons = {"member_type", "value_size", "empty_value"}
+        if self.field not in {"aliases", "tags"}:
+            raise ValueError("field must be aliases or tags")
+        if self.reason in indexed_reasons:
+            if self.source_index is None or self.source_index < 0:
+                raise ValueError(f"{self.reason} requires a non-negative source_index")
+        elif self.source_index is not None:
+            raise ValueError(f"{self.reason} must not have a source_index")
+
+
+@dataclass(frozen=True, slots=True)
+class PortableFieldResult:
+    """Immutable absent, valid, or invalid result for one portable field."""
+
+    field: PortableFieldName
+    state: PortableFieldState
+    occurrences: tuple[PortableFieldOccurrence, ...] = ()
+    diagnostics: tuple[PortableFieldDiagnostic, ...] = ()
+
+    def __post_init__(self) -> None:
+        if self.field not in {"aliases", "tags"}:
+            raise ValueError("field must be aliases or tags")
+        if any(diagnostic.field != self.field for diagnostic in self.diagnostics):
+            raise ValueError("diagnostic field does not match result field")
+        valid_shape = {
+            "absent": not self.occurrences and not self.diagnostics,
+            "valid": all(diagnostic.reason == "empty_value" for diagnostic in self.diagnostics),
+            "invalid": not self.occurrences
+            and len(self.diagnostics) == 1
+            and self.diagnostics[0].reason != "empty_value",
+        }
+        if not valid_shape[self.state]:
+            raise ValueError("portable field result fields do not match its state")
+
+
+@dataclass(frozen=True, slots=True)
+class PortableFieldsProjection:
+    """Independent portable aliases and tags derived from valid frontmatter."""
+
+    aliases: PortableFieldResult
+    tags: PortableFieldResult
+
+    def __post_init__(self) -> None:
+        if self.aliases.field != "aliases" or self.tags.field != "tags":
+            raise ValueError("portable field results are assigned to the wrong projection field")
+
+
+def project_portable_fields(frontmatter: FrontmatterResult) -> PortableFieldsProjection | None:
+    """Project aliases and tags from one valid VB-111 frontmatter result."""
+    if frontmatter.state != "valid":
+        return None
+
+    assert frontmatter.metadata is not None
+    return PortableFieldsProjection(
+        aliases=_project_portable_field(frontmatter.metadata, "aliases"),
+        tags=_project_portable_field(frontmatter.metadata, "tags"),
+    )
+
+
+def _project_portable_field(
+    metadata: Mapping[str, PortableValue],
+    field: PortableFieldName,
+) -> PortableFieldResult:
+    if field not in metadata:
+        return PortableFieldResult(field=field, state="absent")
+
+    value = metadata[field]
+    if isinstance(value, str):
+        source_values: tuple[PortableValue, ...] = (value,)
+    elif isinstance(value, tuple):
+        source_values = value
+    else:
+        return _invalid_portable_field(field, "field_type")
+
+    if len(source_values) > MAX_PORTABLE_FIELD_VALUES:
+        return _invalid_portable_field(field, "source_value_count")
+
+    for source_index, source_value in enumerate(source_values):
+        if not isinstance(source_value, str):
+            return _invalid_portable_field(field, "member_type", source_index)
+
+    for source_index, source_value in enumerate(source_values):
+        assert isinstance(source_value, str)
+        if source_value.strip() and len(source_value.encode("utf-8")) > MAX_PORTABLE_VALUE_BYTES:
+            return _invalid_portable_field(field, "value_size", source_index)
+
+    occurrences: list[PortableFieldOccurrence] = []
+    diagnostics: list[PortableFieldDiagnostic] = []
+    for source_index, source_value in enumerate(source_values):
+        assert isinstance(source_value, str)
+        if not source_value.strip():
+            diagnostics.append(
+                PortableFieldDiagnostic(
+                    reason="empty_value",
+                    field=field,
+                    source_index=source_index,
+                )
+            )
+            continue
+        occurrences.append(PortableFieldOccurrence(value=source_value, source_index=source_index))
+
+    return PortableFieldResult(
+        field=field,
+        state="valid",
+        occurrences=tuple(occurrences),
+        diagnostics=tuple(diagnostics),
+    )
+
+
+def _invalid_portable_field(
+    field: PortableFieldName,
+    reason: PortableFieldReason,
+    source_index: int | None = None,
+) -> PortableFieldResult:
+    return PortableFieldResult(
+        field=field,
+        state="invalid",
+        diagnostics=(
+            PortableFieldDiagnostic(reason=reason, field=field, source_index=source_index),
+        ),
+    )
 
 
 class _InvalidFrontmatter(Exception):
