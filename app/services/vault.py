@@ -215,6 +215,43 @@ class VaultService:
         except (OSError, RuntimeError, ValueError, VaultValidationError):
             return None
 
+    def verify_source_relative_markdown_path(
+        self,
+        source_path: str,
+        target_path: str,
+    ) -> str | None:
+        """Verify an exact Markdown target relative to one canonical source note."""
+        try:
+            source = self.verify_existing_markdown_path(
+                source_path,
+                exact_spelling=True,
+            )
+            if source is None:
+                return None
+
+            normalized_target = target_path.replace("\\", "/")
+            target = PurePosixPath(normalized_target)
+            windows_target = PureWindowsPath(target_path)
+            if (
+                not normalized_target
+                or target.is_absolute()
+                or windows_target.is_absolute()
+                or windows_target.drive
+            ):
+                return None
+
+            source_directory = PurePosixPath(source).parent
+            written_parts = source_directory.parts + target.parts
+            candidate = "/".join(written_parts)
+            resolved = self.resolve_path(candidate)
+            if resolved.suffix.lower() != ".md" or not resolved.is_file():
+                return None
+            if not self._has_exact_relative_path_spelling(written_parts):
+                return None
+            return self._relative_path(resolved).replace("\\", "/")
+        except (OSError, RuntimeError, ValueError, VaultValidationError):
+            return None
+
     def _has_exact_path_spelling(self, parts: tuple[str, ...]) -> bool:
         current = self.vault_root
         for part in parts:
@@ -225,6 +262,23 @@ class VaultService:
             except OSError:
                 return False
             current /= part
+        return True
+
+    def _has_exact_relative_path_spelling(self, parts: tuple[str, ...]) -> bool:
+        current = self.vault_root
+        for part in parts:
+            if part == ".":
+                continue
+            if part == "..":
+                current = current.parent
+                continue
+            try:
+                with os.scandir(current) as entries:
+                    if not any(entry.name == part for entry in entries):
+                        return False
+                current = (current / part).resolve()
+            except OSError:
+                return False
         return True
 
     def live_markdown_paths(self, *, folder: str = "") -> list[str]:

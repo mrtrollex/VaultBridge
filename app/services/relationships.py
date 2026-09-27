@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
+from app.services.markdown_links import MarkdownLink, MarkdownLinkResolver
 from app.services.vault import NoteNotFoundError, VaultService
 from app.services.wikilinks import Wikilink, WikilinkResolutionSnapshot, WikilinkResolver
 
@@ -40,12 +41,46 @@ class Backlink:
     alias: str | None
 
 
+@dataclass(frozen=True)
+class OutgoingMarkdownRelationship:
+    """One outgoing standard Markdown note-link occurrence."""
+
+    destination: str
+    fragment: str | None
+    label: str
+    resolved_path: str | None
+
+    @property
+    def state(self) -> Literal["resolved", "unresolved"]:
+        return "resolved" if self.resolved_path is not None else "unresolved"
+
+    @classmethod
+    def from_markdown_link(cls, link: MarkdownLink) -> OutgoingMarkdownRelationship:
+        return cls(
+            destination=link.destination,
+            fragment=link.fragment,
+            label=link.label,
+            resolved_path=link.resolved_path,
+        )
+
+
+@dataclass(frozen=True)
+class MarkdownBacklink:
+    """One distinct verified standard Markdown link to a requested note."""
+
+    source_path: str
+    destination: str
+    fragment: str | None
+    label: str
+
+
 class RelationshipService:
     """Derive read-only note relationships from live vault Markdown."""
 
     def __init__(self, vault_service: VaultService) -> None:
         self._vault_service = vault_service
         self._wikilink_resolver = WikilinkResolver(vault_service)
+        self._markdown_link_resolver = MarkdownLinkResolver(vault_service)
 
     def outgoing_relationships(self, source_path: str) -> tuple[OutgoingRelationship, ...]:
         """Return outgoing relationship occurrences in source order."""
@@ -113,6 +148,75 @@ class RelationshipService:
                         target=relationship.target,
                         heading=relationship.heading,
                         alias=relationship.alias,
+                    )
+                )
+        return tuple(results)
+
+    def outgoing_markdown_relationships(
+        self,
+        source_path: str,
+    ) -> tuple[OutgoingMarkdownRelationship, ...]:
+        """Return source-relative standard Markdown relationships in source order."""
+        source = self._vault_service.read_note(source_path)
+        return self._derive_outgoing_markdown_relationships(
+            source.content,
+            source_path=source.path,
+        )
+
+    def _derive_outgoing_markdown_relationships(
+        self,
+        markdown: str,
+        *,
+        source_path: str,
+    ) -> tuple[OutgoingMarkdownRelationship, ...]:
+        return tuple(
+            OutgoingMarkdownRelationship.from_markdown_link(link)
+            for link in self._markdown_link_resolver.resolve_markdown(
+                markdown,
+                source_path=source_path,
+            )
+        )
+
+    def markdown_backlinks(self, target_path: str) -> tuple[MarkdownBacklink, ...]:
+        """Return distinct verified standard Markdown links to one exact live target."""
+        canonical_target = self._vault_service.verify_existing_markdown_path(
+            target_path,
+            exact_spelling=True,
+        )
+        if canonical_target is None:
+            self._vault_service.read_note(target_path)
+            raise NoteNotFoundError("Note not found")
+
+        source_paths = sorted(
+            set(self._vault_service.live_markdown_paths()),
+            key=lambda path: (path.casefold(), path),
+        )
+        results: list[MarkdownBacklink] = []
+        seen: set[tuple[str, str, str | None, str]] = set()
+        for source_path in source_paths:
+            source = self._vault_service.read_note(source_path)
+            relationships = self._derive_outgoing_markdown_relationships(
+                source.content,
+                source_path=source.path,
+            )
+            for relationship in relationships:
+                if relationship.resolved_path != canonical_target:
+                    continue
+                key = (
+                    source.path,
+                    relationship.destination,
+                    relationship.fragment,
+                    relationship.label,
+                )
+                if key in seen:
+                    continue
+                seen.add(key)
+                results.append(
+                    MarkdownBacklink(
+                        source_path=source.path,
+                        destination=relationship.destination,
+                        fragment=relationship.fragment,
+                        label=relationship.label,
                     )
                 )
         return tuple(results)

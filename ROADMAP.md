@@ -116,7 +116,7 @@ Clients: REST / Web Dashboard / MCP / CLI / integrations
        v                      v                       v
   VaultService      SemanticSearchService    RelationshipService
        |                      |                       |
-       |              SemanticRepository       WikilinkResolver
+       |              SemanticRepository       dialect resolvers
        |                      |                       |
        +----------------------+-----------------------+
                               |
@@ -140,7 +140,8 @@ app/services/vault.py             contained Markdown reads, writes, listing, and
 app/services/semantic_search.py   chunking, embeddings, ranking, and index orchestration
 app/repositories/semantic.py      SQLite semantic persistence
 app/services/wikilinks.py         Obsidian-compatible wikilink parsing and safe resolution
-app/services/relationships.py     live outgoing relationships and verified backlinks
+app/services/markdown_links.py    bounded standard Markdown note-link parsing and safe resolution
+app/services/relationships.py     dialect-specific live outgoing relationships and backlinks
 app/services/duplicate_candidates.py advisory live-title and semantic duplicate evidence
 ```
 
@@ -195,9 +196,10 @@ release is identified above. Immutable artifact values and complete historical e
 3. The deterministic retrieval fixture does not by itself measure representative real-model quality
    or latency.
 4. Multiple VaultBridge processes sharing one semantic index are not coordinated.
-5. Relationship extraction understands Obsidian-compatible wikilinks only; standard Markdown links
-   and general frontmatter metadata are not yet normalized domain features. Portable aliases and
-   tags are projected only as read-only domain values, without lookup, query, or public exposure.
+5. `RelationshipService` has separate domain views for Obsidian-compatible wikilinks and bounded
+   contained standard Markdown links, but no normalized multi-dialect view. Public relationship
+   adapters remain wikilink-only. Portable aliases and tags are read-only domain values without
+   lookup, query, or public exposure.
 6. Clients can still invent relationship targets unless they use verified VaultBridge results.
 
 ---
@@ -877,7 +879,7 @@ Milestone exit criteria:
 
 ---
 
-# Milestone 12 — Portable PKM model — IN PROGRESS / VB-113 NEXT
+# Milestone 12 — Portable PKM model — IN PROGRESS / VB-114 NEXT
 
 **Goal:** give VaultBridge a portable document/metadata model that understands useful PKM semantics
 without making any one Markdown application the architectural owner.
@@ -890,8 +892,8 @@ require every conceptual field to be persisted.
 
 ### Task sequence
 
-VB-110 through VB-112 are complete under their authoritative `BACKLOG.md` contracts. VB-113 is the
-next Portable PKM task; VB-113 and VB-114 remain roadmap intent only until separately defined.
+VB-110 through VB-113 are complete under their authoritative `BACKLOG.md` contracts. VB-114 is the
+next Portable PKM task but remains roadmap intent until separately defined.
 
 ```text
 VB-110 define portable PKM document model / ADR ✓
@@ -900,9 +902,9 @@ VB-111 bounded YAML frontmatter parsing ✓
    ↓
 VB-112 portable aliases and tags ✓
    ↓
-VB-113 contained standard Markdown relationships NEXT / CONTRACT REQUIRED
+VB-113 contained standard Markdown relationships ✓
    ↓
-VB-114 normalized relationship view
+VB-114 normalized relationship view NEXT / CONTRACT REQUIRED
 ```
 
 ### VB-110 — Define portable PKM document model / ADR — ACCEPTED
@@ -952,13 +954,17 @@ must not guess between multiple live notes or silently make an alias authoritati
 Expose supported portable tags as structured knowledge metadata. Tag semantics remain domain data,
 not application-specific navigation or UI behavior.
 
-### Standard Markdown links
+### VB-113 — Contained standard Markdown relationships — IMPLEMENTED
 
-Generalize relationship extraction beyond `[[wikilinks]]` to standard Markdown links that resolve
-to contained Markdown notes. Reuse the verified `VaultService` and `RelationshipService` boundary;
-do not duplicate containment or resolve arbitrary URLs/files as notes.
+The bounded inline parser preserves written destination, fragment, label, source order, and
+duplicates while excluding code, images, external targets, non-Markdown files, and unsupported
+syntax. Local `.md` paths resolve relative to the verified canonical source directory through
+`VaultService`; missing, unsafe, and exact-spelling failures remain unresolved occurrences.
+`RelationshipService` exposes additive domain-only outgoing/backlink methods. Existing wikilink
+semantics and REST, MCP, CLI, dashboard, persistence, semantic, index, and write behavior remain
+unchanged.
 
-### Relationship normalization
+### VB-114 — Normalized relationship view — NEXT / CONTRACT REQUIRED
 
 Different supported syntax sources should be able to feed a shared derived representation such as:
 
@@ -1229,7 +1235,7 @@ MCP ✓
    ↓
 PKM RELATIONSHIP FOUNDATION ✓
    ↓
-PORTABLE PKM MODEL — IN PROGRESS / VB-113 NEXT
+PORTABLE PKM MODEL — IN PROGRESS / VB-114 NEXT
    ↓
 KNOWLEDGE QUERY LAYER
    ↓
@@ -1281,10 +1287,10 @@ production relationship-ranking change because measured live-scan cost and narro
 establish acceptable general benefit. Wikilinks remain the first supported relationship dialect,
 not the architectural definition.
 
-The strategic continuation is Milestone 12. VB-110 and ADR 0005 are accepted, VB-111 bounded YAML
-frontmatter parsing and VB-112 portable alias/tag projection are implemented without public-surface
-changes, and VB-113 is next but requires its own authoritative contract. VB-032/VB-033 remain
-deferred, and VB-034 remains a later optional write task rather than NEXT. VB-113–VB-114,
+The strategic continuation is Milestone 12. VB-110 and ADR 0005 are accepted, and VB-111 through
+VB-113 are implemented without public-surface changes. VB-114 is next but requires its own
+authoritative contract. VB-032/VB-033 remain deferred, and VB-034 remains a later optional write
+task rather than NEXT. VB-114,
 VB-120–VB-122, VB-130–VB-132, VB-140–VB-142, and VB-150–VB-152 remain proposed and reserve no
 implementation scope by themselves.
 

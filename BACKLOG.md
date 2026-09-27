@@ -1575,8 +1575,8 @@ OpenAI-specific protocol behavior.
 
 ### VB-110 — Define portable PKM document model / ADR — P1 ✅
 
-**Status:** Complete. ADR 0005 is accepted, and VB-111 and VB-112 are implemented. VB-113 is the
-next Portable PKM task and still requires its own authoritative contract before implementation.
+**Status:** Complete. ADR 0005 is accepted, and VB-111 through VB-113 are implemented. VB-114 is
+the next Portable PKM task and still requires its own authoritative contract before implementation.
 
 **Goal:** define a portable, bounded domain model for Markdown notes, metadata, headings, and
 relationships without introducing a second authoritative store or changing current runtime
@@ -1793,6 +1793,99 @@ Existing public and deployment behavior remains unchanged.
 
 ---
 
+### VB-113 — Implement contained standard Markdown note relationships — P1 ✅
+
+**Status:** Completed on 2026-09-27. `MarkdownLinkResolver` provides bounded inline note-link
+parsing and source-relative resolution through `VaultService`; additive `RelationshipService`
+methods derive outgoing Markdown relationships and verified backlinks without changing existing
+wikilink-backed adapters. Focused and full non-E2E validation pass. VB-114 remains separately
+scoped.
+
+**Goal:** add a bounded parser/resolver for inline standard Markdown links that target contained
+Markdown notes, plus domain-only outgoing/backlink derivation through `RelationshipService`.
+Standard Markdown links are supported alongside existing Obsidian wikilinks and do not replace or
+reinterpret VB-100 through VB-104 behavior. REST, MCP, CLI, and dashboard relationship behavior
+remain unchanged until a later task deliberately adopts a normalized multi-dialect view.
+
+**Supported Markdown-link profile**
+
+- Parse decoded Markdown in source order for `[Label](Note.md)`, `[Label](Folder/Note.md)`,
+  `[Label](../Note.md)`, `[Label](Note.md#Heading)`, `[Label](<My Note.md>)`, and
+  `[Label](<Folder/My Note.md#Heading>)`, including raw Unicode labels, paths, and fragments.
+- This is deliberately not a full CommonMark parser. Support inline links only. Ignore image,
+  reference-style, autolink, HTML-link, footnote, and wiki syntax; ignore links inside fenced code
+  and inline code spans; preserve duplicate valid occurrences.
+- Optional link titles such as `[Label](Note.md "Title")` are unsupported and must not become part
+  of a filename. Non-angle destinations containing unescaped whitespace are unsupported, while
+  angle-bracket destinations may contain spaces. Ignore malformed, incomplete, or NUL-containing
+  syntax.
+- Do not percent-decode or perform URI normalization. `%xx` remains literal source text.
+- Preserve the written destination/path, optional written fragment after the first `#`, written
+  label, optional verified canonical `resolved_path`, result order, and duplicates in the smallest
+  immutable occurrence type. Do not case-fold, slugify, Unicode-normalize, title-resolve,
+  alias-resolve, or rewrite these values.
+- VB-114 owns the future shared `RelationshipOccurrence` shape. VB-113 must not replace existing
+  wikilink types with that future model.
+
+**Note-target classification and resolution**
+
+- A candidate must have a non-empty local path portion ending in `.md`; a fragment may follow the
+  path after the first `#`. Empty paths and fragment-only targets are not candidates.
+- Exclude `http:`, `https:`, `mailto:`, all other URI schemes, `//host/...`, absolute POSIX paths,
+  Windows drive/UNC paths, and non-Markdown destinations.
+- Keep syntactically valid local `.md` targets as unresolved relationships when the destination is
+  missing, escapes containment, is a directory, is an external/broken symlink, or fails exact-path
+  verification.
+- Resolve standard Markdown paths relative to the directory of the verified canonical source note:
+  `Folder/Source.md` plus `Sibling.md` targets `Folder/Sibling.md`, and `../Root.md` targets
+  `Root.md` only when it remains contained. Do not use wikilink global filename lookup.
+- `VaultService` remains the sole owner of canonical path identity, containment, exact spelling,
+  file/type checks, and symlink safety. Safe internal symlinks use existing canonical behavior;
+  external and broken symlinks remain unresolved.
+- Fragments are occurrence metadata only. Do not verify heading existence or implement fragment
+  slug rules. Do not use VB-112 aliases, titles, tags, frontmatter mutation, or metadata heuristics
+  for target resolution.
+
+**RelationshipService integration**
+
+- Add only additive domain methods for outgoing standard Markdown note-link relationships from one
+  verified source and backlinks to one verified target. Existing public wikilink-backed
+  `outgoing_relationships()` and `backlinks()` remain unchanged.
+- Source reads and target verification go through `VaultService`; results are immutable and
+  deterministic. Outgoing occurrences preserve source order and duplicates. Backlink sources use
+  deterministic canonical enumeration.
+- Include a backlink only when the occurrence's verified canonical `resolved_path` equals the
+  requested canonical target, never by raw-text matching. Deduplicate stably only exact identical
+  source + written destination + fragment + label occurrences.
+- Keep parsing and relationship derivation read-only and deterministic. Use bounded scanning rather
+  than catastrophic/backtracking regular expressions; do not read host files in the parser,
+  perform network access, decode percent escapes, guess malformed syntax, or select ambiguous
+  targets.
+
+**Required tests**
+
+- Parsing covers root/folder/parent-relative links, fragments, angle destinations with spaces,
+  Unicode, duplicates/order, fenced and inline code exclusion, images and excluded syntaxes,
+  optional titles, malformed/incomplete/NUL input, external/network/absolute targets, and
+  non-Markdown destinations.
+- Resolution covers source-relative siblings, contained parent traversal, vault escape, exact case,
+  missing and directory targets, supported internal symlinks, external/broken symlinks, unverified
+  fragments, literal percent escapes, and absence of alias/title fallback.
+- Relationship tests cover VaultService-owned reads, resolved/unresolved output, duplicate/order
+  preservation, canonical-only backlink inclusion, deterministic backlink order and deduplication,
+  and unchanged existing wikilink relationships.
+- Regression verification must keep existing REST/OpenAPI operation IDs and responses, MCP tools
+  and resources, CLI/dashboard behavior, VB-111/VB-112 behavior, semantic/index/persistence
+  behavior, and writes unchanged.
+
+**Compatibility / explicit non-goals:** no shared normalized multi-dialect relationship view
+(VB-114); public REST/MCP/CLI/dashboard exposure of Markdown-link relationships; alias/title target
+resolution; reference links or full CommonMark; percent-decoded paths; fragment heading validation;
+relationship persistence or graph/index storage; semantic ranking; writes/backlink insertion;
+multiple knowledge spaces; dependency, Docker, TrueNAS, packaging, publication, or release work.
+
+---
+
 ## Release history
 
 ### v1.2.0 release
@@ -1906,7 +1999,8 @@ VB-001 ✓
 → VB-110 ✓ (accepted portable PKM document model / ADR)
 → VB-111 ✓ (bounded YAML frontmatter parsing)
 → VB-112 ✓ (portable aliases and tags projection)
-→ VB-113 NEXT (contract required before implementation)
+→ VB-113 ✓ (contained standard Markdown note relationships)
+→ VB-114 NEXT (contract required before implementation)
 → VB-034 (optional opt-in write task)
 ```
 
@@ -1942,8 +2036,9 @@ evidence but does not support a production graph-ranking change, while VB-106 ad
 write parity and first-class TrueNAS MCP configuration source. VB-032/VB-033 remain deferred and
 VB-034 remains a later, opt-in write capability. VB-110 accepts ADR 0005 as the portable PKM
 document-model contract. VB-111 implements its bounded read-only YAML frontmatter parser, and
-VB-112 implements immutable field-local alias/tag projection without changing public behavior.
-VB-113 is next in the Portable PKM sequence but requires an authoritative contract before any
-implementation.
+VB-112 implements immutable field-local alias/tag projection without changing public behavior, and
+VB-113 implements bounded contained standard Markdown relationships at the domain layer without
+changing wikilink-backed public adapters. VB-114 is next in the Portable PKM sequence but requires
+an authoritative contract before any implementation.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

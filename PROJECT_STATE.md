@@ -249,8 +249,14 @@ Current post-v1 planning position:
   `1,024`-UTF-8-byte bounds, ordered duplicate-preserving occurrences, original source indexes, and
   bounded privacy-safe diagnostics
 - VB-112 is not wired into title derivation, relationships, REST, MCP, CLI, dashboard, persistence,
-  semantic indexing, or note writes; VB-113 is the next Portable PKM task but remains undefined and
-  unimplemented
+  semantic indexing, or note writes
+- VB-113 is implemented as a bounded inline standard Markdown note-link parser/resolver plus
+  additive domain-only outgoing/backlink methods on `RelationshipService`; paths resolve relative
+  to the verified canonical source directory through `VaultService`, preserving written metadata,
+  order, duplicates, unresolved local `.md` targets, exact spelling, and symlink containment
+- VB-113 does not change existing wikilink semantics or REST, MCP, CLI, dashboard, semantic,
+  persistence, index, or write behavior; VB-114 normalized relationships is next but remains
+  undefined and unimplemented
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
 

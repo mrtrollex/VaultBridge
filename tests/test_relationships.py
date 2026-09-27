@@ -4,7 +4,13 @@ from pathlib import Path
 
 import pytest
 
-from app.services.relationships import Backlink, OutgoingRelationship, RelationshipService
+from app.services.relationships import (
+    Backlink,
+    MarkdownBacklink,
+    OutgoingMarkdownRelationship,
+    OutgoingRelationship,
+    RelationshipService,
+)
 from app.services.vault import (
     NoteNotFoundError,
     NoteTooLargeError,
@@ -443,3 +449,109 @@ def test_backlinks_propagate_unexpected_source_read_failure(tmp_path, monkeypatc
 
     with pytest.raises(OSError, match="source read failed"):
         service_for(tmp_path).backlinks("Target.md")
+
+
+def test_outgoing_markdown_relationships_preserve_resolution_metadata_order_and_duplicates(
+    tmp_path,
+):
+    folder = tmp_path / "Folder"
+    folder.mkdir()
+    (folder / "Source.md").write_text(
+        "[Sibling](Target.md) [Missing](Missing.md#Part) "
+        "[Sibling](Target.md) [[Target]]",
+        encoding="utf-8",
+    )
+    (folder / "Target.md").write_text("target", encoding="utf-8")
+
+    relationships = service_for(tmp_path).outgoing_markdown_relationships(
+        "Folder/Source.md"
+    )
+
+    assert relationships == (
+        OutgoingMarkdownRelationship("Target.md", None, "Sibling", "Folder/Target.md"),
+        OutgoingMarkdownRelationship("Missing.md", "Part", "Missing", None),
+        OutgoingMarkdownRelationship("Target.md", None, "Sibling", "Folder/Target.md"),
+    )
+    assert [relationship.state for relationship in relationships] == [
+        "resolved",
+        "unresolved",
+        "resolved",
+    ]
+
+
+def test_outgoing_markdown_relationships_read_source_through_vault_service(
+    tmp_path,
+    monkeypatch,
+):
+    (tmp_path / "Source.md").write_text("[Target](Target.md)", encoding="utf-8")
+    (tmp_path / "Target.md").write_text("target", encoding="utf-8")
+    vault_service = VaultService(vault_root=tmp_path, max_note_bytes=1_000_000)
+    original_read = vault_service.read_note
+    reads: list[str] = []
+
+    def tracked_read(path: str):
+        reads.append(path)
+        return original_read(path)
+
+    monkeypatch.setattr(vault_service, "read_note", tracked_read)
+
+    assert RelationshipService(vault_service).outgoing_markdown_relationships("Source.md")
+    assert reads == ["Source.md"]
+
+
+def test_markdown_backlinks_require_verified_resolution_and_deduplicate_exact_links(tmp_path):
+    folder = tmp_path / "Folder"
+    folder.mkdir()
+    (folder / "Target.md").write_text("target", encoding="utf-8")
+    (folder / "Alpha.md").write_text(
+        "[One](Target.md#Part) [One](Target.md#Part) [Two](Target.md#Part)",
+        encoding="utf-8",
+    )
+    (tmp_path / "Beta.md").write_text(
+        "[Wrong relative](Target.md) [Verified](Folder/Target.md)",
+        encoding="utf-8",
+    )
+    (tmp_path / "Plain.md").write_text("Folder/Target.md", encoding="utf-8")
+
+    assert service_for(tmp_path).markdown_backlinks("Folder/Target.md") == (
+        MarkdownBacklink("Beta.md", "Folder/Target.md", None, "Verified"),
+        MarkdownBacklink(str(Path("Folder") / "Alpha.md"), "Target.md", "Part", "One"),
+        MarkdownBacklink(str(Path("Folder") / "Alpha.md"), "Target.md", "Part", "Two"),
+    )
+
+
+def test_markdown_backlinks_are_deterministic_when_enumeration_order_changes(
+    tmp_path,
+    monkeypatch,
+):
+    for path in ("zeta.md", "Alpha.md", "beta.md"):
+        (tmp_path / path).write_text("[Target](Target.md)", encoding="utf-8")
+    (tmp_path / "Target.md").write_text("target", encoding="utf-8")
+    vault_service = VaultService(vault_root=tmp_path, max_note_bytes=1_000_000)
+    discovered = vault_service.live_markdown_paths()
+    monkeypatch.setattr(vault_service, "live_markdown_paths", lambda: list(reversed(discovered)))
+    service = RelationshipService(vault_service)
+
+    expected = (
+        MarkdownBacklink("Alpha.md", "Target.md", None, "Target"),
+        MarkdownBacklink("beta.md", "Target.md", None, "Target"),
+        MarkdownBacklink("zeta.md", "Target.md", None, "Target"),
+    )
+    assert service.markdown_backlinks("Target.md") == expected
+    assert service.markdown_backlinks("Target.md") == expected
+
+
+def test_existing_wikilink_relationship_methods_ignore_standard_markdown_links(tmp_path):
+    (tmp_path / "Target.md").write_text("target", encoding="utf-8")
+    (tmp_path / "Source.md").write_text(
+        "[Markdown](Target.md) [[Target]]",
+        encoding="utf-8",
+    )
+    service = service_for(tmp_path)
+
+    assert service.outgoing_relationships("Source.md") == (
+        OutgoingRelationship("Target", None, None, "Target.md"),
+    )
+    assert service.backlinks("Target.md") == (
+        Backlink("Source.md", "Target", None, None),
+    )

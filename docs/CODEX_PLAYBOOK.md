@@ -157,11 +157,11 @@ Do not implement the recommended next task.
 ## Current next task
 
 VB-110 is complete as design-only work under accepted ADR 0005. VB-111 implements bounded
-decoded-content-only YAML frontmatter parsing, and VB-112 implements immutable portable alias/tag
-projection without public adapter, title, relationship, or persistence behavior changes. VB-113
-contained standard Markdown relationships is next in the sequence, but it remains roadmap intent
-until an authoritative `BACKLOG.md` contract defines it. Do not infer or implement VB-113 from ADR
-or roadmap prose alone.
+decoded-content-only YAML frontmatter parsing, VB-112 implements immutable portable alias/tag
+projection, and VB-113 implements bounded contained standard Markdown relationships through
+additive domain-only methods without changing wikilink-backed public adapters. VB-114 normalized
+relationships is next in the sequence, but it remains roadmap intent until an authoritative
+`BACKLOG.md` contract defines it. Do not infer or implement VB-114 from ADR or roadmap prose alone.
 
 No new autonomous relationship task is currently recommended. VB-105 is complete as
 evaluation/design evidence and does not support or authorize a production graph-ranking change.
