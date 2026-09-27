@@ -244,10 +244,13 @@ Current post-v1 planning position:
 - VB-111 is not wired into REST, MCP, CLI, dashboard, title derivation, relationships, persistence,
   semantic indexing, or note writes; `VaultService` remains the sole filesystem, containment,
   whole-note size, and UTF-8 decoding owner
-- the authoritative VB-112 `BACKLOG.md` contract is defined and ready for a separate implementation
-  task: it fixes independent absent/valid/invalid alias/tag states, string-only scalar/sequence
-  inputs, exact `256`-source and `1,024`-UTF-8-byte bounds, ordered duplicate-preserving values, and
-  bounded privacy-safe diagnostics; VB-112 runtime projection remains unimplemented
+- VB-112 is implemented in the existing frontmatter/domain layer: valid VB-111 metadata can produce
+  independent immutable absent/valid/invalid alias and tag results with exact `256`-source and
+  `1,024`-UTF-8-byte bounds, ordered duplicate-preserving occurrences, original source indexes, and
+  bounded privacy-safe diagnostics
+- VB-112 is not wired into title derivation, relationships, REST, MCP, CLI, dashboard, persistence,
+  semantic indexing, or note writes; VB-113 is the next Portable PKM task but remains undefined and
+  unimplemented
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
 

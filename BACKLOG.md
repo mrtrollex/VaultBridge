@@ -1575,8 +1575,8 @@ OpenAI-specific protocol behavior.
 
 ### VB-110 — Define portable PKM document model / ADR — P1 ✅
 
-**Status:** Complete. ADR 0005 is accepted, VB-111 is implemented, and VB-112 is defined and ready
-for a separate implementation task in this milestone.
+**Status:** Complete. ADR 0005 is accepted, and VB-111 and VB-112 are implemented. VB-113 is the
+next Portable PKM task and still requires its own authoritative contract before implementation.
 
 **Goal:** define a portable, bounded domain model for Markdown notes, metadata, headings, and
 relationships without introducing a second authoritative store or changing current runtime
@@ -1691,9 +1691,12 @@ response field, tool, resource, or UI capability.
 
 ---
 
-### VB-112 — Implement portable aliases and tags projection — P1
+### VB-112 — Implement portable aliases and tags projection — P1 ✅
 
-**Status:** Defined and ready for implementation as of 2026-09-27; runtime work is not implemented.
+**Status:** Completed on 2026-09-27. `project_portable_fields` derives independent immutable alias
+and tag results from valid VB-111 metadata, with exact occurrence ordering, field-local bounds, and
+bounded privacy-safe diagnostics. It does not change title, relationship, adapter, persistence,
+semantic, write, or deployment behavior.
 
 **Goal:** add the smallest immutable, read-only domain projection for portable `aliases` and `tags`
 from the already-valid generic metadata produced by VB-111, following ADR 0005 without changing
@@ -1902,7 +1905,8 @@ VB-001 ✓
 → v1.3.0 ✓
 → VB-110 ✓ (accepted portable PKM document model / ADR)
 → VB-111 ✓ (bounded YAML frontmatter parsing)
-→ VB-112 DEFINED / READY (portable aliases and tags; runtime pending)
+→ VB-112 ✓ (portable aliases and tags projection)
+→ VB-113 NEXT (contract required before implementation)
 → VB-034 (optional opt-in write task)
 ```
 
@@ -1937,8 +1941,9 @@ open. Milestone 11 is complete as a read-first relationship track; VB-105 record
 evidence but does not support a production graph-ranking change, while VB-106 adds default-off MCP
 write parity and first-class TrueNAS MCP configuration source. VB-032/VB-033 remain deferred and
 VB-034 remains a later, opt-in write capability. VB-110 accepts ADR 0005 as the portable PKM
-document-model contract. VB-111 implements its bounded read-only YAML frontmatter parser without
-changing public behavior. The authoritative VB-112 portable aliases/tags contract is defined and
-ready for a separate implementation task; its runtime projection is not implemented.
+document-model contract. VB-111 implements its bounded read-only YAML frontmatter parser, and
+VB-112 implements immutable field-local alias/tag projection without changing public behavior.
+VB-113 is next in the Portable PKM sequence but requires an authoritative contract before any
+implementation.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

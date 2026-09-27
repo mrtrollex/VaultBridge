@@ -9,9 +9,14 @@ from app.services.frontmatter import (
     MAX_FRONTMATTER_BYTES,
     MAX_ITEMS,
     MAX_MAPPING_KEY_BYTES,
+    MAX_PORTABLE_FIELD_VALUES,
+    MAX_PORTABLE_VALUE_BYTES,
     MAX_SCALAR_BYTES,
     FrontmatterDiagnostic,
     FrontmatterParser,
+    PortableFieldDiagnostic,
+    PortableFieldsProjection,
+    project_portable_fields,
 )
 
 
@@ -26,6 +31,14 @@ def assert_invalid(markdown: str, reason: str) -> FrontmatterDiagnostic:
     assert result.diagnostic is not None
     assert result.diagnostic.reason == reason
     return result.diagnostic
+
+
+def portable_fields(payload: str) -> PortableFieldsProjection:
+    frontmatter = FrontmatterParser.parse(document(payload))
+    assert frontmatter.state == "valid"
+    projection = project_portable_fields(frontmatter)
+    assert projection is not None
+    return projection
 
 
 @pytest.mark.parametrize(
@@ -287,3 +300,287 @@ def test_invalid_result_is_privacy_safe_bounded_and_leaves_markdown_unchanged():
 def test_parser_rejects_non_decoded_input_instead_of_accepting_a_path(tmp_path):
     with pytest.raises(TypeError, match="decoded text"):
         FrontmatterParser.parse(tmp_path / "Note.md")  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    "frontmatter",
+    [
+        FrontmatterParser.parse("# No frontmatter\n"),
+        FrontmatterParser.parse("---\naliases: [unterminated\n---\n"),
+    ],
+)
+def test_portable_fields_are_unavailable_for_absent_or_invalid_frontmatter(frontmatter):
+    assert project_portable_fields(frontmatter) is None
+
+
+def test_missing_portable_fields_are_independently_absent():
+    projection = portable_fields("other: metadata\n")
+
+    assert projection.aliases.state == "absent"
+    assert projection.aliases.occurrences == ()
+    assert projection.aliases.diagnostics == ()
+    assert projection.tags.state == "absent"
+    assert projection.tags.occurrences == ()
+    assert projection.tags.diagnostics == ()
+
+
+def test_only_exact_top_level_portable_field_names_are_recognized():
+    projection = portable_fields("Aliases: [not, portable]\nnested: {tags: [not, portable]}\n")
+
+    assert projection.aliases.state == "absent"
+    assert projection.tags.state == "absent"
+
+
+def test_scalar_and_sequence_forms_preserve_exact_values_indexes_order_and_duplicates():
+    projection = portable_fields(
+        'aliases: " Alias "\n'
+        'tags: ["#Parent/Child", MiXeD, café, "café", MiXeD]\n'
+    )
+
+    assert projection.aliases.state == "valid"
+    assert [(item.value, item.source_index) for item in projection.aliases.occurrences] == [
+        (" Alias ", 0)
+    ]
+    assert projection.tags.state == "valid"
+    assert [(item.value, item.source_index) for item in projection.tags.occurrences] == [
+        ("#Parent/Child", 0),
+        ("MiXeD", 1),
+        ("café", 2),
+        ("café", 3),
+        ("MiXeD", 4),
+    ]
+
+
+def test_empty_sequence_is_valid_with_no_occurrences_or_diagnostics():
+    projection = portable_fields("aliases: []\n")
+
+    assert projection.aliases.state == "valid"
+    assert projection.aliases.occurrences == ()
+    assert projection.aliases.diagnostics == ()
+
+
+@pytest.mark.parametrize("invalid_value", ["null", "true", "12", "1.5", "{}"])
+def test_invalid_alias_scalar_does_not_affect_valid_tags(invalid_value):
+    projection = portable_fields(f"aliases: {invalid_value}\ntags: [one, two]\n")
+
+    assert projection.aliases.state == "invalid"
+    assert projection.aliases.occurrences == ()
+    assert projection.aliases.diagnostics == (
+        PortableFieldDiagnostic(reason="field_type", field="aliases"),
+    )
+    assert [item.value for item in projection.tags.occurrences] == ["one", "two"]
+
+
+@pytest.mark.parametrize(
+    ("invalid_value", "source_index"),
+    [
+        ("[valid, false, later]", 1),
+        ("[valid, null, later]", 1),
+        ("[valid, 2, later]", 1),
+        ("[valid, 2.5, later]", 1),
+        ("[valid, {}, later]", 1),
+        ("[valid, [nested], later]", 1),
+    ],
+)
+def test_invalid_alias_sequence_member_does_not_affect_valid_tags(invalid_value, source_index):
+    projection = portable_fields(f"aliases: {invalid_value}\ntags: tag\n")
+
+    assert projection.aliases.state == "invalid"
+    assert projection.aliases.occurrences == ()
+    assert projection.aliases.diagnostics == (
+        PortableFieldDiagnostic(
+            reason="member_type",
+            field="aliases",
+            source_index=source_index,
+        ),
+    )
+    assert [item.value for item in projection.tags.occurrences] == ["tag"]
+
+
+def test_invalid_tags_do_not_affect_valid_aliases():
+    projection = portable_fields("aliases: [first, second]\ntags: [valid, false]\n")
+
+    assert [item.value for item in projection.aliases.occurrences] == ["first", "second"]
+    assert projection.tags.state == "invalid"
+    assert projection.tags.diagnostics == (
+        PortableFieldDiagnostic(reason="member_type", field="tags", source_index=1),
+    )
+
+
+def test_invalid_portable_field_does_not_invalidate_generic_frontmatter():
+    frontmatter = FrontmatterParser.parse(document("aliases: false\ntags: tag\nother: metadata\n"))
+    assert frontmatter.state == "valid"
+    assert frontmatter.metadata == {"aliases": False, "tags": "tag", "other": "metadata"}
+
+    projection = project_portable_fields(frontmatter)
+
+    assert projection is not None
+    assert projection.aliases.state == "invalid"
+    assert projection.tags.state == "valid"
+    assert frontmatter.state == "valid"
+    assert frontmatter.metadata == {"aliases": False, "tags": "tag", "other": "metadata"}
+
+
+def test_empty_values_are_omitted_with_ordered_bounded_diagnostics():
+    projection = portable_fields('aliases: ["", "  ", keep, "\t", second]\n')
+
+    assert projection.aliases.state == "valid"
+    assert [(item.value, item.source_index) for item in projection.aliases.occurrences] == [
+        ("keep", 2),
+        ("second", 4),
+    ]
+    assert projection.aliases.diagnostics == (
+        PortableFieldDiagnostic(reason="empty_value", field="aliases", source_index=0),
+        PortableFieldDiagnostic(reason="empty_value", field="aliases", source_index=1),
+        PortableFieldDiagnostic(reason="empty_value", field="aliases", source_index=3),
+    )
+
+
+def test_all_empty_values_remain_a_valid_field():
+    projection = portable_fields('tags: ["", " ", "\t"]\n')
+
+    assert projection.tags.state == "valid"
+    assert projection.tags.occurrences == ()
+    assert [diagnostic.source_index for diagnostic in projection.tags.diagnostics] == [0, 1, 2]
+    assert all(diagnostic.reason == "empty_value" for diagnostic in projection.tags.diagnostics)
+
+
+@pytest.mark.parametrize(
+    ("source_count", "expected_state"),
+    [
+        (MAX_PORTABLE_FIELD_VALUES - 1, "valid"),
+        (MAX_PORTABLE_FIELD_VALUES, "valid"),
+        (MAX_PORTABLE_FIELD_VALUES + 1, "invalid"),
+    ],
+)
+def test_portable_field_source_value_count_bound(source_count, expected_state):
+    projection = portable_fields(f"aliases: [{','.join('item' for _ in range(source_count))}]\n")
+
+    assert projection.aliases.state == expected_state
+    if expected_state == "valid":
+        assert len(projection.aliases.occurrences) == source_count
+        assert projection.aliases.diagnostics == ()
+    else:
+        assert projection.aliases.occurrences == ()
+        assert projection.aliases.diagnostics == (
+            PortableFieldDiagnostic(reason="source_value_count", field="aliases"),
+        )
+
+
+@pytest.mark.parametrize(
+    ("source_count", "expected_state"),
+    [
+        (MAX_PORTABLE_FIELD_VALUES, "valid"),
+        (MAX_PORTABLE_FIELD_VALUES + 1, "invalid"),
+    ],
+)
+def test_source_count_is_checked_before_empty_value_omission(source_count, expected_state):
+    empty_values = ",".join('""' for _ in range(source_count))
+    projection = portable_fields(f"aliases: [{empty_values}]\n")
+
+    assert projection.aliases.state == expected_state
+    assert projection.aliases.occurrences == ()
+    if expected_state == "valid":
+        assert len(projection.aliases.diagnostics) == MAX_PORTABLE_FIELD_VALUES
+        assert all(item.reason == "empty_value" for item in projection.aliases.diagnostics)
+    else:
+        assert projection.aliases.diagnostics == (
+            PortableFieldDiagnostic(reason="source_value_count", field="aliases"),
+        )
+
+
+@pytest.mark.parametrize(
+    ("value", "expected_state"),
+    [
+        ("x" * (MAX_PORTABLE_VALUE_BYTES - 1), "valid"),
+        ("x" * MAX_PORTABLE_VALUE_BYTES, "valid"),
+        ("x" * (MAX_PORTABLE_VALUE_BYTES + 1), "invalid"),
+        ("é" * 511 + "a", "valid"),
+        ("é" * 512, "valid"),
+        ("é" * 512 + "a", "invalid"),
+    ],
+)
+def test_portable_field_utf8_value_byte_bound(value, expected_state):
+    assert len(value.encode("utf-8")) in {
+        MAX_PORTABLE_VALUE_BYTES - 1,
+        MAX_PORTABLE_VALUE_BYTES,
+        MAX_PORTABLE_VALUE_BYTES + 1,
+    }
+    projection = portable_fields(f'aliases: ["{value}"]\n')
+
+    assert projection.aliases.state == expected_state
+    if expected_state == "valid":
+        assert [item.value for item in projection.aliases.occurrences] == [value]
+    else:
+        assert projection.aliases.occurrences == ()
+        assert projection.aliases.diagnostics == (
+            PortableFieldDiagnostic(reason="value_size", field="aliases", source_index=0),
+        )
+
+
+def test_oversized_whitespace_is_omitted_before_usable_value_size_validation():
+    whitespace = " " * (MAX_PORTABLE_VALUE_BYTES + 1)
+    projection = portable_fields(f'aliases: ["{whitespace}"]\n')
+
+    assert projection.aliases.state == "valid"
+    assert projection.aliases.occurrences == ()
+    assert projection.aliases.diagnostics == (
+        PortableFieldDiagnostic(reason="empty_value", field="aliases", source_index=0),
+    )
+
+
+def test_projection_does_not_mutate_generic_metadata_or_nested_values():
+    frontmatter = FrontmatterParser.parse(
+        document("aliases: [one, two, one]\ntags: [tag]\nother: {nested: [1, 2]}\n")
+    )
+    assert frontmatter.state == "valid"
+    assert frontmatter.metadata is not None
+    metadata = frontmatter.metadata
+    aliases = metadata["aliases"]
+    nested = metadata["other"]
+
+    projection = project_portable_fields(frontmatter)
+
+    assert projection is not None
+    assert frontmatter.metadata is metadata
+    assert frontmatter.metadata["aliases"] is aliases
+    assert frontmatter.metadata["other"] is nested
+    assert frontmatter.metadata == {
+        "aliases": ("one", "two", "one"),
+        "tags": ("tag",),
+        "other": {"nested": (1, 2)},
+    }
+
+
+def test_validation_reports_only_the_deterministic_first_failure():
+    oversized = "sensitive-" + "x" * MAX_PORTABLE_VALUE_BYTES
+    too_many_with_bad_member = ["ok"] * MAX_PORTABLE_FIELD_VALUES + ["false"]
+    count_projection = portable_fields(
+        f"aliases: [{','.join(too_many_with_bad_member[:-1])}, false]\n"
+    )
+    member_projection = portable_fields(f'aliases: ["{oversized}", false]\n')
+    size_projection = portable_fields(f'aliases: ["{oversized}", "{oversized}later"]\n')
+
+    assert count_projection.aliases.diagnostics == (
+        PortableFieldDiagnostic(reason="source_value_count", field="aliases"),
+    )
+    assert member_projection.aliases.diagnostics == (
+        PortableFieldDiagnostic(reason="member_type", field="aliases", source_index=1),
+    )
+    assert size_projection.aliases.diagnostics == (
+        PortableFieldDiagnostic(reason="value_size", field="aliases", source_index=0),
+    )
+    assert oversized not in repr(count_projection.aliases.diagnostics)
+    assert oversized not in repr(member_projection.aliases.diagnostics)
+    assert oversized not in repr(size_projection.aliases.diagnostics)
+
+
+def test_portable_projection_and_diagnostics_are_immutable():
+    projection = portable_fields('aliases: ["", value]\ntags: tag\n')
+
+    with pytest.raises(FrozenInstanceError):
+        projection.aliases.state = "invalid"  # type: ignore[misc]
+    with pytest.raises(FrozenInstanceError):
+        projection.aliases.diagnostics[0].source_index = 2  # type: ignore[misc]
+    with pytest.raises(TypeError):
+        projection.aliases.occurrences[0] = projection.aliases.occurrences[0]  # type: ignore[index]
