@@ -255,8 +255,15 @@ Current post-v1 planning position:
   to the verified canonical source directory through `VaultService`, preserving written metadata,
   order, duplicates, unresolved local `.md` targets, exact spelling, and symlink containment
 - VB-113 does not change existing wikilink semantics or REST, MCP, CLI, dashboard, semantic,
-  persistence, index, or write behavior; VB-114 normalized relationships is next but remains
-  undefined and unimplemented
+  persistence, index, or write behavior
+- VB-114 is implemented as one immutable live `RelationshipOccurrence` view over both existing
+  dialects: parser-owned positions preserve true mixed source order, `VaultService` returns bounded
+  resolved/missing/unsafe verification facts, wikilinks additionally preserve ambiguity, and
+  additive normalized outgoing/backlink methods preserve verified canonical identity, origin,
+  duplicates, deterministic ordering, and exact stable backlink deduplication
+- VB-114 adds no public REST/OpenAPI, MCP, CLI, or dashboard surface and no persistence, graph/index,
+  semantic-ranking, metadata-resolution, or write behavior; Milestone 12 is complete, while
+  Milestone 13 remains planned and has no authorized implementation contract
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
 

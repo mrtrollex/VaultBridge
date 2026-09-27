@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from pathlib import PurePosixPath, PureWindowsPath
+from typing import Literal
 
 from app.services.vault import VaultService
 
@@ -18,6 +19,7 @@ class MarkdownLink:
     fragment: str | None
     label: str
     resolved_path: str | None = None
+    _source_position: int = field(default=-1, compare=False, repr=False)
 
 
 class MarkdownLinkResolver:
@@ -33,7 +35,10 @@ class MarkdownLinkResolver:
         fence_character: str | None = None
         fence_length = 0
 
-        for line in markdown.splitlines():
+        source_offset = 0
+        for raw_line in markdown.splitlines(keepends=True):
+            split_line = raw_line.splitlines()
+            line = split_line[0] if split_line else ""
             fence_match = _FENCE_PATTERN.match(line)
             if fence_match:
                 marker = fence_match.group(1)
@@ -47,20 +52,39 @@ class MarkdownLinkResolver:
                 ):
                     fence_character = None
                     fence_length = 0
+                source_offset += len(raw_line)
                 continue
 
             if fence_character is None:
-                links.extend(MarkdownLinkResolver._parse_line(line))
+                links.extend(
+                    MarkdownLinkResolver._parse_line(
+                        line,
+                        source_offset=source_offset,
+                    )
+                )
+            source_offset += len(raw_line)
 
         return tuple(links)
 
     def resolve(self, link: MarkdownLink, *, source_path: str) -> MarkdownLink:
         """Return a new occurrence with its verified canonical target when live."""
-        resolved_path = self._vault_service.verify_source_relative_markdown_path(
+        return self.resolve_with_reason(link, source_path=source_path)[0]
+
+    def resolve_with_reason(
+        self,
+        link: MarkdownLink,
+        *,
+        source_path: str,
+    ) -> tuple[MarkdownLink, Literal["resolved", "missing", "unsafe"]]:
+        """Resolve one link and return its bounded privacy-safe outcome."""
+        verification = self._vault_service.verify_source_relative_markdown_path_result(
             source_path,
             link.destination,
         )
-        return replace(link, resolved_path=resolved_path)
+        return (
+            replace(link, resolved_path=verification.resolved_path),
+            verification.resolution,
+        )
 
     def resolve_markdown(
         self,
@@ -74,7 +98,7 @@ class MarkdownLinkResolver:
         )
 
     @staticmethod
-    def _parse_line(line: str) -> list[MarkdownLink]:
+    def _parse_line(line: str, *, source_offset: int = 0) -> list[MarkdownLink]:
         links: list[MarkdownLink] = []
         cursor = 0
         line_length = len(line)
@@ -95,7 +119,9 @@ class MarkdownLinkResolver:
 
             link, cursor = MarkdownLinkResolver._parse_at(line, cursor)
             if link is not None:
-                links.append(link)
+                links.append(
+                    replace(link, _source_position=source_offset + link._source_position)
+                )
 
         return links
 
@@ -154,7 +180,12 @@ class MarkdownLinkResolver:
         if parsed is None:
             return None, end
         destination, fragment = parsed
-        return MarkdownLink(destination, fragment, label), end
+        return MarkdownLink(
+            destination,
+            fragment,
+            label,
+            _source_position=start,
+        ), end
 
     @staticmethod
     def _note_destination(raw_destination: str) -> tuple[str, str | None] | None:

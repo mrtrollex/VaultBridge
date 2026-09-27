@@ -578,14 +578,19 @@ dependencies and the MCP HTTP ASGI boundary.
 ### `services/wikilinks.py`
 
 - immutable wikilink metadata in Markdown source order
+- internal immutable source positions for cross-dialect composition without changing legacy
+  equality or representation
 - backtick/tilde fenced-code exclusion
-- exact, ambiguity-safe live-note resolution through `VaultService`
+- exact, ambiguity-safe live-note resolution through `VaultService`, with bounded normalized
+  resolved/missing/ambiguous/unsafe outcomes
 - immutable exact-name candidate snapshots reusable across one bounded live scan
 - no note reads/writes, relationship persistence, semantic-index access, or protocol behavior
 
 ### `services/markdown_links.py`
 
 - immutable written destination, fragment, label, and optional canonical resolution metadata
+- internal immutable source positions for cross-dialect composition without changing legacy
+  equality or representation
 - bounded inline-link scanning with fenced-code, inline-code, image, external, and non-Markdown
   exclusions
 - exact source-relative resolution through `VaultService`, without percent decoding, alias/title
@@ -601,8 +606,11 @@ dependencies and the MCP HTTP ASGI boundary.
 - target-verified live backlink scans over deterministic canonical `VaultService` enumeration
 - exact dialect-specific backlink deduplication while preserving canonical source-path order and
   source relationship order
+- additive immutable normalized occurrences combine both dialects from one source snapshot in true
+  document order with explicit origin, note-link type, resolution reason, and minimal empty origin
+  metadata; normalized backlinks require verified canonical target equality and preserve origin
 - public REST/MCP relationship adapters continue to call only the existing wikilink-backed methods;
-  multi-dialect normalization remains VB-114 scope
+  the normalized domain view is not publicly exposed
 - no note writes, persistence, semantic-index access, or protocol behavior
 
 ### `api/relationships.py`
