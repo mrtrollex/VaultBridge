@@ -1575,8 +1575,8 @@ OpenAI-specific protocol behavior.
 
 ### VB-110 — Define portable PKM document model / ADR — P1 ✅
 
-**Status:** Complete. ADR 0005 is accepted; VB-111 is implemented and VB-112 is the next Portable
-PKM task in this milestone.
+**Status:** Complete. ADR 0005 is accepted, VB-111 is implemented, and VB-112 is defined and ready
+for a separate implementation task in this milestone.
 
 **Goal:** define a portable, bounded domain model for Markdown notes, metadata, headings, and
 relationships without introducing a second authoritative store or changing current runtime
@@ -1688,6 +1688,105 @@ and frontmatter editing, Docker/TrueNAS/release artifacts, and all public schema
 VB-111 does not implement alias/tag projection (VB-112), standard Markdown relationship parsing
 (VB-113), the normalized relationship view (VB-114), multiple knowledge spaces, or any new endpoint,
 response field, tool, resource, or UI capability.
+
+---
+
+### VB-112 — Implement portable aliases and tags projection — P1
+
+**Status:** Defined and ready for implementation as of 2026-09-27; runtime work is not implemented.
+
+**Goal:** add the smallest immutable, read-only domain projection for portable `aliases` and `tags`
+from the already-valid generic metadata produced by VB-111, following ADR 0005 without changing
+canonical identity, title selection, relationships, public behavior, persistence, or Markdown.
+
+**Authoritative implementation contract**
+
+- Consume only a VB-111 `FrontmatterResult` in the `valid` state and read only the top-level keys
+  exactly named `aliases` and `tags`. Do not parse YAML again or create a second metadata parser.
+  Absent or invalid frontmatter produces no portable-fields projection and must not be
+  reinterpreted as two valid empty fields. Within valid frontmatter, a missing key is the distinct
+  `absent` state for that field.
+- Represent each field independently with an immutable/read-only `absent`, `valid`, or `invalid`
+  result. A valid result carries its ordered usable occurrences and any empty-value diagnostics; an
+  invalid result carries no occurrences. Invalid `aliases` must not affect `tags`, invalid `tags`
+  must not affect `aliases`, and neither can change the valid VB-111 frontmatter result or its
+  generic metadata mapping.
+- A present field accepts exactly one string or the VB-111 sequence representation containing only
+  strings. A scalar string is one source value at source index `0`; sequence indexes are the source
+  indexes. An empty sequence is valid with zero occurrences. A non-string scalar produces an
+  invalid field, and any non-string sequence member produces an invalid field. Numbers, booleans,
+  null, mappings, nested sequences, and other containers are never coerced to strings.
+- Count source values before empty-value omission: the scalar form has count `1`, and the sequence
+  form has its original length. Counts `255` and `256` are within the field limit; count `257` is
+  over the limit and makes only that portable field invalid. More generally, every count from `0`
+  through `256` passes the count check and any count greater than `256` is invalid.
+- After type and count validation, use Python `str.strip()` only to decide whether each source
+  string is empty. An empty or whitespace-only value is omitted from occurrences and produces an
+  `empty_value` diagnostic without invalidating the otherwise well-typed field. A field containing
+  only such values is therefore `valid`, with zero occurrences and diagnostics. For every usable
+  value, `len(value.encode("utf-8"))` of `1,023` or `1,024` bytes is accepted and `1,025` bytes is
+  over the limit; more generally, at most `1,024` UTF-8 bytes is accepted and any larger usable
+  value makes only that portable field invalid. Empty-value classification occurs before this
+  usable-value size check.
+- Preserve every usable string exactly as held in VB-111 metadata, including surrounding
+  whitespace, case, Unicode code points, and a written leading `#`. Preserve source order and
+  repeated values in the primary occurrence view; do not silently deduplicate. The projection must
+  never rewrite or mutate the generic metadata mapping, its nested values, or source Markdown.
+- Do not add case folding, Unicode compatibility normalization, hierarchy expansion, or automatic
+  `#` insertion/removal. A convenience set-like view is not required. If a future implementation
+  includes one in this task, it must trim surrounding whitespace for exact comparison only, retain
+  the first occurrence, and otherwise preserve these same non-normalizing rules.
+
+**Diagnostics and deterministic validation**
+
+- A portable-field diagnostic has only a stable reason, the allowlisted field name (`aliases` or
+  `tags`), and an optional zero-based source index. The complete reason vocabulary is
+  `field_type`, `member_type`, `source_value_count`, `value_size`, and `empty_value`. It contains no
+  source value, metadata content, free-form parser text, or runtime type representation.
+- Validate in this order: accepted outer field form; source-value count; member types in ascending
+  source-index order; usable-value byte sizes in ascending source-index order; then construct the
+  occurrence output and empty-value diagnostics. `field_type` and `source_value_count` have no
+  source index; `member_type`, `value_size`, and `empty_value` identify the relevant source index.
+- An invalid field exposes exactly one diagnostic for the first failure under that order. An absent
+  field has no diagnostics. A valid field exposes one `empty_value` diagnostic for each omitted
+  source occurrence, in source order, so diagnostics are bounded to at most `256` per valid field.
+  Diagnostic objects and collections are immutable/read-only and must never include the offending
+  alias or tag text.
+
+**Alias and tag semantics**
+
+- Aliases are portable lookup candidates only. They never become canonical note identity, override
+  the verified canonical vault-relative path, change title behavior, resolve or select a note, or
+  alter relationship resolution in VB-112. Any future alias lookup with zero or multiple live
+  canonical-path candidates remains unresolved; alias resolution/search requires a separately
+  authorized task.
+- Tags come only from the valid top-level frontmatter `tags` field under the rules above. VB-112
+  adds no inline Markdown `#tag` parsing, nested or hierarchical expansion, leading-`#`
+  normalization, case normalization, or tag search/filter/query behavior.
+
+**Implementation and future tests**
+
+- Extend the VB-111 frontmatter/domain layer with only the minimum projection and immutable result
+  types needed to own these invariants. Do not duplicate its parser or move filesystem, containment,
+  decoding, generic metadata, title, relationship, adapter, or persistence ownership into this
+  projection.
+- Add focused tests for absent fields and absent/invalid frontmatter; scalar and sequence forms;
+  field independence; non-string scalars and members, including mappings and nested sequences;
+  empty and whitespace-only values, including an all-empty valid field; ordering and duplicates;
+  source counts `255`/`256`/`257`; usable sizes `1,023`/`1,024`/`1,025` UTF-8 bytes with ASCII and
+  multibyte strings; exact value preservation without coercion, case folding, Unicode
+  normalization, hierarchy expansion, or `#` changes; unchanged generic metadata; and diagnostic
+  reason, ordering, cardinality, immutability, and privacy bounds.
+- Regression tests must prove existing title, REST, MCP, CLI, dashboard, semantic, relationship,
+  persistence, and write behavior remains unchanged.
+
+**Compatibility / explicit non-goals:** VB-112 adds no alias resolution; title projection or title
+behavior change; tag search/filter/query behavior; inline Markdown tags; standard Markdown links
+(VB-113); normalized relationships (VB-114); REST endpoint, operation ID, request/response schema,
+MCP tool/resource, CLI, or dashboard change; SQLite/schema/persistence/cache/index change; semantic
+ranking, embedding, model, chunking, or index-signature change; note write or frontmatter editing;
+multiple knowledge spaces; dependency, Docker, TrueNAS, packaging, publication, or release change.
+Existing public and deployment behavior remains unchanged.
 
 ---
 
@@ -1803,7 +1902,7 @@ VB-001 ✓
 → v1.3.0 ✓
 → VB-110 ✓ (accepted portable PKM document model / ADR)
 → VB-111 ✓ (bounded YAML frontmatter parsing)
-→ VB-112 NEXT (portable aliases and tags)
+→ VB-112 DEFINED / READY (portable aliases and tags; runtime pending)
 → VB-034 (optional opt-in write task)
 ```
 
@@ -1839,7 +1938,7 @@ evidence but does not support a production graph-ranking change, while VB-106 ad
 write parity and first-class TrueNAS MCP configuration source. VB-032/VB-033 remain deferred and
 VB-034 remains a later, opt-in write capability. VB-110 accepts ADR 0005 as the portable PKM
 document-model contract. VB-111 implements its bounded read-only YAML frontmatter parser without
-changing public behavior; VB-112 is the next Portable PKM task and requires its own authoritative
-scope before implementation.
+changing public behavior. The authoritative VB-112 portable aliases/tags contract is defined and
+ready for a separate implementation task; its runtime projection is not implemented.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

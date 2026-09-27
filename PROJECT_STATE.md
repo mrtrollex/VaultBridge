@@ -243,7 +243,11 @@ Current post-v1 planning position:
   values, and exceeded bounds invalidate metadata without changing the original Markdown
 - VB-111 is not wired into REST, MCP, CLI, dashboard, title derivation, relationships, persistence,
   semantic indexing, or note writes; `VaultService` remains the sole filesystem, containment,
-  whole-note size, and UTF-8 decoding owner, and VB-112 is the next Portable PKM task
+  whole-note size, and UTF-8 decoding owner
+- the authoritative VB-112 `BACKLOG.md` contract is defined and ready for a separate implementation
+  task: it fixes independent absent/valid/invalid alias/tag states, string-only scalar/sequence
+  inputs, exact `256`-source and `1,024`-UTF-8-byte bounds, ordered duplicate-preserving values, and
+  bounded privacy-safe diagnostics; VB-112 runtime projection remains unimplemented
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
 
