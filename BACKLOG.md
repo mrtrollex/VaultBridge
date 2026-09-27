@@ -1575,8 +1575,8 @@ OpenAI-specific protocol behavior.
 
 ### VB-110 — Define portable PKM document model / ADR — P1 ✅
 
-**Status:** Complete. ADR 0005 is accepted; VB-111 is the next implementation task in this
-milestone.
+**Status:** Complete. ADR 0005 is accepted; VB-111 is implemented and VB-112 is the next Portable
+PKM task in this milestone.
 
 **Goal:** define a portable, bounded domain model for Markdown notes, metadata, headings, and
 relationships without introducing a second authoritative store or changing current runtime
@@ -1618,7 +1618,11 @@ release work; and authoritative task contracts or implementation for VB-111 thro
 
 ### VB-111 — Implement bounded YAML frontmatter parser — P1
 
-**Status:** Defined / ready for implementation. Runtime work has not started.
+**Status:** Completed on 2026-09-27. `FrontmatterParser` accepts only decoded Markdown, recognizes
+the exact bounded envelope, and returns immutable `absent`, `valid`, or privacy-safe `invalid`
+results. It uses PyYAML's event parser without object construction or implicit resolution, while
+VaultBridge owns YAML 1.2 Core scalar resolution, feature rejection, duplicate detection, ordering,
+and every ADR 0005 bound. No adapter, title, persistence, relationship, or write behavior changed.
 
 **Goal:** add a small read-only domain parser for bounded, safe YAML frontmatter in Markdown content
 already returned by `VaultService`, following ADR 0005 without changing any public behavior.
@@ -1798,7 +1802,8 @@ VB-001 ✓
 → v1.2.1 ✓
 → v1.3.0 ✓
 → VB-110 ✓ (accepted portable PKM document model / ADR)
-→ VB-111 NEXT (bounded YAML frontmatter parsing)
+→ VB-111 ✓ (bounded YAML frontmatter parsing)
+→ VB-112 NEXT (portable aliases and tags)
 → VB-034 (optional opt-in write task)
 ```
 
@@ -1833,6 +1838,8 @@ open. Milestone 11 is complete as a read-first relationship track; VB-105 record
 evidence but does not support a production graph-ranking change, while VB-106 adds default-off MCP
 write parity and first-class TrueNAS MCP configuration source. VB-032/VB-033 remain deferred and
 VB-034 remains a later, opt-in write capability. VB-110 accepts ADR 0005 as the portable PKM
-document-model contract; VB-111 is the next implementation task and remains unimplemented.
+document-model contract. VB-111 implements its bounded read-only YAML frontmatter parser without
+changing public behavior; VB-112 is the next Portable PKM task and requires its own authoritative
+scope before implementation.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

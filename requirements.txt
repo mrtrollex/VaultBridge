@@ -5,3 +5,4 @@ numpy>=1.26,<3.0
 fastembed==0.8.0
 watchdog>=6.0,<7.0
 mcp>=2,<3
+PyYAML>=6.0.2,<7.0
