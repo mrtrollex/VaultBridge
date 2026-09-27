@@ -157,9 +157,9 @@ Do not implement the recommended next task.
 ## Current next task
 
 VB-110 is complete as design-only work under accepted ADR 0005. VB-111 bounded YAML frontmatter
-parsing is the next Milestone 12 implementation task, but it must receive its own authoritative
-`BACKLOG.md` contract before implementation. Do not infer VB-111 runtime scope from the roadmap or
-implement VB-112 and later work with it.
+parsing now has its authoritative `BACKLOG.md` contract and is the next Milestone 12 implementation
+task, but remains unimplemented. Use that contract rather than inferring scope from the roadmap, and
+do not implement VB-112 and later work with it.
 
 No new autonomous relationship task is currently recommended. VB-105 is complete as
 evaluation/design evidence and does not support or authorize a production graph-ranking change.

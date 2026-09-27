@@ -889,9 +889,9 @@ require every conceptual field to be persisted.
 
 ### Task sequence
 
-VB-110 is complete under its authoritative `BACKLOG.md` contract. VB-111 is the next implementation
-task but still requires its own authoritative backlog scope; VB-112 through VB-114 remain roadmap
-intent only until separately defined.
+VB-110 is complete under its authoritative `BACKLOG.md` contract. VB-111 now has an authoritative
+implementation contract and is ready for a separate implementation task; its runtime remains
+unimplemented. VB-112 through VB-114 remain roadmap intent only until separately defined.
 
 ```text
 VB-110 define portable PKM document model / ADR ✓
@@ -924,13 +924,12 @@ resource limits without authorizing persistence. Existing `VaultService` contain
 compatibility identifiers remain in place; no cosmetic service or knowledge-space rename is
 authorized.
 
-### YAML frontmatter
+### VB-111 — Bounded YAML frontmatter parsing — DEFINED / UNIMPLEMENTED
 
-Safely parse an explicitly supported subset/profile of YAML frontmatter into bounded metadata.
-Before implementation, decide how parser dependencies, unsafe YAML features, nesting/depth, scalar
-and document sizes, duplicate keys, malformed delimiters, encoding failures, and unsupported values
-behave. Malformed metadata must not bypass containment, make a note writable, or corrupt
-authoritative Markdown.
+The authoritative `BACKLOG.md` contract now fixes the exact envelope, YAML 1.2 Core scalar profile,
+safe-feature exclusions, bounds, result states, diagnostics, ownership, compatibility, and test
+requirements. Implementation remains separate and must not bypass containment, make a note
+writable, corrupt authoritative Markdown, or pull VB-112 through VB-114 into scope.
 
 ### Aliases and canonical identity
 
@@ -1273,10 +1272,10 @@ establish acceptable general benefit. Wikilinks remain the first supported relat
 not the architectural definition.
 
 The strategic continuation is Milestone 12. VB-110 and ADR 0005 are accepted; VB-111 bounded YAML
-frontmatter parsing is next but remains unimplemented pending its own authoritative `BACKLOG.md`
-contract. VB-032/VB-033 remain deferred, and VB-034 remains a later optional write task rather than
-NEXT. The still-proposed VB-111–VB-114, VB-120–VB-122, VB-130–VB-132, VB-140–VB-142, and
-VB-150–VB-152 identifiers reserve no implementation scope by themselves.
+frontmatter parsing now has an authoritative `BACKLOG.md` contract and is ready for a separate
+implementation task, but remains unimplemented. VB-032/VB-033 remain deferred, and VB-034 remains a
+later optional write task rather than NEXT. VB-112–VB-114, VB-120–VB-122, VB-130–VB-132,
+VB-140–VB-142, and VB-150–VB-152 remain proposed and reserve no implementation scope by themselves.
 
 ---
 
