@@ -158,9 +158,9 @@ Do not implement the recommended next task.
 
 VB-110 is complete as design-only work under accepted ADR 0005, and VB-111 implements the bounded
 decoded-content-only YAML frontmatter parser without public adapter or title behavior changes.
-VB-112 portable aliases and tags is the next Milestone 12 task, but it remains roadmap intent until
-an authoritative `BACKLOG.md` contract defines it. Do not infer or implement VB-112 from ADR or
-roadmap prose alone.
+The authoritative `BACKLOG.md` contract for VB-112 portable aliases and tags is now defined and
+ready, but runtime projection remains unimplemented. A separate VB-112 implementation task must
+follow that exact contract and must not infer VB-113 or later scope from ADR or roadmap prose.
 
 No new autonomous relationship task is currently recommended. VB-105 is complete as
 evaluation/design evidence and does not support or authorize a production graph-ranking change.

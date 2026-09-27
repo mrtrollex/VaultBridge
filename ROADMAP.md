@@ -876,7 +876,7 @@ Milestone exit criteria:
 
 ---
 
-# Milestone 12 — Portable PKM model — IN PROGRESS / VB-112 NEXT
+# Milestone 12 — Portable PKM model — IN PROGRESS / VB-112 READY
 
 **Goal:** give VaultBridge a portable document/metadata model that understands useful PKM semantics
 without making any one Markdown application the architectural owner.
@@ -889,15 +889,16 @@ require every conceptual field to be persisted.
 
 ### Task sequence
 
-VB-110 and VB-111 are complete under their authoritative `BACKLOG.md` contracts. VB-112 is the next
-Portable PKM task; VB-112 through VB-114 remain roadmap intent only until separately defined.
+VB-110 and VB-111 are complete under their authoritative `BACKLOG.md` contracts. The VB-112
+contract is defined and ready for a separate implementation task, but runtime work has not started.
+VB-113 and VB-114 remain roadmap intent only until separately defined.
 
 ```text
 VB-110 define portable PKM document model / ADR ✓
    ↓
 VB-111 bounded YAML frontmatter parsing ✓
    ↓
-VB-112 portable aliases and tags NEXT
+VB-112 portable aliases and tags DEFINED / READY
    ↓
 VB-113 contained standard Markdown relationships
    ↓
@@ -930,15 +931,22 @@ scalar profile, safe-feature exclusions, exact bounds, immutable result states, 
 privacy-safe diagnostics. PyYAML is used only for bounded parsing events; VaultBridge performs
 scalar resolution and immutable value construction without aliases or general YAML object
 construction. `VaultService` ownership, authoritative Markdown, public behavior, title behavior,
-and later VB-112 through VB-114 scope remain unchanged.
+and later VB-112 through VB-114 runtime scope remain unchanged.
 
-### Aliases and canonical identity
+### VB-112 — Portable aliases and tags — DEFINED / READY
+
+The authoritative `BACKLOG.md` contract now defines independent immutable alias/tag field states,
+strict string-only scalar/sequence forms, exact source-count and UTF-8 value bounds, ordered
+duplicate-preserving occurrences, empty-value diagnostics, and no mutation of VB-111 generic
+metadata. VB-112 remains unimplemented and requires a separate implementation task.
+
+#### Aliases and canonical identity
 
 Portable aliases may participate in relationship and knowledge operations without weakening exact
 filesystem identity or containment. Alias ambiguity must be represented explicitly; VaultBridge
 must not guess between multiple live notes or silently make an alias authoritative over a path.
 
-### Tags
+#### Tags
 
 Expose supported portable tags as structured knowledge metadata. Tag semantics remain domain data,
 not application-specific navigation or UI behavior.
@@ -1220,7 +1228,7 @@ MCP ✓
    ↓
 PKM RELATIONSHIP FOUNDATION ✓
    ↓
-PORTABLE PKM MODEL — IN PROGRESS / VB-112 NEXT
+PORTABLE PKM MODEL — IN PROGRESS / VB-112 READY
    ↓
 KNOWLEDGE QUERY LAYER
    ↓
@@ -1272,11 +1280,12 @@ production relationship-ranking change because measured live-scan cost and narro
 establish acceptable general benefit. Wikilinks remain the first supported relationship dialect,
 not the architectural definition.
 
-The strategic continuation is Milestone 12. VB-110 and ADR 0005 are accepted, and VB-111 bounded
-YAML frontmatter parsing is implemented without public-surface changes. VB-112 is the next Portable
-PKM task but still needs its own authoritative contract. VB-032/VB-033 remain deferred, and VB-034
-remains a later optional write task rather than NEXT. VB-112–VB-114, VB-120–VB-122, VB-130–VB-132,
-VB-140–VB-142, and VB-150–VB-152 remain proposed and reserve no implementation scope by themselves.
+The strategic continuation is Milestone 12. VB-110 and ADR 0005 are accepted, VB-111 bounded YAML
+frontmatter parsing is implemented without public-surface changes, and the authoritative VB-112
+contract is defined and ready while runtime projection remains unimplemented. VB-032/VB-033 remain
+deferred, and VB-034 remains a later optional write task rather than NEXT. VB-113–VB-114,
+VB-120–VB-122, VB-130–VB-132, VB-140–VB-142, and VB-150–VB-152 remain proposed and reserve no
+implementation scope by themselves.
 
 ---
 
