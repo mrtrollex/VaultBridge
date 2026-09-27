@@ -235,9 +235,10 @@ Current post-v1 planning position:
   relationship concepts, keeps canonical vault-relative Markdown paths as identity, preserves
   `VaultService` and `RelationshipService` ownership, and defines bounded conservative frontmatter,
   metadata, ambiguity, ordering, duplicate, failure, and derived-state rules
-- VB-110 changes no runtime behavior, dependency, API/MCP surface, database/index format,
-  deployment package, or release artifact; VB-111 bounded YAML frontmatter parsing is the next
-  Milestone 12 implementation task and remains unimplemented
+- VB-111 now has an authoritative `BACKLOG.md` implementation contract under ADR 0005 for its exact
+  envelope, YAML 1.2 Core safe profile, resource bounds, immutable absent/valid/invalid result, and
+  privacy-safe diagnostics; it remains unimplemented and changes no runtime behavior, dependency,
+  API/MCP surface, database/index format, deployment package, or release artifact
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
 

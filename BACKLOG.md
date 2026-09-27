@@ -1616,6 +1616,77 @@ release work; and authoritative task contracts or implementation for VB-111 thro
 
 ---
 
+### VB-111 — Implement bounded YAML frontmatter parser — P1
+
+**Status:** Defined / ready for implementation. Runtime work has not started.
+
+**Goal:** add a small read-only domain parser for bounded, safe YAML frontmatter in Markdown content
+already returned by `VaultService`, following ADR 0005 without changing any public behavior.
+
+**Authoritative implementation contract**
+
+- The parser accepts decoded Markdown content only. It never accepts, resolves, or reads a path;
+  containment, symlink protection, Markdown validation, `max_note_bytes`, and UTF-8 decoding remain
+  owned by `VaultService`.
+- After an optional leading UTF-8 BOM, frontmatter exists only when the first line is exactly `---`.
+  The first subsequent line exactly equal to `---` or `...` closes it; delimiter line endings may be
+  LF or CRLF, and a closing delimiter may end at EOF. Any other text is ordinary Markdown. An exact
+  opener with no exact closer inside the frontmatter byte limit is invalid frontmatter, not hidden
+  Markdown.
+- The complete envelope from the opening delimiter through the closing delimiter, including their
+  line endings when present but excluding the optional preceding BOM, is at most `65,536` UTF-8
+  bytes. The existing `VaultService.max_note_bytes` remains the whole-note limit. A
+  scalar's source representation is at most `8,192` UTF-8 bytes; a string mapping key is at most
+  `256` UTF-8 bytes; container depth is at most `8`, with the root mapping at depth `1`; and the
+  aggregate number of mapping entries plus sequence items is at most `1,024`. Checks must not
+  require alias expansion or another unbounded intermediate representation.
+- Parse exactly one YAML document whose root is a mapping. Nested mappings and sequences are
+  supported within the bounds, mapping and sequence order is preserved, and unknown safe keys are
+  retained. Mapping keys must be strings. Values are limited to strings, null, booleans, integers,
+  finite floating-point numbers, mappings, and sequences.
+- Implicit values follow YAML 1.2 Core Schema exactly: `true`/`false` are booleans; `null`/`~` are
+  null; `yes`, `no`, `on`, and `off` are strings; date-like plain scalars such as `2026-09-26` are
+  strings; and `0123` never has YAML 1.1 octal meaning and, when resolved numerically, is decimal
+  `123`. The implementation must configure or verify the selected parser against these cases and
+  must not silently coerce incompatible types.
+- Reject the entire block for invalid YAML, a non-mapping root, duplicate keys at any mapping depth,
+  a second YAML document, anchors, aliases, merge keys, explicit or custom tags, unsafe/general
+  object construction, non-string mapping keys, timestamps/dates, binary or set values,
+  language-specific or otherwise unsupported values, non-finite floats, or any exceeded bound.
+- Return one immutable/read-only domain result in exactly one state: `absent`; `valid`, including a
+  valid empty mapping and its ordered bounded metadata; or `invalid`, with no metadata. These states
+  remain distinct from an unavailable/rejected note at the existing `VaultService` boundary.
+- An invalid result carries one bounded diagnostic with one of these stable reason codes:
+  `malformed_envelope`, `invalid_yaml`, `non_mapping_root`, `duplicate_key`, `multiple_documents`,
+  `disallowed_yaml_feature`, `non_string_key`, `unsupported_value`, `frontmatter_too_large`,
+  `scalar_too_large`, `mapping_key_too_large`, `container_too_deep`, or `too_many_items`. It may also
+  carry one-based line and column integers relative to the YAML payload when safely available. No
+  diagnostic or log may include a metadata key/value, parser excerpt, YAML snippet, or note content.
+- Invalid or absent frontmatter never makes an otherwise readable note unreadable. Parsing is
+  deterministic and read-only: it never rewrites, repairs, truncates, normalizes, or otherwise
+  modifies Markdown.
+
+**Implementation and tests**
+
+- Choose the smallest safe YAML dependency or parsing approach that satisfies this contract;
+  dependency selection belongs to the implementation change and must follow repository dependency
+  policy. Do not use an unsafe loader or general object constructor.
+- Keep ownership in a focused parser and the minimum domain result types; do not add a generic
+  metadata/document service or publish the parser through REST, MCP, CLI, or dashboard surfaces.
+- Test every envelope rule, result state, rejection class, exact bound (including just-below/at/over
+  cases), YAML 1.2 scalar case above, order preservation, and privacy-safe diagnostics. Tests must
+  prove malformed metadata leaves the original decoded Markdown available and unchanged.
+
+**Compatibility / explicit non-goals:** existing REST and operation IDs, MCP tools/resources, CLI,
+dashboard, semantic search/ranking/model/chunking/index signature, duplicate candidates, title and
+relationship behavior, SQLite/schema/persistence/cache/graph storage, authentication, note writes
+and frontmatter editing, Docker/TrueNAS/release artifacts, and all public schemas remain unchanged.
+VB-111 does not implement alias/tag projection (VB-112), standard Markdown relationship parsing
+(VB-113), the normalized relationship view (VB-114), multiple knowledge spaces, or any new endpoint,
+response field, tool, resource, or UI capability.
+
+---
+
 ## Release history
 
 ### v1.2.0 release
