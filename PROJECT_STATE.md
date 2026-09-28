@@ -269,9 +269,18 @@ Current post-v1 planning position:
 - ADR 0006 makes live Markdown constraints authoritative before existing semantic ranking, records
   conservative stale-compatible-index and non-atomic filesystem semantics, fixes deterministic
   ordering/resource/failure/query-language bounds, and keeps every optional projection rebuildable
-- VB-120 adds no runtime query engine or `KnowledgeQueryService`, REST/OpenAPI, MCP, CLI, dashboard,
-  persistence/schema, ranking/index-signature, dependency/infrastructure, write, or Milestone 14+
-  behavior; VB-121 is next only after its own authoritative BACKLOG contract is accepted
+- VB-121 implements ADR 0006 through a domain-only `KnowledgeQueryService` with frozen request,
+  predicate, match, and result values: exact live
+  folder/path/literal/tag/top-level-metadata/normalized-relationship constraints establish the
+  eligible canonical-path set before optional existing semantic ranking and truncation
+- one deterministic live enumeration and one-read candidate evaluation reuse `VaultService`, the
+  VB-111/VB-112 frontmatter layer, one `RelationshipService` resolution snapshot, and additive
+  semantic eligible-path/basis helpers; incoming predicates never perform per-candidate backlink scans
+- semantic mode preserves the existing score, threshold, relative-floor, aggregation, and tie-break
+  contract while reporting compatible ready/previous-refresh/previous-error basis; nonsemantic mode
+  is index-independent and canonical-path ordered
+- VB-121 adds no REST/OpenAPI, MCP, CLI, dashboard, persistence/cache/query index, dependency,
+  write, ranking/index-signature, deployment, or release behavior; VB-122 remains planned only
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
 
@@ -364,6 +373,8 @@ Current milestones:
 - **Milestone 9 — TrueNAS Community App distribution (upstream accepted; post-merge VB-082 lifecycle validation in progress)**
 - **Milestone 10 — MCP integration (complete)**
 - **Milestone 11 — Obsidian Knowledge Graph / Note Relationships (complete; production graph ranking not supported)**
+- **Milestone 12 — Portable PKM model (complete)**
+- **Milestone 13 — Knowledge Query Layer (in progress; VB-120 and VB-121 complete, VB-122 planned only)**
 
 ## Working production characteristics
 

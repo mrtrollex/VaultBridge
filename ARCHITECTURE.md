@@ -88,6 +88,7 @@ app/services/vault.py safe path resolution, Markdown note operations and contain
 app/services/wikilinks.py deterministic wikilink parsing and exact resolution through VaultService
 app/services/markdown_links.py bounded inline Markdown note-link parsing and source-relative resolution
 app/services/duplicate_candidates.py live-title and verified semantic candidate composition
+app/services/knowledge_query.py bounded immutable live Knowledge Query domain orchestration
 app/services/semantic_search.py embedding, incremental indexing, hybrid ranking and semantic health state
 app/services/indexer.py one in-process full/targeted synchronization worker and deduplicating path queue
 app/services/filesystem_watcher.py optional recursive Markdown event interpretation and debounce
@@ -643,14 +644,16 @@ Batching, lifecycle-state transitions and index contents remain owned by
 ### `services/semantic_search.py`
 
 - query embedding
-- candidate scoring
+- candidate scoring, including an additive caller-supplied eligible canonical-path set applied before
+  chunk scoring, per-note aggregation, relative-floor selection, and truncation
 - hybrid reranking
 - result aggregation
+- bounded compatible ready / previous-refresh / previous-error query-basis reporting
 - full-vault and targeted-path synchronization orchestration
 
-### Knowledge Query domain boundary — accepted design, not implemented
+### `services/knowledge_query.py`
 
-[ADR 0006](docs/adr/0006-bounded-knowledge-query-capability.md) accepts one future domain
+[ADR 0006](docs/adr/0006-bounded-knowledge-query-capability.md) is implemented by one domain-only
 orchestration boundary over the existing owners. `VaultService` remains responsible for live
 canonical paths and reads; the frontmatter/portable-field layer remains responsible for metadata
 and tags; `RelationshipService` remains responsible for normalized relationship facts; and
@@ -664,9 +667,16 @@ constraints establish an eligible canonical-path set before optional semantic se
 are immutable verified canonical paths with deterministic canonical ordering or unchanged semantic
 score ordering and a bounded semantic-index-basis fact.
 
-This boundary is conceptual in VB-120. There is no runtime service/module, public schema, adapter,
-projection, persistence, dependency, or index/ranking change. VB-121 requires a separate
-authoritative BACKLOG contract before implementing the smallest fitting runtime owner.
+The runtime starts from one immutable `VaultService` candidate snapshot, applies exact folder/path
+scope, reuses one current candidate read for literal/frontmatter/tag/metadata/outgoing predicates,
+and reuses one `RelationshipService` resolution snapshot. Incoming predicates derive each fixed
+source once rather than scanning backlinks per candidate. Expected stale/unreadable candidates are
+omitted conservatively and final paths are reverified without claiming an atomic vault snapshot.
+
+The service is not wired into application construction or any REST/OpenAPI, MCP, CLI, or dashboard
+adapter. It adds no public schema, persistence, cache/query/relationship index, dependency, write,
+model/chunking/index-signature, or ranking change. VB-122 remains separately planned without an
+accepted adapter contract.
 
 ### `repositories/semantic.py`
 

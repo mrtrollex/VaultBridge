@@ -2333,3 +2333,38 @@ def test_targeted_refresh_against_v2_index_runs_safe_full_v3_rebuild(tmp_path, m
             "# Storage\n\n## Replication\n\nOriginal second."
         ],
     ]
+
+
+def test_search_eligible_paths_filters_before_note_ranking_and_truncation(tmp_path):
+    service = semantic_service(tmp_path)
+    (service.vault_root / "A.md").write_text("# Storage\n\nTrueNAS backup server", encoding="utf-8")
+    (service.vault_root / "B.md").write_text("# Oracle\n\nAPEX database", encoding="utf-8")
+    service.sync()
+
+    unfiltered = service.search("storage backup server", limit=1)
+    filtered = service.search(
+        "storage backup server",
+        limit=1,
+        min_score=-1.0,
+        eligible_paths=frozenset({"B.md"}),
+    )
+
+    assert [result.path for result in unfiltered] == ["A.md"]
+    assert [result.path for result in filtered] == ["B.md"]
+
+
+def test_query_basis_reports_ready_previous_refresh_previous_error_and_unavailable(tmp_path):
+    unavailable = semantic_service(tmp_path)
+    assert unavailable.query_basis() is None
+
+    ready_root = tmp_path / "ready"
+    ready_root.mkdir()
+    service = semantic_service(ready_root)
+    (service.vault_root / "Note.md").write_text("# Storage\n\nbackup", encoding="utf-8")
+    service.sync()
+    assert service.query_basis() == "compatible_ready"
+
+    service.repository.set_metadata("index_state", IndexState.INDEXING.value)
+    assert service.query_basis() == "compatible_previous_refresh"
+    service.repository.set_metadata("index_state", IndexState.ERROR.value)
+    assert service.query_basis() == "compatible_previous_error"

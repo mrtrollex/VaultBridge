@@ -2059,6 +2059,155 @@ multiple knowledge spaces; or Milestone 14+ work is authorized.
 
 ---
 
+### VB-121 — Implement bounded Knowledge Query runtime and evaluation — P1
+
+**Status:** Completed on 2026-09-28. The immutable domain runtime implements ADR 0006 through the
+existing vault, frontmatter, relationship, and semantic owners. Focused owner/compatibility tests,
+the unchanged 13-case retrieval baseline, full non-E2E tests, and real-symlink WSL validation pass.
+No public adapter, persistence, dependency, write, or VB-122 behavior was added.
+
+**Goal:** add one immutable, bounded, client-agnostic runtime capability that composes current live
+Markdown facts from `VaultService`, VB-111/VB-112 metadata and portable tags, VB-114 normalized
+relationships, and the existing `SemanticSearchService` ranking contract. Markdown remains
+authoritative and semantic SQLite data remains derived and rebuildable.
+
+**Domain boundary and safe failures**
+
+- Add the smallest domain module, normally `app/services/knowledge_query.py`, with frozen request,
+  predicate, match, and result values. `KnowledgeQuery` contains optional non-empty
+  `semantic_text`, `literal_text`, and vault-relative `folder`; ordered bounded tuples of exact
+  Markdown `paths`, required portable `tags`, `MetadataPredicate`, and `RelationshipPredicate`;
+  and a positive visible `limit` defaulting to `20`.
+- `MetadataPredicate` contains an exact top-level key, one of `exists`, `equals`, `not_equals`, or
+  `sequence_contains`, and a value representation that distinguishes omission from supplied YAML
+  null. `RelationshipPredicate` contains `outgoing` or `incoming`, an exact Markdown `other_path`,
+  and optional `obsidian_wikilink` or `markdown_link` origin.
+- `KnowledgeQueryResult` contains an immutable ordered tuple of `KnowledgeQueryMatch`, ordering
+  `semantic` or `canonical_path`, and semantic-index basis `none`, `compatible_ready`,
+  `compatible_previous_refresh`, or `compatible_previous_error`. A match exposes only verified
+  canonical path and, in semantic mode, the existing final, semantic, and lexical scores.
+- Use domain types, not Pydantic HTTP schemas. Expose bounded expected failure categories for
+  `invalid_request`, `unsafe_scope`, and `semantic_unavailable`. Their messages, reprs, and logs
+  must not expose host paths, symlink destinations, exception strings, query/literal text, tag or
+  metadata values, note content, SQL, embeddings, or storage details. Programming errors are not
+  converted into expected failures.
+
+**Validation and exact bounds**
+
+- Validate cheap shape, cardinality, UTF-8, and numeric constraints before vault enumeration,
+  reads, relationship parsing, or embedding. Cardinality is checked before stable deduplication.
+- Enforce visible limit default/max `20`/`100`; at most `64` paths and `16` each of tags, metadata
+  predicates, and relationship predicates; semantic/literal text at most `4,096`/`8,192` UTF-8
+  bytes; folder/path/relationship path at most `1,024`; metadata key at most `256`; and tag or
+  string predicate value at most `1,024` UTF-8 bytes. Integer request values are signed 64-bit;
+  float request values are finite IEEE-754 binary64.
+- Reject non-positive or excessive limits; supplied empty text/folder; empty-after-trim tags; an
+  empty effective query; unknown operators, directions, or origins; `exists` with a value; another
+  metadata operator without a value; unsupported metadata types/containers; non-finite floats;
+  out-of-range ints; and over-bound values. Do not coerce or stringify. Semantic/literal whitespace
+  is content and is not trimmed.
+
+**Scope and one-read live evaluation**
+
+- Start with one deterministic live Markdown enumeration. `VaultService` remains sole owner of
+  containment, traversal/absolute-path rejection, exact spelling, canonical vault-relative
+  Markdown identity, safe reads, size/UTF-8 bounds, and symlink safety. Add only a minimal typed
+  folder classifier if needed.
+- Folder scope is recursive and segment-aware. A safely missing folder yields no matches; an
+  unsafe, escaping, invalid, or broken-symlink folder fails with `unsafe_scope`; discovered spelling
+  is exact; omission means vault root. Each `paths` entry is an exact Markdown identity OR choice:
+  safely missing branches match nothing, unsafe paths fail the whole request, valid duplicates are
+  stably deduplicated, and folder plus paths intersect. No alias/title/filename heuristic, glob,
+  regex, or case-insensitive lookup is permitted.
+- For each cheap-scope survivor, verify/read once through `VaultService`; reuse that content for
+  literal, one frontmatter parse, VB-112 tag projection, metadata, and outgoing normalized
+  relationship evaluation. A racing, missing, unsafe, unreadable, oversized, or invalid-UTF-8
+  candidate is conservatively omitted without retry. Verify the canonical path again before final
+  inclusion and omit stale/deleted/unsafe notes.
+
+**Live predicates**
+
+- Literal text is an exact case-sensitive Unicode code-point substring over complete decoded
+  Markdown, including frontmatter source. It is filter-only: no case folding, normalization,
+  regex/glob, tokenization, stemming, rendering, or ranking effect.
+- Tags come only from `project_portable_fields(FrontmatterParser.parse(content)).tags`. All are
+  required. Trim request tags and stored occurrences for exact case-sensitive/non-normalized
+  comparison; `#` is literal. Stable-deduplicate request tags after trim and after cardinality
+  validation. Invalid, absent, or unusable tags do not match; aliases/titles are not consulted.
+- Metadata uses only the valid VB-111 top-level mapping. `exists` requires the exact key regardless
+  of portable value shape. `equals` requires the same exact portable scalar type and value.
+  `not_equals` additionally requires the stored scalar to be present and unequal. `sequence_contains`
+  requires one immediate scalar member of the same exact type and value. Keys are exact and never
+  nested paths; strings are not trimmed/normalized; bool differs from int and int from float;
+  mappings and nested sequences support only `exists`; all predicates compose with AND; absent or
+  invalid frontmatter matches none. Generic `title`, `aliases`, and `tags` keys retain these generic
+  semantics rather than invoking projections.
+- Relationship predicates use only resolved VB-114 `note_link` occurrences with verified canonical
+  `resolved_path`. Validate each unique fixed `other_path` once: safely missing means that predicate
+  matches none, unsafe fails the request, valid paths use canonical identity. Outgoing matches one
+  candidate occurrence resolving to `other_path`; incoming matches an occurrence from `other_path`
+  resolving to the candidate; optional origin is exact. Written target, fragment, label, order,
+  origin metadata, and unresolved reason are not queryable.
+- Incoming evaluation must read/derive each unique valid `other_path` once and reuse its target set;
+  it must not call `normalized_backlinks()` per candidate. Add only minimal additive
+  `RelationshipService` helpers to derive normalized relationships from verified content and reuse
+  one immutable query-level wikilink resolution snapshot. Existing relationship behavior remains
+  unchanged.
+
+**Composition, semantic integration, ordering, and consistency**
+
+- All constraints compose with AND except the path tuple OR and an omitted relationship origin
+  accepting either supported origin. Both text modes may coexist. Text-free queries require at
+  least one folder, path, tag, metadata, or relationship constraint. Do not add generic NOT/OR
+  groups, expressions, SQL/FTS passthrough, regex/glob, nested paths, or user functions.
+- With semantic text, every live constraint establishes the finite eligible canonical-path set
+  before semantic chunk scoring, aggregation, ranking, and truncation. Extend
+  `SemanticSearchService` additively to rank a caller-supplied eligible set. Existing `search()`
+  behavior when no such set is supplied remains exact: query embedding, minimum score, lexical
+  scoring, hybrid weights, best-chunk selection, relative floor, tie breaks, model, chunking,
+  embedding input, signature, and persistence do not change.
+- Request at most `min(500, max(limit * 5, limit))` post-eligibility semantic candidates, consume
+  once, and return at most `limit` after final live verification; never widen/retry. An eligible live
+  note absent from the compatible index cannot appear.
+- Add/reuse a semantic-owned query-basis helper reflecting the existing lifecycle. No searchable
+  compatible index fails as `semantic_unavailable`; do not fall back. Report ready, usable previous
+  index during refresh, or usable previous index after error as the corresponding basis. Nonsemantic
+  queries require no index and report `none`.
+- Nonsemantic results sort exactly by `(path.casefold(), path)` and omit scores. Semantic results
+  preserve existing semantic order and score evidence. No snippets, headings, content, tags,
+  metadata, or relationships appear in results.
+- Preserve conservative non-atomic semantics: one deterministic live enumeration starts the query;
+  live Markdown owns live predicates; compatible semantic facts may be older; stale indexed paths
+  are excluded; new unindexed live notes cannot appear in semantic mode; current live filters may
+  combine with an older compatible score; races may return fewer than the limit; no vault-wide
+  snapshot or unbounded retry is claimed; cached metadata never substitutes for a failed live read.
+
+**Performance, tests, and compatibility**
+
+- Keep the live-derived implementation bounded: enumerate candidate paths once; parse a candidate's
+  frontmatter once; reuse candidate content; do not perform a full-vault backlink scan per candidate;
+  validate fixed relationship sources once; and reuse one query-level resolution snapshot. Add no
+  persistence, cache, metadata/relationship/query index, graph/vector store, or dependency.
+- Focused tests cover immutable types and omitted/null distinction; every bound and invalid shape;
+  root/folder/path scope, exact spelling and symlink safety; deterministic ordering; literal, tag,
+  metadata, outgoing/incoming relationship semantics and bounded work; semantic-only and mixed
+  queries, pre-ranking eligibility, unchanged thresholds/floor/ties, candidate window, stale/current
+  combinations and all basis states; races, safe per-note omission, retries, and diagnostic privacy.
+  Use only fake/local deterministic embedders. Run `tests/eval` and preserve all 13 accepted
+  VB-022/VB-024 baseline cases. Real-symlink behavior requires WSL validation.
+- Preserve all existing semantic callers/ranking/index behavior; VaultService reads/writes;
+  VB-111/VB-112; wikilink/Markdown parsers and all existing relationship methods; REST/OpenAPI paths,
+  schemas and operation IDs; MCP, CLI, dashboard, writes/reindex, Docker/TrueNAS/package/publication.
+  No migration.
+
+**Explicit non-goals:** no VB-122 adapter adoption; REST/OpenAPI, MCP, CLI, or dashboard query
+surface; persistence/cache/query/metadata/relationship index; graph/vector database, Redis, Celery,
+Qdrant, worker, or dependency; arbitrary query language; nested metadata; title/alias/time/heading or
+unresolved/fragment/label predicates; semantic ranking changes; writes; multiple knowledge spaces;
+or Milestone 14+ work.
+
+---
+
 ## Release history
 
 ### v1.2.0 release
@@ -2175,7 +2324,7 @@ VB-001 ✓
 → VB-113 ✓ (contained standard Markdown note relationships)
 → VB-114 ✓ (normalized multi-dialect relationship domain view)
 → VB-120 ✓ (accepted bounded Knowledge Query capability / ADR)
-→ VB-121 (next proposed runtime/evaluation task; authoritative contract required)
+→ VB-121 ✓ (bounded Knowledge Query domain runtime and evaluation)
 → VB-034 (optional opt-in write task)
 ```
 
@@ -2215,7 +2364,9 @@ VB-112 implements immutable field-local alias/tag projection without changing pu
 VB-113 implements bounded contained standard Markdown relationships at the domain layer without
 changing wikilink-backed public adapters. VB-114 completes the Portable PKM milestone with an
 immutable live normalized relationship view and no public adapter or persistence change. VB-120
-accepts ADR 0006 as the bounded Knowledge Query domain contract without adding a runtime engine or
-adapter. VB-121 is the next proposed task but still requires its own authoritative BACKLOG contract.
+accepts ADR 0006 as the bounded Knowledge Query domain contract. VB-121 implements that contract as
+an immutable domain-only runtime with live eligibility before unchanged semantic ranking, bounded
+safe failures, and no adapter or persistence. VB-122 remains planned only and has no accepted public
+adapter contract.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

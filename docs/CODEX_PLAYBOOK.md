@@ -160,11 +160,13 @@ Milestone 12 is complete under accepted ADR 0005 and the authoritative VB-110 th
 contracts. VB-120 is also complete as design-only work: accepted ADR 0006 defines the bounded
 Knowledge Query domain request/result, ownership, live-filter and semantic-ranking composition,
 consistency, ordering, bounds, failures, and adapter/persistence exclusions. It adds no runtime
-query engine or public adapter.
+query engine or public adapter by itself.
 
-VB-121 is the next proposed task, but it still requires its own authoritative `BACKLOG.md` runtime
-and evaluation contract. Do not infer its implementation shape from ADR terminology, create a
-`KnowledgeQueryService`, or implement VB-121/VB-122 until that contract is separately authorized.
+VB-121 is complete under its authoritative `BACKLOG.md` contract. The domain-only
+`KnowledgeQueryService` composes existing owners, establishes live eligibility before unchanged
+semantic ranking, and adds no public adapter or persistence. VB-122 remains planned only. Do not
+invent or implement a REST/OpenAPI, MCP, CLI, dashboard, or other adapter contract until a separate
+authoritative task accepts its exact surface.
 
 No new autonomous relationship task is currently recommended. VB-105 is complete as
 evaluation/design evidence and does not support or authorize a production graph-ranking change.
