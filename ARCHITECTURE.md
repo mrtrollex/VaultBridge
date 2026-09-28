@@ -295,7 +295,10 @@ starts one full rebuild. A matching signature retains normal incremental synchro
 calls `VaultService.search_notes()` and never constructs an embedder. `related` queries a compatible
 persisted index without synchronizing it, preserves production ranking, and passes every candidate
 through `VaultService.verify_existing_markdown_path()` before displaying a vault-relative path.
-Both commands accept only validated vault-relative folders. `status` shares the VB-045 immutable
+Both commands accept only validated vault-relative folders. `query` is the read-only CLI adapter for
+`KnowledgeQueryService`; it maps only semantic text, literal text, folder, exact paths, required tags,
+and limit into the existing domain request, and displays only verified canonical paths, semantic
+score evidence, ordering, and compatible-index basis. `status` shares the VB-045 immutable
 persisted-index inspection and formatting described below.
 
 `index` runs the production `SemanticSearchService.sync()` path without first resetting a compatible
@@ -673,10 +676,10 @@ and reuses one `RelationshipService` resolution snapshot. Incoming predicates de
 source once rather than scanning backlinks per candidate. Expected stale/unreadable candidates are
 omitted conservatively and final paths are reverified without claiming an atomic vault snapshot.
 
-The service is not wired into application construction or any REST/OpenAPI, MCP, CLI, or dashboard
-adapter. It adds no public schema, persistence, cache/query/relationship index, dependency, write,
-model/chunking/index-signature, or ranking change. VB-122 remains separately planned without an
-accepted adapter contract.
+The service is wired only into the read-only CLI `query` adapter for its bounded subset. It is not
+wired into application construction, REST/OpenAPI, MCP, or the dashboard. It adds no public schema,
+persistence, cache/query/relationship index, dependency, write, model/chunking/index-signature, or
+ranking change.
 
 ### `repositories/semantic.py`
 
@@ -796,7 +799,7 @@ titles. Filtering is read-only and preserves surviving rank order. Semantic scor
 combined score, heading, and snippet still reflect the indexed snapshot, so an externally edited
 live note can retain stale semantic fields until normal synchronization runs.
 
-### Knowledge Query — accepted future domain flow
+### Knowledge Query domain flow
 
 ```text
 finite immutable request

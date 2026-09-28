@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import sqlite3
 import sys
+import unicodedata
 from collections.abc import Sequence
 from pathlib import PurePosixPath
 from typing import NoReturn, TextIO
@@ -12,6 +13,17 @@ from pydantic import ValidationError
 from app.core.config import Settings
 from app.core.logging import configure_application_logging
 from app.repositories.semantic import ImmutableIndexInspectionUnavailableError
+from app.services.knowledge_query import (
+    DEFAULT_LIMIT as KNOWLEDGE_QUERY_DEFAULT_LIMIT,
+)
+from app.services.knowledge_query import (
+    KnowledgeQuery,
+    KnowledgeQueryError,
+    KnowledgeQueryMatch,
+    KnowledgeQueryResult,
+    KnowledgeQueryService,
+)
+from app.services.relationships import RelationshipService
 from app.services.semantic_search import (
     Embedder,
     IndexState,
@@ -41,6 +53,20 @@ class _CheckOnlyEmbedder(Embedder):
     def embed(self, texts: Sequence[str]) -> NoReturn:
         del texts
         raise RuntimeError("The index check command cannot generate embeddings")
+
+
+class _LazyPersistedReadOnlySemanticService:
+    """Select immutable persisted reads only when a validated query needs semantics."""
+
+    def __init__(self, service: SemanticSearchService) -> None:
+        self._service = service
+
+    def query_basis(self):
+        self._service.use_persisted_index_for_read_only_search()
+        return self._service.query_basis()
+
+    def search(self, *args, **kwargs):
+        return self._service.search(*args, **kwargs)
 
 
 def _bounded_integer(value: str, *, minimum: int, maximum: int) -> int:
@@ -132,6 +158,30 @@ def _parser() -> argparse.ArgumentParser:
         help="minimum semantic cosine score from -1.0 to 1.0",
     )
     related.set_defaults(action="related")
+
+    query = commands.add_parser("query", help="run a bounded Knowledge Query over live Markdown")
+    query.add_argument("--semantic-text", help="semantic text used by the existing hybrid ranking")
+    query.add_argument("--literal-text", help="exact case-sensitive text required in each note")
+    query.add_argument("--folder", help="exact vault-relative recursive folder scope")
+    query.add_argument(
+        "--path",
+        action="append",
+        default=[],
+        help="exact vault-relative Markdown path; repeat for OR scope",
+    )
+    query.add_argument(
+        "--tag",
+        action="append",
+        default=[],
+        help="required portable tag; repeat to require all tags",
+    )
+    query.add_argument(
+        "--limit",
+        type=int,
+        default=KNOWLEDGE_QUERY_DEFAULT_LIMIT,
+        help="visible result limit; the domain accepts 1 to 100",
+    )
+    query.set_defaults(action="query")
     return parser
 
 
@@ -343,6 +393,43 @@ def _print_related_results(
             f"   {_safe_display(result.snippet, CLI_SNIPPET_LENGTH, private_values=private_values)}",
             file=stream,
         )
+
+
+def _print_knowledge_query_results(
+    result: KnowledgeQueryResult,
+    stream: TextIO,
+) -> None:
+    print(f"Knowledge query results: {len(result.matches)}", file=stream)
+    print(f"Ordering: {result.ordering}", file=stream)
+    print(f"Semantic index basis: {result.semantic_index_basis}", file=stream)
+    for position, match in enumerate(result.matches, start=1):
+        path = _safe_canonical_path(match.canonical_path)
+        print(f"{position}. {path}", file=stream)
+        _print_knowledge_query_scores(match, stream)
+
+
+def _safe_canonical_path(value: str) -> str:
+    escaped: list[str] = []
+    for character in value:
+        category = unicodedata.category(character)
+        if character == "\\":
+            escaped.append("\\\\")
+        elif category in {"Cc", "Cf", "Zl", "Zp"}:
+            escaped.append(character.encode("unicode_escape").decode("ascii"))
+        else:
+            escaped.append(character)
+    return "".join(escaped)
+
+
+def _print_knowledge_query_scores(match: KnowledgeQueryMatch, stream: TextIO) -> None:
+    scores = (
+        ("final", match.final_score),
+        ("semantic", match.semantic_score),
+        ("lexical", match.lexical_score),
+    )
+    for label, score in scores:
+        if score is not None:
+            print(f"   {label}_score: {score!r}", file=stream)
 
 
 def run_index(
@@ -568,6 +655,50 @@ def run_related(
     return EXIT_SUCCESS
 
 
+def run_knowledge_query(
+    settings: Settings,
+    *,
+    semantic_text: str | None = None,
+    literal_text: str | None = None,
+    folder: str | None = None,
+    paths: Sequence[str] = (),
+    tags: Sequence[str] = (),
+    limit: int = KNOWLEDGE_QUERY_DEFAULT_LIMIT,
+    output: TextIO | None = None,
+    error_output: TextIO | None = None,
+    service: KnowledgeQueryService | None = None,
+) -> int:
+    """Run the existing bounded domain query and print only its safe result evidence."""
+    stream = output or sys.stdout
+    error_stream = error_output or sys.stderr
+    query_service = service
+    if query_service is None:
+        vault_service = _vault_service(settings)
+        semantic_service = semantic_search_service_from_settings(settings)
+        query_service = KnowledgeQueryService(
+            vault_service=vault_service,
+            relationship_service=RelationshipService(vault_service),
+            semantic_search_service=_LazyPersistedReadOnlySemanticService(semantic_service),
+        )
+
+    request = KnowledgeQuery(
+        semantic_text=semantic_text,
+        literal_text=literal_text,
+        folder=folder,
+        paths=tuple(paths),
+        tags=tuple(tags),
+        limit=limit,
+    )
+    try:
+        result = query_service.query(request)
+    except KnowledgeQueryError as exc:
+        print(f"Knowledge query failed: {exc.reason}.", file=error_stream)
+        return EXIT_INTEGRITY_PROBLEM
+
+    _print_knowledge_query_results(result, stream)
+    return EXIT_SUCCESS
+
+
 def main(argv: Sequence[str] | None = None, *, settings: Settings | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
@@ -588,6 +719,16 @@ def main(argv: Sequence[str] | None = None, *, settings: Settings | None = None)
                 app_settings,
                 args.query,
                 folder=args.folder,
+                limit=args.limit,
+            )
+        if args.action == "query":
+            return run_knowledge_query(
+                app_settings,
+                semantic_text=args.semantic_text,
+                literal_text=args.literal_text,
+                folder=args.folder,
+                paths=args.path,
+                tags=args.tag,
                 limit=args.limit,
             )
         return run_related(

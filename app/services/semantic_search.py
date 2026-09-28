@@ -4,6 +4,7 @@ import hashlib
 import json
 import logging
 import re
+import sqlite3
 import threading
 import time
 import unicodedata
@@ -422,6 +423,7 @@ class SemanticSearchService:
         self._fingerprint_lock = threading.Lock()
         self._search_available = False
         self._persisted_read_only_search = False
+        self._persisted_read_only_basis: SemanticQueryBasis | None = None
         self._state_init_lock = threading.Lock()
         self._state_initialized = False
         self._fingerprint_resolution_failed = False
@@ -666,6 +668,9 @@ class SemanticSearchService:
 
     def query_basis(self) -> SemanticQueryBasis | None:
         """Return the bounded compatible index basis available to a domain query."""
+        with self._availability_lock:
+            if self._persisted_read_only_search:
+                return self._persisted_read_only_basis
         if not self.is_search_available():
             return None
         state = self.state
@@ -828,12 +833,13 @@ class SemanticSearchService:
         """Enable this instance to search a compatible persisted index without lifecycle writes."""
         try:
             self._resolve_index_signature(persist_failure=False)
-        except Exception:
+        except SemanticIndexOperationError:
+            self._set_search_available(False, persisted_read_only=True)
             return False
         try:
             storage = self.repository.read_immutable_status()
         except ImmutableIndexInspectionUnavailableError:
-            self._set_search_available(False)
+            self._set_search_available(False, persisted_read_only=True)
             return False
         available = self._stored_index_available_from_storage(
             storage_initialized=storage.storage_initialized,
@@ -842,7 +848,11 @@ class SemanticSearchService:
             index_state=storage.index_state,
             has_chunks=bool(storage.semantic_chunks),
         )
-        self._set_search_available(available, persisted_read_only=available)
+        self._set_search_available(
+            available,
+            persisted_read_only=True,
+            persisted_read_only_basis="compatible_ready" if available else None,
+        )
         return available
 
     def _set_search_available(
@@ -850,10 +860,14 @@ class SemanticSearchService:
         available: bool,
         *,
         persisted_read_only: bool = False,
+        persisted_read_only_basis: SemanticQueryBasis | None = None,
     ) -> None:
         with self._availability_lock:
             self._search_available = available
             self._persisted_read_only_search = persisted_read_only
+            self._persisted_read_only_basis = (
+                persisted_read_only_basis if persisted_read_only and available else None
+            )
 
     def _embed(self, texts: Sequence[str]) -> list[np.ndarray]:
         """Serialize only calls into one embedder instance; the surrounding pipelines stay concurrent."""
@@ -1775,7 +1789,16 @@ class SemanticSearchService:
                 if persisted_read_only_search
                 else self.repository.load_chunks()
             )
+        except sqlite3.ProgrammingError:
+            raise
         except ImmutableIndexInspectionUnavailableError as exc:
+            self._set_search_available(False)
+            raise SemanticSearchUnavailableError(
+                "Persisted semantic index is unavailable for immutable reads"
+            ) from exc
+        except (OSError, sqlite3.DatabaseError) as exc:
+            if not persisted_read_only_search:
+                raise
             self._set_search_available(False)
             raise SemanticSearchUnavailableError(
                 "Persisted semantic index is unavailable for immutable reads"

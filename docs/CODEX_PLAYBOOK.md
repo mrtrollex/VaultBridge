@@ -164,9 +164,9 @@ query engine or public adapter by itself.
 
 VB-121 is complete under its authoritative `BACKLOG.md` contract. The domain-only
 `KnowledgeQueryService` composes existing owners, establishes live eligibility before unchanged
-semantic ranking, and adds no public adapter or persistence. VB-122 remains planned only. Do not
-invent or implement a REST/OpenAPI, MCP, CLI, dashboard, or other adapter contract until a separate
-authoritative task accepts its exact surface.
+semantic ranking, and adds no persistence. VB-122 adds only the accepted read-only CLI `query`
+adapter subset over that service. Do not infer a REST/OpenAPI, MCP, dashboard, persistence, or write
+surface from the CLI adapter.
 
 No new autonomous relationship task is currently recommended. VB-105 is complete as
 evaluation/design evidence and does not support or authorize a production graph-ranking change.
