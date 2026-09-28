@@ -146,8 +146,9 @@ app/services/knowledge_query.py   bounded immutable domain query composition ove
 app/services/duplicate_candidates.py advisory live-title and semantic duplicate evidence
 ```
 
-There is no public Knowledge Query adapter, generic portable document runtime, persisted
-relationship/query store, capture pipeline, hygiene engine, or multiple-knowledge-space runtime today.
+The only public Knowledge Query adapter is the bounded read-only CLI `query` subset. There is no
+REST, MCP, dashboard, or generic portable-document adapter; persisted relationship/query store;
+capture pipeline; hygiene engine; or multiple-knowledge-space runtime today.
 
 ## Completed foundation tasks
 
@@ -894,8 +895,8 @@ persisted.
 ### Task sequence
 
 VB-110 through VB-114 are complete under their authoritative `BACKLOG.md` contracts. Milestone 13
-has completed the accepted VB-120 design and VB-121 domain-runtime/evaluation work. VB-122 remains
-planned only and requires a separate authoritative adapter contract.
+has completed the accepted VB-120 design, VB-121 domain runtime/evaluation, and VB-122 read-only CLI
+adapter work.
 
 ```text
 VB-110 define portable PKM document model / ADR ✓
@@ -998,7 +999,7 @@ Milestone exit direction:
 
 ---
 
-# Milestone 13 — Knowledge Query Layer — IN PROGRESS / VB-120–VB-121 COMPLETE
+# Milestone 13 — Knowledge Query Layer — COMPLETE
 
 **Goal:** let clients query knowledge using semantic, structural, and metadata constraints through
 one safe domain capability.
@@ -1020,11 +1021,12 @@ Creation time, modification time, title, alias, and heading are not predicates i
 initial capability. [ADR 0006](docs/adr/0006-bounded-knowledge-query-capability.md) is authoritative
 for the Milestone 13 query semantics, including the finite immutable conceptual request/result
 boundary, exact live constraints, ownership, composition, ordering, consistency, bounds, failures,
-and query-language exclusions. The concepts above are not a committed REST, MCP, CLI, dashboard, or
-JSON schema. VB-121 implements the accepted ADR contract without inferring semantics from older
-roadmap examples. The layer does not expose arbitrary SQL, SQLite internals, arbitrary filesystem
-predicates, or an unbounded query language. Future adapters must consume one domain query capability
-instead of implementing independent filtering/ranking semantics.
+and query-language exclusions. VB-122 commits only the bounded CLI subset documented in
+`BACKLOG.md`; the concepts above are not a committed REST, MCP, dashboard, or JSON schema. VB-121
+implements the accepted ADR contract without inferring semantics from older roadmap examples. The
+layer does not expose arbitrary SQL, SQLite internals, arbitrary filesystem predicates, or an
+unbounded query language. Future adapters must consume one domain query capability instead of
+implementing independent filtering/ranking semantics.
 
 Task sequence:
 
@@ -1033,14 +1035,15 @@ VB-120 knowledge-query capability / ADR ✓
    ↓
 VB-121 bounded domain query implementation and evaluation ✓
    ↓
-VB-122 thin adapter adoption where separately approved
+VB-122 bounded read-only CLI adapter ✓
 ```
 
-VB-120 and VB-121 are complete under their authoritative `BACKLOG.md` contracts. The implemented
+VB-120 through VB-122 are complete under their authoritative `BACKLOG.md` contracts. The implemented
 domain service applies all current live constraints before optional unchanged semantic ranking,
 reports bounded compatible-index basis, and reuses the established vault/frontmatter/relationship/
-semantic owners. It adds no public adapter, persistence, infrastructure, ranking/index-signature
-change, or write behavior. VB-122 remains planned only; this roadmap defines no adapter schema.
+semantic owners. The CLI adapter exposes only semantic/literal text, folder, exact paths, required
+tags, and limit. It adds no REST/MCP/dashboard surface, persistence, infrastructure,
+ranking/index-signature change, or write behavior.
 
 ---
 
@@ -1295,11 +1298,11 @@ establish acceptable general benefit. Wikilinks remain the first supported relat
 not the architectural definition.
 
 Milestone 12 is complete: VB-110 and ADR 0005 are accepted, and VB-111 through VB-114 are
-implemented without public-surface changes. Milestone 13 has completed VB-120 and VB-121: accepted
-ADR 0006 now has a bounded immutable domain runtime and evaluation, still without a public adapter.
-VB-122 remains planned only with no accepted adapter contract. VB-032/VB-033 remain deferred, and
-VB-034 remains a later optional write task rather than NEXT. VB-122, VB-130–VB-132, VB-140–VB-142,
-and VB-150–VB-152 remain proposed and reserve no implementation scope by themselves.
+implemented without public-surface changes. Milestone 13 is complete: accepted ADR 0006 has a
+bounded immutable domain runtime/evaluation and VB-122 exposes only its accepted read-only CLI
+subset. VB-032/VB-033 remain deferred, and VB-034 remains a later optional write task rather than
+NEXT. VB-130–VB-132, VB-140–VB-142, and VB-150–VB-152 remain proposed and reserve no
+implementation scope by themselves.
 
 ---
 

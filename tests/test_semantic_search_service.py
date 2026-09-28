@@ -2368,3 +2368,33 @@ def test_query_basis_reports_ready_previous_refresh_previous_error_and_unavailab
     assert service.query_basis() == "compatible_previous_refresh"
     service.repository.set_metadata("index_state", IndexState.ERROR.value)
     assert service.query_basis() == "compatible_previous_error"
+
+
+@pytest.mark.parametrize("persisted_state", (IndexState.INDEXING, IndexState.ERROR))
+def test_persisted_read_only_selector_rejects_incomplete_states_after_restart(
+    tmp_path,
+    persisted_state,
+):
+    service = semantic_service(tmp_path)
+    (service.vault_root / "Note.md").write_text("# Storage\n\nbackup", encoding="utf-8")
+    service.sync()
+    service.repository.set_metadata("index_state", persisted_state.value)
+
+    restarted = semantic_service(tmp_path)
+
+    assert restarted.use_persisted_index_for_read_only_search() is False
+    assert restarted.query_basis() is None
+
+
+def test_normal_search_preserves_storage_error_behavior(tmp_path, monkeypatch):
+    service = semantic_service(tmp_path)
+    (service.vault_root / "Note.md").write_text("# Storage\n\nbackup", encoding="utf-8")
+    service.sync()
+
+    def unavailable_chunks():
+        raise OSError("ordinary storage fixture")
+
+    monkeypatch.setattr(service.repository, "load_chunks", unavailable_chunks)
+
+    with pytest.raises(OSError, match="ordinary storage fixture"):
+        service.search("backup")

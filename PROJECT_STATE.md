@@ -280,7 +280,12 @@ Current post-v1 planning position:
   contract while reporting compatible ready/previous-refresh/previous-error basis; nonsemantic mode
   is index-independent and canonical-path ordered
 - VB-121 adds no REST/OpenAPI, MCP, CLI, dashboard, persistence/cache/query index, dependency,
-  write, ranking/index-signature, deployment, or release behavior; VB-122 remains planned only
+  write, ranking/index-signature, deployment, or release behavior
+- VB-122 adds one read-only CLI `query` adapter over `KnowledgeQueryService` for semantic text,
+  literal text, recursive folder, exact paths, required tags, and visible limit; it emits only
+  canonical paths plus existing ordering/index-basis/score evidence and preserves VB-121 failures
+- VB-122 adds no REST/OpenAPI, MCP, dashboard, persistence, dependency, write, ranking,
+  index-compatibility, metadata, relationship, deployment, or release behavior
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
 
@@ -374,7 +379,7 @@ Current milestones:
 - **Milestone 10 — MCP integration (complete)**
 - **Milestone 11 — Obsidian Knowledge Graph / Note Relationships (complete; production graph ranking not supported)**
 - **Milestone 12 — Portable PKM model (complete)**
-- **Milestone 13 — Knowledge Query Layer (in progress; VB-120 and VB-121 complete, VB-122 planned only)**
+- **Milestone 13 — Knowledge Query Layer (complete; VB-120 through VB-122 complete)**
 
 ## Working production characteristics
 
@@ -434,8 +439,8 @@ Current milestones:
 - safe internal file symlinks return one canonical vault-relative path; external and broken symlinks
   are skipped without per-file logging
 - standard-library local CLI with read-only `status`, literal `search`, existing-index semantic
-  `related`, offline incremental `index`, and clean `reindex`; the VB-045 `index check` and
-  `index rebuild` administrative commands remain supported
+  `related`, bounded Knowledge Query `query`, offline incremental `index`, and clean `reindex`; the
+  VB-045 `index check` and `index rebuild` administrative commands remain supported
 - successful full synchronization persists `last_successful_sync`; targeted refresh does not change it
 - TrueNAS container commonly runs as UID/GID 568
 - existing production deployment uses port 8765 → 8000

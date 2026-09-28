@@ -18,6 +18,7 @@ from app.cli import (
     run_index,
     run_index_check,
     run_index_rebuild,
+    run_knowledge_query,
     run_reindex,
     run_related,
     run_search,
@@ -25,6 +26,13 @@ from app.cli import (
 )
 from app.core.config import Settings
 from app.repositories.semantic import SemanticRepository
+from app.services.knowledge_query import (
+    InvalidKnowledgeQueryError,
+    KnowledgeQueryMatch,
+    KnowledgeQueryResult,
+    KnowledgeQuerySemanticUnavailableError,
+    UnsafeKnowledgeQueryScopeError,
+)
 from app.services.semantic_search import (
     FastEmbedder,
     IndexState,
@@ -715,7 +723,7 @@ def test_top_level_and_command_help_are_available(capsys):
     with pytest.raises(SystemExit, match="0"):
         main(["--help"])
     top_help = capsys.readouterr().out
-    for command in ("status", "index", "reindex", "search", "related"):
+    for command in ("status", "index", "reindex", "search", "related", "query"):
         assert command in top_help
 
     for arguments in (
@@ -724,6 +732,7 @@ def test_top_level_and_command_help_are_available(capsys):
         ["reindex", "--help"],
         ["search", "--help"],
         ["related", "--help"],
+        ["query", "--help"],
         ["index", "check", "--help"],
         ["index", "rebuild", "--help"],
     ):
@@ -1020,6 +1029,462 @@ def test_related_uses_persisted_index_without_sync_or_storage_mutation(tmp_path,
     assert storage_snapshot(settings.semantic_data_path) == storage_before
 
 
+class RecordingKnowledgeQueryService:
+    def __init__(self, result=None, failure=None) -> None:
+        self.result = result
+        self.failure = failure
+        self.requests = []
+
+    def query(self, request):
+        self.requests.append(request)
+        if self.failure is not None:
+            raise self.failure
+        return self.result
+
+
+def test_knowledge_query_maps_supported_fields_and_prints_only_domain_evidence(tmp_path):
+    settings = settings_for(tmp_path)
+    service = RecordingKnowledgeQueryService(
+        KnowledgeQueryResult(
+            matches=(
+                KnowledgeQueryMatch(
+                    canonical_path="Area/Note.md",
+                    final_score=0.75,
+                    semantic_score=0.5,
+                    lexical_score=1.0,
+                ),
+            ),
+            ordering="semantic",
+            semantic_index_basis="compatible_previous_refresh",
+        )
+    )
+    output = io.StringIO()
+
+    assert (
+        run_knowledge_query(
+            settings,
+            semantic_text=" private semantic text ",
+            literal_text="exact private literal",
+            folder="Area",
+            paths=("Area/Note.md", "Area/Other.md", "Area/Note.md"),
+            tags=("work", "urgent"),
+            limit=7,
+            output=output,
+            service=service,
+        )
+        == EXIT_SUCCESS
+    )
+    request = service.requests[0]
+    assert request.semantic_text == " private semantic text "
+    assert request.literal_text == "exact private literal"
+    assert request.folder == "Area"
+    assert request.paths == ("Area/Note.md", "Area/Other.md", "Area/Note.md")
+    assert request.tags == ("work", "urgent")
+    assert request.limit == 7
+    assert output.getvalue() == (
+        "Knowledge query results: 1\n"
+        "Ordering: semantic\n"
+        "Semantic index basis: compatible_previous_refresh\n"
+        "1. Area/Note.md\n"
+        "   final_score: 0.75\n"
+        "   semantic_score: 0.5\n"
+        "   lexical_score: 1.0\n"
+    )
+    assert "private" not in output.getvalue()
+
+
+def test_knowledge_query_preserves_canonical_path_spacing_and_full_supported_length(tmp_path):
+    settings = Settings.model_validate(
+        {
+            **settings_for(tmp_path).model_dump(),
+            "api_key": "vault",
+        }
+    )
+    boundary_path = "A/" + ("x" * 1019) + ".md"
+    assert len(boundary_path.encode("utf-8")) == 1024
+    service = RecordingKnowledgeQueryService(
+        KnowledgeQueryResult(
+            matches=(
+                KnowledgeQueryMatch(canonical_path="Area/Plan   Draft.md"),
+                KnowledgeQueryMatch(canonical_path=boundary_path),
+                KnowledgeQueryMatch(canonical_path="Archive/vault/Note.md"),
+                KnowledgeQueryMatch(canonical_path="Area/report\u202efdp.md"),
+            ),
+            ordering="canonical_path",
+            semantic_index_basis="none",
+        )
+    )
+    output = io.StringIO()
+
+    assert (
+        run_knowledge_query(
+            settings,
+            literal_text="value",
+            output=output,
+            service=service,
+        )
+        == EXIT_SUCCESS
+    )
+    rendered = output.getvalue()
+    assert "1. Area/Plan   Draft.md\n" in rendered
+    assert f"2. {boundary_path}\n" in rendered
+    assert "3. Archive/vault/Note.md\n" in rendered
+    assert "4. Area/report\\u202efdp.md\n" in rendered
+    assert "\u202e" not in rendered
+
+
+@pytest.mark.parametrize(
+    ("failure", "reason"),
+    (
+        (InvalidKnowledgeQueryError(), "invalid_request"),
+        (UnsafeKnowledgeQueryScopeError(), "unsafe_scope"),
+        (KnowledgeQuerySemanticUnavailableError(), "semantic_unavailable"),
+    ),
+)
+def test_knowledge_query_preserves_safe_domain_failure_categories(tmp_path, failure, reason):
+    settings = settings_for(tmp_path)
+    error = io.StringIO()
+    service = RecordingKnowledgeQueryService(failure=failure)
+
+    assert (
+        run_knowledge_query(
+            settings,
+            literal_text="private query text",
+            folder="../private-scope",
+            error_output=error,
+            service=service,
+        )
+        == EXIT_INTEGRITY_PROBLEM
+    )
+    assert error.getvalue() == f"Knowledge query failed: {reason}.\n"
+    assert "private" not in error.getvalue()
+    assert str(settings.vault_path) not in error.getvalue()
+
+
+def test_knowledge_query_real_service_is_read_only_and_canonically_ordered(tmp_path):
+    settings = settings_for(tmp_path)
+    area = settings.vault_path / "Area"
+    area.mkdir()
+    (area / "B.md").write_text("---\ntags: [work]\n---\nneedle", encoding="utf-8")
+    (area / "A.md").write_text("---\ntags: [work]\n---\nneedle", encoding="utf-8")
+    (area / "Excluded.md").write_text("---\ntags: [other]\n---\nneedle", encoding="utf-8")
+    storage_before = storage_snapshot(settings.semantic_data_path)
+    output = io.StringIO()
+
+    assert (
+        run_knowledge_query(
+            settings,
+            literal_text="needle",
+            folder="Area",
+            paths=("Area/B.md", "Area/A.md", "Area/Excluded.md"),
+            tags=("work",),
+            output=output,
+        )
+        == EXIT_SUCCESS
+    )
+    rendered = output.getvalue()
+    assert rendered.index("Area/A.md") < rendered.index("Area/B.md")
+    assert "Area/Excluded.md" not in rendered
+    assert "_score:" not in rendered
+    assert "Semantic index basis: none" in rendered
+    assert storage_snapshot(settings.semantic_data_path) == storage_before == {}
+
+
+def test_knowledge_query_semantic_mode_uses_immutable_persisted_storage(
+    tmp_path,
+    monkeypatch,
+):
+    settings = settings_for(tmp_path)
+    note = settings.vault_path / "Ready.md"
+    note.write_text("TrueNAS backup procedure.", encoding="utf-8")
+    indexed = service_for(settings)
+    indexed.sync()
+    restarted = service_for(settings)
+    source_before = note.read_bytes()
+    storage_before = storage_snapshot(settings.semantic_data_path)
+
+    def forbidden_mutable_load():
+        raise AssertionError("semantic CLI query must use immutable chunk loading")
+
+    monkeypatch.setattr(restarted.repository, "load_chunks", forbidden_mutable_load)
+    monkeypatch.setattr(
+        "app.cli.semantic_search_service_from_settings",
+        lambda _settings: restarted,
+    )
+    output = io.StringIO()
+
+    assert (
+        run_knowledge_query(
+            settings,
+            semantic_text="TrueNAS backup",
+            output=output,
+        )
+        == EXIT_SUCCESS
+    )
+    rendered = output.getvalue()
+    assert "Ready.md" in rendered
+    assert "final_score:" in rendered
+    assert "semantic_score:" in rendered
+    assert "lexical_score:" in rendered
+    assert "Semantic index basis: compatible_ready" in rendered
+    assert note.read_bytes() == source_before
+    assert storage_snapshot(settings.semantic_data_path) == storage_before
+
+
+def test_knowledge_query_unavailable_immutable_index_is_domain_failure_without_storage(
+    tmp_path,
+    monkeypatch,
+):
+    settings = settings_for(tmp_path)
+    (settings.vault_path / "Live.md").write_text("live note", encoding="utf-8")
+    restarted = service_for(settings)
+    monkeypatch.setattr(
+        "app.cli.semantic_search_service_from_settings",
+        lambda _settings: restarted,
+    )
+    error = io.StringIO()
+
+    assert (
+        run_knowledge_query(
+            settings,
+            semantic_text="concept",
+            error_output=error,
+        )
+        == EXIT_INTEGRITY_PROBLEM
+    )
+    assert error.getvalue() == "Knowledge query failed: semantic_unavailable.\n"
+    assert not settings.semantic_data_path.exists()
+
+
+def test_knowledge_query_persisted_error_without_prior_success_is_unavailable(
+    tmp_path,
+    monkeypatch,
+):
+    settings = settings_for(tmp_path)
+    (settings.vault_path / "Live.md").write_text("live note", encoding="utf-8")
+    indexed = service_for(settings)
+    indexed.sync()
+    indexed.repository.set_metadata("index_state", IndexState.ERROR.value)
+    connection = sqlite3.connect(indexed.repository.db_path)
+    try:
+        connection.execute("DELETE FROM meta WHERE key='last_successful_sync'")
+        connection.commit()
+    finally:
+        connection.close()
+    restarted = service_for(settings)
+    storage_before = storage_snapshot(settings.semantic_data_path)
+    monkeypatch.setattr(
+        "app.cli.semantic_search_service_from_settings",
+        lambda _settings: restarted,
+    )
+    error = io.StringIO()
+
+    assert (
+        run_knowledge_query(
+            settings,
+            semantic_text="concept",
+            error_output=error,
+        )
+        == EXIT_INTEGRITY_PROBLEM
+    )
+    assert error.getvalue() == "Knowledge query failed: semantic_unavailable.\n"
+    assert storage_snapshot(settings.semantic_data_path) == storage_before
+
+
+@pytest.mark.parametrize("persisted_state", (IndexState.INDEXING, IndexState.ERROR))
+def test_knowledge_query_restarted_incomplete_state_is_unavailable(
+    tmp_path,
+    monkeypatch,
+    persisted_state,
+):
+    settings = settings_for(tmp_path)
+    (settings.vault_path / "Live.md").write_text("live note", encoding="utf-8")
+    indexed = service_for(settings)
+    indexed.sync()
+    indexed.repository.set_metadata("index_state", persisted_state.value)
+    restarted = service_for(settings)
+    storage_before = storage_snapshot(settings.semantic_data_path)
+    monkeypatch.setattr(
+        "app.cli.semantic_search_service_from_settings",
+        lambda _settings: restarted,
+    )
+    error = io.StringIO()
+
+    assert (
+        run_knowledge_query(
+            settings,
+            semantic_text="concept",
+            error_output=error,
+        )
+        == EXIT_INTEGRITY_PROBLEM
+    )
+    assert error.getvalue() == "Knowledge query failed: semantic_unavailable.\n"
+    assert storage_snapshot(settings.semantic_data_path) == storage_before
+
+
+def test_knowledge_query_failed_destructive_rebuild_is_unavailable_after_restart(
+    tmp_path,
+    monkeypatch,
+):
+    settings = settings_for(tmp_path)
+    (settings.vault_path / "Live.md").write_text("live note", encoding="utf-8")
+    indexed = service_for(settings)
+    indexed.sync()
+    indexed.repository.reset_index(indexed.index_signature, IndexState.ERROR.value)
+    restarted = service_for(settings)
+    storage_before = storage_snapshot(settings.semantic_data_path)
+    monkeypatch.setattr(
+        "app.cli.semantic_search_service_from_settings",
+        lambda _settings: restarted,
+    )
+    error = io.StringIO()
+
+    assert (
+        run_knowledge_query(
+            settings,
+            semantic_text="concept",
+            error_output=error,
+        )
+        == EXIT_INTEGRITY_PROBLEM
+    )
+    assert error.getvalue() == "Knowledge query failed: semantic_unavailable.\n"
+    assert storage_snapshot(settings.semantic_data_path) == storage_before
+
+
+def test_knowledge_query_invalid_request_performs_no_semantic_preparation(tmp_path, monkeypatch):
+    settings = settings_for(tmp_path)
+    error = io.StringIO()
+
+    class ForbiddenSemanticPreparation:
+        def use_persisted_index_for_read_only_search(self):
+            raise AssertionError("invalid requests must not prepare semantic storage or models")
+
+    monkeypatch.setattr(
+        "app.cli.semantic_search_service_from_settings",
+        lambda _settings: ForbiddenSemanticPreparation(),
+    )
+
+    assert (
+        run_knowledge_query(
+            settings,
+            semantic_text="value",
+            limit=101,
+            error_output=error,
+        )
+        == EXIT_INTEGRITY_PROBLEM
+    )
+    assert error.getvalue() == "Knowledge query failed: invalid_request.\n"
+    assert not settings.semantic_data_path.exists()
+
+
+def test_knowledge_query_immutable_chunk_failure_is_domain_unavailable(tmp_path, monkeypatch):
+    settings = settings_for(tmp_path)
+    note = settings.vault_path / "Ready.md"
+    note.write_text("TrueNAS backup procedure.", encoding="utf-8")
+    service_for(settings).sync()
+    restarted = service_for(settings)
+    source_before = note.read_bytes()
+    storage_before = storage_snapshot(settings.semantic_data_path)
+
+    def unavailable_immutable_chunks():
+        raise sqlite3.OperationalError("malformed immutable chunk fixture")
+
+    monkeypatch.setattr(
+        restarted.repository,
+        "load_chunks_read_only",
+        unavailable_immutable_chunks,
+    )
+    monkeypatch.setattr(
+        "app.cli.semantic_search_service_from_settings",
+        lambda _settings: restarted,
+    )
+    error = io.StringIO()
+
+    assert (
+        run_knowledge_query(
+            settings,
+            semantic_text="TrueNAS backup",
+            error_output=error,
+        )
+        == EXIT_INTEGRITY_PROBLEM
+    )
+    assert error.getvalue() == "Knowledge query failed: semantic_unavailable.\n"
+    assert "malformed" not in error.getvalue()
+    assert note.read_bytes() == source_before
+    assert storage_snapshot(settings.semantic_data_path) == storage_before
+
+
+def test_query_command_does_not_hide_unexpected_fingerprint_failure(
+    tmp_path,
+    monkeypatch,
+    capsys,
+):
+    settings = settings_for(tmp_path)
+    (settings.vault_path / "Live.md").write_text("live note", encoding="utf-8")
+
+    class DefectiveSemanticService:
+        def use_persisted_index_for_read_only_search(self):
+            raise TypeError("private fingerprint defect")
+
+    monkeypatch.setattr(
+        "app.cli.semantic_search_service_from_settings",
+        lambda _settings: DefectiveSemanticService(),
+    )
+
+    assert main(["query", "--semantic-text", "private query"], settings=settings) == EXIT_CLI_FAILURE
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == "VaultBridge CLI failed (TypeError).\n"
+    assert "private" not in captured.err
+
+
+def test_query_command_dispatches_all_supported_repeatable_options(tmp_path, monkeypatch):
+    settings = settings_for(tmp_path)
+    captured = {}
+
+    def recording_run(app_settings, **kwargs):
+        captured["settings"] = app_settings
+        captured.update(kwargs)
+        return EXIT_SUCCESS
+
+    monkeypatch.setattr("app.cli.run_knowledge_query", recording_run)
+
+    assert (
+        main(
+            [
+                "query",
+                "--semantic-text",
+                "concept",
+                "--literal-text",
+                "literal",
+                "--folder",
+                "Area",
+                "--path",
+                "Area/A.md",
+                "--path",
+                "Area/B.md",
+                "--tag",
+                "work",
+                "--tag",
+                "urgent",
+                "--limit",
+                "9",
+            ],
+            settings=settings,
+        )
+        == EXIT_SUCCESS
+    )
+    assert captured == {
+        "settings": settings,
+        "semantic_text": "concept",
+        "literal_text": "literal",
+        "folder": "Area",
+        "paths": ["Area/A.md", "Area/B.md"],
+        "tags": ["work", "urgent"],
+        "limit": 9,
+    }
+
+
 @pytest.mark.parametrize(
     "arguments",
     (
@@ -1027,8 +1492,9 @@ def test_related_uses_persisted_index_without_sync_or_storage_mutation(tmp_path,
         ["search", "query", "--limit", "51"],
         ["related", "query", "--limit", "21"],
         ["related", "query", "--min-score", "1.1"],
+        ["query", "--literal-text", "value", "--limit", "not-an-integer"],
     ),
 )
-def test_cli_rejects_invalid_search_arguments_with_exit_two(arguments):
+def test_cli_rejects_invalid_arguments_with_exit_two(arguments):
     with pytest.raises(SystemExit, match=str(EXIT_CLI_FAILURE)):
         main(arguments)

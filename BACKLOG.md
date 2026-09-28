@@ -2208,6 +2208,31 @@ or Milestone 14+ work.
 
 ---
 
+### VB-122 — Expose bounded Knowledge Query through the CLI — P1 ✅
+
+**Status:** Completed on 2026-09-28. One read-only `query` command exposes the accepted bounded
+subset through `KnowledgeQueryService` without duplicating domain semantics.
+
+**Accepted surface and behavior**
+
+- Accept optional `--semantic-text`, `--literal-text`, and `--folder`; repeatable exact `--path` and
+  required `--tag`; and `--limit`, with the domain default of `20`.
+- Construct the existing vault, relationship, and semantic owners and pass one immutable
+  `KnowledgeQuery` directly to `KnowledgeQueryService`. Domain validation, filtering, ordering,
+  semantic availability, ranking, live verification, and bounds remain owned by VB-121.
+- Print only deterministic canonical vault-relative paths, result ordering, compatible semantic
+  index basis, and the existing final/semantic/lexical scores when present. Never print query text,
+  note content, snippets, metadata, relationships, exception details, host paths, or credentials.
+- Preserve the expected `invalid_request`, `unsafe_scope`, and `semantic_unavailable` categories as
+  privacy-safe operational exit `1`; unexpected configuration/programming failures remain exit `2`.
+- The command is read-only: it performs no implicit synchronization or rebuild and changes neither
+  Markdown nor semantic persistence.
+
+**Explicit non-goals:** no REST/OpenAPI, MCP, dashboard, persistence, dependency, write, semantic
+ranking, index compatibility, metadata parsing, relationship, Docker/TrueNAS, or release change.
+
+---
+
 ## Release history
 
 ### v1.2.0 release
@@ -2325,6 +2350,7 @@ VB-001 ✓
 → VB-114 ✓ (normalized multi-dialect relationship domain view)
 → VB-120 ✓ (accepted bounded Knowledge Query capability / ADR)
 → VB-121 ✓ (bounded Knowledge Query domain runtime and evaluation)
+→ VB-122 ✓ (read-only bounded Knowledge Query CLI adapter)
 → VB-034 (optional opt-in write task)
 ```
 
@@ -2366,7 +2392,7 @@ changing wikilink-backed public adapters. VB-114 completes the Portable PKM mile
 immutable live normalized relationship view and no public adapter or persistence change. VB-120
 accepts ADR 0006 as the bounded Knowledge Query domain contract. VB-121 implements that contract as
 an immutable domain-only runtime with live eligibility before unchanged semantic ranking, bounded
-safe failures, and no adapter or persistence. VB-122 remains planned only and has no accepted public
-adapter contract.
+safe failures, and no persistence. VB-122 exposes only its accepted read-only CLI subset without
+adding another query implementation or any REST, MCP, dashboard, persistence, or write surface.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.

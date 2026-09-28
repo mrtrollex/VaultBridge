@@ -644,13 +644,18 @@ python -m app.cli index
 python -m app.cli reindex
 python -m app.cli search "backup"
 python -m app.cli related "how is my backup replicated?"
+python -m app.cli query --semantic-text "backup" --folder Projects --tag active --limit 10
 ```
 
 `status` is the concise persisted vault/index view. `search` is literal title/content search and
 does not load the embedding model. `related` uses the existing compatible semantic index without
 synchronizing it and live-verifies result paths before display. Both query commands support
 `--folder`; `search` supports `--limit`, while `related` supports `--limit` and `--min-score`.
-They print bounded snippets and vault-relative paths. Empty query results are successful.
+Those commands print bounded snippets and vault-relative paths. `query` calls the bounded
+`KnowledgeQueryService` directly and supports `--semantic-text`, `--literal-text`, `--folder`,
+repeatable exact `--path`, repeatable required `--tag`, and `--limit`. It prints only canonical
+vault-relative paths and existing semantic score evidence when applicable. Empty results are
+successful.
 
 `index` brings derived semantic data up to date through the production incremental/full sync path;
 `reindex` first discards and then rebuilds derived semantic data. Markdown remains the source of
@@ -658,8 +663,8 @@ truth and neither command changes note files.
 
 VaultBridge has no cross-process index lock. `status`, `index`, and `reindex` are stopped-service
 operations; do not run them through `docker exec` in the serving application container. Read-only
-`search` and `related` do not mutate semantic persistence, but they are local readers and are not a
-new remote/concurrent-process coordination layer.
+`search`, `related`, and `query` do not mutate semantic persistence, but they are local readers and
+are not a new remote/concurrent-process coordination layer.
 
 Inspect persisted index integrity without loading the embedding model or changing storage:
 
