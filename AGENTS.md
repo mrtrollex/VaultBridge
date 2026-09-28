@@ -1,174 +1,73 @@
 # AGENTS.md — VaultBridge
 
-This file defines repository-level instructions for Codex and other coding agents.
+This file defines the instructions every coding-agent session must follow in this repository.
 
 ## Mission
 
-VaultBridge is a small self-hosted REST + semantic search bridge for Obsidian Markdown vaults. Markdown files remain the source of truth. The project should stay simple enough to run on a home server/NAS with Docker and CPU-only embeddings.
+VaultBridge is a small self-hosted REST and semantic-search bridge for Obsidian Markdown vaults.
+Markdown remains the source of truth, and the project must remain practical for a home server or NAS
+using Docker, SQLite, and CPU-only embeddings.
 
-## Core constraints
+## Non-negotiable invariants
 
-- Preserve the **minimum API surface necessary**.
-- Do not add arbitrary filesystem operations.
-- Do not add a delete endpoint without an explicit project decision.
-- Do not send note content to external embedding services by default.
-- Do not add Redis, Celery, Qdrant, Kubernetes, or another service without a measured requirement and an ADR.
-- SQLite is the default semantic metadata/index store.
-- The Obsidian vault must remain usable without VaultBridge.
-- All vault paths must be vault-relative and protected against traversal/symlink escape.
-- Never log or commit API keys, vault contents, model caches, or generated semantic databases.
+- Preserve the minimum API and operational surface necessary.
+- Do not add arbitrary filesystem operations or a delete endpoint without an explicit project decision.
+- Keep vault paths vault-relative and protect every filesystem boundary against traversal and symlink escape.
+- Do not send note content to external embedding or AI services by default.
+- Keep SQLite and the single-container deployment as defaults. A new service, storage engine,
+  authentication scheme, breaking API change, major runtime dependency, or distributed-coordination
+  model requires an accepted ADR before implementation.
+- Preserve the public compatibility contract documented in `ARCHITECTURE.md` and implemented by the
+  registered routes, including compatibility aliases, operation IDs, and request/response semantics,
+  unless the exact task authorizes a migration.
+- Keep the vault usable without VaultBridge and keep semantic indexes rebuildable from Markdown.
+- Never log or commit API keys, credentials, vault contents, model caches, or generated semantic databases.
 
-## Current compatibility contract
+## Sources of truth
 
-Preserve these endpoints and operation IDs. New integrations should prefer `/api/v1`; the
-unversioned note/search routes remain compatibility aliases:
+Start with the smallest authoritative context, in this order:
 
-| Method | Path | operationId |
-|---|---|---|
-| GET | `/health` | `healthCheck` |
-| GET | `/health/live` | `livenessCheck` |
-| GET | `/health/ready` | `readinessCheck` |
-| POST | `/notes` | `createNote` |
-| POST | `/notes/append` | `appendNote` |
-| GET | `/notes/read` | `readNote` |
-| POST | `/notes/search` | `searchNotes` |
-| POST | `/notes/related` | `findRelatedNotes` |
-| POST | `/notes/duplicates` | `findDuplicateCandidates` |
-| GET | `/notes/list` | `listNotes` |
-| POST | `/api/v1/notes` | `createNoteV1` |
-| POST | `/api/v1/notes/append` | `appendNoteV1` |
-| GET | `/api/v1/notes/read` | `readNoteV1` |
-| POST | `/api/v1/notes/search` | `searchNotesV1` |
-| POST | `/api/v1/notes/related` | `findRelatedNotesV1` |
-| POST | `/api/v1/notes/duplicates` | `findDuplicateCandidatesV1` |
-| GET | `/api/v1/notes/list` | `listNotesV1` |
+1. This `AGENTS.md`.
+2. The exact GitHub issue and, when applicable, the matching section of `BACKLOG.md`.
+3. The relevant implementation files and nearest tests.
 
-The schema-hidden `/privacy` route also remains unversioned. Do not silently change request or
-response semantics.
+Consult `ARCHITECTURE.md`, accepted ADRs, `PROJECT_STATE.md`, and `ROADMAP.md` only when their subject
+matter affects the task. `docs/CODEX_PLAYBOOK.md` owns the detailed Codex workflow and project-specific
+conventions. If authoritative sources disagree, stop and report the conflict instead of guessing.
 
-## Working method
+## Issue implementation and review
 
-For every implementation task:
+For GitHub issue implementation, confirmed-finding repair, or fresh review, use
+`$vaultbridge-issue-workflow` or follow `.agents/skills/vaultbridge-issue-workflow/SKILL.md`.
 
-1. Read `ROADMAP.md`, `ARCHITECTURE.md`, and the relevant item in `BACKLOG.md`.
-2. Inspect the existing implementation before proposing a rewrite.
-3. Make the smallest coherent change that satisfies the task.
-4. Add or update tests for changed behaviour.
-5. Run the required checks.
-6. Update docs only where behaviour actually changed.
-7. Summarize files changed, design decisions, tests run, and any remaining risk.
+- Inspect existing ownership and behavior before proposing a rewrite.
+- Make the smallest coherent change that satisfies the exact task; do not implement the next backlog item.
+- Preserve unrelated and pre-existing working-tree changes.
+- Add or update focused tests for changed behavior, including failure cases for security-sensitive changes.
+- Update documentation only when behavior or factual project state changed.
+- Do not commit, push, publish, release, or deploy unless explicitly requested.
 
-## Required checks
+## Validation and review contract
 
-Before implementation, prepare a compact task packet from the repository root:
+- Preserve the `agent_task.py -> implementation -> agent_finish.py -> fresh review` workflow described in
+  `docs/CODEX_PLAYBOOK.md`.
+- `scripts/agent_check.py` owns change-aware check selection. A failed or required-but-unavailable check
+  means the task is incomplete; GitHub CI remains independent evidence.
+- Fresh review is read-only and findings-only. Report concrete findings by severity and finish with exactly
+  `APPROVE` or `FIXES REQUIRED`.
+- Fix only confirmed findings, rerun the completion workflow, and repeat fresh review when the fix
+  materially changes the implementation.
 
-```bash
-python scripts/agent_task.py --task-file path/to/task.md
-```
+## Security and dependencies
 
-For short task context, use `--task "..."` instead; exactly one task source is required. The tool
-writes `.agent/task_packet.md` by default and does not invoke Codex. Start the implementation session
-with that packet, then inspect task-relevant code and authoritative documentation as needed. Use
-repeatable `--context-file` arguments only for repository files known to be relevant.
+Treat path resolution, authentication, note writes, API keys, public deployment guidance, and content-size
+limits as security-sensitive. Test relevant denial and failure paths explicitly.
 
-For the normal end-of-task workflow, use the repository-local wrapper from the repository root:
+Before adding a dependency, explain the concrete problem, why the standard library and current stack are
+insufficient, runtime and operational impact, and whether it adds a service or network dependency. Do not
+add an LLM orchestration framework to the core project.
 
-```bash
-python scripts/agent_finish.py --task-file path/to/task.md
-```
+## Documentation and privacy
 
-For short task context, use `--task "..."` instead of `--task-file`; exactly one task source is
-required. The wrapper runs `agent_check.py`, stops without a review packet when verification fails
-or is required-but-unavailable, and otherwise writes `.agent/review_packet.md` with
-`agent_review.py`. It does not invoke Codex. Give that packet to a fresh Codex session without the
-implementer's conversation history.
-
-The underlying tools remain independently usable. To run only the repository-local verification
-selector:
-
-```bash
-python scripts/agent_check.py
-```
-
-It discovers branch, staged, unstaged, and relevant untracked changes, then selects the checks for
-the affected surface. A task is not complete when it reports a failed or required-but-unavailable
-check. UI changes include the Chromium Playwright regression suite; the selector reports missing
-Python or browser support without installing it. TrueNAS/deployment and Action/OpenAPI changes may
-also report required agent verification that must be performed separately. See
-`docs/CODEX_PLAYBOOK.md` for browser acceptance guidance. The selector complements GitHub CI; it
-does not replace CI.
-
-After standalone verification passes, `agent_review.py` can still generate a packet directly:
-
-```bash
-python scripts/agent_review.py --task-file path/to/task.md --output review_packet.md
-```
-
-The reviewer inspects and reports findings only; it does not modify files or commit. The normal flow
-is `agent_task.py -> implementation session with .agent/task_packet.md -> implement ->
-agent_finish.py -> fresh Codex review of .agent/review_packet.md -> fix confirmed findings if
-necessary -> agent_finish.py again -> APPROVE -> PR / CI`. See
-`docs/CODEX_PLAYBOOK.md` for handoff details.
-
-The underlying canonical Python checks remain:
-
-```bash
-ruff check app tests scripts
-PYTHONPATH=. pytest -q --ignore=tests/e2e
-python -m pytest -q tests/e2e --browser=chromium
-python -m compileall -q app
-```
-
-When Docker-related files change:
-
-```bash
-docker compose config
-docker build -t vaultbridge:test .
-```
-
-When OpenAPI/action files change, verify operation IDs still map to actual endpoints.
-
-## Refactoring rules
-
-- Refactors should be behaviour-preserving unless the task explicitly changes behaviour.
-- Prefer dependency injection and small services over global state, but do not introduce a framework solely for DI.
-- Keep FastAPI/Pydantic idiomatic.
-- Prefer standard library solutions where they are sufficient.
-- Avoid abstractions that have only one trivial implementation unless they isolate I/O or make testing materially easier.
-- Keep semantic search testable with a fake embedder; tests must not download ML models.
-
-## Semantic search rules
-
-- Measure retrieval quality with repeatable evaluation cases before changing the default model.
-- Title/path lexical boosts must remain secondary to semantic relevance.
-- Changing model/chunking/index format must invalidate or migrate the index safely.
-- The service must always be able to rebuild the semantic index from the Markdown vault.
-- Search results should expose enough information to debug ranking (`semantic_score`, lexical/final score where applicable).
-
-## Security rules
-
-Treat these areas as security-sensitive:
-
-- path resolution
-- authentication
-- note writes
-- API key handling
-- reverse-proxy/public deployment instructions
-- content size limits
-
-Changes in these areas require explicit tests for failure cases.
-
-## Dependency policy
-
-Before adding a dependency, explain:
-
-- what concrete problem it solves,
-- why the standard library/current stack is insufficient,
-- runtime size/operational impact,
-- whether it introduces another service or network dependency.
-
-Do not add an LLM orchestration framework to the core project.
-
-## Documentation language
-
-Public repository documentation should be written in English. Deployment examples must use placeholders and must never contain the author's real API key or private vault content.
+Write public repository documentation in English. Use placeholders in deployment examples and never include
+the author's real credentials, private hostnames, or private vault content.
