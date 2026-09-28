@@ -40,8 +40,11 @@ those conventions into this skill.
    - Run the narrowest relevant check while iterating.
    - Follow the validation contract below before handoff.
 5. Handoff:
-   - Give only `.agent/review_packet.md` to a fresh Codex session; do not include the implementer's
-     conversation history.
+   - After `agent_finish.py` succeeds and `.agent/review_packet.md` exists, stop the implementation
+     session. Do not spawn, delegate to, or wait for a reviewer or subagent, automatically perform a
+     fresh review, or enter a review/fix/review loop.
+   - Tell the user to start a separate fresh Codex session and provide only `.agent/review_packet.md`;
+     do not include the implementer's conversation history.
 
 ## Validation
 
@@ -53,18 +56,22 @@ those conventions into this skill.
 ## Fresh review
 
 1. Start from `.agent/review_packet.md` and inspect the repository directly when the packet omits a diff.
-2. Do not modify files, commit, or broaden the task.
-3. Check the exact task, behavior, failure paths, security boundaries, compatibility, lifecycle or
+2. Perform one read-only review pass. Do not modify files, commit, run repair steps, run
+   `agent_finish.py`, regenerate the review packet, broaden the task, or spawn or delegate to another
+   reviewer or subagent.
+3. Inspect repository evidence only as needed to check the exact task, behavior, failure paths, security
+   boundaries, compatibility, lifecycle or
    concurrency risks, tests, and accidental scope.
 4. Report only concrete actionable findings, ordered `BLOCKER`, `HIGH`, `MEDIUM`, then `LOW`.
 5. Finish with exactly one recommendation on its own line: `APPROVE` or `FIXES REQUIRED`.
+6. Stop immediately after the verdict.
 
 ## Confirmed-finding repair
 
 1. Reproduce or verify each finding against the code before editing.
 2. Fix only confirmed findings in the responsible layer; preserve public contracts and unrelated changes.
 3. Rerun `agent_finish.py` with the original task source.
-4. Repeat fresh review when the correction materially changes the implementation.
+4. Once the new `.agent/review_packet.md` exists, stop. Do not automatically launch another reviewer.
 
 ## Completion report
 
