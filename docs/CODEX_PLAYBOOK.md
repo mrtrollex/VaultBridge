@@ -157,10 +157,14 @@ Do not implement the recommended next task.
 ## Current next task
 
 Milestone 12 is complete under accepted ADR 0005 and the authoritative VB-110 through VB-114
-contracts. VB-114 adds the immutable normalized multi-dialect relationship domain view without
-changing public adapters, persistence, semantics, or writes. Milestone 13 is the next roadmap
-milestone, but it remains planned only: do not infer or implement VB-120 or any knowledge-query
-scope until `BACKLOG.md` contains a separately authorized contract.
+contracts. VB-120 is also complete as design-only work: accepted ADR 0006 defines the bounded
+Knowledge Query domain request/result, ownership, live-filter and semantic-ranking composition,
+consistency, ordering, bounds, failures, and adapter/persistence exclusions. It adds no runtime
+query engine or public adapter.
+
+VB-121 is the next proposed task, but it still requires its own authoritative `BACKLOG.md` runtime
+and evaluation contract. Do not infer its implementation shape from ADR terminology, create a
+`KnowledgeQueryService`, or implement VB-121/VB-122 until that contract is separately authorized.
 
 No new autonomous relationship task is currently recommended. VB-105 is complete as
 evaluation/design evidence and does not support or authorize a production graph-ranking change.

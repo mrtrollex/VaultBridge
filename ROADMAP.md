@@ -893,7 +893,8 @@ persisted.
 ### Task sequence
 
 VB-110 through VB-114 are complete under their authoritative `BACKLOG.md` contracts. Milestone 13
-is next in the roadmap, but remains planned only and does not authorize VB-120 implementation.
+has started with the accepted design-only VB-120 contract; VB-121 is next but is not authorized
+until `BACKLOG.md` contains its own runtime/evaluation contract.
 
 ```text
 VB-110 define portable PKM document model / ADR ✓
@@ -996,48 +997,48 @@ Milestone exit direction:
 
 ---
 
-# Milestone 13 — Knowledge Query Layer — PLANNED
+# Milestone 13 — Knowledge Query Layer — IN PROGRESS / VB-120 COMPLETE
 
 **Goal:** let clients query knowledge using semantic, structural, and metadata constraints through
 one safe domain capability.
 
-The future capability should compose supported constraints such as:
+The accepted capability composes only the bounded domain concepts defined by ADR 0006:
 
-- semantic and literal query text;
-- contained folder/path scope;
-- tags;
-- supported frontmatter metadata;
-- normalized relationship constraints;
-- modification or creation metadata only where it is reliably available and clearly defined.
+- optional semantic text selects the existing hybrid semantic-search contract;
+- optional literal text is a separate exact, case-sensitive Unicode substring filter over current
+  decoded Markdown and never changes ranking;
+- recursive contained-folder scope and a bounded tuple of exact contained Markdown paths;
+- required portable tags with the accepted exact matching semantics;
+- bounded predicates over exact top-level frontmatter keys using only `exists`, `equals`,
+  `not_equals`, and `sequence_contains` with ADR 0006's portable scalar and sequence rules;
+- bounded resolved normalized-relationship predicates using an incoming or outgoing direction,
+  exact canonical other path, and optional accepted origin;
+- a bounded visible-result limit.
 
-Conceptual request example:
+Creation time, modification time, title, alias, and heading are not predicates in the accepted
+initial capability. [ADR 0006](docs/adr/0006-bounded-knowledge-query-capability.md) is authoritative
+for the Milestone 13 query semantics, including the finite immutable conceptual request/result
+boundary, exact live constraints, ownership, composition, ordering, consistency, bounds, failures,
+and query-language exclusions. The concepts above are not a committed REST, MCP, CLI, dashboard, or
+JSON schema. VB-121 must implement the accepted ADR contract rather than infer semantics from older
+roadmap examples. The layer does not expose arbitrary SQL, SQLite internals, arbitrary filesystem
+predicates, or an unbounded query language. Future adapters must consume one domain query capability
+instead of implementing independent filtering/ranking semantics.
 
-```json
-{
-  "query": "TrueNAS authentication",
-  "folder": "Projects",
-  "tags": ["homelab"],
-  "metadata": {
-    "status": "active"
-  }
-}
-```
-
-This is not a committed API schema. The layer must not expose arbitrary SQL, SQLite internals,
-arbitrary filesystem predicates, or an unbounded query language. REST, MCP, CLI, and the dashboard
-should eventually consume one domain query capability instead of implementing independent
-filtering/ranking semantics. Any frontmatter query language is part of this bounded capability, not
-a separate generic language feature.
-
-Proposed tasks, subject to `BACKLOG.md` definition after Milestone 12 establishes the model:
+Task sequence:
 
 ```text
-VB-120 knowledge-query capability / ADR
+VB-120 knowledge-query capability / ADR ✓
    ↓
-VB-121 bounded domain query implementation and evaluation
+VB-121 bounded domain query implementation and evaluation — NEXT / CONTRACT REQUIRED
    ↓
 VB-122 thin adapter adoption where separately approved
 ```
+
+VB-120 is complete under its authoritative `BACKLOG.md` contract. It adds no runtime query engine,
+public adapter, persistence, infrastructure, ranking/index-signature change, or write behavior.
+VB-121 remains proposed only until its own authoritative `BACKLOG.md` contract is accepted; the
+roadmap and ADR do not authorize implementation by themselves.
 
 ---
 
@@ -1159,10 +1160,10 @@ verified backlink write; none is the strategic NEXT item.
 
 ## Domain architecture
 
-Accepted VB-110 and the proposed VB-120/VB-130/VB-140/VB-150 design tasks establish domain
-semantics before runtime or adapter work. VB-110 is authoritative in `BACKLOG.md`; the remaining
-identifiers are not implementation contracts until they receive bounded backlog acceptance
-criteria.
+Accepted VB-110 and VB-120, plus the proposed VB-130/VB-140/VB-150 design tasks, establish domain
+semantics before runtime or adapter work. VB-110 and VB-120 are authoritative in `BACKLOG.md`; the
+remaining identifiers are not implementation contracts until they receive bounded backlog
+acceptance criteria.
 
 ## Deployment and integration candidates
 
@@ -1241,7 +1242,7 @@ PKM RELATIONSHIP FOUNDATION ✓
    ↓
 PORTABLE PKM MODEL ✓
    ↓
-KNOWLEDGE QUERY LAYER — PLANNED / CONTRACT REQUIRED
+KNOWLEDGE QUERY LAYER — ADR ACCEPTED / RUNTIME CONTRACT REQUIRED
    ↓
 KNOWLEDGE CAPTURE / PORTABLE MEMORY
    ↓
@@ -1292,11 +1293,12 @@ establish acceptable general benefit. Wikilinks remain the first supported relat
 not the architectural definition.
 
 Milestone 12 is complete: VB-110 and ADR 0005 are accepted, and VB-111 through VB-114 are
-implemented without public-surface changes. Milestone 13 is the next roadmap milestone, but its
-proposed VB-120 through VB-122 sequence has no authoritative implementation contract and reserves
-no scope by itself. VB-032/VB-033 remain deferred, and VB-034 remains a later optional write task
-rather than NEXT. VB-120–VB-122, VB-130–VB-132, VB-140–VB-142, and VB-150–VB-152 remain proposed
-and reserve no implementation scope by themselves.
+implemented without public-surface changes. Milestone 13 has started with completed VB-120 and
+accepted ADR 0006, which define the bounded Knowledge Query domain contract without a runtime engine
+or public adapter. VB-121 is the next proposed runtime/evaluation task but has no authoritative
+BACKLOG contract and reserves no implementation scope yet. VB-032/VB-033 remain deferred, and VB-034
+remains a later optional write task rather than NEXT. VB-121–VB-122, VB-130–VB-132, VB-140–VB-142,
+and VB-150–VB-152 remain proposed and reserve no implementation scope by themselves.
 
 ---
 
