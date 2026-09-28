@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from itertools import batched
 from pathlib import Path, PurePosixPath, PureWindowsPath
-from typing import Protocol, runtime_checkable
+from typing import Literal, Protocol, runtime_checkable
 
 import numpy as np
 
@@ -289,6 +289,13 @@ class SemanticResult:
     lexical_score: float
     snippet: str
     heading: str | None
+
+
+SemanticQueryBasis = Literal[
+    "compatible_ready",
+    "compatible_previous_refresh",
+    "compatible_previous_error",
+]
 
 
 @dataclass(frozen=True)
@@ -656,6 +663,19 @@ class SemanticSearchService:
                 self._search_available = True
             return True
         return False
+
+    def query_basis(self) -> SemanticQueryBasis | None:
+        """Return the bounded compatible index basis available to a domain query."""
+        if not self.is_search_available():
+            return None
+        state = self.state
+        if state is IndexState.READY:
+            return "compatible_ready"
+        if state is IndexState.INDEXING:
+            return "compatible_previous_refresh"
+        if state is IndexState.ERROR:
+            return "compatible_previous_error"
+        return None
 
     def _stored_index_available_from_storage(
         self,
@@ -1733,6 +1753,7 @@ class SemanticSearchService:
         folder: str = "",
         limit: int = 5,
         min_score: float = 0.28,
+        eligible_paths: frozenset[str] | None = None,
     ) -> list[SemanticResult]:
         if not self.is_search_available():
             if self.state is IndexState.ERROR:
@@ -1761,6 +1782,8 @@ class SemanticSearchService:
             ) from exc
         for chunk in chunks:
             if prefix and not chunk.path.startswith(prefix):
+                continue
+            if eligible_paths is not None and chunk.path not in eligible_paths:
                 continue
             vector = np.frombuffer(
                 chunk.embedding,

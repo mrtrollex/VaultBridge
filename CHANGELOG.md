@@ -11,6 +11,9 @@ The project intends to follow Semantic Versioning after the public repository ba
 - accepted ADR 0006 for a bounded, client-agnostic Knowledge Query domain capability that composes
   live Markdown scope, literal text, portable tags, frontmatter, normalized relationships, and the
   existing semantic ranker without adding a runtime engine, public adapter, or persistent store
+- immutable domain-only Knowledge Query runtime with exact bounded live scope/literal/tag/metadata/
+  relationship filtering before unchanged semantic ranking, deterministic ordering, conservative
+  stale-index behavior, and privacy-safe failures; no REST, MCP, CLI, or dashboard surface is added
 
 ## [1.3.0] - 2026-09-24
 

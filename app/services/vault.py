@@ -156,6 +156,14 @@ class MarkdownPathVerification:
     resolved_path: str | None = None
 
 
+@dataclass(frozen=True)
+class FolderScopeVerification:
+    """Privacy-safe outcome for one exact VaultService-owned folder scope check."""
+
+    resolution: Literal["resolved", "missing", "unsafe"]
+    resolved_folder: str | None = None
+
+
 class VaultService:
     """Safe Markdown note operations scoped to one Obsidian vault root."""
 
@@ -303,6 +311,36 @@ class VaultService:
             )
         except (OSError, RuntimeError, ValueError, VaultValidationError):
             return MarkdownPathVerification("unsafe")
+
+    def verify_existing_folder_scope_result(self, raw: str) -> FolderScopeVerification:
+        """Classify one exact vault-relative directory without leaking host details."""
+        try:
+            normalized = raw.strip().replace("\\", "/")
+            posix_path = PurePosixPath(normalized)
+            windows_path = PureWindowsPath(normalized)
+            if (
+                not normalized
+                or posix_path.is_absolute()
+                or windows_path.is_absolute()
+                or windows_path.drive
+                or ".." in posix_path.parts
+            ):
+                return FolderScopeVerification("unsafe")
+            if normalized.rstrip("/") == ".":
+                return FolderScopeVerification("resolved", ".")
+            path = self.resolve_path(normalized)
+            if self._has_broken_symlink(posix_path.parts):
+                return FolderScopeVerification("unsafe")
+            if not path.exists() or not path.is_dir():
+                return FolderScopeVerification("missing")
+            if not self._has_exact_path_spelling(posix_path.parts):
+                return FolderScopeVerification("missing")
+            return FolderScopeVerification(
+                "resolved",
+                self._relative_path(path).replace("\\", "/"),
+            )
+        except (OSError, RuntimeError, ValueError, VaultValidationError):
+            return FolderScopeVerification("unsafe")
 
     def _has_broken_symlink(self, parts: tuple[str, ...]) -> bool:
         current = self.vault_root

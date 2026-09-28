@@ -4,7 +4,11 @@ from dataclasses import dataclass
 from typing import Literal
 
 from app.services.markdown_links import MarkdownLink, MarkdownLinkResolver
-from app.services.vault import NoteNotFoundError, VaultService
+from app.services.vault import (
+    MarkdownPathCandidateSnapshot,
+    NoteNotFoundError,
+    VaultService,
+)
 from app.services.wikilinks import Wikilink, WikilinkResolutionSnapshot, WikilinkResolver
 
 
@@ -88,6 +92,13 @@ class RelationshipOccurrence:
     label: str | None
     source_order: int
     origin_metadata: tuple[tuple[str, str], ...] = ()
+
+
+@dataclass(frozen=True)
+class RelationshipResolutionSnapshot:
+    """Opaque immutable query-level resolution facts owned by RelationshipService."""
+
+    _wikilinks: WikilinkResolutionSnapshot
 
 
 class RelationshipService:
@@ -246,6 +257,32 @@ class RelationshipService:
         return self._derive_normalized_relationships(
             source.content,
             source_path=source.path.replace("\\", "/"),
+        )
+
+    def normalized_resolution_snapshot(
+        self,
+        candidates: MarkdownPathCandidateSnapshot,
+    ) -> RelationshipResolutionSnapshot:
+        """Build one reusable normalized-resolution snapshot from one vault enumeration."""
+        return RelationshipResolutionSnapshot(
+            WikilinkResolutionSnapshot.from_candidates(
+                candidates.live_candidates,
+                unsafe_unqualified_names=candidates.unsafe_unqualified_names,
+            )
+        )
+
+    def normalized_relationships_from_content(
+        self,
+        content: str,
+        *,
+        source_path: str,
+        snapshot: RelationshipResolutionSnapshot,
+    ) -> tuple[RelationshipOccurrence, ...]:
+        """Derive normalized relationships from one already verified content snapshot."""
+        return self._derive_normalized_relationships(
+            content,
+            source_path=source_path.replace("\\", "/"),
+            wikilink_snapshot=snapshot._wikilinks,
         )
 
     def _derive_normalized_relationships(
