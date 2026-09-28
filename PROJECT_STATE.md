@@ -262,8 +262,16 @@ Current post-v1 planning position:
   additive normalized outgoing/backlink methods preserve verified canonical identity, origin,
   duplicates, deterministic ordering, and exact stable backlink deduplication
 - VB-114 adds no public REST/OpenAPI, MCP, CLI, or dashboard surface and no persistence, graph/index,
-  semantic-ranking, metadata-resolution, or write behavior; Milestone 12 is complete, while
-  Milestone 13 remains planned and has no authorized implementation contract
+  semantic-ranking, metadata-resolution, or write behavior; Milestone 12 is complete
+- VB-120 is complete as design-only work: accepted ADR 0006 defines one bounded, immutable
+  Knowledge Query domain request/result and preserves `VaultService`, frontmatter/portable-field,
+  `RelationshipService`, and `SemanticSearchService` ownership
+- ADR 0006 makes live Markdown constraints authoritative before existing semantic ranking, records
+  conservative stale-compatible-index and non-atomic filesystem semantics, fixes deterministic
+  ordering/resource/failure/query-language bounds, and keeps every optional projection rebuildable
+- VB-120 adds no runtime query engine or `KnowledgeQueryService`, REST/OpenAPI, MCP, CLI, dashboard,
+  persistence/schema, ranking/index-signature, dependency/infrastructure, write, or Milestone 14+
+  behavior; VB-121 is next only after its own authoritative BACKLOG contract is accepted
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
 

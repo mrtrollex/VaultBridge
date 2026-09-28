@@ -26,7 +26,8 @@ Clients (Web Dashboard / ChatGPT / curl / CLI / integrations)
 
 ### Source of truth
 
-The `.md` files are authoritative. The SQLite semantic index is disposable derived data and must be rebuildable.
+The `.md` files are authoritative. The SQLite semantic index and every metadata, relationship,
+cache, or query projection are disposable derived data and must be rebuildable.
 
 ### Authentication
 
@@ -570,6 +571,8 @@ dependencies and the MCP HTTP ASGI boundary.
 - immutable absent, ordered bounded valid, or privacy-safe invalid domain results
 - YAML 1.2 Core scalar resolution, duplicate detection, safe-feature rejection, and exact metadata
   bounds without filesystem access, adapter exposure, persistence, or note mutation
+- immutable exact portable alias/tag projections from valid frontmatter, preserving source order,
+  duplicates, field-local failure, and the accepted VB-112 bounds
 - PyYAML is a direct bounded runtime dependency because the standard library has no YAML parser and
   a handwritten YAML grammar would be unsafe and costly to maintain; only its event parser is used,
   never object construction or default implicit resolution, and it adds no service or network
@@ -644,6 +647,26 @@ Batching, lifecycle-state transitions and index contents remain owned by
 - hybrid reranking
 - result aggregation
 - full-vault and targeted-path synchronization orchestration
+
+### Knowledge Query domain boundary — accepted design, not implemented
+
+[ADR 0006](docs/adr/0006-bounded-knowledge-query-capability.md) accepts one future domain
+orchestration boundary over the existing owners. `VaultService` remains responsible for live
+canonical paths and reads; the frontmatter/portable-field layer remains responsible for metadata
+and tags; `RelationshipService` remains responsible for normalized relationship facts; and
+`SemanticSearchService` remains responsible for semantic availability and the established hybrid
+ranking.
+
+The boundary accepts only a finite immutable request: optional semantic and exact literal text,
+recursive folder and bounded exact-path scope, required exact portable tags, bounded top-level
+metadata predicates, bounded resolved relationship predicates, and a visible result limit. All live
+constraints establish an eligible canonical-path set before optional semantic selection. Results
+are immutable verified canonical paths with deterministic canonical ordering or unchanged semantic
+score ordering and a bounded semantic-index-basis fact.
+
+This boundary is conceptual in VB-120. There is no runtime service/module, public schema, adapter,
+projection, persistence, dependency, or index/ranking change. VB-121 requires a separate
+authoritative BACKLOG contract before implementing the smallest fitting runtime owner.
 
 ### `repositories/semantic.py`
 
@@ -762,6 +785,26 @@ vault and optional folder survive; safe internal aliases become canonical vault-
 titles. Filtering is read-only and preserves surviving rank order. Semantic score, lexical score,
 combined score, heading, and snippet still reflect the indexed snapshot, so an externally edited
 live note can retain stale semantic fields until normal synchronization runs.
+
+### Knowledge Query — accepted future domain flow
+
+```text
+finite immutable request
+  → bounded validation through existing owners
+  → deterministic live canonical-path enumeration and verified reads
+  → live literal / tag / metadata / normalized-relationship eligibility
+  → optional unchanged SemanticSearchService ranking of eligible indexed notes
+  → bounded final live-path verification
+  → deterministic immutable result
+```
+
+Markdown facts are live and authoritative; compatible semantic data may be older. A compatible
+previous index may remain searchable during refresh or after a failed refresh, while a semantic
+request fails explicitly when no compatible searchable index exists. VaultBridge claims no atomic
+vault-wide filesystem snapshot: changed, unreadable, missing, oversized, invalid-UTF-8, or unsafe
+notes are omitted conservatively, and bounded candidate evaluation may return fewer than the
+requested limit. Non-semantic results sort by `(path.casefold(), path)`; semantic results retain the
+existing final-score, semantic-score, lexical-score, and canonical-path tie-break chain.
 
 ### Verified backlinks
 

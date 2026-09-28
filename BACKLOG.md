@@ -1981,6 +1981,84 @@ publication, or release work. VB-114 does not implement Milestone 13, VB-120, or
 
 ---
 
+## Knowledge Query Layer
+
+### VB-120 — Define bounded Knowledge Query capability / ADR — P1 ✅
+
+**Status:** Completed on 2026-09-27. ADR 0006 is accepted as the authoritative domain contract for
+bounded composition of live literal, path, portable-tag, frontmatter, normalized-relationship, and
+existing semantic-search constraints. No runtime query engine, public adapter, persistence, ranking,
+index-signature, dependency, infrastructure, or write behavior was added.
+
+**Goal:** define one finite, client-agnostic Knowledge Query domain capability over the owners
+established by ADR 0005 and VB-111 through VB-114. Markdown remains authoritative; every parsed,
+relationship, semantic, cache, and query projection remains derived and rebuildable.
+
+**Acceptance criteria**
+
+- accept `docs/adr/0006-bounded-knowledge-query-capability.md` as the semantic contract for a future
+  VB-121 runtime task;
+- preserve `VaultService` ownership of containment, exact spelling, verified canonical
+  vault-relative paths, safe reads, note bounds, and symlink handling; preserve the existing
+  frontmatter/portable-field layer as metadata owner, `RelationshipService` as normalized
+  relationship owner, and `SemanticSearchService` as semantic availability/ranking owner;
+- define one conceptual immutable request with optional semantic text, optional exact literal text,
+  recursive folder scope, a bounded exact-path tuple, required portable tags, bounded top-level
+  metadata predicates, bounded normalized relationship predicates, and a visible result limit;
+- define one conceptual immutable result containing ordered verified canonical paths, existing
+  semantic score evidence only in semantic mode, deterministic ordering mode, and a bounded
+  semantic-index-basis fact that does not claim freshness;
+- allow text-free queries only when at least one structural or metadata constraint exists; reject an
+  empty effective request and compose all constraints with AND except the bounded path tuple and
+  optional relationship-origin choice defined by ADR 0006;
+- define literal text as an exact case-sensitive Unicode substring live-content filter, never a
+  ranking signal, regex, glob, normalization, or token language;
+- define segment-aware recursive folder scope and exact canonical Markdown path identity through
+  `VaultService`; unsafe scopes fail safely, while safely missing scopes match nothing;
+- define tag matching from valid VB-112 tags after surrounding-whitespace trimming, with exact
+  case-sensitive/non-normalized Unicode, literal `#`, stable duplicate handling, and no alias/title
+  resolution;
+- limit metadata to exact top-level keys and the finite `exists`, `equals`, `not_equals`, and
+  `sequence_contains` operators over exact portable scalar types; absent/invalid frontmatter,
+  nested traversal, coercion, recursive sequence search, and arbitrary YAML paths do not match;
+- limit relationship predicates to resolved normalized `note_link` occurrences, canonical
+  `other_path`, incoming/outgoing direction, and optional exact origin; unresolved relationships,
+  written targets, fragments, labels, source order, and origin metadata are not queryable;
+- require live path/content/metadata/tag/relationship constraints to establish eligibility before
+  semantic selection; preserve the current semantic threshold, hybrid weights, relative floor,
+  per-note aggregation, scores, tie-breaks, model, chunking, embedding input, and index signature;
+- use `(path.casefold(), path)` ordering without semantic text and the existing semantic score chain
+  plus canonical path with semantic text;
+- define conservative non-atomic consistency: current Markdown owns live facts; compatible previous
+  semantic data may remain searchable during refresh or after failure; stale deleted/unsafe notes
+  are excluded; unindexed live notes cannot appear in semantic mode; unreadable/racing notes are
+  omitted without unbounded retries or private diagnostics;
+- fail a semantic request explicitly when no compatible searchable semantic index exists rather
+  than silently changing query mode; keep non-semantic queries independent of index availability;
+- enforce ADR 0006's exact request bounds: default/max visible limit `20`/`100`, `64` path scopes,
+  `16` tags, `16` metadata predicates, `16` relationship predicates, bounded text/key/path/value
+  sizes, signed-64-bit/finite-binary64 numeric request values, and at most
+  `min(500, max(limit * 5, limit))` post-eligibility semantic candidates;
+- reject arbitrary SQL/FTS, host-path predicates/globs/regex, YAML-path/JMESPath/JSONPath-style
+  execution, user expressions, recursive boolean DSLs, and adapter-specific query semantics;
+- require privacy-safe reason codes/aggregates that expose no absolute host path, symlink target,
+  exception string, query or metadata value, note content, SQL, embedding, or storage detail;
+- keep any later measured query projection derived, fingerprinted, compatibility/invalidation
+  governed, and rebuildable from Markdown; authorize no projection or persistence in VB-120;
+- require a separately accepted VB-121 BACKLOG contract and evaluation covering semantic, literal,
+  scope, tag, metadata, relationship, mixed, failure, ordering, race, stale-index, English/Slovak,
+  and bounds cases plus no regression of the accepted VB-022/VB-024 retrieval baseline.
+
+**Compatibility / explicit non-goals:** VB-120 is documentation and architecture only. It adds no
+runtime `KnowledgeQueryService` or query engine and does not implement VB-121 or VB-122. No
+REST/OpenAPI endpoint, schema, or operation ID; MCP tool/resource; CLI command; dashboard behavior;
+public JSON schema; dependency; database/schema/cache/index/graph/vector store; Redis, Celery, Qdrant,
+background worker, or external service; ranking/model/chunking/index-signature change; metadata or
+relationship persistence; note write; alias/title resolution; Docker/TrueNAS/package/release change;
+multiple knowledge spaces; or Milestone 14+ work is authorized.
+
+---
+
 ## Release history
 
 ### v1.2.0 release
@@ -2096,6 +2174,8 @@ VB-001 ✓
 → VB-112 ✓ (portable aliases and tags projection)
 → VB-113 ✓ (contained standard Markdown note relationships)
 → VB-114 ✓ (normalized multi-dialect relationship domain view)
+→ VB-120 ✓ (accepted bounded Knowledge Query capability / ADR)
+→ VB-121 (next proposed runtime/evaluation task; authoritative contract required)
 → VB-034 (optional opt-in write task)
 ```
 
@@ -2134,7 +2214,8 @@ document-model contract. VB-111 implements its bounded read-only YAML frontmatte
 VB-112 implements immutable field-local alias/tag projection without changing public behavior, and
 VB-113 implements bounded contained standard Markdown relationships at the domain layer without
 changing wikilink-backed public adapters. VB-114 completes the Portable PKM milestone with an
-immutable live normalized relationship view and no public adapter or persistence change. Milestone
-13 remains planned only; its proposed tasks require their own authoritative contracts.
+immutable live normalized relationship view and no public adapter or persistence change. VB-120
+accepts ADR 0006 as the bounded Knowledge Query domain contract without adding a runtime engine or
+adapter. VB-121 is the next proposed task but still requires its own authoritative BACKLOG contract.
 
 Do not infer scope from sequence alone. Always read the exact task definition before implementation.
