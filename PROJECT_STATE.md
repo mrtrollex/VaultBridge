@@ -4,7 +4,7 @@ This document is the current factual snapshot for future Codex sessions. It shou
 
 ## Baseline date
 
-2026-09-26
+2026-09-28
 
 ## Current development position
 
@@ -286,6 +286,11 @@ Current post-v1 planning position:
   canonical paths plus existing ordering/index-basis/score evidence and preserves VB-121 failures
 - VB-122 adds no REST/OpenAPI, MCP, dashboard, persistence, dependency, write, ranking,
   index-compatibility, metadata, relationship, deployment, or release behavior
+- VB-130 is complete as design-only work: accepted ADR 0007 defines bounded portable Markdown
+  intake, capture provenance, inbox/draft versus promoted knowledge, advisory duplicate/related
+  evidence, explicit operator-controlled create/append promotion, and safe failure/ownership rules
+- VB-130 adds no capture runtime, public adapter, persistence, dependency, or write-behavior change;
+  VB-131 and VB-132 still require separate authoritative task contracts
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
 
@@ -380,6 +385,7 @@ Current milestones:
 - **Milestone 11 — Obsidian Knowledge Graph / Note Relationships (complete; production graph ranking not supported)**
 - **Milestone 12 — Portable PKM model (complete)**
 - **Milestone 13 — Knowledge Query Layer (complete; VB-120 through VB-122 complete)**
+- **Milestone 14 — Knowledge Capture / Portable Memory (planned; VB-130 design accepted, VB-131/VB-132 not implemented)**
 
 ## Working production characteristics
 
