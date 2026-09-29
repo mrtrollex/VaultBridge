@@ -2233,6 +2233,47 @@ ranking, index compatibility, metadata parsing, relationship, Docker/TrueNAS, or
 
 ---
 
+## Knowledge Capture / Portable Memory
+
+### VB-130 — Define Knowledge Capture and provenance model / ADR — P1 ✅
+
+**Status:** Completed as design-only work on 2026-09-28. ADR 0007 is accepted as the
+authoritative domain contract. No capture runtime or public adapter is implemented.
+
+**Goal:** define bounded, inspectable capture into portable Markdown, with provenance and an
+explicit human/operator decision before captured material becomes promoted knowledge. Keep the
+Markdown bytes and safe portable metadata authoritative under ADR 0005.
+
+**Acceptance criteria**
+
+- accept `docs/adr/0007-knowledge-capture-and-provenance.md` as the conceptual capture,
+  provenance, intake-state, review, and promotion contract for separately scoped VB-131/VB-132;
+- distinguish an inbox/draft Markdown capture artifact from a reviewed destination note: both are
+  authoritative files, but intake is not implicitly promoted or included as curated knowledge;
+- define source/provenance, capture event time, optional portable tags and capture type, including
+  absent/unknown versus asserted facts, safe scalar types, bounds, and preservation in Markdown;
+- require one explicit human/operator choice of create or append and its destination for each
+  promotion; related/duplicate evidence is advisory and cannot choose a target, merge, rewrite,
+  rename, delete, or silently discard a capture;
+- reuse `VaultService` containment, size, UTF-8, create/append compatibility, and post-commit
+  indexing boundaries conceptually; do not claim its current create/append checks are atomic under
+  competing writers or retries; require separately contracted VB-131/VB-132 write protection that
+  preserves non-overwriting create, idempotent append, contained Markdown-only writes, and existing
+  caller behavior; state where existing methods do not yet implement arbitrary capture provenance;
+- define deterministic validation/conflict/failure outcomes, privacy-safe diagnostics, bounded
+  duplicate/related interaction, and ownership of metadata, relationships, query, and writes;
+- keep VB-131 limited to a separately contracted portable inbox/draft capture capability and
+  VB-132 limited to a separately contracted explicit review/promotion capability. Neither is
+  implemented or given a public adapter by this task.
+
+**Compatibility / explicit non-goals:** documentation and architecture only. No runtime capture,
+REST/OpenAPI, MCP, CLI, dashboard, persistence/database/cache/index, dependency, automatic
+promotion/merge/rewrite/rename/delete, silent chat-history ingestion, mandatory LLM/cloud/embedding
+provider/external service, or change to current `create_note`/`append_note` behavior. No release or
+deployment change.
+
+---
+
 ## Release history
 
 ### v1.2.0 release
@@ -2351,6 +2392,7 @@ VB-001 ✓
 → VB-120 ✓ (accepted bounded Knowledge Query capability / ADR)
 → VB-121 ✓ (bounded Knowledge Query domain runtime and evaluation)
 → VB-122 ✓ (read-only bounded Knowledge Query CLI adapter)
+→ VB-130 ✓ (accepted Knowledge Capture and provenance model / ADR)
 → VB-034 (optional opt-in write task)
 ```
 

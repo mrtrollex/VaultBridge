@@ -1069,14 +1069,19 @@ explicit promote / append / create
 Possible portable metadata includes source/provenance, creation timestamp, tags, and capture type.
 No proprietary memory schema is mandatory. Capture must not silently persist chat history, rewrite
 existing knowledge, assume every capture belongs in an authoritative note, or automatically merge,
-promote, or delete content. Any approved write path must remain compatible with the existing
-non-overwriting `create_note` and idempotent `append_note` safety model and post-commit indexing
-rules.
+promote, or delete content. Future VB-131/VB-132 writes should reuse the existing `create_note` /
+`append_note` compatibility and post-commit indexing boundaries conceptually. Their current
+check-then-write behavior does not guarantee atomic non-overwrite or concurrent idempotency;
+before relying on those writes, the later tasks must establish atomic conflict and retry
+protection across competing writers while preserving contained Markdown-only writes and existing
+caller behavior.
 
-Proposed tasks, to be refined after the query/model foundations:
+VB-130 is complete as a design-only task under accepted ADR 0007. Its intake, provenance,
+advisory-analysis, and explicit-promotion contract adds no capture runtime or public adapter.
+VB-131 and VB-132 still require separate authoritative BACKLOG contracts before implementation:
 
 ```text
-VB-130 capture and provenance model / ADR
+VB-130 capture and provenance model / ADR (accepted design)
    ↓
 VB-131 portable inbox/draft capture
    ↓
@@ -1165,9 +1170,9 @@ verified backlink write; none is the strategic NEXT item.
 
 ## Domain architecture
 
-Accepted VB-110 and VB-120, plus the proposed VB-130/VB-140/VB-150 design tasks, establish domain
-semantics before runtime or adapter work. VB-110 and VB-120 are authoritative in `BACKLOG.md`; the
-remaining identifiers are not implementation contracts until they receive bounded backlog
+Accepted VB-110, VB-120, and VB-130 establish domain semantics before their separately scoped
+runtime or adapter work. These three tasks are authoritative in `BACKLOG.md`; proposed VB-131/VB-132,
+VB-140, and VB-150 identifiers are not implementation contracts until they receive bounded backlog
 acceptance criteria.
 
 ## Deployment and integration candidates
@@ -1301,8 +1306,8 @@ Milestone 12 is complete: VB-110 and ADR 0005 are accepted, and VB-111 through V
 implemented without public-surface changes. Milestone 13 is complete: accepted ADR 0006 has a
 bounded immutable domain runtime/evaluation and VB-122 exposes only its accepted read-only CLI
 subset. VB-032/VB-033 remain deferred, and VB-034 remains a later optional write task rather than
-NEXT. VB-130–VB-132, VB-140–VB-142, and VB-150–VB-152 remain proposed and reserve no
-implementation scope by themselves.
+NEXT. VB-130 and ADR 0007 are accepted as design only. VB-131/VB-132, VB-140–VB-142, and
+VB-150–VB-152 remain proposed and reserve no implementation scope by themselves.
 
 ---
 
