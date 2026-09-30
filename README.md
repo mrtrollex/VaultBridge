@@ -20,9 +20,9 @@
 </p>
 
 <p align="center">
-  <a href="#quick-start">Quick start</a> Â·
-  <a href="#current-api">API</a> Â·
-  <a href="README_TRUENAS.md">TrueNAS</a> Â·
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#current-api">API</a> ·
+  <a href="README_TRUENAS.md">TrueNAS</a> ·
   <a href="https://richardsenko.com/vaultbridge-1-0/">Story behind v1.0</a>
 </p>
 
@@ -76,14 +76,14 @@ The vault is never replaced by the index, and there is no general filesystem end
 
 ## Features
 
-### đź“ Vault API
+### 📁 Vault API
 
 - create, read, append to, and list Markdown notes
 - literal title and content search
 - safe vault-relative access with traversal and symlink-escape protection
 - advisory duplicate-candidate discovery against live notes
 
-### đź§  Local semantic retrieval
+### 🧠 Local semantic retrieval
 
 - multilingual related-note search
 - hybrid semantic + lexical ranking with inspectable scores
@@ -92,7 +92,7 @@ The vault is never replaced by the index, and there is no general filesystem end
 - startup, targeted, and background semantic refresh
 - optional filesystem watcher for external Markdown changes
 
-### đź”’ Self-hosted by design
+### 🔒 Self-hosted by design
 
 - Markdown remains the source of truth
 - local FastEmbed/ONNX embeddings on CPU
@@ -100,7 +100,7 @@ The vault is never replaced by the index, and there is no general filesystem end
 - process-local rate limiting for protected routes
 - no cloud embedding API or external vector database required
 
-### đź–Ąď¸Ź Web Dashboard
+### 🖥️ Web Dashboard
 
 - bundled same-origin `/ui/` entry point with no second frontend service
 - accessible Overview, Search, API / Integration, and About navigation
@@ -194,7 +194,7 @@ MCP_HTTP_ALLOWED_ORIGINS=https://vaultbridge.example.test
 Do not use wildcard Host or Origin values. Streamable HTTP remains schema-hidden and adds no port,
 service, container, OAuth flow, Prompt, subscription feature, or standalone HTTP+SSE endpoint.
 
-### đźł Deployment & operations
+### 🐳 Deployment & operations
 
 - Docker source builds and published GHCR release images
 - TrueNAS SCALE deployment runbook
@@ -729,7 +729,7 @@ identifiers are intentionally not reused in the generic examples.
 VaultBridge started as a personal bridge between ChatGPT and my Obsidian vault and grew into a
 standalone open-source project.
 
-đź“– [Read the story behind VaultBridge 1.0](https://richardsenko.com/vaultbridge-1-0/).
+📖 [Read the story behind VaultBridge 1.0](https://richardsenko.com/vaultbridge-1-0/).
 
 ## Development
 
@@ -746,11 +746,11 @@ python -m compileall -q app
 
 The repository is prepared for task-by-task Codex work:
 
-- [`AGENTS.md`](AGENTS.md) â€” constraints Codex should follow
-- [`ROADMAP.md`](ROADMAP.md) â€” project phases
-- [`BACKLOG.md`](BACKLOG.md) â€” small issue-sized tasks
-- [`ARCHITECTURE.md`](ARCHITECTURE.md) â€” current and target design
-- [`docs/CODEX_PLAYBOOK.md`](docs/CODEX_PLAYBOOK.md) â€” ready-to-use prompts
+- [`AGENTS.md`](AGENTS.md) — constraints Codex should follow
+- [`ROADMAP.md`](ROADMAP.md) — project phases
+- [`BACKLOG.md`](BACKLOG.md) — small issue-sized tasks
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) — current and target design
+- [`docs/CODEX_PLAYBOOK.md`](docs/CODEX_PLAYBOOK.md) — ready-to-use prompts
 
 Use one exact item from `BACKLOG.md` at a time and verify the current recommendation before starting.
 
