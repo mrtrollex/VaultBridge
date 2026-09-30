@@ -2274,6 +2274,144 @@ deployment change.
 
 ---
 
+### VB-131 — Portable inbox/draft capture — P1 (contract accepted; not implemented)
+
+**Status:** Implementation contract accepted; no capture writer or adapter exists yet. ADR 0007
+governs capture authority, provenance, and scope; ADR 0005 governs portable metadata. This item
+specifies the VB-131 intake behavior only. VB-132 review and promotion require a separate contract.
+
+**Goal:** one explicit request creates exactly one new, contained, inspectable UTF-8 Markdown
+artifact in `inbox` or `draft` state. Intake does not append to an existing note, promote content,
+select a related target, merge duplicates, or change existing notes.
+
+**Domain input and portable representation**
+
+- The capture boundary accepts authored Markdown `content`, `state` (`inbox` or `draft`), a
+  caller-supplied `capture_id`, and a caller-supplied `captured_at`. It accepts optional `title`,
+  `source`, ordered `tags`, `capture_type`, and a bounded mapping of additional safe portable
+  metadata. The caller must retain the same ID and timestamp for retries. No default timestamp or
+  generated ID is substituted during a retry. A first-time adapter may help the caller construct
+  these values before invoking the domain boundary, but must make them available for retry.
+- `capture_id` is a canonical lowercase UUID version 4 string. It is an idempotency context and
+  filename component, recorded visibly as `capture_id` in frontmatter. The verified canonical
+  vault-relative Markdown path remains artifact identity; neither this ID nor a database row,
+  source, timestamp, or title is a second identity authority. ID reuse with different request
+  facts is a conflict, not an update.
+- Emit one ADR 0005-valid YAML 1.2 Core frontmatter mapping followed by a blank line and the
+  exact authored Markdown body, without inferred heading, content rewrite, or extra source stamp.
+  Fixed fields appear in this order: `capture_id` (string), `capture_state` (string `inbox` or
+  `draft`), `captured_at` (UTC RFC 3339 string at second precision, emitted with `Z`), then
+  optional `title` (string), `source` (string), `tags` (sequence of strings), and `capture_type`
+  (string). A supplied `+00:00` timestamp is normalized to `Z`; missing offset, fractional
+  seconds, non-UTC offset, malformed timestamp, or invalid calendar value is rejected. Omitted
+  optional fields stay absent. An explicitly supplied `source: unknown` remains an unverified
+  declared value, distinct from an omitted source. A supplied empty tags sequence remains `[]`.
+  Tags preserve order and duplicates without case folding, trimming, or `#` insertion/removal.
+- Additional metadata is serialized after fixed fields, preserving its mapping/sequence order and
+  parsed portable values. Reject keys that collide with any fixed field or each other;
+  reject unsupported types and ADR 0005 profile violations. Additional metadata cannot override
+  state, provenance, or ID. Use a safe serializer whose output round-trips through the existing
+  frontmatter parser with the same typed values; quoted strings must stay strings. Unknown safe
+  portable metadata is retained, not discarded or promoted into hidden storage. An additional
+  safe `created` value retains its own meaning and is never reinterpreted as `captured_at`.
+
+**Destination and exact conflict policy**
+
+- The sole VB-131 destination is `Inbox/Captures/<capture_id>.md`, with that exact spelling and
+  lowercase UUID filename. The request cannot supply a folder or target path. The optional title
+  is display metadata only; it does not choose or sanitize a filename. A missing `Inbox/Captures`
+  directory may be created only through a verified contained path. Existing directories must have
+  exact spelling and be safe; case variants, files in place of a directory, traversal, absolute
+  paths, symlink escapes, or a non-Markdown target fail without falling back elsewhere. The
+  `VaultService` boundary owns verification and canonical path results, including symlink races.
+- Create only if the exact path is absent. If it exists, read it through the verified bounded
+  Markdown boundary and compare its complete bytes with the canonical bytes for this same
+  request. Exact equality with the matching visible `capture_id` returns `already_applied` and
+  the canonical path; any difference returns `conflict`. Unreadable, oversized, malformed, or
+  unsafe existing targets fail safely and are never overwritten, repaired, renamed, or treated as
+  successful retries. No suffix counter, alternate folder, or content-based deduplication is used.
+
+**Validation, write, and retry contract**
+
+- Validate types and all bounds before directory creation, enumeration, indexing, or write.
+  Required content is non-empty, non-whitespace authored Markdown of at most 65,536 UTF-8 bytes;
+  `title` is at most
+  256 bytes, `source` 2,048, `capture_type` 64. At most 16 supplied tags, each at most 1,024
+  bytes, are allowed before deduplication (which VB-131 does not do). Reject empty required
+  content, invalid UTF-8 or non-string fields, invalid state/ID/time, unsupported metadata types,
+  and exceeded bounds without coercion, truncation, or partial acceptance. Frontmatter including
+  delimiters must fit ADR 0005's 65,536-byte profile and its 8,192-byte scalar source, 256-byte
+  key, depth-8, and 1,024-item limits. The complete serialized Markdown must fit the configured
+  `VaultService.max_note_bytes`; serialization growth counts toward both limits.
+- The capture domain capability composes and validates the request and delegates contained,
+  Markdown-only atomic creation to `VaultService`. VB-131 must introduce an additive internal
+  create-if-absent primitive or an otherwise compatible VaultService-owned boundary that commits
+  complete bytes atomically at the exact path across competing processes and threads. It must
+  never replace an existing destination or expose a partial artifact as a successful commit.
+  Reverify path safety at the filesystem commit boundary, including competing directory/symlink
+  changes. The current `create_note` check-then-`write_text` is not atomic and cannot fulfill this
+  requirement. Preserve its existing public signature, `created`/`unchanged`/conflict semantics,
+  frontmatter defaults, and existing REST/MCP callers; do not route them through a changed
+  capture policy. The concurrency mechanism must also coordinate any existing `create_note` or
+  `append_note` caller targeting the same path, so it cannot overwrite or interleave with a
+  capture commit. Internal synchronization may change; existing append semantics must not.
+- A request with a confirmed `created` or `already_applied` result must never create another
+  artifact on retry. On lost response or uncertain commit, retry only with the original ID and
+  identical request facts; inspect the one exact path and return `already_applied` only after
+  verified byte equality. An absent path permits a new atomic create attempt. A different ID is
+  a new capture request, not a retry. A conflicting or uninspectable path requires operator
+  resolution; do not infer success or choose a new target. Concurrent same-ID/same-request
+  attempts yield one `created` and verified `already_applied` results; differing requests sharing
+  an ID yield one `created` and conflicts. No hidden idempotency table, cache, or semantic index
+  becomes authoritative.
+- Return stable categories: `created` and `already_applied` with canonical path and committed
+  Markdown status; `invalid_request`, `unsafe_destination`, `conflict`, `size_limit`, and
+  `write_unavailable` without claiming a commit. A write failure with uncertain commit is
+  `commit_unknown`, not a safe invitation to choose another ID; resolution uses the same-path
+  retry rule. After a confirmed Markdown commit, post-commit semantic enqueue/index failure is
+  `created` (or `already_applied` on retry) with `index_pending` after accepted enqueue or
+  `index_unavailable` after failed enqueue as separate derived-state evidence. A later index
+  failure leaves the Markdown result unchanged and the index stale until recovery. It never
+  rolls back Markdown, reports the capture as uncommitted, or
+  repeats the write. Index work may be retried for the canonical path independently. Programming
+  errors are not silently recast as expected validation failures.
+- Routine logs and errors contain only stable categories, operation identifiers, and safe counts
+  or booleans. They contain no captured content, title/source/tag/other metadata values, URLs,
+  vault-relative or host paths, credentials, symlink destinations, or raw exception strings.
+  A successful authorized result may return the canonical vault-relative path for inspection;
+  that path is not emitted in routine diagnostics. Existing authentication and read controls
+  continue to govern inspection.
+
+**Initial adapter and ownership:** VB-131 adds exactly one local CLI `capture` command as a thin
+adapter over the one capture domain capability. It reads one explicitly supplied UTF-8 JSON
+request object from standard input, bounded to 1,048,576 input bytes before parsing; JSON keys
+are the domain field names above, with `metadata` for additional fields. Reject duplicate or
+unknown top-level keys. Require the caller to supply `capture_id` and `captured_at`, including on
+retry; echo the ID and canonical path on committed outcomes so they can be retained. Return the
+stable category and index state without echoing content or metadata. No REST, MCP, dashboard,
+background chat ingestion, remote URL fetch, duplicate search, or additional adapter is in scope.
+The domain boundary owns capture semantics and portable composition; the ADR 0005 frontmatter
+layer owns typed profile validation; `VaultService` owns filesystem safety and atomic creation;
+the existing indexer owns derived post-commit work. No mandatory LLM, cloud, or external embedding
+service is introduced.
+
+**Focused implementation acceptance tests:** cover every bound and invalid type before mutation;
+frontmatter parse/serialize round-trips (including quoted timestamps, `unknown` versus absent
+source, ordered duplicate tags, empty tags, and ordered unknown safe metadata); title-independent
+fixed filename; contained exact path and symlink/case/traversal failures; exact-byte retry versus
+same-ID different-payload conflict and no overwrite; lost-response retry; simultaneous same-ID
+same/different requests across threads and processes; complete-byte commit under injected write
+failure; post-commit enqueue/index failure with confirmed Markdown success and no second file;
+privacy-safe diagnostics under invalid input and I/O failures; and unchanged behavior of existing
+`create_note` callers. Tests must prove the atomic guarantee rather than only sequential checks.
+
+**Explicit non-goals:** no VB-131 runtime work in this contract task; no VB-132 promotion or
+review, append promotion, automatic target selection/merge/rewrite/rename/delete, hidden capture
+database/index/cache, silent chat-history ingestion, remote fetching, new dependency or service,
+broad VaultService API change, unrelated adapter, release, or deployment change.
+
+---
+
 ## Release history
 
 ### v1.2.0 release

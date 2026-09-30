@@ -1078,7 +1078,9 @@ caller behavior.
 
 VB-130 is complete as a design-only task under accepted ADR 0007. Its intake, provenance,
 advisory-analysis, and explicit-promotion contract adds no capture runtime or public adapter.
-VB-131 and VB-132 still require separate authoritative BACKLOG contracts before implementation:
+VB-131 now has an authoritative BACKLOG implementation contract for atomic, idempotent creation
+of one inbox/draft Markdown artifact at a fixed contained path. It is not implemented. VB-132
+still requires a separate authoritative BACKLOG contract before implementation:
 
 ```text
 VB-130 capture and provenance model / ADR (accepted design)
@@ -1171,9 +1173,9 @@ verified backlink write; none is the strategic NEXT item.
 ## Domain architecture
 
 Accepted VB-110, VB-120, and VB-130 establish domain semantics before their separately scoped
-runtime or adapter work. These three tasks are authoritative in `BACKLOG.md`; proposed VB-131/VB-132,
-VB-140, and VB-150 identifiers are not implementation contracts until they receive bounded backlog
-acceptance criteria.
+runtime or adapter work. These three tasks and the VB-131 intake contract are authoritative in
+`BACKLOG.md`; proposed VB-132, VB-140, and VB-150 identifiers are not implementation contracts
+until they receive bounded backlog acceptance criteria.
 
 ## Deployment and integration candidates
 
@@ -1306,8 +1308,9 @@ Milestone 12 is complete: VB-110 and ADR 0005 are accepted, and VB-111 through V
 implemented without public-surface changes. Milestone 13 is complete: accepted ADR 0006 has a
 bounded immutable domain runtime/evaluation and VB-122 exposes only its accepted read-only CLI
 subset. VB-032/VB-033 remain deferred, and VB-034 remains a later optional write task rather than
-NEXT. VB-130 and ADR 0007 are accepted as design only. VB-131/VB-132, VB-140–VB-142, and
-VB-150–VB-152 remain proposed and reserve no implementation scope by themselves.
+NEXT. VB-130 and ADR 0007 are accepted as design only. VB-131 has a bounded BACKLOG contract but
+is not implemented. VB-132, VB-140–VB-142, and VB-150–VB-152 remain proposed and reserve no
+implementation scope by themselves.
 
 ---
 
