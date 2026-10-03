@@ -2727,6 +2727,278 @@ dependency, REST/OpenAPI/MCP/dashboard change, Milestone 16 work, release, or de
 
 ---
 
+### VB-141 — Bounded read-only Knowledge Hygiene diagnostic service — P1 (contract accepted; not implemented)
+
+**Authority and delivery boundary:** This is the implementation contract for the future VB-141
+domain service under [ADR 0008](docs/adr/0008-knowledge-hygiene-diagnostics.md), consistent with
+ADRs 0005–0007 and the implemented VB-131/VB-132 capture and promotion behavior. This entry is
+design only; no diagnostic runtime, owner extension, adapter, or persistence is implemented by
+accepting it. `KnowledgeHygieneService` may compose `VaultService`, `RelationshipService`,
+`FrontmatterParser`/`project_portable_fields`, `DuplicateCandidateService`, and
+`SemanticSearchService`. Those owners retain filesystem security, normalized resolution, portable
+metadata, candidate matching, ranking, and index lifecycle respectively. No write coordinator or
+VB-131/VB-132 capture lock is acquired to freeze externally editable Markdown.
+
+**Immutable domain API:** Define one frozen, slots-based `KnowledgeHygieneRequest` and one frozen,
+slots-based `KnowledgeHygieneResult`, independent of Pydantic and HTTP. The request has exactly:
+
+- `groups: frozenset[Literal["relationships", "isolation", "frontmatter", "aliases"]]`, defaulting
+  to all four. `frontmatter` enables invalid frontmatter, invalid/empty portable fields, and empty
+  authored body; `aliases` enables both alias-duplication kinds and requires the same owner
+  projection. `isolation` requires normalized relationships even when `relationships` is disabled.
+- `finding_limit: int = 500`, valid range `1..500` (reject booleans and coercion).
+- `duplicate_source_limit: int = 0`, valid range `0..20`; positive means advisory exact-title
+  analysis of the first that many successfully read canonical notes in path order. It never means
+  an all-vault uniqueness claim. `semantic_candidates: bool = False` is valid only with a positive
+  `duplicate_source_limit`; it requests the optional bounded semantic candidate path.
+- `inspect_derived_index: bool = False`; it requests one strictly read-only index inspection.
+
+Reject unknown groups, wrong types, or out-of-range combinations as `invalid_request` before
+enumeration or semantic work. There is no caller-selected path/folder scope, raw traversal, SQL,
+regex, predicate, callback, expression, ranker, or semantic configuration in this request. The
+defaults perform only the bounded Markdown pass. The only authorized kinds are
+`missing_relationship_target`, `unsafe_relationship_target`,
+`ambiguous_relationship_target`, `isolated_note`, `duplicate_alias_in_note`, `colliding_alias`,
+`invalid_frontmatter`, `invalid_portable_field`, `empty_portable_field_value`,
+`empty_authored_body`, `duplicate_candidate`, `near_duplicate_candidate`,
+`previous_compatible_index`, and `derived_index_unavailable`. The latter four are considered only
+when their optional evidence is requested, with unavailable evidence handled by the rules below.
+No fuzzy,
+per-note-stale, missing-heading, metadata-conflict, or suspiciously-empty kind is implied.
+
+**Result and privacy contract:** `KnowledgeHygieneResult` contains only
+`findings: tuple[DiagnosticFinding, ...]` (at most `finding_limit` and 500),
+`scan: ScanCompleteness`, `candidates: CandidateCoverage`, `derived_index: DerivedIndexEvidence`,
+and `findings_truncated: bool`. Each is an immutable domain value, not a response schema.
+`ScanCompleteness` contains `state: complete | partial`,
+`reasons: tuple[path_ceiling | enumeration_unavailable | note_unavailable |
+relationship_unavailable, ...]` in that fixed
+order, `eligible_paths: int` in `0..10000`, `inspected_notes: int` in `0..eligible_paths`, and
+`unavailable_notes: int` in `0..eligible_paths`. `complete` requires an exhausted enumeration and
+successful, stable owner reads and required relationship derivation for every eligible note;
+otherwise it is `partial`. Do not count an unobserved path as inspected. A walk interrupted after
+a safe bounded view is `enumeration_unavailable`; a missing/inaccessible vault or owner failure
+that prevents such a view is `scan_unavailable`, not an empty scan.
+`CandidateCoverage` contains `state: not_requested | complete | partial | unavailable`,
+`source_notes: int` in `0..20`, and fixed ordered reasons drawn only from `scan_partial`,
+`source_unavailable`, `candidate_unavailable`, `semantic_unavailable`. `complete` means the
+requested source set and requested exact/semantic owner paths finished over a complete verified
+universe; it does not mean all vault notes were candidate sources or that an empty answer proves
+uniqueness. `DerivedIndexEvidence` contains only
+`status: not_requested | compatible_ready | compatible_previous_refresh |
+compatible_previous_error | missing | incompatible | invalid_metadata | corrupt_storage |
+storage_unavailable | inspection_unavailable`. No signature, timestamp, count, or storage path is
+included in this result.
+
+`DiagnosticFinding` contains exactly `kind`, `primary_path: str | None`,
+`related_paths: tuple[str, ...]` (at most 10), `evidence_source: live_markdown | derived_index`,
+`category: str` from the fixed rule/owner vocabularies below, and a frozen typed evidence value
+with only applicable fields: `origin` (`obsidian_wikilink | markdown_link`), nonnegative
+`source_order` (at most the configured maximum note bytes), `field` (`aliases | tags`),
+`source_index` or `source_indices` (one or exactly two distinct ascending integers in `0..255`),
+one-based `line`/`column` (at most the configured maximum note bytes) from the frontmatter
+owner, `peer_count` (distinct peers, at most 9,999), and `related_paths_truncated: bool`.
+Absent fields are absent, not arbitrary key/value data. `category` is the normalized relationship
+resolution (`missing | unsafe | ambiguous`), the owner's stable frontmatter/portable-field reason,
+or the fixed rule value `no_resolved_edges`, `exact_alias`, `empty_body`, `exact_title`,
+`semantic`, or the derived-index status. Only `colliding_alias` uses `peer_count` and
+`related_paths_truncated`; its peer count may be asserted only for a complete grouping pass.
+`duplicate_candidate` uses `live_markdown` evidence; `near_duplicate_candidate` uses
+`derived_index` evidence. Candidate findings have one related candidate path and no score.
+Vault-level index findings have
+`primary_path=None` and no related paths; all other paths are verified canonical vault-relative
+Markdown paths. Never expose Markdown, alias/comparison strings, arbitrary metadata, written link
+targets, fragments, labels, snippets, query text, embeddings, SQL, host paths, exception strings,
+or credentials in results, failures, or routine logs. No debug log may print omitted peer paths.
+
+**One bounded ordinary enumeration and read:** Add one small read-only `VaultService` operation
+returning a bounded canonical Markdown candidate snapshot plus `complete`. Existing
+`live_markdown_paths()` and `markdown_path_candidate_snapshot()` materialize an unbounded vault and
+cannot be used for this scan. In one deterministic sorted discovered-path walk, apply existing
+Markdown eligibility, exclusions, exact-spelling, containment, and symlink rules; deduplicate by
+verified canonical path and stop after detecting a 10,001st distinct eligible canonical path.
+Return at most the first 10,000 distinct paths, sorted by `(path.casefold(), path)`, with the
+owner's bounded candidate/unsafe-name resolution evidence needed by
+`RelationshipService.normalized_resolution_snapshot()`. Exactly 10,000 with exhausted traversal
+is complete; detecting an additional distinct path is partial. Never silently drop the extra
+path and claim completeness, retain unbounded host paths/metadata, or walk the filesystem from
+hygiene. A contained symlink alias is one canonical note; an unsafe alias is never a node. If
+the partial snapshot cannot safely establish normalized resolution against the full vault,
+withhold all relationship and isolation findings rather than label missing targets from a
+truncated candidate set.
+
+For each eligible path perform at most one ordinary authored-content read in the main pass.
+`VaultService` supplies a verified read-only snapshot containing the canonical path and decoded
+content, with bounded size/UTF-8 and best-effort read/path stability checks; extend its read API
+minimally if existing `read_note()` cannot identify a detected race without a second content read.
+The owner must fail closed if a path swap could redirect that read outside the vault; hygiene
+does not implement its own descriptor or symlink checks.
+Pass that one content value to the frontmatter owner and to
+`RelationshipService.normalized_relationships_from_content()` with one owner-built resolution
+snapshot; do not call relationship methods that re-read or re-enumerate. Do not add another YAML
+or link parser. A file removed, changed during the read, unreadable, oversized, invalid UTF-8,
+or unsafe at verification contributes one `note_unavailable` count, no affected note findings,
+and a partial scan. A failed relationship owner derivation on otherwise readable content is
+`relationship_unavailable` and suppresses relationship/absence claims; programming errors still
+propagate. No unbounded retry. Reverify finding paths before return where practical; drop
+affected findings and mark partial on a detected race. A later undetectable external edit does
+not turn the sequential scan into an atomic snapshot.
+
+**Relationship and isolation rules:** For supported `relationship_type=note_link` normalized
+occurrences, map only owner `resolution=missing | unsafe | ambiguous` to the corresponding three
+relationship kinds. Preserve `origin`, zero-based `source_order`, and that stable resolution as
+category; omit owner `written_target`, label, fragment, and origin metadata. A resolved occurrence
+contributes its verified canonical edge and no failure finding. Unsupported/external syntax and
+unparsed text contribute nothing. No heading validation. Build one bounded adjacency view while
+deriving each source once: for every resolved occurrence record outgoing connectivity of its
+source and incoming connectivity of its resolved target; self-links count. Never call backlinks
+per target or rescan N notes for N targets. Emit `isolated_note` only if the entire eligible scan
+and required relationship evidence are complete, the note is verified live, and it has zero
+resolved outgoing and incoming edges. Unresolved-only links do not establish connectivity.
+Valid `capture_state` `inbox`/`draft` excludes a note from isolation, including after a separate
+promotion leaves the capture intact; a promoted destination is its own ordinary note unless its
+own metadata says otherwise. Absent `capture_state` is ordinary-note absence. Explicit unknown,
+invalid, or unreadable `capture_state`, or invalid frontmatter that makes a declared state
+uncertain, excludes the note from isolation. Do not infer intake from `Inbox/Captures` path alone.
+
+**Frontmatter, body, and alias rules:** Parse each read content once through
+`FrontmatterParser`, then `project_portable_fields()` only for valid frontmatter. The owner's
+`invalid` frontmatter state produces one `invalid_frontmatter` with owner reason and optional
+one-based line/column. Invalid `aliases`/`tags` produce one `invalid_portable_field` per field
+with owner reason and optional source index; every owner `empty_value` diagnostic produces
+`empty_portable_field_value` with field and source index. Unknown safe metadata and duplicate YAML
+keys have only their existing parser meaning; do not infer new conflicts. Add only a body-boundary
+offset/result to the existing frontmatter owner if needed. Valid frontmatter: classify the exact
+remaining authored body; absent frontmatter: classify the whole content after an optional initial
+UTF-8 BOM. Emit `empty_authored_body` only when this body has no non-whitespace Unicode character.
+Withhold it for invalid frontmatter, whose body boundary is uncertain.
+
+In one bounded alias grouping pass across successfully read notes with valid frontmatter and a
+valid portable `aliases` field, group usable occurrences by `value.strip()` using exact Unicode
+code-point equality. Do not emit or log this comparison key. No case folding, Unicode
+normalization, interior-whitespace collapsing, fuzzy matching, or alias-based identity. The
+existing 256-value/1,024-byte field limits and 10,000-note ceiling bound input to at most
+2,560,000 alias occurrences; retain only each `(key, canonical path)`'s two smallest distinct
+zero-based indices and the set of distinct paths. For each key repeated within one note emit one
+`duplicate_alias_in_note` with exactly those two indices. For a key in at least two distinct
+canonical notes emit one `colliding_alias` per participating path, with its single smallest
+source index, `peer_count` equal to the number of other distinct paths, and up to the first 10
+peers in canonical path order; set `related_paths_truncated` iff more than 10 peers exist.
+Suppress cross-note collision findings on any partial scan, since the group and peer count might
+be incomplete; within-note duplicates from stable inspected notes remain valid.
+
+**Bounded duplicate owner prerequisite:** Add one read-only batch entry point to
+`DuplicateCandidateService`: input is the scan's one verified canonical candidate universe
+(at most 10,000 distinct paths) and at most 20 selected verified `(source_path, already-read
+content)` snapshots in canonical path order; output is at most five candidates per source plus
+stable coverage status. Derive each source title from its canonical filename stem and reuse the
+owner's `normalize_note_title`, exact-title rule, merge ordering, overfetch cap, and result limit.
+Build exact-title lookup once over the universe; do not call `find_candidates()` or enumerate the
+whole vault per source. Exclude self before applying the five-result limit. Reverify returned
+paths through `VaultService` and omit a raced candidate. Do not let hygiene copy the matching
+algorithm. With a partial scan or raced source/candidate, return positive verified evidence only
+where still safe and mark candidate coverage partial; an owner failure makes coverage unavailable.
+An empty result never proves uniqueness. Captures may receive advisory candidates, but no
+promotion or duplicate winner follows.
+
+`near_duplicate_candidate` is authorized only after an additive `SemanticSearchService` bounded
+batch path exists. It must constrain repository chunk retrieval to the supplied eligible path set
+*before* loading or scanning unrelated chunks, use a bounded path-filtered repository read and at
+most 20 source queries, and reuse the current local embedding, chunk, score threshold, relative
+floor, ranking, signature, compatibility, and candidate merge rules. It must enforce a finite
+chunk/work budget derived from existing note-size/chunk settings (or return unavailable when
+stored rows exceed that budget), never run an all-pairs comparison, and preserve the existing
+semantic search contract for other callers. This path must avoid state/lifecycle persistence,
+index/SQLite writes, sidecar creation or mutation, directory creation, and diagnostic cache writes.
+It cannot use `state`, `query_basis()`, or other write-capable availability paths.
+Current `search(..., eligible_paths=...)` loads all chunks first and is prohibited here. If the
+bounded owner path is absent or unavailable, emit no
+`near_duplicate_candidate` and set `semantic_unavailable` in partial candidate coverage, while
+retaining safe exact-title evidence. Semantic evidence is optional for a successful hygiene scan.
+For either match type, reverify both paths, remove self-results, and emit advisory findings only;
+no scores, snippets, headings, or query text leave the domain result.
+
+**Strictly read-only derived-index prerequisite:** Add one `SemanticSearchService` inspection
+operation that returns only the fixed `DerivedIndexEvidence.status` categories above. The semantic
+owner may compose its repository and existing compatibility logic over already-existing
+persisted and in-memory facts. It must not initialize storage, repair metadata, persist lifecycle
+state, refresh/rebuild, enqueue, write the DB/index or SQLite WAL/SHM files, create directories,
+or mutate caches. It must never fall back to `query_basis()`, `state`, `inspect_index()`'s live
+`mode=ro` path, or any write-capable path. An immutable read may classify stopped storage; if
+existing sidecars or live storage cannot be observed with a proven no-sidecar-mutation method,
+return `inspection_unavailable` rather than risk a write. `compatible_ready` requires observed
+compatible completed storage. `compatible_previous_refresh` and
+`compatible_previous_error` require both compatible usable previous persisted results and the
+corresponding current in-memory lifecycle state; persisted counts or a timestamp alone do not
+suffice. Missing storage is `missing`, signature mismatch is `incompatible`, invalid lifecycle or
+metadata is `invalid_metadata`, recognizable corrupt storage is `corrupt_storage`, I/O or storage
+failure is `storage_unavailable`, and unsafe-to-inspect/indeterminate live evidence is
+`inspection_unavailable`. Do not reveal raw metadata or signatures. An inspection request emits
+`previous_compatible_index` only for the two previous-compatible categories;
+`compatible_ready` yields no finding; every unavailable/incompatible/missing category emits one
+vault-level `derived_index_unavailable` with its exact category. The summary always records the
+status, including unavailable evidence. None of these asserts per-note freshness or triggers a
+rebuild.
+
+**Identity, order, and output bounds:** First normalize owner evidence, then deduplicate by
+these exact internal identities: relationship `(primary_path, kind, origin, source_order)`;
+frontmatter/body/isolation `(primary_path, kind)`; portable-field diagnostic
+`(primary_path, kind, field, owner reason, source_index if present)`; alias
+`(primary_path, kind, exact private comparison key)`; candidate
+`(unordered two-canonical-path pair, match_type)`; index `(kind, category)` with no primary path.
+For a candidate observed in both source directions, keep the first source in canonical source
+order as primary and the other as its one related path; `exact_title` and `semantic` remain
+distinct match types. For same-key alias repeats, evidence uses the smallest required indices,
+which do not change identity. Order all paths by `(casefold(), path)`, then findings by ADR 0008's
+`(primary_path is absent, primary_path.casefold(), primary_path, kind, category,
+evidence_source, source_order or -1, first alias source_index or -1,
+private alias comparison key or "", related_paths)`; use remaining fixed safe evidence fields
+and internal identity only as tie breakers. The private key is never returned or logged. Sort
+and deduplicate before taking the first `finding_limit`; `findings_truncated` means at least one
+additional distinct finding was observed. A bounded first-`limit + 1` selection equivalent to
+full sorting is allowed. Do not run expensive optional work merely for an exact global finding
+total; the result contains no such total. No severity, confidence, or repair priority is added.
+Identical stable Markdown and owner evidence must yield byte-equivalent domain facts and order.
+
+**Failures, partial evidence, and proof:** Stable service failure categories are
+`invalid_request` and `scan_unavailable`; a requested semantic-only suboperation may report
+`semantic_evidence_unavailable` internally, but the scan returns partial candidate coverage
+rather than throwing it after safe Markdown work. There is no `unsafe_scope` because this
+request has no scope. Individual path races, deletion, unreadability, oversize, invalid UTF-8,
+and unsafe paths make scan evidence partial, not whole-scan exceptions, unless the owner cannot
+continue safely. Programming errors propagate. Failures/logs contain only stable categories and
+safe bounded counts/booleans. Zero findings with any partial scan/candidate/index evidence must
+never be presented as complete cleanliness. The scan is sequential, not an atomic vault
+snapshot; a finding describes evidence its owners actually observed. No unbounded retry or
+coordination with external Markdown editors is promised.
+
+Future VB-141 tests must prove the structural no-write guarantee, not merely inspect code: take
+before/after byte and existence snapshots of Markdown, semantic DB, WAL/SHM, and diagnostic/cache
+locations, including missing, invalid/corrupt, and live-sidecar cases; instrument or mock all
+write, directory-creation, lifecycle-persist, indexing-enqueue, and cache-mutation seams. Run
+the applicable cases on Windows and POSIX, accounting for platform-specific symlink behavior.
+Use call counters to prove exactly one bounded ordinary enumeration, at most one main content read
+per eligible note, no per-source vault rescans, exact-title lookup built once, bounded filtered
+semantic chunk retrieval if enabled, no all-pairs duplicate work, the 10,000-path ceiling before
+excess note work, the 500-finding cap, and the 10-related-path cap. Focused fixtures must cover
+deterministic repeated runs; canonical dedup/symlinks; 10,000 and 10,001 eligible paths; all
+relationship reasons and source order; incoming/outgoing/self/unresolved-only isolation;
+isolation suppression under partial evidence; valid inbox/draft and invalid/unknown capture
+state; invalid frontmatter, aliases/tags, empty values/body, and body withholding; cross-note and
+within-note alias grouping/indices/privacy; exact-title and optional semantic candidate coverage;
+strict index inspection including compatible previous refresh/error and no per-note stale claim;
+raced/deleted/unreadable paths; identity/order/truncation; privacy-safe errors/logs; and zero
+findings under partial coverage. Instrumentation and focused mocks suffice; unrealistic
+huge-vault benchmarks are not required.
+
+**Explicit non-goals:** no VB-141 runtime in this contract task; no VB-142 CLI, REST/OpenAPI, MCP,
+or dashboard adapter; no repair, delete, merge, rewrite, rename, move, retag, link repair,
+frontmatter normalization, capture promotion/disposition, automatic index rebuild, hidden
+diagnostic DB/cache, new ranking/model/chunking/index format, LLM/cloud dependency, Milestone 16,
+release, or deployment change. VB-142 requires its own contract.
+
+---
+
 ## Release history
 
 ### v1.2.0 release
