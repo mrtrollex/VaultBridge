@@ -1096,7 +1096,7 @@ VB-132 explicit review and promotion workflow
 
 ---
 
-# Milestone 15 — Knowledge Hygiene — IN PROGRESS (VB-140 design complete)
+# Milestone 15 — Knowledge Hygiene — IN PROGRESS (VB-140 design and VB-141 contract complete)
 
 **Goal:** diagnose knowledge-base quality and safely propose maintenance actions before introducing
 aggressive automatic mutation.
@@ -1115,8 +1115,8 @@ by their existing domain boundaries. Diagnostics may later be consumed by the da
 dashboard must not become a general Markdown editor. This milestone authorizes no automatic delete,
 merge, rewrite, rename, or repair.
 
-Staged tasks (ADR 0008 defines VB-140; VB-141 still needs an authoritative BACKLOG
-implementation contract):
+Staged tasks (ADR 0008 defines VB-140; BACKLOG.md now defines the accepted VB-141 implementation
+contract, with runtime work still pending):
 
 ```text
 VB-140 knowledge-hygiene definitions / ADR
@@ -1178,9 +1178,10 @@ verified backlink write; none is the strategic NEXT item.
 ## Domain architecture
 
 Accepted VB-110, VB-120, and VB-130 establish domain semantics before their separately scoped
-runtime or adapter work. These three design tasks, the completed VB-131 intake contract, and
-the implemented VB-132 promotion contract, and VB-140/ADR 0008 are authoritative in `BACKLOG.md`.
-VB-141/VB-142 and proposed VB-150 have no implementation contract yet.
+runtime or adapter work. These three design tasks, the completed VB-131 intake contract, the
+implemented VB-132 promotion contract, VB-140/ADR 0008, and the accepted VB-141 diagnostic-service
+contract are authoritative in `BACKLOG.md`. VB-141 is not implemented; VB-142 and proposed VB-150
+have no implementation contract yet.
 
 ## Deployment and integration candidates
 
@@ -1315,8 +1316,8 @@ bounded immutable domain runtime/evaluation and VB-122 exposes only its accepted
 subset. VB-032/VB-033 remain deferred, and VB-034 remains a later optional write task rather than
 NEXT. VB-130 and ADR 0007 are accepted as design only. VB-131 and VB-132 are implemented and
 merged; Milestone 14 is complete. VB-140 and ADR 0008 establish hygiene definitions only.
-VB-141/VB-142 still need separate implementation contracts. VB-150–VB-152 remain proposed and
-reserve no implementation scope by themselves.
+VB-141 has an accepted contract but no runtime; VB-142 still needs an implementation contract.
+VB-150–VB-152 remain proposed and reserve no implementation scope by themselves.
 
 ---
 
