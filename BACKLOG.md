@@ -2257,7 +2257,7 @@ Markdown bytes and safe portable metadata authoritative under ADR 0005.
   rename, delete, or silently discard a capture;
 - reuse `VaultService` containment, size, UTF-8, create/append compatibility, and post-commit
   indexing boundaries conceptually; do not claim its current create/append checks are atomic under
-  competing writers or retries; require separately contracted VB-131/VB-132 write protection that
+  cooperating writers or retries; require separately contracted VB-131/VB-132 write protection that
   preserves non-overwriting create, idempotent append, contained Markdown-only writes, and existing
   caller behavior; state where existing methods do not yet implement arbitrary capture provenance;
 - define deterministic validation/conflict/failure outcomes, privacy-safe diagnostics, bounded
@@ -2323,7 +2323,9 @@ select a related target, merge duplicates, or change existing notes.
   directory may be created only through a verified contained path. Existing directories must have
   exact spelling and be safe; case variants, files in place of a directory, traversal, absolute
   paths, symlink escapes, or a non-Markdown target fail without falling back elsewhere. The
-  `VaultService` boundary owns verification and canonical path results, including symlink races.
+  `VaultService` boundary owns verification and canonical path results, including fail-closed
+  handling of traversal and symlink attacks through VaultBridge inputs. Active out-of-band
+  namespace mutation during a commit has the separate concurrency boundary below.
 - Create only if the exact path is absent. If it exists, read it through the verified bounded
   Markdown boundary and compare its complete bytes with the canonical bytes for this same
   request. Exact equality with the matching visible `capture_id` returns `already_applied` and
@@ -2346,30 +2348,51 @@ select a related target, merge duplicates, or change existing notes.
 - The capture domain capability composes and validates the request and delegates contained,
   Markdown-only atomic creation to `VaultService`. VB-131 must introduce an additive internal
   create-if-absent primitive or an otherwise compatible VaultService-owned boundary that commits
-  complete bytes atomically at the exact path across competing processes and threads. It must
-  never replace an existing destination or expose a partial artifact as a successful commit.
-  Reverify path safety at the filesystem commit boundary, including competing directory/symlink
-  changes. The current `create_note` check-then-`write_text` is not atomic and cannot fulfill this
-  requirement. Preserve its existing public signature, `created`/`unchanged`/conflict semantics,
+  complete bytes atomically at the exact path across concurrent VaultBridge-mediated writers
+  participating in the same coordination mechanism, including supported processes and threads.
+  A cooperating VaultBridge writer must never overwrite an existing capture destination or expose
+  a partial artifact as a successful commit. Verify containment and canonical destination safety
+  at the filesystem commit boundary and fail closed on detected instability. The current
+  `create_note` check-then-`write_text` is not atomic and cannot fulfill this requirement. Preserve
+  its existing public signature, `created`/`unchanged`/conflict semantics,
   frontmatter defaults, and existing REST/MCP callers; do not route them through a changed
   capture policy. The concurrency mechanism must also coordinate any existing `create_note` or
   `append_note` caller targeting the same path, so it cannot overwrite or interleave with a
   capture commit. Internal synchronization may change; existing append semantics must not.
+- The strong atomicity and idempotency guarantee applies to those cooperating VaultBridge writers
+  while the `Inbox/Captures` destination namespace is stable. Ordinary external editing of Markdown
+  remains supported. A non-cooperating filesystem writer can actively rename, replace, or relocate
+  the `Inbox/Captures` directory chain or destination/staging during a capture; that concurrent
+  namespace mutation is outside the strong guarantee. Directory descriptors can remain attached
+  to renamed directories, advisory locks constrain only participants, and checks before or after
+  commit cannot make namespace verification and commit one atomic operation. Neither locks nor
+  descriptors establish exclusive namespace control. No such control is a VB-131 deployment
+  prerequisite. Detected unsafe paths must fail closed; if the implementation cannot prove the
+  canonical destination contains the expected complete bytes, it must not report `created`.
 - A request with a confirmed `created` or `already_applied` result must never create another
   artifact on retry. On lost response or uncertain commit, retry only with the original ID and
   identical request facts; inspect the one exact path and return `already_applied` only after
-  verified byte equality. An absent path permits a new atomic create attempt. A different ID is
-  a new capture request, not a retry. A conflicting or uninspectable path requires operator
-  resolution; do not infer success or choose a new target. Concurrent same-ID/same-request
-  attempts yield one `created` and verified `already_applied` results; differing requests sharing
-  an ID yield one `created` and conflicts. No hidden idempotency table, cache, or semantic index
-  becomes authoritative.
+  verified byte equality. Under a stable namespace and without evidence of a possible relocated
+  commit, an absent path permits a new atomic create attempt. A different ID is a new capture
+  request, not a retry. A conflicting or uninspectable path requires operator resolution; do not
+  infer success or choose a new target. Once possible out-of-band namespace mutation makes a
+  commit uncertain, `commit_unknown` remains unresolved even if the canonical path is currently
+  absent. Neither an automatic retry nor a fresh create for that known same-ID request is allowed
+  until an operator resolves the possible relocated artifact and explicitly authorizes another
+  write attempt. If the operator cannot establish that another artifact will not be produced,
+  no further write is authorized. This unresolved outcome must be retained by the caller across
+  retries; VB-131 does not add hidden persistent idempotency state or require a global filesystem
+  scan. Concurrent cooperating same-ID/same-request attempts yield one `created` and verified
+  `already_applied` results; differing requests sharing an ID yield one `created` and conflicts.
+  No hidden idempotency table, cache, or semantic index becomes authoritative.
 - Return stable categories: `created` and `already_applied` with canonical path and committed
   Markdown status; `invalid_request`, `unsafe_destination`, `conflict`, `size_limit`, and
-  `write_unavailable` without claiming a commit. A write failure with uncertain commit is
-  `commit_unknown`, not a safe invitation to choose another ID; resolution uses the same-path
-  retry rule. After a confirmed Markdown commit, post-commit semantic enqueue/index failure is
-  `created` (or `already_applied` on retry) with `index_pending` after accepted enqueue or
+  `write_unavailable` without claiming a commit. Detected unsafe destination or namespace state
+  before any possible commit is `unsafe_destination`; a write failure or detected namespace
+  instability after a possible commit is `commit_unknown` unless canonical placement and complete
+  bytes can be proved. `commit_unknown` is not a safe invitation to choose another ID or retry a
+  write automatically. After a confirmed Markdown commit, post-commit semantic enqueue/index
+  failure is `created` (or `already_applied` on retry) with `index_pending` after accepted enqueue or
   `index_unavailable` after failed enqueue as separate derived-state evidence. A later index
   failure leaves the Markdown result unchanged and the index stale until recovery. It never
   rolls back Markdown, reports the capture as uncommitted, or
@@ -2400,15 +2423,21 @@ frontmatter parse/serialize round-trips (including quoted timestamps, `unknown` 
 source, ordered duplicate tags, empty tags, and ordered unknown safe metadata); title-independent
 fixed filename; contained exact path and symlink/case/traversal failures; exact-byte retry versus
 same-ID different-payload conflict and no overwrite; lost-response retry; simultaneous same-ID
-same/different requests across threads and processes; complete-byte commit under injected write
-failure; post-commit enqueue/index failure with confirmed Markdown success and no second file;
+same/different requests among cooperating threads and processes; complete-byte commit under
+injected write failure; detected namespace instability before a possible commit versus after an
+uncertain commit,
+including absent canonical path with no automatic second write pending operator resolution;
+post-commit enqueue/index failure with confirmed Markdown success and no second file;
 privacy-safe diagnostics under invalid input and I/O failures; and unchanged behavior of existing
 `create_note` callers. Tests must prove the atomic guarantee rather than only sequential checks.
+They must not claim protection against arbitrary non-cooperating namespace mutation.
 
 **Explicit non-goals:** no VB-131 runtime work in this contract task; no VB-132 promotion or
 review, append promotion, automatic target selection/merge/rewrite/rename/delete, hidden capture
 database/index/cache, silent chat-history ingestion, remote fetching, new dependency or service,
 broad VaultService API change, unrelated adapter, release, or deployment change.
+No hidden idempotency database, global filesystem scan, privileged mount namespace, immutable
+directory flag, exclusive host filesystem ownership, or deployment-specific ACL is required.
 
 ---
 
