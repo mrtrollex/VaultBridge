@@ -1073,13 +1073,17 @@ promote, or delete content. Future VB-131/VB-132 writes should reuse the existin
 `append_note` compatibility and post-commit indexing boundaries conceptually. Their current
 check-then-write behavior does not guarantee atomic non-overwrite or concurrent idempotency;
 before relying on those writes, the later tasks must establish atomic conflict and retry
-protection across competing writers while preserving contained Markdown-only writes and existing
-caller behavior.
+protection across cooperating VaultBridge-mediated writers while preserving contained
+Markdown-only writes and existing caller behavior. VB-131's strong guarantee excludes active
+capture destination/staging namespace mutation by non-cooperating filesystem writers; ordinary
+external Markdown editing remains supported. An uncertain relocated commit requires operator
+resolution before another same-ID write, even when the canonical path is absent.
 
 VB-130 is complete as a design-only task under accepted ADR 0007. Its intake, provenance,
 advisory-analysis, and explicit-promotion contract adds no capture runtime or public adapter.
 VB-131 now has an authoritative BACKLOG implementation contract for atomic, idempotent creation
-of one inbox/draft Markdown artifact at a fixed contained path. It is not implemented. VB-132
+of one inbox/draft Markdown artifact at a fixed contained path among cooperating VaultBridge
+writers. It is not implemented. VB-132
 still requires a separate authoritative BACKLOG contract before implementation:
 
 ```text

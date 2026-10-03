@@ -155,18 +155,36 @@ compatibility behavior. Its current `create_note` existence check and `write_tex
 concurrent creates can both pass the check and a later write can overwrite a destination. Its
 current `append_note` marker check and append are also separate: concurrent calls with the same
 `dedupe_key` can both append. Neither method currently guarantees atomic non-overwrite or atomic
-idempotency under competing writers or retries.
+idempotency under cooperating concurrent writers or retries.
 
 Before VB-131 relies on a create for intake or VB-132 relies on create/append for promotion, the
 separately scoped implementation must establish and test an explicit atomicity/concurrency
-mechanism across competing writers to the same destination, including existing create/append
-callers. It must preserve contained Markdown-only writes and existing caller compatibility.
-Create-if-absent must never overwrite a conflicting destination; append deduplication must commit
-at most once for one idempotency context. This ADR selects no locking, filesystem, or storage
-implementation. Pre-write verification alone cannot satisfy the guarantee. A retry must remain
-tied to an explicit approved action and idempotency context. When a concurrent write or retry
-leaves the committed result uncertain, promotion remains unresolved until the destination and
-attribution are safely established or a new human/operator decision is made.
+mechanism across cooperating VaultBridge-mediated writers to the same destination, including
+supported processes and threads and existing create/append callers. It must preserve contained
+Markdown-only writes and existing caller compatibility. Create-if-absent must never overwrite a
+conflicting destination for a cooperating writer; append deduplication must commit at most once
+for one idempotency context among cooperating writers. This ADR selects no locking, filesystem,
+or storage implementation. Pre-write verification alone cannot satisfy the guarantee. A retry
+must remain tied to an explicit approved action and idempotency context. When a concurrent write
+or retry leaves the committed result uncertain, promotion remains unresolved until the destination
+and attribution are safely established or a new human/operator decision is made.
+
+This strong concurrency guarantee assumes a stable destination namespace during the commit.
+Ordinary external Markdown editing remains supported. Active rename, replacement, or relocation
+of the capture destination or staging directory chain by a non-cooperating filesystem writer is
+outside it: advisory locks constrain only participants, directory descriptors can remain attached
+after rename, and a namespace check cannot be atomic with a later pathname commit. VaultBridge
+does not require exclusive host filesystem ownership, privileged mount namespaces, immutable
+directory flags, deployment-specific ACLs, a global filesystem scan, or hidden idempotency storage.
+`VaultService` still verifies contained canonical paths and fails closed on ordinary traversal or
+symlink attacks through VaultBridge inputs. When it detects unsafe namespace state before any
+possible commit, the outcome is `unsafe_destination`. If a commit may have occurred but canonical
+placement with the expected complete bytes cannot be proved, the outcome is `commit_unknown`,
+never confirmed creation. A known `commit_unknown` caused by possible out-of-band relocation
+remains unresolved even when the canonical path is absent; the caller must retain that outcome,
+and an operator must resolve the possible relocated artifact and explicitly authorize any further
+write. If absence of another same-ID artifact cannot be established, no further write is
+authorized. These intake rules do not implement or authorize VB-132 promotion.
 
 The existing application indexing path remains post-commit derived work, not a condition that can
 roll back committed Markdown. The future workflow must report whether Markdown was committed even
