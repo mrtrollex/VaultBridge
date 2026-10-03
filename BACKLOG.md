@@ -2443,11 +2443,12 @@ directory flag, exclusive host filesystem ownership, or deployment-specific ACL 
 
 ---
 
-### VB-132 — Explicit review and promotion workflow — P1 (contract accepted; not implemented)
+### VB-132 — Explicit review and promotion workflow — P1 (complete)
 
-**Status:** Implementation contract accepted as design-only work. No VB-132 runtime or public
-adapter exists. ADR 0007 owns the capture/provenance model, ADR 0005 the portable Markdown model,
-and the implemented VB-131 contract above owns intake and its cooperative-writer boundary.
+**Status:** Implemented and merged. The bounded review/promotion domain and local CLI adapter
+implement this accepted contract; no REST, MCP, or dashboard adapter was added. ADR 0007 owns the
+capture/provenance model, ADR 0005 the portable Markdown model, and VB-131 owns intake and its
+cooperative-writer boundary. The contract below records its implementation scope and semantics.
 
 **Goal:** let a local human/operator inspect one VB-131 capture and explicitly approve exactly one
 create or append of selected Markdown into one chosen authoritative destination. The capture stays
@@ -2684,10 +2685,45 @@ second write; intact source capture; privacy-safe diagnostics; unchanged legacy
 `create_note`/`append_note` callers; and Windows/POSIX behavior under the accepted
 cooperative-writer threat model. Tests must exercise failure paths, not merely sequential success.
 
-**Explicit non-goals:** no VB-132 runtime in this design task; automatic promotion, duplicate
+**Explicit non-goals:** automatic promotion, duplicate
 merge, target selection, capture disposition/cleanup, broad Markdown editing, REST/OpenAPI, MCP,
 dashboard, hidden workflow database, job queue, mandatory LLM/cloud/embedding/external service,
 semantic-ranking change, VB-140, Milestone 16, release, or deployment change.
+
+---
+
+### VB-140 — Knowledge Hygiene definitions / ADR — P1 (complete; design only)
+
+**Status:** Accepted design in [ADR 0008](docs/adr/0008-knowledge-hygiene-diagnostics.md).
+Milestone 14 is complete: VB-130 established the model, and VB-131/VB-132 were implemented and
+merged. VB-140 adds no diagnostic runtime, public adapter, persistence, or repair capability.
+
+**Goal:** define bounded, deterministic, read-only diagnostics over the current one-root Markdown
+vault. A finding separates observed Markdown or derived-state fact, diagnostic classification,
+advisory evidence, and any future repair decision. No finding authorizes a write.
+
+**Accepted scope:** ADR 0008 fixes owner boundaries, finding shape and ordering, normalized
+relationship categories, isolated-note eligibility, advisory duplicate evidence, exact portable
+alias collisions, supported metadata and empty-body states, measurable index-state evidence,
+capture treatment, scan consistency, privacy, and resource bounds. It preserves ADR 0005–0007
+and the implemented capture/promotion semantics.
+
+**VB-141 prerequisite:** A separate authoritative BACKLOG implementation contract must specify
+the read-only service request, result, scan-completeness and failure behavior, concrete limits and
+tests before runtime work begins. It must compose existing owners under ADR 0008 and cannot infer
+new parsing, ranking, persistence, or mutation authority from this design entry. Before exposing
+derived-state findings, VB-141 must add the strictly read-only `SemanticSearchService` inspection
+boundary required by ADR 0008; `query_basis()` is not safe for this use. Optional duplicate
+analysis must use the bounded `DuplicateCandidateService` batch boundary over one verified
+candidate universe, not repeated full-vault scans.
+
+**VB-142 boundary:** Thin diagnostic adapters and optional dashboard views require their own
+contract after VB-141. VB-140 chooses no REST, MCP, CLI, or dashboard surface.
+
+**Explicit non-goals:** no VB-141 or VB-142 implementation; no automatic repair, delete, merge,
+rewrite, rename, move, retag, link fix, metadata normalization, index rebuild, capture promotion,
+duplicate winner selection, hidden diagnostic database/cache, new semantic ranking, LLM/cloud
+dependency, REST/OpenAPI/MCP/dashboard change, Milestone 16 work, release, or deployment change.
 
 ---
 

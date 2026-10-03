@@ -291,8 +291,10 @@ Current post-v1 planning position:
   evidence, explicit operator-controlled create/append promotion, and safe failure/ownership rules
 - VB-130 itself added no capture runtime, public adapter, persistence, dependency, or write change;
   VB-131 subsequently implemented and merged the bounded capture domain, coordinated atomic
-  create-if-absent operation, and one local CLI adapter; VB-132 now has a BACKLOG implementation
-  contract for explicit review/promotion but no runtime or adapter
+  create-if-absent operation, and one local CLI adapter; VB-132 implemented and merged explicit
+  review/promotion with a local CLI adapter and additive coordinated create/append protection
+- VB-140 is complete as design-only work: accepted ADR 0008 defines read-only Knowledge Hygiene
+  diagnostics; VB-141 needs its own authoritative implementation contract and VB-142 remains future
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
 
@@ -387,7 +389,8 @@ Current milestones:
 - **Milestone 11 — Obsidian Knowledge Graph / Note Relationships (complete; production graph ranking not supported)**
 - **Milestone 12 — Portable PKM model (complete)**
 - **Milestone 13 — Knowledge Query Layer (complete; VB-120 through VB-122 complete)**
-- **Milestone 14 — Knowledge Capture / Portable Memory (in progress; VB-130 design accepted, VB-131 implemented, VB-132 contracted but not implemented)**
+- **Milestone 14 — Knowledge Capture / Portable Memory (complete; VB-130 design accepted, VB-131 and VB-132 implemented and merged)**
+- **Milestone 15 — Knowledge Hygiene (in progress; VB-140 design accepted, VB-141/VB-142 not implemented)**
 
 ## Working production characteristics
 
