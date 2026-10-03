@@ -657,6 +657,45 @@ repeatable exact `--path`, repeatable required `--tag`, and `--limit`. It prints
 vault-relative paths and existing semantic score evidence when applicable. Empty results are
 successful.
 
+`capture` reads exactly one UTF-8 JSON request from standard input (at most 1,048,576 bytes):
+
+```bash
+python -m app.cli capture < capture-request.json
+```
+
+The request requires `content`, `state` (`inbox` or `draft`), `capture_id` (a lowercase UUID v4),
+and `captured_at` (UTC RFC 3339 at second precision, with `Z` or `+00:00`). Optional fields are
+`title`, `source`, ordered `tags`, `capture_type`, and `metadata` for additional safe portable
+frontmatter values. Duplicate JSON keys and unknown top-level fields are rejected. For example:
+
+```json
+{"content":"Selected Markdown text\n","state":"inbox","capture_id":"9f563c82-f963-4a44-9f36-1f7c6f459a4c","captured_at":"2026-10-03T12:30:00Z","source":"unknown","tags":[]}
+```
+
+Capture creates only `Inbox/Captures/<capture_id>.md`; title is display metadata. It retains the
+exact authored body and ordered portable frontmatter. Keep the original request, ID, and timestamp
+for retries. Exact bytes at that path yield `already_applied`; differences yield `conflict` without
+overwriting or choosing another path. Output contains the stable category and `committed` boolean;
+committed outcomes also include the ID, canonical path, and separate `index_pending` or
+`index_unavailable` evidence. An accepted indexing job may subsequently fail without changing
+Markdown success. After `commit_unknown`, retain the original request and inspect the exact
+canonical path. Verified matching bytes can resolve the outcome as `already_applied`. If the path
+is absent after a possible commit or namespace relocation, do not automatically retry: an operator
+must resolve the possible relocated artifact and explicitly authorize another write. If another
+same-ID artifact cannot be ruled out, do not write again.
+Expected failures exit `1`, confirmed Markdown success exits `0`, and configuration/programming
+failures exit `2`. Content and metadata are never echoed in diagnostics.
+
+Capture enqueues existing local indexing after commit and drains its worker before CLI exit.
+Keep the serving process stopped while running this CLI command because semantic persistence has
+no cross-process index lock. Markdown creation itself coordinates cooperating VaultService writers
+across local processes and threads: a POSIX directory lock or Windows kernel mutex, plus a complete
+temporary file linked atomically without replacement. Active capture destination or staging
+namespace mutation by a non-cooperating filesystem writer is outside that strong guarantee;
+detected uncertainty does not confirm creation. Ordinary external Markdown editing remains
+supported. The filesystem must support hard links; unsupported filesystems fail safely. This adds
+no capture database, promotion, or review operation.
+
 `index` brings derived semantic data up to date through the production incremental/full sync path;
 `reindex` first discards and then rebuilds derived semantic data. Markdown remains the source of
 truth and neither command changes note files.

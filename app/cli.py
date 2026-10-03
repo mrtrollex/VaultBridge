@@ -1,18 +1,21 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sqlite3
 import sys
 import unicodedata
 from collections.abc import Sequence
 from pathlib import PurePosixPath
-from typing import NoReturn, TextIO
+from typing import BinaryIO, NoReturn, TextIO
 
 from pydantic import ValidationError
 
 from app.core.config import Settings
 from app.core.logging import configure_application_logging
 from app.repositories.semantic import ImmutableIndexInspectionUnavailableError
+from app.services.capture import CaptureService
+from app.services.indexer import BackgroundSemanticIndexer
 from app.services.knowledge_query import (
     DEFAULT_LIMIT as KNOWLEDGE_QUERY_DEFAULT_LIMIT,
 )
@@ -109,6 +112,9 @@ def _parser() -> argparse.ArgumentParser:
 
     status = commands.add_parser("status", help="show persisted vault and semantic-index status")
     status.set_defaults(action="status")
+
+    capture = commands.add_parser("capture", help="capture one UTF-8 JSON request from standard input")
+    capture.set_defaults(action="capture")
 
     index = commands.add_parser(
         "index",
@@ -699,11 +705,77 @@ def run_knowledge_query(
     return EXIT_SUCCESS
 
 
+def run_capture(
+    settings: Settings,
+    *,
+    input_stream: BinaryIO | None = None,
+    output: TextIO | None = None,
+    service: CaptureService | None = None,
+) -> int:
+    """Read one bounded request; the domain owns validation and all capture semantics."""
+    stream = output or sys.stdout
+
+    def unique_object(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("invalid_request")
+            result[key] = value
+        return result
+
+    def invalid_constant(_value):
+        raise ValueError("invalid_request")
+
+    try:
+        raw = (input_stream or sys.stdin.buffer).read(1_048_577)
+        if len(raw) > 1_048_576:
+            print('{"category": "size_limit", "committed": false}', file=stream)
+            return EXIT_INTEGRITY_PROBLEM
+        request = json.loads(
+            raw.decode("utf-8"), object_pairs_hook=unique_object, parse_constant=invalid_constant,
+        )
+    except (ValueError, UnicodeError, RecursionError, OSError):
+        print('{"category": "invalid_request", "committed": false}', file=stream)
+        return EXIT_INTEGRITY_PROBLEM
+
+    worker = None
+
+    def enqueue(path):
+        nonlocal worker
+        semantic = semantic_search_service_from_settings(settings)
+        worker = BackgroundSemanticIndexer(semantic.sync, semantic.sync_paths, emit_note_paths=False)
+        return worker.enqueue_paths((path,), require_submission=True) > 0
+
+    capture_service = service or CaptureService(_vault_service(settings), enqueue=enqueue)
+    try:
+        result = capture_service.capture(request)
+        # Enqueue evidence is separate from later worker completion. Drain this local
+        # CLI worker before exit; Markdown success is unchanged by derived failure.
+        if worker is not None:
+            try:
+                worker.wait()
+            except sqlite3.ProgrammingError:
+                raise
+            except (OSError, sqlite3.DatabaseError, SemanticIndexOperationError,
+                    SynchronizationCancelledError, UnicodeError):
+                pass
+    finally:
+        if worker is not None:
+            worker.shutdown()
+    evidence = {"category": result.category, "committed": result.committed}
+    if result.committed:
+        evidence.update(capture_id=result.capture_id, path=result.path, index_state=result.index_state)
+    print(json.dumps(evidence), file=stream)
+    return EXIT_SUCCESS if result.committed else EXIT_INTEGRITY_PROBLEM
+
+
 def main(argv: Sequence[str] | None = None, *, settings: Settings | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
         configure_application_logging()
         app_settings = settings or Settings.from_env()
+        if args.action == "capture":
+            return run_capture(app_settings)
         if args.action == "status":
             return run_status(app_settings)
         if args.action == "index_check":

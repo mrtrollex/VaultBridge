@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import math
 import re
 from collections.abc import Iterator, Mapping
@@ -302,6 +303,83 @@ class FrontmatterParser:
                 ),
             )
         return FrontmatterResult(state="valid", metadata=metadata)
+
+
+class FrontmatterSerializationError(ValueError):
+    """A safe portable value or serialized profile limit was rejected."""
+
+    def __init__(self, reason: str):
+        super().__init__(reason)
+        self.reason = reason
+
+
+def serialize_frontmatter(metadata: Mapping[str, object]) -> str:
+    """Emit ordered, quoted YAML Core values and validate with the owning parser."""
+    items = 0
+
+    def scalar(value):
+        if type(value) not in (str, int, float, bool, type(None)):
+            raise FrontmatterSerializationError("unsupported_value")
+        if isinstance(value, float) and not math.isfinite(value):
+            raise FrontmatterSerializationError("unsupported_value")
+        if isinstance(value, int) and value.bit_length() > MAX_SCALAR_BYTES * 4:
+            raise FrontmatterSerializationError("scalar_too_large")
+        try:
+            source = (
+                hex(value) if type(value) is int and value.bit_length() > 12_000
+                else json.dumps(value, ensure_ascii=False, allow_nan=False)
+            )
+            # YAML treats these literal Unicode characters as line breaks even
+            # inside quotes. Keep non-BMP characters literal (JSON surrogate-pair
+            # escapes are not combined by YAML), but escape YAML line breaks.
+            for character in ("\u0085", "\u2028", "\u2029"):
+                source = source.replace(character, f"\\u{ord(character):04x}")
+            size = len(source.encode("utf-8"))
+        except (UnicodeError, ValueError):
+            raise FrontmatterSerializationError("unsupported_value") from None
+        if size > MAX_SCALAR_BYTES:
+            raise FrontmatterSerializationError("scalar_too_large")
+        return source
+
+    def emit(value, depth):
+        nonlocal items
+        if isinstance(value, Mapping) or type(value) in (list, tuple):
+            if depth > MAX_CONTAINER_DEPTH:
+                raise FrontmatterSerializationError("container_too_deep")
+            items += len(value)
+            if items > MAX_ITEMS:
+                raise FrontmatterSerializationError("too_many_items")
+            if isinstance(value, Mapping):
+                parts = []
+                seen = set()
+                for key, member in value.items():
+                    if type(key) is not str:
+                        raise FrontmatterSerializationError("non_string_key")
+                    try:
+                        size = len(key.encode("utf-8"))
+                    except UnicodeError:
+                        raise FrontmatterSerializationError("unsupported_value") from None
+                    if size > MAX_MAPPING_KEY_BYTES:
+                        raise FrontmatterSerializationError("mapping_key_too_large")
+                    if key in seen:
+                        raise FrontmatterSerializationError("duplicate_key")
+                    seen.add(key)
+                    parts.append(scalar(key) + ": " + emit(member, depth + 1))
+                return "{" + ", ".join(parts) + "}"
+            return "[" + ", ".join(emit(member, depth + 1) for member in value) + "]"
+        return scalar(value)
+
+    if not isinstance(metadata, Mapping):
+        raise FrontmatterSerializationError("non_mapping_root")
+    # A JSON flow mapping is YAML 1.2 Core; quoted keys/strings avoid implicit typing.
+    envelope = "---\n" + emit(metadata, 1) + "\n---\n"
+    if len(envelope.encode("utf-8")) > MAX_FRONTMATTER_BYTES:
+        raise FrontmatterSerializationError("frontmatter_too_large")
+    parsed = FrontmatterParser.parse(envelope)
+    if parsed.state != "valid":
+        assert parsed.diagnostic is not None
+        raise FrontmatterSerializationError(parsed.diagnostic.reason)
+    return envelope
 
 
 def _extract_envelope(markdown: str) -> str | FrontmatterDiagnostic | None:
