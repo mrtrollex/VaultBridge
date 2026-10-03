@@ -3,10 +3,51 @@ from __future__ import annotations
 import json
 import os
 import re
+import stat
+import uuid
+from contextlib import ExitStack, contextmanager, suppress
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from functools import wraps
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Literal
+
+from app.services._vault_writes import (
+    UnsafeWritePathError,
+    coordinated_write,
+    open_root_directory,
+    open_windows_staged_file,
+    windows_pinned_path,
+)
+
+
+def _coordinated(method):
+    @wraps(method)
+    def write(self, *args, **kwargs):
+        if method.__name__ == "create_note" and not self.vault_root.exists():
+            # Preserve legacy creation of a missing configured root, after its
+            # original folder containment validation, before locking that inode.
+            self.resolve_path(kwargs.get("folder") or "Inbox")
+            self.vault_root.mkdir(parents=True, exist_ok=True)
+        if method.__name__ == "append_note":
+            # Preserve the original validation precedence even when no root exists.
+            self._ensure_markdown(self.resolve_path(kwargs["path"]))
+        try:
+            with coordinated_write(self.vault_root):
+                return method(self, *args, **kwargs)
+        except (FileNotFoundError, NotADirectoryError):
+            if method.__name__ == "append_note":
+                raise NoteNotFoundError("Note not found") from None
+            raise
+    return write
+
+
+class AtomicCaptureError(Exception):
+    """Privacy-safe expected capture filesystem failure."""
+
+    def __init__(self, category: str):
+        super().__init__(category)
+        self.category = category
 
 SEMANTIC_EXCLUDED_DIRECTORIES = frozenset(
     {".obsidian", ".trash", ".git", ".obsidian-chatgpt-data"}
@@ -459,6 +500,7 @@ class VaultService:
             unsafe_unqualified_names=frozenset(unsafe_names),
         )
 
+    @_coordinated
     def create_note(
         self,
         *,
@@ -499,6 +541,7 @@ class VaultService:
         path.write_text(markdown, encoding="utf-8")
         return NoteWriteResult(path=self._relative_path(path), status="created")
 
+    @_coordinated
     def append_note(self, *, path: str, content: str, dedupe_key: str | None = None) -> NoteWriteResult:
         note_path = self.resolve_path(path)
         self._ensure_markdown(note_path)
@@ -522,6 +565,188 @@ class VaultService:
             file.write(addition)
 
         return NoteWriteResult(path=self._relative_path(note_path), status="appended")
+
+    @contextmanager
+    def _capture_directory(self):
+        """Pin exact, non-symlink directories; POSIX operations stay descriptor-relative."""
+        with ExitStack() as stack:
+            path = self.vault_root
+            directory_fd = None
+            if os.name == "nt":
+                # Pin ancestors too: denying deletion of only the leaf is insufficient.
+                for ancestor in reversed((path, *path.parents)):
+                    stack.enter_context(windows_pinned_path(ancestor))
+            else:
+                directory_fd = open_root_directory(path)
+                stack.callback(os.close, directory_fd)
+            pinned = [(path, directory_fd)]
+            for name in ("Inbox", "Captures"):
+                entries = os.listdir(directory_fd if directory_fd is not None else path)
+                if any(entry.casefold() == name.casefold() and entry != name for entry in entries):
+                    raise AtomicCaptureError("unsafe_destination")
+                if name not in entries:
+                    try:
+                        if directory_fd is None:
+                            (path / name).mkdir()
+                        else:
+                            os.mkdir(name, dir_fd=directory_fd)
+                    except FileExistsError:
+                        pass
+                path /= name
+                if directory_fd is None:
+                    stack.enter_context(windows_pinned_path(path))
+                    if not path.is_dir():
+                        raise AtomicCaptureError("unsafe_destination")
+                else:
+                    directory_fd = os.open(
+                        name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                        dir_fd=directory_fd,
+                    )
+                    stack.callback(os.close, directory_fd)
+                pinned.append((path, directory_fd))
+
+            def verify():
+                for pinned_path, fd in pinned:
+                    if fd is not None:
+                        info = pinned_path.lstat()
+                        opened = os.fstat(fd)
+                        if not stat.S_ISDIR(info.st_mode) or (
+                            info.st_dev, info.st_ino
+                        ) != (opened.st_dev, opened.st_ino):
+                            raise AtomicCaptureError("unsafe_destination")
+            verify()
+            yield path, directory_fd, verify
+
+    def create_capture_if_absent(self, *, capture_id: str, markdown: bytes) -> NoteWriteResult:
+        """Commit complete capture bytes with an atomic, non-replacing hard link.
+
+        All VaultService create/append callers share the same local OS lock. A
+        destination is never opened for writing. Temporary files have no .md suffix.
+        Unsupported hard-link filesystems fail closed instead of falling back.
+        """
+        if not isinstance(capture_id, str) or not re.fullmatch(
+            r"[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}", capture_id
+        ):
+            raise AtomicCaptureError("invalid_request")
+        if not isinstance(markdown, bytes):
+            raise AtomicCaptureError("invalid_request")
+        if len(markdown) > self.max_note_bytes:
+            raise AtomicCaptureError("size_limit")
+        try:
+            markdown.decode("utf-8")
+        except UnicodeError:
+            raise AtomicCaptureError("invalid_request") from None
+        name = capture_id + ".md"
+        canonical = "Inbox/Captures/" + name
+        commit_attempted = False
+        try:
+            with coordinated_write(self.vault_root), self._capture_directory() as (parent, fd, verify):
+                def read_existing():
+                    verify()
+                    with ExitStack() as stack:
+                        if fd is None:
+                            stack.enter_context(windows_pinned_path(parent / name))
+                            if not (parent / name).is_file():
+                                raise AtomicCaptureError("unsafe_destination")
+                            read_fd = os.open(parent / name, os.O_RDONLY | os.O_BINARY)
+                        else:
+                            read_fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=fd)
+                        stream = stack.enter_context(os.fdopen(read_fd, "rb"))
+                        info = os.fstat(stream.fileno())
+                        if not stat.S_ISREG(info.st_mode):
+                            raise AtomicCaptureError("unsafe_destination")
+                        existing = stream.read(self.max_note_bytes + 1)
+                    verify()
+                    if len(existing) > self.max_note_bytes:
+                        raise AtomicCaptureError("size_limit")
+                    existing.decode("utf-8")
+                    if existing != markdown:
+                        raise AtomicCaptureError("conflict")
+                    return NoteWriteResult(canonical, "already_applied")
+
+                def verify_committed(staged_identity):
+                    """Confirm the canonical entry still names our complete staged bytes."""
+                    verify()
+                    with ExitStack() as stack:
+                        if fd is None:
+                            stack.enter_context(windows_pinned_path(parent / name))
+                            read_fd = os.open(parent / name, os.O_RDONLY | os.O_BINARY)
+                        else:
+                            read_fd = os.open(
+                                name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=fd
+                            )
+                        stream = stack.enter_context(os.fdopen(read_fd, "rb"))
+                        info = os.fstat(stream.fileno())
+                        if not stat.S_ISREG(info.st_mode) or (
+                            info.st_dev, info.st_ino
+                        ) != (staged_identity.st_dev, staged_identity.st_ino):
+                            raise AtomicCaptureError("commit_unknown")
+                        if stream.read(len(markdown) + 1) != markdown:
+                            raise AtomicCaptureError("commit_unknown")
+                    verify()
+
+                entries = os.listdir(fd if fd is not None else parent)
+                if any(entry.casefold() == name and entry != name for entry in entries):
+                    raise AtomicCaptureError("unsafe_destination")
+                if name in entries:
+                    return read_existing()
+                temporary = ".vaultbridge-" + uuid.uuid4().hex + ".tmp"
+                temporary_path = parent / temporary
+                write_fd = (
+                    open_windows_staged_file(temporary_path) if fd is None
+                    else os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=fd)
+                )
+                staged_identity = os.fstat(write_fd)
+                try:
+                    with os.fdopen(write_fd, "wb") as stream:
+                        stream.write(markdown)
+                        stream.flush()
+                        os.fsync(stream.fileno())
+                        verify()
+                        commit_attempted = True
+                        try:
+                            if fd is None:
+                                # The staging handle denies delete/rename and external
+                                # writes until this link operation has completed.
+                                os.link(temporary_path, parent / name)
+                            else:
+                                # linkat follows only our live descriptor alias, never
+                                # the replaceable directory entry used for staging.
+                                os.link(
+                                    f"/proc/self/fd/{stream.fileno()}", name,
+                                    dst_dir_fd=fd, follow_symlinks=True,
+                                )
+                        except FileExistsError:
+                            commit_attempted = False
+                            return read_existing()
+                        verify()
+                        if fd is not None:
+                            os.fsync(fd)
+                        verify_committed(staged_identity)
+                        return NoteWriteResult(canonical, "created")
+                finally:
+                    with suppress(OSError):
+                        if fd is None:
+                            temporary_path.unlink()
+                        else:
+                            remaining = os.stat(temporary, dir_fd=fd, follow_symlinks=False)
+                            if (remaining.st_dev, remaining.st_ino) == (
+                                staged_identity.st_dev, staged_identity.st_ino
+                            ):
+                                os.unlink(temporary, dir_fd=fd)
+        except AtomicCaptureError:
+            if commit_attempted:
+                raise AtomicCaptureError("commit_unknown") from None
+            raise
+        except (UnsafeWritePathError, UnicodeError):
+            raise AtomicCaptureError("commit_unknown" if commit_attempted else "unsafe_destination") from None
+        except OSError as exc:
+            import errno
+
+            category = "commit_unknown" if commit_attempted else "write_unavailable"
+            if not commit_attempted and exc.errno in (errno.ELOOP, errno.ENOTDIR, errno.EISDIR):
+                category = "unsafe_destination"
+            raise AtomicCaptureError(category) from None
 
     def read_note(self, path: str) -> NoteReadResult:
         note_path = self.resolve_path(path)

@@ -127,6 +127,13 @@ def test_append_and_dedupe_preserve_marker_behavior(tmp_path):
     assert content.count("<!-- chatgpt-append:task_key_1 -->") == 1
 
 
+def test_append_missing_root_preserves_not_found_error(tmp_path):
+    service = service_for(tmp_path / "missing")
+    with pytest.raises(NoteNotFoundError, match="Note not found"):
+        service.append_note(path="Missing.md", content="Addition")
+    assert not (tmp_path / "missing").exists()
+
+
 def test_literal_search_covers_content_title_folder_and_limit(tmp_path):
     service = service_for(tmp_path)
     service.create_note(title="Oracle overview", folder="Work", content="General database notes", tags=[])

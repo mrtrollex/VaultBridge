@@ -384,6 +384,16 @@ def test_append_note_remains_successful_when_enqueue_raises(tmp_path):
     assert indexer.paths == [response.json()["path"]]
 
 
+@pytest.mark.parametrize("route", ["/notes/append", "/api/v1/notes/append"])
+def test_append_missing_root_retains_404_mapping(tmp_path, route):
+    root = tmp_path / "missing"
+    client = client_for(root, semantic_indexer=RecordingIndexer())
+    response = client.post(route, headers=auth(), json={"path": "Missing.md", "content": "Addition"})
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Note not found"}
+    assert not root.exists()
+
+
 def test_create_read_search_append(tmp_path):
     client = client_for(tmp_path)
 

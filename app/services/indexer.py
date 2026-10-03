@@ -20,9 +20,12 @@ class BackgroundSemanticIndexer:
         self,
         sync: Callable[[threading.Event], Any],
         sync_paths: Callable[[Sequence[str], threading.Event], Any] | None = None,
+        *,
+        emit_note_paths: bool = True,
     ) -> None:
         self._sync = sync
         self._sync_paths = sync_paths
+        self._emit_note_paths = emit_note_paths
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="vaultbridge-index")
         self._lock = threading.Lock()
         self._cancel_event = threading.Event()
@@ -64,8 +67,8 @@ class BackgroundSemanticIndexer:
         """Queue one vault-relative note path, coalescing duplicate pending work."""
         return self.enqueue_paths((path,)) > 0
 
-    def enqueue_paths(self, paths: Sequence[str]) -> int:
-        """Atomically queue vault-relative paths and return the number newly pending."""
+    def enqueue_paths(self, paths: Sequence[str], *, require_submission: bool = False) -> int:
+        """Queue paths; optionally require accepted worker submission for capture evidence."""
         normalized_paths: set[str] = set()
         for path in paths:
             normalized_paths.add(self._normalize_path(path))
@@ -88,8 +91,13 @@ class BackgroundSemanticIndexer:
             else:
                 future = self._submit_locked()
                 log_queued = future is not None
+                if require_submission and future is None:
+                    return 0
             if log_queued:
-                note_path = next(iter(normalized_paths)) if len(normalized_paths) == 1 else None
+                note_path = (
+                    next(iter(normalized_paths))
+                    if self._emit_note_paths and len(normalized_paths) == 1 else None
+                )
                 log_event(
                     logger,
                     logging.INFO,
@@ -129,7 +137,7 @@ class BackgroundSemanticIndexer:
                 logging.ERROR,
                 "semantic_worker_submission_failed",
                 "Semantic worker submission failed",
-                exc_info=(type(exc), exc, exc.__traceback__),
+                exc_info=(type(exc), exc, exc.__traceback__) if self._emit_note_paths else None,
                 error_type=type(exc).__name__,
             )
             return None
