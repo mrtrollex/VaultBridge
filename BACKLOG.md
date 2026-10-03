@@ -2238,7 +2238,8 @@ ranking, index compatibility, metadata parsing, relationship, Docker/TrueNAS, or
 ### VB-130 — Define Knowledge Capture and provenance model / ADR — P1 ✅
 
 **Status:** Completed as design-only work on 2026-09-28. ADR 0007 is accepted as the
-authoritative domain contract. No capture runtime or public adapter is implemented.
+authoritative domain contract. VB-131 subsequently implemented capture runtime and one CLI adapter;
+VB-130 itself added neither.
 
 **Goal:** define bounded, inspectable capture into portable Markdown, with provenance and an
 explicit human/operator decision before captured material becomes promoted knowledge. Keep the
@@ -2262,9 +2263,9 @@ Markdown bytes and safe portable metadata authoritative under ADR 0005.
   caller behavior; state where existing methods do not yet implement arbitrary capture provenance;
 - define deterministic validation/conflict/failure outcomes, privacy-safe diagnostics, bounded
   duplicate/related interaction, and ownership of metadata, relationships, query, and writes;
-- keep VB-131 limited to a separately contracted portable inbox/draft capture capability and
-  VB-132 limited to a separately contracted explicit review/promotion capability. Neither is
-  implemented or given a public adapter by this task.
+- keep VB-131 limited to its separately contracted portable inbox/draft capture capability and
+  VB-132 limited to a separately contracted explicit review/promotion capability. This design
+  task itself implemented neither capability or public adapter.
 
 **Compatibility / explicit non-goals:** documentation and architecture only. No runtime capture,
 REST/OpenAPI, MCP, CLI, dashboard, persistence/database/cache/index, dependency, automatic
@@ -2274,11 +2275,12 @@ deployment change.
 
 ---
 
-### VB-131 — Portable inbox/draft capture — P1 (contract accepted; not implemented)
+### VB-131 — Portable inbox/draft capture — P1 ✅
 
-**Status:** Implementation contract accepted; no capture writer or adapter exists yet. ADR 0007
-governs capture authority, provenance, and scope; ADR 0005 governs portable metadata. This item
-specifies the VB-131 intake behavior only. VB-132 review and promotion require a separate contract.
+**Status:** Implemented and merged as `c61d7c6` (PR #107). The capture domain service, coordinated
+atomic create-if-absent boundary, local CLI `capture` adapter, and focused tests are present.
+ADR 0007 governs capture authority, provenance, and scope; ADR 0005 governs portable metadata.
+This item specifies VB-131 intake only; it grants no review or promotion behavior.
 
 **Goal:** one explicit request creates exactly one new, contained, inspectable UTF-8 Markdown
 artifact in `inbox` or `draft` state. Intake does not append to an existing note, promote content,
@@ -2432,12 +2434,260 @@ privacy-safe diagnostics under invalid input and I/O failures; and unchanged beh
 `create_note` callers. Tests must prove the atomic guarantee rather than only sequential checks.
 They must not claim protection against arbitrary non-cooperating namespace mutation.
 
-**Explicit non-goals:** no VB-131 runtime work in this contract task; no VB-132 promotion or
+**Explicit non-goals:** VB-131 adds no VB-132 promotion or
 review, append promotion, automatic target selection/merge/rewrite/rename/delete, hidden capture
 database/index/cache, silent chat-history ingestion, remote fetching, new dependency or service,
 broad VaultService API change, unrelated adapter, release, or deployment change.
 No hidden idempotency database, global filesystem scan, privileged mount namespace, immutable
 directory flag, exclusive host filesystem ownership, or deployment-specific ACL is required.
+
+---
+
+### VB-132 — Explicit review and promotion workflow — P1 (contract accepted; not implemented)
+
+**Status:** Implementation contract accepted as design-only work. No VB-132 runtime or public
+adapter exists. ADR 0007 owns the capture/provenance model, ADR 0005 the portable Markdown model,
+and the implemented VB-131 contract above owns intake and its cooperative-writer boundary.
+
+**Goal:** let a local human/operator inspect one VB-131 capture and explicitly approve exactly one
+create or append of selected Markdown into one chosen authoritative destination. The capture stays
+intact. A review, suggestion, timeout, prior decision, or semantic match cannot cause a write.
+
+**Review snapshot and advisory evidence**
+
+- Review accepts exactly one supplied canonical `Inbox/Captures/<capture_id>.md` path and matching
+  lowercase UUID v4 `capture_id`. `VaultService` must verify exact spelling, containment, regular
+  Markdown file, size, and readable UTF-8 bytes. Parse the current bounded ADR 0005 frontmatter
+  from that same read; require one valid VB-131 `capture_id`, `capture_state` (`inbox` or `draft`),
+  and UTC second-precision `captured_at` matching the fixed path/ID. Preserve absent versus
+  explicitly declared optional fields and safe additional metadata. An unsafe, missing, oversized,
+  unreadable, malformed, or mismatched artifact is not a reviewable capture (`unsafe_source` or
+  `invalid_request` as applicable). Never repair or normalize it in place.
+- Return the canonical source path, ID, state, capture metadata, exact authored body, and SHA-256
+  of the **entire current capture byte stream** as the review snapshot. The digest is a bounded
+  version check, not a second identity authority or approval. No hidden persistent review state,
+  mtime-only check, or index snapshot is required.
+- At operator request, obtain finite, explicitly limited duplicate/related/relationship or
+  Knowledge Query evidence through their existing owners. Preserve their own ordering and
+  unavailability signals; exclude unsafe/unverified candidate paths. Evidence is advisory even
+  when exact title, link, or semantic results agree. It neither fills a destination nor changes
+  the approved content, action, or disposition. Review remains possible without an index or any
+  candidates; no broad scan is required merely to review a valid capture.
+
+**One explicit `PromotionDecision`**
+
+- The operator supplies `source_path`, `capture_id`, `expected_source_sha256`, exact
+  `approved_content` (non-empty UTF-8 Markdown, at most 65,536 bytes), `action` (`create` or
+  `append`), explicit canonical vault-relative `.md` `destination`, a caller-retained lowercase
+  UUID v4 `promotion_id`, and caller-retained UTC second-precision `approved_at`. `approved_at`
+  records this decision, not the capture event. The operator reviews the exact final
+  `approved_content` alongside the capture; it may be a verbatim selection or an explicitly
+  edited selection, never a silent transformation. The decision supplies `transfer_fields` as
+  an ordered subset of only `title`, `tags`, and `capture_type`, in that fixed order; each
+  selected field must be present in the reviewed capture. No other field is selectable in
+  VB-132: reject `created`, arbitrary additional safe metadata, `capture_state`, and unknown
+  names rather than accepting and dropping them. The source path/ID, source digest,
+  `captured_at`, and any present declared source are mandatory provenance outside this subset
+  and cannot be changed or invented. Do not infer a verified source from a declared `source`,
+  URL, title, link, or match.
+- `promotion_id` is a lowercase UUID v4 idempotency key scoped to the **one exact canonical
+  destination path**, not a vault-wide unique promotion identity. The idempotency context is
+  `(destination, promotion_id)`; `decision_sha256` binds the exact approved facts within that
+  context. Compute it as lowercase SHA-256 of the UTF-8 bytes of one canonical JSON object:
+  `action`, `approved_at`, `approved_content`, `capture_id`, `captured_at`, `destination`,
+  `expected_source_sha256`, `promotion_id`, `source_path`, `transfer_fields` (the fixed-order
+  selected-name list), and `transfer` (selected values under `capture_title`, `capture_tags`,
+  or `capture_type`, exactly as emitted below), plus `capture_declared_source` only when present
+  and exactly one of
+  `expected_destination: "absent"` or `expected_destination_sha256`. Do not include the digest
+  itself or serialized destination Markdown. Serialize this object with sorted keys, compact
+  `,`/`:` separators, ASCII-escaped non-ASCII JSON strings, no nonfinite numbers, and no
+  trailing LF. Use the same normalized `Z` timestamp, canonical paths, and exact approved
+  content on every retry. Thus the digest does not depend on frontmatter or fence choices. A changed
+  fact requires fresh operator approval for that exact decision. The same UUID at another
+  destination denotes a separate context and cannot be detected as a conflict from the chosen
+  path alone; it never carries approval to that destination. No global uniqueness or
+  cross-destination conflict guarantee is claimed.
+- Require lowercase 64-character SHA-256 hex digests. Accept `approved_at` only as a valid UTC
+  RFC 3339 timestamp at second precision with `Z` or `+00:00`, normalize it to `Z` before
+  composing bytes, and retain that normalized fact on retry. Reject changed review facts rather
+  than silently recalculating hashes or timestamps. `approved_content` is UTF-8 with LF-only
+  line breaks: reject CR, NEL, LINE SEPARATOR, and PARAGRAPH SEPARATOR before either write;
+  never normalize, escape, or rewrite the approved bytes.
+- `create` requires `expected_destination: absent`; `append` requires
+  `expected_destination_sha256` from a verified read of the one selected existing destination.
+  The operator must see that destination's current Markdown before approving append. Neither
+  action, destination, content, provenance selection, expected hashes, ID, nor timestamp is
+  defaulted at the write boundary. A retry repeats the exact decision, including ID and time;
+  changing any bound fact requires a new review and decision. Validate the full request and
+  composed size before filesystem mutation or advisory lookup. Unknown/duplicate fields, invalid
+  types, path aliases, unsafe values, and omitted destination are `invalid_request` or the
+  specific unsafe category. No best-match selection or create/append fallback exists.
+- The destination cannot equal the source or be inside `Inbox/Captures`; append also rejects a
+  destination whose current valid metadata marks it `inbox` or `draft`. Create requires an
+  already existing, exactly spelled, verified contained parent directory and an absent `.md`
+  basename; it does not create folders. A missing parent is `destination_missing`, a case alias,
+  traversal, symlink escape, or non-Markdown target is `unsafe_destination`. Append requires one
+  existing regular contained Markdown file at the exact chosen spelling.
+- At the write boundary, re-read and verify the exact source path, matching capture metadata,
+  and whole-byte digest under the same cooperating-writer coordination used for the destination.
+  A difference from the reviewed source is `source_changed`; no write occurs. For append, re-read
+  the exact canonical destination and compare its whole-byte digest to the approved preimage
+  before a first write. Byte equality at the same canonical path is the review precondition; file
+  timestamps are insufficient. A changed, missing, or unsafe destination requires a fresh human
+  decision, never reuse of approval. Reverify path safety at commit and after a possible commit.
+
+**Portable provenance and deterministic bytes**
+
+- Compose the complete proposed destination bytes deterministically before writing. For create,
+  insert frontmatter fields in this **exact order**: `promotion_id`,
+  `promotion_decision_sha256`, `promotion_approved_at`, `promoted_from_capture_id`,
+  `promoted_from_capture_path`, `promoted_from_sha256`, `captured_at`, then
+  `capture_declared_source` if present, `capture_title` if selected, `capture_tags` if selected,
+  and `capture_type` if selected. The last three carry the reviewed string, ordered string
+  sequence (including duplicates or empty sequence), and string, respectively; an unselected
+  field is absent. `capture_declared_source` is unverified: absent stays absent and declared
+  `unknown` stays a string. No `verified_source` or destination `created` field is emitted;
+  the capture's `created` is never copied or equated with `captured_at` or `approved_at`.
+  `capture_id` and capture path identify only the source; the destination's canonical path is
+  its identity.
+- Pass that insertion-ordered mapping to the existing deterministic
+  `app.services.frontmatter.serialize_frontmatter` contract: one YAML 1.2 Core JSON-flow
+  mapping with fields in insertion order, `, ` between entries and `: ` between each key and
+  value, double-quoted keys and string scalars using JSON escaping with literal valid Unicode,
+  flow sequences for tags, and escaped U+0085/U+2028/U+2029 in YAML scalars. Its exact envelope
+  is `---\n` + one mapping line + `\n---\n`. Append one LF and then the exact
+  `approved_content` bytes, with no added terminal LF: complete create bytes are UTF-8 without
+  BOM, with LF-only line endings and exactly one blank line between the closing delimiter and
+  body. Reject serializer/profile/whole-note bound failures before write. The same normalized
+  decision must emit identical bytes; no inferred heading, fetched content, or content rewrite.
+- For append, leave existing frontmatter and prior body bytes untouched. Emit one block using
+  the same source provenance and selected typed values as create. The canonical single-line
+  manifest has exactly `source_path`, `capture_id`, `source_sha256`, `captured_at`,
+  `approved_at`, and `transfer`, plus `capture_declared_source` only when present; `transfer`
+  maps selected fields to the same `capture_title`, `capture_tags`, or `capture_type` values as
+  create. Serialize the manifest with JSON `sort_keys=True`, `separators=(",", ":")`,
+  `ensure_ascii=True`, and `allow_nan=False`, then escape every literal `<` as JSON `\u003c`
+  before UTF-8 encoding; append no LF to the manifest itself. This fixes key order and quoting
+  independently of mapping insertion order and prevents provenance values from creating marker
+  prefixes in the manifest. Use the same JSON options without the `<` replacement for the
+  normalized-decision digest object above.
+  Let `fence_length = max(3, longest consecutive backtick run in the canonical manifest + 1)`;
+  a manifest with no backtick run has longest run zero. The opening fence is exactly
+  `fence_length` ASCII backticks followed immediately by `json`; the closing fence is exactly
+  `fence_length` ASCII backticks with no suffix.
+- The append bytes are exactly: two LF bytes; ASCII header
+  `<!-- vaultbridge-promotion:v1 id=<promotion_id> sha256=<decision_sha256> -->`; LF;
+  opening fence; LF; canonical manifest bytes; LF; closing fence; two LF bytes; unchanged
+  UTF-8 `approved_content`; LF; ASCII closing marker
+  `<!-- /vaultbridge-promotion:v1 id=<promotion_id> -->`; LF. The framing uses LF only,
+  including when the approved content already ends in LF. No frontmatter edit, merge, or
+  rewrite of prior content is permitted.
+- Use one **reserved-marker recognition rule** for both pre-write validation and retry scanning.
+  For the active `promotion_id`, the scanner recognizes either UTF-8 byte prefix
+  `<!-- vaultbridge-promotion:v1 id=<promotion_id>` or
+  `<!-- /vaultbridge-promotion:v1 id=<promotion_id>` anywhere, without relying on the digest,
+  line position, or remaining suffix. Reject `approved_content` as `invalid_request` before
+  either write if it contains either prefix. Do not escape or rewrite it. On append retry,
+  scan the selected destination using those identical prefixes: exactly one opening and one
+  closing occurrence at the expected block positions, with the complete canonical block bytes
+  and matching digest, prove `already_applied`; any extra, partial, or different-digest
+  occurrence for this destination-scoped ID is `conflict`. An identical retry cannot reinterpret
+  previously accepted approved content as promotion evidence.
+
+**Create, append, concurrency, and retries**
+
+- Create uses an additive `VaultService` exact-path atomic create-if-absent operation for the
+  composed complete Markdown bytes. It must coordinate with existing `create_note`, `append_note`,
+  VB-131 capture, and other promotion writers across supported threads and processes. It never
+  overwrites. If the exact path already contains the exact complete bytes and matching portable
+  promotion attribution, including the same `promotion_decision_sha256`, for this decision,
+  return `already_applied`; otherwise `conflict` at this destination.
+  Existing `create_note` `unchanged` means only a matching tail and is **never** promotion proof:
+  surface it as unresolved conflict and require a new decision. A retry uses the same ID,
+  destination, and bytes; it never generates another filename or silently appends.
+- Append uses an additive `VaultService` exact-path, expected-preimage, append-once operation
+  under the same cross-process/thread coordination as every VaultService writer. Lock, verify
+  source and destination, inspect for this promotion ID, compare the approved preimage, append
+  the full block once, flush, and verify its exact complete occurrence at the canonical path
+  before reporting `appended`. The legacy `append_note` signature, optional `dedupe_key`, marker,
+  normalization, statuses, and existing caller behavior remain unchanged. Concurrent identical
+  retries yield one `appended` and proven `already_applied`; the same ID at this destination
+  with a different decision digest or incomplete block is `conflict`. A retry may report
+  `already_applied` after later unrelated destination edits only if the exact attributable block
+  remains complete and unique; otherwise
+  `destination_changed` or `conflict`, with no new append. If no block is present, a changed
+  preimage is `destination_changed`, a missing note `destination_missing`, and an unsafe path
+  `unsafe_destination`; none selects another note.
+- The strong guarantee covers cooperating VaultService-mediated writers with stable source and
+  destination namespaces. Ordinary external Markdown editing is supported but active
+  non-cooperating rename, replacement,
+  or relocation during commit is outside that guarantee. Detected ambiguity is never reported as
+  a successful promotion. Do not add exclusive filesystem ownership, ACLs, immutable directories,
+  mount namespaces, a hidden database, or a deployment prerequisite.
+- A failure before any possible write is `write_unavailable` (or a specific validation, missing,
+  unsafe, or conflict category). After a possible write, inspect the one canonical path: return
+  `already_applied` only when exact complete attribution is proved; otherwise `commit_unknown`.
+  A known `commit_unknown` caused by possible namespace relocation remains unresolved even when
+  the canonical path is absent. The caller retains that fact; there is no automatic second write,
+  new destination, or replacement ID until an operator resolves possible committed material and
+  explicitly authorizes another attempt. If absence of another copy cannot be established, no
+  further write is authorized. Partial append evidence is `conflict`/`commit_unknown`, never a
+  successful retry. No global filesystem scan or hidden retry table is required.
+
+**Disposition, results, indexing, and privacy**
+
+- A confirmed destination write leaves the source capture byte-for-byte intact in `inbox` or
+  `draft`; no automatic promoted flag, two-file transaction, cleanup, move, rename, or delete.
+  The result reports destination promotion separately. A later disposition action needs its own
+  explicit contract.
+- Stable categories include `invalid_request`, `unsafe_source`, `source_changed`,
+  `unsafe_destination`, `destination_missing`, `destination_changed`, `conflict`,
+  `already_applied` (proved only), `commit_unknown`, `write_unavailable`, `created`, and
+  `appended`; `size_limit` may refine validation. Return `committed` separately. A confirmed
+  Markdown commit remains `created`/`appended` or proven `already_applied` when derived indexing
+  is `index_pending` (enqueue accepted) or `index_unavailable` (enqueue failed). Later index
+  failure leaves the Markdown result committed and triggers only independent indexing recovery;
+  never repeat the write for indexing. Programming defects are not recast as expected failures.
+- Routine logs, errors, and failure output contain stable categories, operation IDs, and safe
+  counts/booleans only: no capture/destination content, source/title/tag/metadata values, URLs,
+  vault-relative or host paths, credentials, symlink destinations, or raw exceptions. Authorized
+  successful output may include the minimum canonical source/destination paths and IDs needed to
+  inspect the commit, never content or arbitrary metadata.
+
+**Initial adapter and ownership:** Add exactly one local CLI `promote` adapter with `review` and
+`apply` modes over one domain review/promotion capability. `review` takes one explicit capture
+path/ID and, when requested, a finite candidate limit; it displays the bounded capture snapshot,
+hash, and optional advisory evidence to the local operator, with an explicit option to inspect
+the chosen append destination and its hash. `apply` reads one UTF-8 JSON decision from standard
+input, capped at 1,048,576 bytes before parsing, rejects duplicate/unknown keys, and returns
+category, committed flag, index state, and only committed canonical identifiers/paths. The
+operator retains the review hash, approved content, destination preimage hash, promotion ID,
+approved time, and any `commit_unknown` result in the decision file for exact retry; the CLI
+does not persist approval. The domain owns decision/provenance semantics; ADR 0005 parsing owns
+metadata validity; `VaultService` owns safe reads/writes and coordination; existing candidate,
+relationship, query, and index owners retain their boundaries. No REST, MCP, or dashboard adapter.
+
+**Focused future runtime tests:** require source path/ID/frontmatter/UTF-8/size rejection;
+changed capture between review and write; explicit action/destination/content and advisory-only
+evidence; no automatic target selection; deterministic portable create frontmatter and exact
+append block provenance; byte-identical create/append serialization on retries, fixed field
+order, JSON escaping and fence length, reserved-marker rejection even with another digest;
+exact same-decision retry, same-destination conflicting ID reuse,
+independent same-ID contexts at distinct destinations requiring distinct approvals, rejection
+of unsupported selected metadata, and exact representation of each supported selection;
+concurrent create and append retries among threads and processes;
+destination changed/missing/unsafe and partial
+block conflicts; conservative `create_note` `unchanged`; lost response and `commit_unknown`,
+including absent canonical path after possible relocation; post-commit index failure without
+second write; intact source capture; privacy-safe diagnostics; unchanged legacy
+`create_note`/`append_note` callers; and Windows/POSIX behavior under the accepted
+cooperative-writer threat model. Tests must exercise failure paths, not merely sequential success.
+
+**Explicit non-goals:** no VB-132 runtime in this design task; automatic promotion, duplicate
+merge, target selection, capture disposition/cleanup, broad Markdown editing, REST/OpenAPI, MCP,
+dashboard, hidden workflow database, job queue, mandatory LLM/cloud/embedding/external service,
+semantic-ranking change, VB-140, Milestone 16, release, or deployment change.
 
 ---
 

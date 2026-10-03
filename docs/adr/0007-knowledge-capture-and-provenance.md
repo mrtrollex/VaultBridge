@@ -8,9 +8,9 @@
 
 ADR 0005 makes each contained Markdown file and its portable metadata authoritative, with a
 verified vault-relative path as identity. ADR 0006 composes live Markdown facts for bounded
-Knowledge Query; it does not decide whether a note is curated knowledge. Existing `VaultService`
-offers safe create and append boundaries, and duplicate/related-note services offer advisory
-evidence. None of these is a capture or promotion workflow.
+Knowledge Query; it does not decide whether a note is curated knowledge. At this ADR's acceptance,
+`VaultService` offered create and append boundaries and duplicate/related-note services offered
+advisory evidence; none was a capture or promotion workflow. VB-131 subsequently added capture.
 
 Milestone 14 calls for portable intake, provenance, conservative related-note analysis, and
 explicit review before promotion. A capture may be useful to keep without asserting that it is
@@ -100,7 +100,7 @@ remain possible to trace the transferred text to the source capture by a portabl
 reference where the capture still exists. An absent or invalid source record is not silently filled
 from a title, URL-shaped text, or semantic match.
 
-The current `create_note` implementation stamps `source: chatgpt` and `created` independently of
+The `create_note` implementation stamps `source: chatgpt` and `created` independently of
 caller-supplied provenance; `append_note` appends content and an optional idempotency marker without
 editing frontmatter. This ADR does not claim those methods already serialize the above fields or
 authorize a behavior change to them. VB-131/VB-132 must contract and prove any additive capture
@@ -151,17 +151,17 @@ create also requires this conservative re-review; `unchanged` alone is never pro
 
 `VaultService` remains the sole owner of path containment, exact spelling, symlink and traversal
 safety, Markdown-only writes, configured size/UTF-8 limits, and the existing create/append
-compatibility behavior. Its current `create_note` existence check and `write_text` are separate:
-concurrent creates can both pass the check and a later write can overwrite a destination. Its
-current `append_note` marker check and append are also separate: concurrent calls with the same
-`dedupe_key` can both append. Neither method currently guarantees atomic non-overwrite or atomic
-idempotency under cooperating concurrent writers or retries.
+compatibility behavior. At ADR acceptance, `create_note` existence check and `write_text`, and
+`append_note` marker check and append, were separate uncoordinated operations. VB-131 subsequently
+added shared cross-process/thread coordination and an atomic create-if-absent capture operation,
+without changing the existing public create/append signatures or their content semantics. The
+legacy methods still do not encode VB-132's exact promotion attribution or retry decision.
 
-Before VB-131 relies on a create for intake or VB-132 relies on create/append for promotion, the
-separately scoped implementation must establish and test an explicit atomicity/concurrency
-mechanism across cooperating VaultBridge-mediated writers to the same destination, including
-supported processes and threads and existing create/append callers. It must preserve contained
-Markdown-only writes and existing caller compatibility. Create-if-absent must never overwrite a
+VB-131 established its separately scoped intake create guarantee. Before VB-132 relies on
+create/append for promotion, it must establish and test the additional exact-path
+atomicity/concurrency mechanism across cooperating VaultBridge-mediated writers to the same
+destination, including supported processes and threads and existing create/append callers. It
+must preserve contained Markdown-only writes and existing caller compatibility. Create-if-absent must never overwrite a
 conflicting destination for a cooperating writer; append deduplication must commit at most once
 for one idempotency context among cooperating writers. This ADR selects no locking, filesystem,
 or storage implementation. Pre-write verification alone cannot satisfy the guarantee. A retry

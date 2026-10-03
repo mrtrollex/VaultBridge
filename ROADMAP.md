@@ -1047,7 +1047,7 @@ ranking/index-signature change, or write behavior.
 
 ---
 
-# Milestone 14 — Knowledge Capture / Portable Memory — PLANNED
+# Milestone 14 — Knowledge Capture / Portable Memory — IN PROGRESS
 
 **Goal:** allow clients and AI agents to capture knowledge safely into portable Markdown while
 retaining provenance and human/operator control.
@@ -1069,11 +1069,11 @@ explicit promote / append / create
 Possible portable metadata includes source/provenance, creation timestamp, tags, and capture type.
 No proprietary memory schema is mandatory. Capture must not silently persist chat history, rewrite
 existing knowledge, assume every capture belongs in an authoritative note, or automatically merge,
-promote, or delete content. Future VB-131/VB-132 writes should reuse the existing `create_note` /
-`append_note` compatibility and post-commit indexing boundaries conceptually. Their current
-check-then-write behavior does not guarantee atomic non-overwrite or concurrent idempotency;
-before relying on those writes, the later tasks must establish atomic conflict and retry
-protection across cooperating VaultBridge-mediated writers while preserving contained
+promote, or delete content. VB-131 capture and future VB-132 promotion reuse `VaultService`
+compatibility and post-commit indexing boundaries conceptually. VB-131 implemented a coordinated
+atomic create-if-absent path without changing legacy `create_note` / `append_note` signatures or
+semantics. VB-132 requires additive atomic conflict and retry protection for exact-path create
+and append across cooperating VaultService-mediated writers while preserving contained
 Markdown-only writes and existing caller behavior. VB-131's strong guarantee excludes active
 capture destination/staging namespace mutation by non-cooperating filesystem writers; ordinary
 external Markdown editing remains supported. An uncertain relocated commit requires operator
@@ -1081,10 +1081,10 @@ resolution before another same-ID write, even when the canonical path is absent.
 
 VB-130 is complete as a design-only task under accepted ADR 0007. Its intake, provenance,
 advisory-analysis, and explicit-promotion contract adds no capture runtime or public adapter.
-VB-131 now has an authoritative BACKLOG implementation contract for atomic, idempotent creation
-of one inbox/draft Markdown artifact at a fixed contained path among cooperating VaultBridge
-writers. It is not implemented. VB-132
-still requires a separate authoritative BACKLOG contract before implementation:
+VB-131 is implemented and merged: it creates one inbox/draft Markdown artifact at a fixed
+contained path with atomic, idempotent behavior among cooperating VaultBridge writers.
+VB-132 now has a separate authoritative BACKLOG contract for explicit local review and
+operator-approved create/append promotion; its runtime is not implemented:
 
 ```text
 VB-130 capture and provenance model / ADR (accepted design)
@@ -1177,9 +1177,9 @@ verified backlink write; none is the strategic NEXT item.
 ## Domain architecture
 
 Accepted VB-110, VB-120, and VB-130 establish domain semantics before their separately scoped
-runtime or adapter work. These three tasks and the VB-131 intake contract are authoritative in
-`BACKLOG.md`; proposed VB-132, VB-140, and VB-150 identifiers are not implementation contracts
-until they receive bounded backlog acceptance criteria.
+runtime or adapter work. These three design tasks, the completed VB-131 intake contract, and
+the VB-132 promotion contract are authoritative in `BACKLOG.md`; proposed VB-140 and VB-150
+identifiers are not implementation contracts until they receive bounded backlog acceptance criteria.
 
 ## Deployment and integration candidates
 
@@ -1312,9 +1312,9 @@ Milestone 12 is complete: VB-110 and ADR 0005 are accepted, and VB-111 through V
 implemented without public-surface changes. Milestone 13 is complete: accepted ADR 0006 has a
 bounded immutable domain runtime/evaluation and VB-122 exposes only its accepted read-only CLI
 subset. VB-032/VB-033 remain deferred, and VB-034 remains a later optional write task rather than
-NEXT. VB-130 and ADR 0007 are accepted as design only. VB-131 has a bounded BACKLOG contract but
-is not implemented. VB-132, VB-140–VB-142, and VB-150–VB-152 remain proposed and reserve no
-implementation scope by themselves.
+NEXT. VB-130 and ADR 0007 are accepted as design only. VB-131 is implemented and merged.
+VB-132 has a bounded BACKLOG implementation contract but no runtime. VB-140–VB-142 and
+VB-150–VB-152 remain proposed and reserve no implementation scope by themselves.
 
 ---
 
