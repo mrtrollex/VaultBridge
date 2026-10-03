@@ -289,9 +289,10 @@ Current post-v1 planning position:
 - VB-130 is complete as design-only work: accepted ADR 0007 defines bounded portable Markdown
   intake, capture provenance, inbox/draft versus promoted knowledge, advisory duplicate/related
   evidence, explicit operator-controlled create/append promotion, and safe failure/ownership rules
-- VB-130 adds no capture runtime, public adapter, persistence, dependency, or write-behavior change;
-  VB-131 now has an authoritative BACKLOG intake contract but is not implemented; VB-132 still
-  requires a separate authoritative task contract
+- VB-130 itself added no capture runtime, public adapter, persistence, dependency, or write change;
+  VB-131 subsequently implemented and merged the bounded capture domain, coordinated atomic
+  create-if-absent operation, and one local CLI adapter; VB-132 now has a BACKLOG implementation
+  contract for explicit review/promotion but no runtime or adapter
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
 
@@ -386,7 +387,7 @@ Current milestones:
 - **Milestone 11 — Obsidian Knowledge Graph / Note Relationships (complete; production graph ranking not supported)**
 - **Milestone 12 — Portable PKM model (complete)**
 - **Milestone 13 — Knowledge Query Layer (complete; VB-120 through VB-122 complete)**
-- **Milestone 14 — Knowledge Capture / Portable Memory (planned; VB-130 design accepted, VB-131 contracted, VB-131/VB-132 not implemented)**
+- **Milestone 14 — Knowledge Capture / Portable Memory (in progress; VB-130 design accepted, VB-131 implemented, VB-132 contracted but not implemented)**
 
 ## Working production characteristics
 
