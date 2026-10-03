@@ -6,6 +6,7 @@ import sqlite3
 import sys
 import unicodedata
 from collections.abc import Sequence
+from dataclasses import asdict
 from pathlib import PurePosixPath
 from typing import BinaryIO, NoReturn, TextIO
 
@@ -15,6 +16,7 @@ from app.core.config import Settings
 from app.core.logging import configure_application_logging
 from app.repositories.semantic import ImmutableIndexInspectionUnavailableError
 from app.services.capture import CaptureService
+from app.services.duplicate_candidates import DuplicateCandidateService
 from app.services.indexer import BackgroundSemanticIndexer
 from app.services.knowledge_query import (
     DEFAULT_LIMIT as KNOWLEDGE_QUERY_DEFAULT_LIMIT,
@@ -26,6 +28,7 @@ from app.services.knowledge_query import (
     KnowledgeQueryResult,
     KnowledgeQueryService,
 )
+from app.services.promotion import PromotionError, PromotionService
 from app.services.relationships import RelationshipService
 from app.services.semantic_search import (
     Embedder,
@@ -63,12 +66,17 @@ class _LazyPersistedReadOnlySemanticService:
 
     def __init__(self, service: SemanticSearchService) -> None:
         self._service = service
+        self._prepared = False
 
     def query_basis(self):
         self._service.use_persisted_index_for_read_only_search()
+        self._prepared = True
         return self._service.query_basis()
 
     def search(self, *args, **kwargs):
+        if not self._prepared:
+            self._service.use_persisted_index_for_read_only_search()
+            self._prepared = True
         return self._service.search(*args, **kwargs)
 
 
@@ -115,6 +123,18 @@ def _parser() -> argparse.ArgumentParser:
 
     capture = commands.add_parser("capture", help="capture one UTF-8 JSON request from standard input")
     capture.set_defaults(action="capture")
+
+    promote = commands.add_parser("promote", help="review or apply one explicit capture promotion")
+    promote_modes = promote.add_subparsers(dest="promote_mode", required=True)
+    review = promote_modes.add_parser("review", help="inspect one exact capture")
+    review.add_argument("--source-path", required=True)
+    review.add_argument("--capture-id", required=True)
+    review.add_argument("--candidate-limit", type=lambda value: _bounded_integer(
+        value, minimum=1, maximum=20))
+    review.add_argument("--destination", help="inspect one chosen append destination")
+    review.set_defaults(action="promote_review")
+    apply = promote_modes.add_parser("apply", help="apply one JSON decision from standard input")
+    apply.set_defaults(action="promote_apply")
 
     index = commands.add_parser(
         "index",
@@ -769,6 +789,94 @@ def run_capture(
     return EXIT_SUCCESS if result.committed else EXIT_INTEGRITY_PROBLEM
 
 
+def run_promote_review(settings: Settings, *, source_path: str, capture_id: str,
+                       candidate_limit: int | None = None, destination: str | None = None,
+                       output: TextIO | None = None, service: PromotionService | None = None) -> int:
+    stream = output or sys.stdout
+    if service is None:
+        vault = _vault_service(settings)
+        candidates = None
+        if candidate_limit is not None:
+            candidates = DuplicateCandidateService(
+                vault_service=vault,
+                semantic_search_service=_LazyPersistedReadOnlySemanticService(
+                    semantic_search_service_from_settings(settings)
+                ),
+            )
+        promoter = PromotionService(vault, candidates=candidates)
+    else:
+        promoter = service
+    try:
+        snapshot = promoter.review(source_path, capture_id, candidate_limit=candidate_limit)
+        response = {"category": "reviewed", "source_path": snapshot.source_path,
+                    "capture_id": snapshot.capture_id, "capture_state": snapshot.capture_state,
+                    "metadata": dict(snapshot.metadata), "body": snapshot.body,
+                    "source_sha256": snapshot.source_sha256,
+                    "evidence_state": snapshot.evidence_state,
+                    "evidence": [asdict(candidate) for candidate in snapshot.evidence]}
+        if destination is not None:
+            response["destination"] = asdict(promoter.inspect_destination(destination))
+    except PromotionError as exc:
+        print(json.dumps({"category": exc.category}), file=stream)
+        return EXIT_INTEGRITY_PROBLEM
+    print(json.dumps(response, ensure_ascii=True), file=stream)
+    return EXIT_SUCCESS
+
+
+def run_promote_apply(settings: Settings, *, input_stream: BinaryIO | None = None,
+                      output: TextIO | None = None, service: PromotionService | None = None) -> int:
+    stream = output or sys.stdout
+
+    def unique_object(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("invalid_request")
+            result[key] = value
+        return result
+
+    try:
+        raw = (input_stream or sys.stdin.buffer).read(1_048_577)
+        if len(raw) > 1_048_576:
+            print(json.dumps({"category": "size_limit", "committed": False}), file=stream)
+            return EXIT_INTEGRITY_PROBLEM
+        request = json.loads(raw.decode("utf-8"), object_pairs_hook=unique_object,
+                             parse_constant=lambda _value: unique_object([("x", 1), ("x", 2)]))
+    except (ValueError, UnicodeError, RecursionError, OSError):
+        print(json.dumps({"category": "invalid_request", "committed": False}), file=stream)
+        return EXIT_INTEGRITY_PROBLEM
+
+    worker = None
+
+    def enqueue(path):
+        nonlocal worker
+        semantic = semantic_search_service_from_settings(settings)
+        worker = BackgroundSemanticIndexer(semantic.sync, semantic.sync_paths, emit_note_paths=False)
+        return worker.enqueue_paths((path,), require_submission=True) > 0
+
+    promoter = service or PromotionService(_vault_service(settings), enqueue=enqueue)
+    try:
+        result = promoter.apply(request)
+        if worker is not None:
+            try:
+                worker.wait()
+            except sqlite3.ProgrammingError:
+                raise
+            except (OSError, sqlite3.DatabaseError, SemanticIndexOperationError,
+                    SynchronizationCancelledError, UnicodeError):
+                pass
+    finally:
+        if worker is not None:
+            worker.shutdown()
+    response = {"category": result.category, "committed": result.committed}
+    if result.committed:
+        response.update(source_path=result.source_path, destination=result.destination,
+                        capture_id=result.capture_id, promotion_id=result.promotion_id,
+                        index_state=result.index_state)
+    print(json.dumps(response), file=stream)
+    return EXIT_SUCCESS if result.committed else EXIT_INTEGRITY_PROBLEM
+
+
 def main(argv: Sequence[str] | None = None, *, settings: Settings | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
@@ -776,6 +884,12 @@ def main(argv: Sequence[str] | None = None, *, settings: Settings | None = None)
         app_settings = settings or Settings.from_env()
         if args.action == "capture":
             return run_capture(app_settings)
+        if args.action == "promote_review":
+            return run_promote_review(app_settings, source_path=args.source_path,
+                                      capture_id=args.capture_id, candidate_limit=args.candidate_limit,
+                                      destination=args.destination)
+        if args.action == "promote_apply":
+            return run_promote_apply(app_settings)
         if args.action == "status":
             return run_status(app_settings)
         if args.action == "index_check":

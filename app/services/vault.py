@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import errno
+import hashlib
 import json
 import os
 import re
@@ -44,6 +46,14 @@ def _coordinated(method):
 
 class AtomicCaptureError(Exception):
     """Privacy-safe expected capture filesystem failure."""
+
+    def __init__(self, category: str):
+        super().__init__(category)
+        self.category = category
+
+
+class PromotionWriteError(Exception):
+    """A stable, privacy-safe exact-path promotion failure."""
 
     def __init__(self, category: str):
         super().__init__(category)
@@ -747,6 +757,295 @@ class VaultService:
             if not commit_attempted and exc.errno in (errno.ELOOP, errno.ENOTDIR, errno.EISDIR):
                 category = "unsafe_destination"
             raise AtomicCaptureError(category) from None
+
+    @contextmanager
+    def _promotion_parent(self, raw: str, *, missing_ok: bool = False):
+        """Pin one exactly spelled, existing path without following symlinks."""
+        if type(raw) is not str or not raw or "\\" in raw or raw != raw.strip():
+            raise PromotionWriteError("unsafe_destination")
+        parts = PurePosixPath(raw).parts
+        if (not parts or any(part in (".", "..", "") for part in parts)
+                or raw != "/".join(parts) or PureWindowsPath(raw).drive
+                or not raw.endswith(".md") or raw.startswith("/")):
+            raise PromotionWriteError("unsafe_destination")
+        with ExitStack() as stack:
+            parent = self.vault_root
+            if os.name == "nt":
+                for ancestor in reversed((parent, *parent.parents)):
+                    stack.enter_context(windows_pinned_path(ancestor))
+                fd = None
+            else:
+                fd = open_root_directory(parent)
+                stack.callback(os.close, fd)
+            pinned = [(parent, fd)]
+            for component in parts[:-1]:
+                entries = os.listdir(fd if fd is not None else parent)
+                if component not in entries:
+                    category = "unsafe_destination" if any(
+                        entry.casefold() == component.casefold() for entry in entries
+                    ) else "destination_missing"
+                    raise PromotionWriteError(category)
+                parent /= component
+                if fd is None:
+                    stack.enter_context(windows_pinned_path(parent))
+                    if not parent.is_dir():
+                        raise PromotionWriteError("unsafe_destination")
+                else:
+                    fd = os.open(component, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
+                    stack.callback(os.close, fd)
+                pinned.append((parent, fd))
+
+            name = parts[-1]
+
+            def verify():
+                for path, opened_fd in pinned:
+                    if opened_fd is not None:
+                        current, opened = path.lstat(), os.fstat(opened_fd)
+                        if not stat.S_ISDIR(current.st_mode) or (
+                            current.st_dev, current.st_ino
+                        ) != (opened.st_dev, opened.st_ino):
+                            raise PromotionWriteError("unsafe_destination")
+
+            def entries():
+                verify()
+                names = os.listdir(fd if fd is not None else parent)
+                if any(entry.casefold() == name.casefold() and entry != name for entry in names):
+                    raise PromotionWriteError("unsafe_destination")
+                return name in names
+
+            if not missing_ok and not entries():
+                raise PromotionWriteError("destination_missing")
+            verify()
+            yield parent, fd, name, entries, verify
+
+    def _promotion_read_open(self, parent, fd, name, verify):
+        with ExitStack() as stack:
+            if fd is None:
+                stack.enter_context(windows_pinned_path(parent / name))
+                opened = os.open(parent / name, os.O_RDONLY | os.O_BINARY)
+            else:
+                opened = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=fd)
+            stream = stack.enter_context(os.fdopen(opened, "rb"))
+            identity = os.fstat(stream.fileno())
+            if not stat.S_ISREG(identity.st_mode):
+                raise PromotionWriteError("unsafe_destination")
+            data = stream.read(self.max_note_bytes + 1)
+        verify()
+        if len(data) > self.max_note_bytes:
+            raise PromotionWriteError("size_limit")
+        try:
+            data.decode("utf-8")
+        except UnicodeError:
+            raise PromotionWriteError("unsafe_destination") from None
+        return data, identity
+
+    def _promotion_recovery_bytes(
+        self, path: str, *, parent_identity: tuple[int, int],
+        target_identity: tuple[int, int],
+    ) -> bytes | None:
+        """Recheck only the canonical entry after a possible write, without retrying it."""
+        try:
+            with coordinated_write(self.vault_root), self._promotion_parent(path) as (
+                parent, fd, name, entries, verify,
+            ):
+                current_parent = os.fstat(fd) if fd is not None else parent.stat()
+                if (current_parent.st_dev, current_parent.st_ino) != parent_identity or not entries():
+                    return None
+                data, current = self._promotion_read_open(parent, fd, name, verify)
+                if (current.st_dev, current.st_ino) != target_identity:
+                    return None
+                return data
+        except (PromotionWriteError, OSError, UnsafeWritePathError, ValueError):
+            return None
+
+    def read_promotion_bytes(self, path: str, *, source: bool = False) -> bytes:
+        """Bounded exact-path read; source errors never expose the path."""
+        try:
+            with self._promotion_parent(path) as (parent, fd, name, entries, verify):
+                if not entries():
+                    raise PromotionWriteError("destination_missing")
+                data, _ = self._promotion_read_open(parent, fd, name, verify)
+                return data
+        except PromotionWriteError:
+            if source:
+                raise PromotionWriteError("unsafe_source") from None
+            raise
+        except (OSError, UnsafeWritePathError, ValueError):
+            raise PromotionWriteError("unsafe_source" if source else "unsafe_destination") from None
+
+    def create_promotion_if_absent(self, *, path: str, markdown: bytes, check_source) -> str:
+        """Atomically link complete bytes into one absent exact destination."""
+        if type(markdown) is not bytes or len(markdown) > self.max_note_bytes:
+            raise PromotionWriteError("size_limit" if type(markdown) is bytes else "invalid_request")
+        try:
+            markdown.decode("utf-8")
+        except UnicodeError:
+            raise PromotionWriteError("invalid_request") from None
+        attempted = False
+        parent_identity = None
+        target_identity = None
+        try:
+            with coordinated_write(self.vault_root), self._promotion_parent(path, missing_ok=True) as (
+                parent, fd, name, entries, verify,
+            ):
+                check_source()
+                parent_info = os.fstat(fd) if fd is not None else parent.stat()
+                parent_identity = (parent_info.st_dev, parent_info.st_ino)
+                if entries():
+                    existing, _ = self._promotion_read_open(parent, fd, name, verify)
+                    return "already_applied" if existing == markdown else "conflict"
+                temporary = ".vaultbridge-" + uuid.uuid4().hex + ".tmp"
+                temporary_path = parent / temporary
+                opened = (open_windows_staged_file(temporary_path) if fd is None else os.open(
+                    temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=fd
+                ))
+                identity = os.fstat(opened)
+                target_identity = (identity.st_dev, identity.st_ino)
+                try:
+                    with os.fdopen(opened, "wb") as stream:
+                        stream.write(markdown)
+                        stream.flush()
+                        os.fsync(stream.fileno())
+                        verify()
+                        attempted = True
+                        try:
+                            if fd is None:
+                                os.link(temporary_path, parent / name)
+                            else:
+                                os.link(f"/proc/self/fd/{stream.fileno()}", name,
+                                        dst_dir_fd=fd, follow_symlinks=True)
+                        except FileExistsError:
+                            attempted = False
+                            existing, _ = self._promotion_read_open(parent, fd, name, verify)
+                            return "already_applied" if existing == markdown else "conflict"
+                        verify()
+                        if fd is not None:
+                            os.fsync(fd)
+                        existing, current = self._promotion_read_open(parent, fd, name, verify)
+                        if existing != markdown or (current.st_dev, current.st_ino) != (
+                            identity.st_dev, identity.st_ino
+                        ):
+                            raise PromotionWriteError("commit_unknown")
+                        return "created"
+                finally:
+                    with suppress(OSError):
+                        if fd is None:
+                            temporary_path.unlink()
+                        else:
+                            remaining = os.stat(temporary, dir_fd=fd, follow_symlinks=False)
+                            if (remaining.st_dev, remaining.st_ino) == (identity.st_dev, identity.st_ino):
+                                os.unlink(temporary, dir_fd=fd)
+        except PromotionWriteError:
+            if attempted:
+                recovered = self._promotion_recovery_bytes(
+                    path, parent_identity=parent_identity, target_identity=target_identity,
+                )
+                if recovered == markdown:
+                    return "already_applied"
+                raise PromotionWriteError("commit_unknown") from None
+            raise
+        except (OSError, UnsafeWritePathError) as exc:
+            if attempted:
+                recovered = self._promotion_recovery_bytes(
+                    path, parent_identity=parent_identity, target_identity=target_identity,
+                )
+                if recovered == markdown:
+                    return "already_applied"
+            category = "commit_unknown" if attempted else "write_unavailable"
+            if not attempted and (isinstance(exc, UnsafeWritePathError)
+                                  or getattr(exc, "errno", None) in (errno.ELOOP, errno.ENOTDIR, errno.EISDIR)):
+                category = "unsafe_destination"
+            raise PromotionWriteError(category) from None
+
+    def append_promotion_once(self, *, path: str, preimage_sha256: str, block: bytes,
+                              marker_prefixes: tuple[bytes, bytes], check_source,
+                              check_destination) -> str:
+        """Append under the shared writer lock after exact-preimage and marker checks."""
+        if type(block) is not bytes or len(block) > self.max_note_bytes:
+            raise PromotionWriteError("size_limit" if type(block) is bytes else "invalid_request")
+        attempted = False
+        parent_identity = None
+        target_identity = None
+        try:
+            with coordinated_write(self.vault_root), self._promotion_parent(path) as (
+                parent, fd, name, entries, verify,
+            ):
+                check_source()
+                parent_info = os.fstat(fd) if fd is not None else parent.stat()
+                parent_identity = (parent_info.st_dev, parent_info.st_ino)
+                if not entries():
+                    raise PromotionWriteError("destination_missing")
+                existing, identity = self._promotion_read_open(parent, fd, name, verify)
+                target_identity = (identity.st_dev, identity.st_ino)
+                check_destination(existing)
+                opening, closing = marker_prefixes
+                openings, closings = existing.count(opening), existing.count(closing)
+                if openings or closings:
+                    if openings == closings == 1 and existing.count(block) == 1:
+                        return "already_applied"
+                    raise PromotionWriteError("conflict")
+                if hashlib.sha256(existing).hexdigest() != preimage_sha256:
+                    raise PromotionWriteError("destination_changed")
+                if len(existing) + len(block) > self.max_note_bytes:
+                    raise PromotionWriteError("size_limit")
+                with ExitStack() as stack:
+                    if fd is None:
+                        stack.enter_context(windows_pinned_path(parent / name))
+                        opened = os.open(parent / name, os.O_WRONLY | os.O_APPEND | os.O_BINARY)
+                    else:
+                        opened = os.open(name, os.O_WRONLY | os.O_APPEND | os.O_NOFOLLOW, dir_fd=fd)
+                    stream = stack.enter_context(os.fdopen(opened, "ab"))
+                    current = os.fstat(stream.fileno())
+                    if (current.st_dev, current.st_ino, current.st_size) != (
+                        identity.st_dev, identity.st_ino, len(existing)
+                    ):
+                        raise PromotionWriteError("destination_changed")
+                    verify()
+                    attempted = True
+                    stream.write(block)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                verify()
+                actual, current = self._promotion_read_open(parent, fd, name, verify)
+                if actual != existing + block or (current.st_dev, current.st_ino) != (
+                    identity.st_dev, identity.st_ino
+                ):
+                    raise PromotionWriteError("commit_unknown")
+                return "appended"
+        except PromotionWriteError:
+            if attempted:
+                recovered = self._promotion_recovery_bytes(
+                    path, parent_identity=parent_identity, target_identity=target_identity,
+                )
+                if self._promotion_block_proved(recovered, block, marker_prefixes, check_destination):
+                    return "already_applied"
+                raise PromotionWriteError("commit_unknown") from None
+            raise
+        except (OSError, UnsafeWritePathError) as exc:
+            if attempted:
+                recovered = self._promotion_recovery_bytes(
+                    path, parent_identity=parent_identity, target_identity=target_identity,
+                )
+                if self._promotion_block_proved(recovered, block, marker_prefixes, check_destination):
+                    return "already_applied"
+            category = "commit_unknown" if attempted else "write_unavailable"
+            if not attempted and (isinstance(exc, UnsafeWritePathError)
+                                  or getattr(exc, "errno", None) in (errno.ELOOP, errno.ENOTDIR, errno.EISDIR)):
+                category = "unsafe_destination"
+            elif not attempted and isinstance(exc, FileNotFoundError):
+                category = "destination_missing"
+            raise PromotionWriteError(category) from None
+
+    @staticmethod
+    def _promotion_block_proved(data, block, marker_prefixes, check_destination) -> bool:
+        if data is None:
+            return False
+        try:
+            check_destination(data)
+        except PromotionWriteError:
+            return False
+        opening, closing = marker_prefixes
+        return data.count(opening) == data.count(closing) == data.count(block) == 1
 
     def read_note(self, path: str) -> NoteReadResult:
         note_path = self.resolve_path(path)
