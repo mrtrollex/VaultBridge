@@ -140,6 +140,7 @@ def test_router_registration_preserves_public_contract():
         ("GET", "/api/v1/notes/list", "listNotesV1"),
         ("GET", "/api/v1/notes/links", "listNoteLinksV1"),
         ("GET", "/api/v1/notes/backlinks", "listNoteBacklinksV1"),
+        ("POST", "/api/v1/knowledge/hygiene/scan", "scanKnowledgeHygieneV1"),
     }
     schema = main.app.openapi()
     actual = {

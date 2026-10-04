@@ -11,6 +11,7 @@ from app.core.ui_session import (
 )
 from app.services.duplicate_candidates import DuplicateCandidateService
 from app.services.indexer import BackgroundSemanticIndexer
+from app.services.knowledge_hygiene import KnowledgeHygieneService
 from app.services.rate_limiter import FixedWindowRateLimiter
 from app.services.relationships import RelationshipService
 from app.services.semantic_search import SemanticSearchService
@@ -39,6 +40,10 @@ def get_duplicate_candidate_service(request: Request) -> DuplicateCandidateServi
 
 def get_relationship_service(request: Request) -> RelationshipService:
     return request.app.state.relationship_service
+
+
+def get_knowledge_hygiene_service(request: Request) -> KnowledgeHygieneService:
+    return request.app.state.knowledge_hygiene_service
 
 
 def get_rate_limiter(request: Request) -> FixedWindowRateLimiter:
