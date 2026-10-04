@@ -8,16 +8,23 @@ import unicodedata
 from collections.abc import Sequence
 from dataclasses import asdict
 from pathlib import PurePosixPath
-from typing import BinaryIO, NoReturn, TextIO
+from typing import BinaryIO, NoReturn, TextIO, get_args
 
 from pydantic import ValidationError
 
 from app.core.config import Settings
 from app.core.logging import configure_application_logging
+from app.knowledge_hygiene_transport import serialize_hygiene_result
 from app.repositories.semantic import ImmutableIndexInspectionUnavailableError
 from app.services.capture import CaptureService
 from app.services.duplicate_candidates import DuplicateCandidateService
 from app.services.indexer import BackgroundSemanticIndexer
+from app.services.knowledge_hygiene import (
+    Group,
+    KnowledgeHygieneError,
+    KnowledgeHygieneRequest,
+    KnowledgeHygieneService,
+)
 from app.services.knowledge_query import (
     DEFAULT_LIMIT as KNOWLEDGE_QUERY_DEFAULT_LIMIT,
 )
@@ -114,9 +121,43 @@ def _non_empty_text(value: str) -> str:
     return value
 
 
-def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Local VaultBridge vault and semantic-index operations")
+class _HygieneParser(argparse.ArgumentParser):
+    """Keep rejected diagnostic arguments out of the failure surface."""
+
+    def error(self, message: str) -> NoReturn:
+        self.exit(EXIT_CLI_FAILURE, "Knowledge hygiene failed: invalid_request.\n")
+
+
+def _parser(*, hygiene: bool = False) -> argparse.ArgumentParser:
+    parser_class = _HygieneParser if hygiene else argparse.ArgumentParser
+    parser = parser_class(description="Local VaultBridge vault and semantic-index operations")
     commands = parser.add_subparsers(dest="command", required=True)
+
+    hygiene_parser = commands.add_parser(
+        "hygiene", help="bounded read-only diagnostics; no repair action",
+        description="Run a bounded read-only diagnostic scan. No repair action.",
+        allow_abbrev=False,
+    )
+    hygiene_commands = hygiene_parser.add_subparsers(dest="hygiene_command", required=True)
+    scan = hygiene_commands.add_parser(
+        "scan", help="run a bounded read-only diagnostic scan; no repair action",
+        description="Run a bounded read-only diagnostic scan. No repair action.",
+        allow_abbrev=False,
+    )
+    defaults = KnowledgeHygieneRequest()
+    groups = scan.add_mutually_exclusive_group()
+    groups.add_argument("--group", action="append", choices=get_args(Group),
+                        help="diagnostic group; repeat for multiple groups")
+    groups.add_argument("--no-groups", action="store_true", help="select no diagnostic groups")
+    scan.add_argument("--finding-limit", type=int, default=defaults.finding_limit, help="findings from 1 to 500")
+    scan.add_argument("--duplicate-source-limit", type=int, default=defaults.duplicate_source_limit,
+                      help="candidate source notes from 0 to 20")
+    scan.add_argument("--semantic-candidates", action="store_true", default=defaults.semantic_candidates,
+                      help="request semantic evidence; requires a positive duplicate source limit")
+    scan.add_argument("--inspect-derived-index", action="store_true", default=defaults.inspect_derived_index,
+                      help="inspect derived evidence without refreshing indexes")
+    scan.add_argument("--json", action="store_true", help="emit one JSON result object")
+    scan.set_defaults(action="hygiene_scan")
 
     status = commands.add_parser("status", help="show persisted vault and semantic-index status")
     status.set_defaults(action="status")
@@ -725,6 +766,54 @@ def run_knowledge_query(
     return EXIT_SUCCESS
 
 
+def run_hygiene_scan(
+    settings: Settings,
+    *,
+    request: KnowledgeHygieneRequest = KnowledgeHygieneRequest(),
+    json_output: bool = False,
+    output: TextIO | None = None,
+    error_output: TextIO | None = None,
+    service: KnowledgeHygieneService | None = None,
+) -> int:
+    """Map a validated request to one read-only domain scan, preserving its evidence."""
+    stream = output or sys.stdout
+    error_stream = error_output or sys.stderr
+    try:
+        # Validate before constructing owners, even with an injected service.
+        KnowledgeHygieneService._validate(request)
+        if service is None:
+            vault = _vault_service(settings)
+            semantic = semantic_search_service_from_settings(settings)
+            service = KnowledgeHygieneService(
+                vault_service=vault,
+                relationship_service=RelationshipService(vault),
+                duplicate_candidate_service=DuplicateCandidateService(
+                    vault_service=vault, semantic_search_service=semantic,
+                ),
+                semantic_search_service=semantic,
+            )
+        result = service.scan(request)
+    except KnowledgeHygieneError as exc:
+        if exc.reason not in {"invalid_request", "scan_unavailable"}:
+            raise
+        print(f"Knowledge hygiene failed: {exc.reason}.", file=error_stream)
+        return EXIT_CLI_FAILURE if exc.reason == "invalid_request" else EXIT_INTEGRITY_PROBLEM
+
+    evidence = serialize_hygiene_result(result).model_dump(mode="json")
+    if json_output:
+        print(json.dumps(evidence, ensure_ascii=True), file=stream)
+    else:
+        for field in ("scan", "candidates", "derived_index", "findings_truncated"):
+            print(f"{field}: {json.dumps(evidence[field], ensure_ascii=True)}", file=stream)
+        if not evidence["findings"]:
+            message = ("No findings in this bounded scan; evidence is partial."
+                       if result.scan.state == "partial" else "No findings in this bounded scan.")
+            print(message, file=stream)
+        for finding in evidence["findings"]:
+            print(json.dumps(finding, ensure_ascii=True), file=stream)
+    return EXIT_SUCCESS
+
+
 def run_capture(
     settings: Settings,
     *,
@@ -878,10 +967,27 @@ def run_promote_apply(settings: Settings, *, input_stream: BinaryIO | None = Non
 
 
 def main(argv: Sequence[str] | None = None, *, settings: Settings | None = None) -> int:
-    args = _parser().parse_args(argv)
+    tokens = list(argv) if argv is not None else sys.argv[1:]
+    args = _parser(hygiene=bool(tokens and tokens[0] == "hygiene")).parse_args(tokens)
+    configured = False
     try:
         configure_application_logging()
         app_settings = settings or Settings.from_env()
+        configured = True
+        if args.action == "hygiene_scan":
+            defaults = KnowledgeHygieneRequest()
+            return run_hygiene_scan(
+                app_settings,
+                request=KnowledgeHygieneRequest(
+                    groups=(frozenset() if args.no_groups else
+                            frozenset(args.group) if args.group is not None else defaults.groups),
+                    finding_limit=args.finding_limit,
+                    duplicate_source_limit=args.duplicate_source_limit,
+                    semantic_candidates=args.semantic_candidates,
+                    inspect_derived_index=args.inspect_derived_index,
+                ),
+                json_output=args.json,
+            )
         if args.action == "capture":
             return run_capture(app_settings)
         if args.action == "promote_review":
@@ -925,7 +1031,10 @@ def main(argv: Sequence[str] | None = None, *, settings: Settings | None = None)
             min_score=args.min_score,
         )
     except ValidationError:
-        print("VaultBridge configuration is invalid.", file=sys.stderr)
+        message = ("VaultBridge CLI failed (ValidationError)."
+                   if args.action == "hygiene_scan" and configured
+                   else "VaultBridge configuration is invalid.")
+        print(message, file=sys.stderr)
         return EXIT_CLI_FAILURE
     except Exception as exc:
         print(f"VaultBridge CLI failed ({type(exc).__name__}).", file=sys.stderr)
