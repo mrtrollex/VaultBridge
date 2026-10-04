@@ -2727,9 +2727,14 @@ dependency, REST/OpenAPI/MCP/dashboard change, Milestone 16 work, release, or de
 
 ---
 
-### VB-141 — Bounded read-only Knowledge Hygiene diagnostic service — P1 (contract accepted; not implemented)
+### VB-141 — Bounded read-only Knowledge Hygiene diagnostic service — P1 (complete; runtime merged)
 
-**Authority and delivery boundary:** This is the implementation contract for the future VB-141
+**Status:** Implemented and merged via PR #112. `app/services/knowledge_hygiene.py` and
+`tests/test_knowledge_hygiene.py` provide the bounded read-only domain runtime and its focused
+coverage. The implementation contract below remains authoritative; its original design-only
+delivery boundary describes the contract task, not the current runtime status.
+
+**Authority and delivery boundary:** This is the implementation contract for the VB-141
 domain service under [ADR 0008](docs/adr/0008-knowledge-hygiene-diagnostics.md), consistent with
 ADRs 0005–0007 and the implemented VB-131/VB-132 capture and promotion behavior. This entry is
 design only; no diagnostic runtime, owner extension, adapter, or persistence is implemented by
@@ -3008,6 +3013,296 @@ or dashboard adapter; no repair, delete, merge, rewrite, rename, move, retag, li
 frontmatter normalization, capture promotion/disposition, automatic index rebuild, hidden
 diagnostic DB/cache, new ranking/model/chunking/index format, LLM/cloud dependency, Milestone 16,
 release, or deployment change. VB-142 requires its own contract.
+
+---
+
+### VB-142 — Knowledge Hygiene thin adapters — P1 (contract defined; implementation pending)
+
+**Status and authority:** This design-only change defines the implementation contract; contract
+completion is recorded when it merges. Runtime adapters remain pending. Accepted ADR 0008 and the
+completed VB-141 runtime remain authoritative for semantics. No new ADR is needed: these adapters
+add no service, storage, dependency, authentication model, or breaking migration. Milestone 15
+remains in progress until the included adapter implementation is completed and validated.
+
+**Inspected conventions and surface decision**
+
+| Surface | Decision | Repository basis and delivery |
+| --- | --- | --- |
+| CLI | IN VB-142 | `app/cli.py` already exposes local domain operations through argparse, injectable runners, human-readable Knowledge Query output, and bounded capture/promotion JSON output. Add one diagnostic scan command. |
+| REST | IN VB-142 | `app/main.py` constructs shared owners; `app/api/dependencies.py` injects them into protected typed routes. One v1-only scan operation makes the bounded result available to integrations without new domain logic. |
+| MCP | IN VB-142 | `app/mcp_server.py` supplies typed structured results, read-only annotations, sanitized ToolErrors, and the same owner composition for stdio and opt-in HTTP. Add one tool with REST parity. |
+| Dashboard | DEFERRED | ROADMAP's “thin diagnostic adapters and optional dashboard views” makes views optional. The existing Overview/Search/Relationships UI consumes APIs; a whole-vault diagnostics view needs its own presentation/trigger contract and browser checks. A later separately scoped ticket may consume this REST result. No UI work or milestone completion dependency is implied here. |
+
+Repair/mutation surfaces, per-finding endpoints/tools, diagnostic resources/prompts, scheduled or
+background scans, persisted diagnostics, and Milestone 16 are OUT OF SCOPE. The older VB-140
+boundary selected no surface; this contract now selects the three above. It does not authorize
+any historical broad dashboard wording as additional implementation scope.
+
+Reuse `app/api/relationships.py`'s additive v1-only route pattern and `app/api/notes.py` /
+`app/api/search.py`'s typed request/result models. Legacy paired routes use
+`versioned_api_route`; a new hygiene operation needs no legacy alias. Existing relationship
+adapters preserve their wikilink behavior; hygiene must not invoke those public adapters to
+reconstruct normalized domain evidence. Knowledge Query currently has only the accepted CLI
+adapter (`run_knowledge_query`), not a REST/MCP/dashboard precedent. Capture and promotion currently
+have local CLI adapters (`run_capture`, `run_promote_review`, `run_promote_apply`), not REST/MCP/UI
+surfaces; their explicit write/review/enqueue behavior is not a hygiene pattern.
+`app/ui/assets/app.js` provides same-origin authenticated fetch with the UI-session header;
+`search.js` consumes relationship responses without owning resolution. Preserve that boundary
+if a later dashboard ticket is accepted.
+
+**Composition and ownership:** Construct `KnowledgeHygieneService` from the existing shared
+`VaultService`, `RelationshipService`, `DuplicateCandidateService`, and
+`SemanticSearchService`. Add injectable hygiene ownership at existing FastAPI/MCP composition
+roots and one FastAPI dependency; MCP HTTP must receive the same instance/owners as REST.
+CLI constructs these owners from Settings like its existing injectable domain runners, without
+starting an indexer, watcher, server lifespan, or background worker. Construction must stay lazy,
+model-free and filesystem-immutable, including on invalid requests and missing storage.
+
+Each invocation parses one `KnowledgeHygieneRequest`, calls `scan(request)` exactly once after
+transport validation, and serializes the result. Domain validation remains the final authority
+and occurs before hygiene owner work. Adapters must not implement filesystem discovery/path
+verification, relationship resolution, frontmatter validation, alias comparison, isolation,
+duplicate matching, semantic inspection, finding deduplication/order, scan completeness,
+candidate coverage, or privacy filtering of domain facts. Narrow shared transport models and
+an explicit evidence serializer are justified only to keep REST/MCP/CLI JSON faithful and
+privacy-safe; they are not a new domain framework. No second YAML parser or path walker.
+
+**Request representation:** All five fields are optional on the wire; omitted fields use the
+current `KnowledgeHygieneRequest()` defaults, never adapter-specific defaults. REST uses a JSON
+object body and MCP uses the same argument object. Reject unknown properties, explicit nulls,
+wrong types, coercion, and unsupported groups. A missing REST body is invalid; `{}` requests
+defaults. MCP `{}` and the default CLI invocation also request defaults.
+
+| Domain field | REST/MCP representation | CLI mapping | Default / validity |
+| --- | --- | --- | --- |
+| `groups` | Array of enum strings; map to frozenset | Repeat `--group NAME`; `--no-groups` selects empty set and conflicts with `--group` | All four: `relationships`, `isolation`, `frontmatter`, `aliases`. Empty array/set is valid. Repeated names collapse as set membership; input order has no semantic effect. |
+| `finding_limit` | Strict integer | `--finding-limit N` parses integer text | 500; 1..500 |
+| `duplicate_source_limit` | Strict integer | `--duplicate-source-limit N` parses integer text | 0; 0..20 |
+| `semantic_candidates` | Strict boolean | `--semantic-candidates` sets true | false; true requires `duplicate_source_limit > 0` |
+| `inspect_derived_index` | Strict boolean | `--inspect-derived-index` sets true | false |
+
+Strict integer validation rejects JSON booleans, strings and floats (including `1.0`), rather than
+coercing them. Strict booleans reject integers and strings. CLI integer tokens produce real
+integers; boolean switches take no value. Transport validation may express the same bounds,
+enum and cross-field requirement, but must not reinterpret them. Default group arrays in schemas
+use the table's order only for documentation; the domain value is a frozenset. There is no
+path/folder, raw source text, predicate, semantic configuration, limit-bypass, or repair parameter.
+An empty group set does not skip the domain scan; candidates/index inspection remain independently
+controlled. `semantic_candidates=true` is accepted with a positive source limit even though
+bounded semantic evidence is currently unavailable; it produces domain partial coverage.
+
+**Stable result serialization:** Serialize the existing `KnowledgeHygieneResult` faithfully.
+The REST body, MCP structuredContent and optional CLI JSON are the same object, with exactly
+`findings`, `scan`, `candidates`, `derived_index`,
+`findings_truncated`. Serialize tuples as arrays, booleans as booleans, integers as integers,
+and None as JSON null. Preserve all domain-returned array order, including related paths and
+reasons. Do not omit result fields, add IDs/timestamps/severity/cleanliness/repair recommendations,
+or recalculate totals. No adapter sorting, deduplication, additional filtering, inferred target,
+or canonical winner. No finding ID is needed for diagnostics.
+
+`DiagnosticFinding` has exactly:
+
+- `kind`: `missing_relationship_target | unsafe_relationship_target |
+  ambiguous_relationship_target | isolated_note | duplicate_alias_in_note | colliding_alias |
+  invalid_frontmatter | invalid_portable_field | empty_portable_field_value |
+  empty_authored_body | duplicate_candidate | near_duplicate_candidate |
+  previous_compatible_index | derived_index_unavailable`.
+- `primary_path`: canonical vault-relative string or null (vault-level index finding).
+- `related_paths`: array of at most 10 canonical vault-relative strings.
+- `evidence_source`: `live_markdown | derived_index`.
+- `category`: exact domain rule/owner string. Relationship categories are `missing | unsafe |
+  ambiguous`; isolation is `no_resolved_edges`; aliases use `exact_alias`; body uses
+  `empty_body`; candidates use `exact_title | semantic`; index findings use their derived
+  status. Frontmatter reasons are `malformed_envelope | invalid_yaml | non_mapping_root |
+  duplicate_key | multiple_documents | disallowed_yaml_feature | non_string_key |
+  unsupported_value | frontmatter_too_large | scalar_too_large | mapping_key_too_large |
+  container_too_deep | too_many_items`. Portable-field reasons are `field_type | member_type |
+  source_value_count | value_size | empty_value`. No adapter-generated free text.
+- `evidence`: the applicable object below, with no type tag or extra fields.
+
+| Runtime evidence type / applicable kind | Exact JSON fields |
+| --- | --- |
+| `RelationshipEvidence` / three relationship kinds | `origin: obsidian_wikilink \| markdown_link`, `source_order: int` |
+| `FrontmatterEvidence` / `invalid_frontmatter` | `line: int \| null`, `column: int \| null` |
+| `PortableFieldEvidence` / invalid or empty portable field | `field: aliases \| tags`, `source_index: int \| null` |
+| `DuplicateAliasEvidence` / `duplicate_alias_in_note` | `source_indices: [int, int]` |
+| `CollidingAliasEvidence` / `colliding_alias` | `source_index: int`, `peer_count: int`, `related_paths_truncated: bool` |
+| `RuleEvidence` / isolation, empty body, candidate and index kinds | `{}` |
+
+Evidence uses only the selected dataclass's fields; applicable nullable fields remain present
+as null, while fields of other variants are absent. Response schemas must constrain each kind
+to its evidence shape rather than a permissive arbitrary dictionary or an ambiguous empty-object
+union that drops fields. Source order is nonnegative, line/column are one-based when present,
+portable indices are zero-based 0..255, the alias pair is distinct and ascending, and peer_count
+is at most 9,999. These are owner facts, not adapter-derived interpretations.
+
+`ScanCompleteness` serializes exactly `state: complete | partial`, `reasons`,
+`eligible_paths`, `inspected_notes`, `unavailable_notes` (integer counts). Reasons are
+`path_ceiling | enumeration_unavailable | note_unavailable | relationship_unavailable`,
+in domain-returned order. Counts describe selected/inspected/unavailable evidence; do not
+recompute one count by subtracting another.
+
+`CandidateCoverage` serializes exactly `state: not_requested | complete | partial | unavailable`,
+`source_notes: int`, and `reasons` (including an empty array).
+Reasons are `scan_partial | source_unavailable | candidate_unavailable | semantic_unavailable`.
+Complete coverage applies to the bounded selected source set, not all-vault uniqueness.
+`DerivedIndexEvidence` serializes exactly `status: not_requested | compatible_ready |
+compatible_previous_refresh | compatible_previous_error | missing | incompatible |
+invalid_metadata | corrupt_storage | storage_unavailable | inspection_unavailable`.
+These vocabularies match `app/services/knowledge_hygiene.py`. They are supported result values,
+not a promise that every status is reachable through every current owner configuration:
+`inspect_hygiene_index()` currently conservatively reports `inspection_unavailable` for persisted
+refresh/error evidence without sufficient corroboration, and may do so for an unresolved model
+fingerprint or live sidecars. Adapters must not warm a model, read write-capable lifecycle state,
+or infer a previous-compatible status to improve that answer.
+
+**REST:** Add protected synchronous `POST /api/v1/knowledge/hygiene/scan`, operation ID
+`scanKnowledgeHygieneV1`, tag `knowledge`, with the request/result models above. POST carries
+bounded scan options, not mutation. No unversioned alias or per-finding operation. Use existing
+`PROTECTED_ROUTE_DEPENDENCIES` for rate limiting and bearer authentication (including the existing
+UI-session alternative); do not introduce a new auth path. Keep `/docs`, `/redoc`, and
+`/openapi.json` disabled. The operation must appear in `app.openapi()` with exact defaults,
+strict types, enums, limits, cross-field rule description, evidence variants, response/error
+schemas and documented statuses. Do not expand `action_openapi.yaml` or migrate the external
+ChatGPT Action as part of this task.
+
+**CLI:** Add `python -m app.cli hygiene scan` with the flags above and optional `--json`.
+Default invocation uses the domain defaults. No scan-on-start, interactive repair prompt,
+`--fix`, fail-on-findings option, or indexing side effect. Follow injectable runner/stdout/stderr
+conventions. Human output reports all scan counts/state/reasons, candidate state/source count/
+reasons, derived status, and findings_truncated, then every returned finding in domain order,
+with its paths/category/evidence. An empty complete result means “no findings in this bounded
+scan,” not a quality guarantee; an empty partial result must explicitly say evidence is partial.
+Make truncation visible without inventing a global total. `--json` is justified by existing
+capture/promotion JSON output and provides one JSON result object plus newline on stdout, no
+human preamble. Errors go to stderr and stdout stays empty; JSON mode adds no failure schema.
+
+**MCP:** Register `knowledge_hygiene_scan` on both existing transports independent of
+`MCP_WRITE_ENABLED`, with `READ_ONLY_ANNOTATIONS` and `structured_output=True`. Description:
+“Run bounded, read-only Knowledge Hygiene diagnostics over canonical Markdown notes. Results may
+be partial; duplicate candidates are advisory and semantic candidate evidence is currently
+unavailable. Does not repair notes or refresh indexes.” Input schema is the REST request object
+with the same defaults, enum, strict types and bounds, `additionalProperties=false`, and the
+positive-source-limit requirement for semantic candidates. Use shared transport models/parsing
+if needed to enforce strictness through the SDK; do not rely on SDK coercion. Output schema
+matches REST; structuredContent is the result object and SDK text content represents the same
+JSON, with no extra snippets, Resource URIs, raw paths or repair hints. Preserve stdio stdout for
+protocol traffic. Reuse existing `_execute`, operation logging and privacy middleware; add only
+the narrowly needed hygiene availability error mapping. HTTP retains existing peer auth/rate
+limiting; stdio retains its existing process operation budget, without double counting HTTP.
+
+**Error model and privacy**
+
+| Class | REST | CLI | MCP |
+| --- | --- | --- | --- |
+| A: malformed/invalid caller request, including `KnowledgeHygieneError(invalid_request)` | 422, `{"detail":"invalid_request"}` | exit 2; static `Knowledge hygiene failed: invalid_request.` on stderr | isError true; `validation_error: Tool arguments are invalid.` |
+| B: returned partial scan/candidate evidence, unavailable derived evidence, findings or truncation | 200 with unchanged result | exit 0 with explicit evidence metadata | success, isError false with unchanged result |
+| C: `KnowledgeHygieneError(scan_unavailable)` (no safe scan view) | 503, `{"detail":"scan_unavailable"}` | exit 1; static `Knowledge hygiene failed: scan_unavailable.` | isError true; `hygiene_unavailable: A bounded hygiene scan is unavailable.` |
+| D: unexpected programming/construction/serialization error | 500, `{"detail":"internal_error"}` | exit 2 via existing safe CLI class-name boundary | isError true; existing `internal_error: The operation could not be completed.` |
+
+CLI configuration failures retain exit 2 and the existing static configuration message.
+This command's invalid-request exit 2 uses the existing CLI/configuration failure category;
+it does not change Knowledge Query's existing domain-error exit 1.
+REST auth/configuration/rate-limit statuses and headers retain the existing protected-route
+contract (401 for invalid credentials, 500 for an unconfigured API key, and 429 with Retry-After).
+MCP transport/protocol framing and unknown-tool errors retain SDK behavior; tool argument errors
+must pass through the privacy boundary. Ordinary reasons such as `enumeration_unavailable`,
+`semantic_unavailable`, or `inspection_unavailable` are class B, never 5xx/CLI crash/ToolError.
+Do not catch arbitrary exceptions as a successful empty/partial scan or retry a failed scan.
+
+Sanitize request-validation errors locally for the new REST route, including malformed JSON and
+extra fields; the default FastAPI validation detail may echo rejected input. Reuse the
+route-local privacy wrapper approach of `app/ui/router.py:UISessionRoute` rather than changing
+unrelated routes. Extend MCP's safe error allowlist narrowly for `hygiene_unavailable`; SDK
+validation and domain-invalid cases must both produce the static validation message. CLI hygiene
+parser errors (unknown flags/groups, wrong numeric values, conflicting flags) must not echo raw
+tokens; a local sanitized parser/error boundary is justified for this new command only.
+Use static messages/allowlisted categories and counts in routine logs. Existing CLI unexpected
+error class names and privacy-safe logging type information are allowed; exception messages,
+traceback source data, request bodies and evidence paths are not routine diagnostics.
+
+Authorized results may expose only the domain-safe canonical vault-relative paths and typed
+bounded evidence above. Never expose Markdown/body text, arbitrary metadata values, raw aliases
+or private comparison keys, written relationship targets/labels/fragments/source strings,
+semantic query/snippets/scores, embeddings, SQL, host filesystem paths, symlink destinations,
+raw exceptions, API keys or other credentials. Do not enrich findings by reading notes or linking
+raw Resource content. Human rendering and SDK text output follow the same privacy boundary as JSON.
+
+**Read-only bounds and compatibility:** Every command/endpoint/tool is diagnostics only.
+No Markdown edit/delete/rename/move, alias fix, duplicate merge, frontmatter rewrite, capture
+promotion/disposition, index rebuild/refresh/state initialization, indexing enqueue, diagnostic
+persistence/cache, or future repair trigger is permitted. Any repair needs a separate contract.
+The complete invocation, including owner construction, validation, serialization and error
+handling, must not create/mutate Markdown, semantic storage, SQLite WAL/SHM, model caches or
+diagnostic files. In a running server, independent existing indexer/watcher activity is not
+attributed to the scan; tests isolate these owners and prove the adapter initiates none.
+
+Inherit VB-141's ceilings: <=10,000 selected canonical notes; <=500 findings and caller
+finding_limit; <=10 related paths per finding; duplicate_source_limit <=20; <=5 candidates per
+source. Semantic candidate evidence remains unavailable until a separate bounded owner path is
+accepted and implemented; do not fall back to ordinary search or enable it in VB-142. No options
+bypass these ceilings. Preserve deterministic bounded domain behavior and disclose the sequential,
+non-atomic scan and partial/truncated evidence. Findings are advisory, never mutation targets.
+
+Preserve existing VaultService, RelationshipService, WikilinkResolver, Markdown-link behavior,
+DuplicateCandidateService, SemanticSearchService, Knowledge Query, Capture and Promotion
+contracts, all existing REST aliases/operation IDs and MCP/CLI operations. New schemas are
+additive; no accepted ADR semantics, dependencies, deployment or release changes.
+
+**Acceptance criteria for future implementation**
+
+1. Exact five-field mapping/defaults on all included surfaces, including empty/repeated groups,
+   optional flags and `{}`. Reject unknown groups/properties, nulls, bool-as-int, numeric strings,
+   floats, wrong booleans, both numeric bounds and the semantic/source combination before owner
+   hygiene work. Valid operations call the injected domain scan once with the exact request.
+2. Assert full JSON equality against domain facts across every finding/evidence variant, nullable
+   fields, all completeness/coverage reasons, all ten derived statuses, and truncation. Synthetic
+   domain result fixtures may cover currently unreachable statuses without changing owner behavior.
+   Preserve finding/related/reason order and identities; add no domain logic, IDs or inferred targets.
+3. Successful complete/partial/unavailable sub-evidence and zero-findings/truncated cases remain
+   REST 200, CLI 0 and MCP success; only class C is availability failure. Test classes A/C/D,
+   construction/serialization failures, sanitized SDK/parser/malformed-body failures, and stderr/
+   stdout separation. Unexpected errors must not turn into domain partial results.
+4. Auth/rate-limit and OpenAPI tests cover route, operation ID, request defaults/limits/enums,
+   evidence shapes and statuses; disabled docs endpoints and existing route contracts remain intact.
+   MCP schema/annotation tests cover the new read-only tool on both write settings and transports.
+5. REST/MCP parity tests use the same injected request/result/error fixtures and real bounded
+   disposable-vault cases, including defaults, invalid inputs and partial results. Compare the
+   result object structurally; verify transport-specific failure mapping independently.
+6. CLI tests cover default and every flag, empty groups, conflicting/invalid arguments, human
+   completeness/truncation/evidence display, `--json` fidelity, exit codes and existing-command
+   compatibility. No dashboard behavior is required or authorized.
+7. Privacy tests plant synthetic secrets/content/alias/link/query/host-path markers in input,
+   owner errors and unavailable/raced evidence; assert absence from results, stderr, MCP text,
+   HTTP errors and captured logs. Only authorized domain-safe paths and evidence are emitted.
+8. Prove adapter-wide no-write behavior with before/after bytes and existence snapshots and
+   write/lifecycle/enqueue/model-load spies, including missing/corrupt storage and sidecars.
+   Verify inherited bounds through real owner integration plus boundary fixtures; no per-source
+   rescan, model warm-up, unbounded semantic fallback or adapter-side domain implementation.
+   Keep the existing VB-141 focused tests unchanged as domain regression coverage.
+
+**Future implementation sequence (each slice has its own narrow review boundary)**
+
+1. Shared transport representation, only if needed for fidelity: add a small
+   `app/diagnostics.py` request/result/evidence mapping module with focused
+   `tests/test_hygiene_adapters.py`. Prove strict input, nullable/empty evidence and ordered output.
+   Non-goals: new domain models, domain validation redesign, semantic/index changes or public wiring.
+2. REST: add `app/api/knowledge_hygiene.py`, dependency and construction/router wiring in
+   `app/api/dependencies.py` / `app/main.py`; test in `tests/test_api_knowledge_hygiene.py` and
+   applicable OpenAPI/versioning/observability tests. Cover auth, local error sanitation,
+   partial-success, injected ownership and no writes. Non-goals: Action schema, legacy aliases,
+   dashboard, other REST surfaces or global error-policy changes.
+3. MCP: extend `app/mcp_server.py` and `app/mcp_http.py` composition plus parent wiring as needed;
+   update `tests/test_mcp_server.py` / `tests/test_mcp_http.py` and parity fixtures. Cover exact
+   schemas, annotations, both transports/write settings, privacy middleware and shared ownership.
+   Non-goals: new transport, Resource/Prompt, repair/write tool or candidate-ranking change.
+4. CLI: extend `app/cli.py` and `tests/test_cli.py`; cover flag mapping, sanitized parser errors,
+   rendering/JSON, exits, model-free construction and no-write snapshots. Add concise usage/
+   compatibility documentation only once adapters exist. Non-goals: interactive actions,
+   indexing, dashboard, changed existing exit codes or a new CLI framework.
+
+Run the change-aware workflow checks required for each implemented slice. This contract task
+changes documentation only, and stops after `agent_finish.py` creates the review packet.
 
 ---
 

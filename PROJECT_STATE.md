@@ -294,8 +294,10 @@ Current post-v1 planning position:
   create-if-absent operation, and one local CLI adapter; VB-132 implemented and merged explicit
   review/promotion with a local CLI adapter and additive coordinated create/append protection
 - VB-140 is complete as design-only work: accepted ADR 0008 defines read-only Knowledge Hygiene
-  diagnostics; VB-141 now has an accepted BACKLOG implementation contract but no runtime, and VB-142
-  remains future
+  diagnostics; VB-141's bounded read-only domain runtime is implemented and merged via PR #112
+- VB-142 now has a defined BACKLOG thin-adapter contract for CLI, REST and MCP (contract complete
+  once this design change merges); adapter implementation is pending, dashboard views are deferred,
+  and Milestone 15 remains in progress. This documentation task changes no runtime/test baseline
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
 
@@ -391,7 +393,7 @@ Current milestones:
 - **Milestone 12 — Portable PKM model (complete)**
 - **Milestone 13 — Knowledge Query Layer (complete; VB-120 through VB-122 complete)**
 - **Milestone 14 — Knowledge Capture / Portable Memory (complete; VB-130 design accepted, VB-131 and VB-132 implemented and merged)**
-- **Milestone 15 — Knowledge Hygiene (in progress; VB-140 design and VB-141 contract accepted, VB-141/VB-142 not implemented)**
+- **Milestone 15 — Knowledge Hygiene (in progress; VB-140 design complete, VB-141 runtime merged, VB-142 contract defined for completion on merge; adapter implementation pending)**
 
 ## Working production characteristics
 

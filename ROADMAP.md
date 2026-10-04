@@ -143,12 +143,19 @@ app/services/wikilinks.py         Obsidian-compatible wikilink parsing and safe 
 app/services/markdown_links.py    bounded standard Markdown note-link parsing and safe resolution
 app/services/relationships.py     dialect-specific and normalized live relationships/backlinks
 app/services/knowledge_query.py   bounded immutable domain query composition over existing owners
+app/services/knowledge_hygiene.py bounded read-only Knowledge Hygiene domain/runtime diagnostics
 app/services/duplicate_candidates.py advisory live-title and semantic duplicate evidence
 ```
 
-The only public Knowledge Query adapter is the bounded read-only CLI `query` subset. There is no
-REST, MCP, dashboard, or generic portable-document adapter; persisted relationship/query store;
-capture pipeline; hygiene engine; or multiple-knowledge-space runtime today.
+The only public Knowledge Query adapter is the bounded read-only CLI `query` subset; it has no
+REST or MCP adapter or dashboard presentation. Capture and Promotion domain services and their
+local CLI adapters are implemented. There is no generic portable-document adapter, persisted
+relationship/query store, or multiple-knowledge-space runtime today.
+
+`KnowledgeHygieneService` exists as the bounded, read-only VB-141 domain/runtime owner;
+Knowledge Hygiene domain diagnostics are implemented. VB-142 CLI, REST and MCP transport adapters
+are pending, and dashboard presentation remains deferred under its current contract. Hygiene
+repair/mutation workflows remain future separate scope. Milestone 15 remains IN PROGRESS.
 
 ## Completed foundation tasks
 
@@ -1096,35 +1103,39 @@ VB-132 explicit review and promotion workflow
 
 ---
 
-# Milestone 15 — Knowledge Hygiene — IN PROGRESS (VB-140 design and VB-141 contract complete)
+# Milestone 15 — Knowledge Hygiene — IN PROGRESS (VB-140 design and VB-141 runtime complete; VB-142 implementation pending)
 
 **Goal:** diagnose knowledge-base quality and safely propose maintenance actions before introducing
 aggressive automatic mutation.
 
-Potential read-first diagnostics include:
+Accepted ADR 0008 / VB-141 diagnostics include:
 
 - unresolved relationships and broken contained Markdown links;
-- orphan notes or notes without relationships, using explicit definitions;
-- near-duplicate notes, reusing `DuplicateCandidateService` and verified related-note behavior;
-- duplicate aliases and conflicting supported metadata;
-- empty or suspiciously empty notes;
-- stale derived-state diagnostics where staleness can be measured reliably.
+- isolated curated notes under complete relationship evidence;
+- advisory exact-title duplicate candidates; bounded semantic evidence remains unavailable;
+- duplicate/colliding aliases and invalid or empty supported portable fields;
+- invalid frontmatter and empty authored bodies;
+- bounded derived-index availability/compatibility categories, without per-note freshness claims.
 
 Relationship resolution, containment, duplicate evidence, and live-note verification remain owned
 by their existing domain boundaries. Diagnostics may later be consumed by the dashboard, but the
 dashboard must not become a general Markdown editor. This milestone authorizes no automatic delete,
 merge, rewrite, rename, or repair.
 
-Staged tasks (ADR 0008 defines VB-140; BACKLOG.md now defines the accepted VB-141 implementation
-contract, with runtime work still pending):
+Staged tasks (BACKLOG.md is authoritative; the VB-142 contract is complete once this design
+change merges, while its runtime adapters remain pending):
 
 ```text
-VB-140 knowledge-hygiene definitions / ADR
+VB-140 knowledge-hygiene definitions / ADR — complete
    ↓
-VB-141 bounded read-only diagnostic services
+VB-141 bounded read-only diagnostic services — implemented and merged via PR #112
    ↓
-VB-142 thin diagnostic adapters and optional dashboard views
+VB-142 CLI / REST / MCP thin diagnostic adapters — contract defined; implementation pending
 ```
+
+The earlier optional dashboard views are explicitly deferred to a separately scoped ticket.
+VB-142 requires no dashboard implementation. Milestone 15 is not complete until its included
+adapters are implemented and validated; this contract task adds no runtime or repair action.
 
 ---
 
@@ -1179,9 +1190,10 @@ verified backlink write; none is the strategic NEXT item.
 
 Accepted VB-110, VB-120, and VB-130 establish domain semantics before their separately scoped
 runtime or adapter work. These three design tasks, the completed VB-131 intake contract, the
-implemented VB-132 promotion contract, VB-140/ADR 0008, and the accepted VB-141 diagnostic-service
-contract are authoritative in `BACKLOG.md`. VB-141 is not implemented; VB-142 and proposed VB-150
-have no implementation contract yet.
+implemented VB-132 promotion contract, VB-140/ADR 0008, the completed VB-141 diagnostic runtime,
+and the VB-142 thin-adapter contract are authoritative in `BACKLOG.md`. VB-142 contract completion
+follows this design change's merge; its implementation remains pending. Proposed VB-150 has no
+implementation contract yet.
 
 ## Deployment and integration candidates
 
@@ -1316,7 +1328,9 @@ bounded immutable domain runtime/evaluation and VB-122 exposes only its accepted
 subset. VB-032/VB-033 remain deferred, and VB-034 remains a later optional write task rather than
 NEXT. VB-130 and ADR 0007 are accepted as design only. VB-131 and VB-132 are implemented and
 merged; Milestone 14 is complete. VB-140 and ADR 0008 establish hygiene definitions only.
-VB-141 has an accepted contract but no runtime; VB-142 still needs an implementation contract.
+VB-141 runtime is implemented and merged via PR #112. VB-142 now has a defined CLI/REST/MCP
+contract (complete once this design change merges); runtime adapters remain pending and dashboard
+views are deferred. Milestone 15 remains in progress.
 VB-150–VB-152 remain proposed and reserve no implementation scope by themselves.
 
 ---
