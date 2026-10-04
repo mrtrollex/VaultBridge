@@ -11,11 +11,56 @@ from app.services.vault import (
     NoteTooLargeError,
     VaultService,
     VaultValidationError,
+    contained_markdown_files,
 )
 
 
 def service_for(tmp_path: Path, *, max_note_bytes: int = 1_000_000) -> VaultService:
     return VaultService(vault_root=tmp_path, max_note_bytes=max_note_bytes)
+
+
+def test_bounded_markdown_eligibility_matches_existing_discovery_on_platform(tmp_path):
+    for name in ("lower.md", "upper.MD", "mixed.Md", "mixed2.mD", "other.txt"):
+        (tmp_path / name).write_text("body", encoding="utf-8")
+    vault = service_for(tmp_path)
+    expected = tuple(sorted(vault.live_markdown_paths(), key=lambda path: (path.casefold(), path)))
+    contained = tuple(sorted(
+        (path.relative_to(tmp_path).as_posix() for path in contained_markdown_files(tmp_path)),
+        key=lambda path: (path.casefold(), path),
+    ))
+    bounded = vault.bounded_markdown_snapshot()
+    assert bounded.complete and bounded.resolution_complete
+    assert bounded.paths == expected == contained
+    assert {candidate.discovered_path for candidate in bounded.candidates.live_candidates} == set(expected)
+    if os.name == "nt":
+        assert set(expected) == {"lower.md", "upper.MD", "mixed.Md", "mixed2.mD"}
+    else:
+        assert expected == ("lower.md",)
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX case-sensitive Markdown discovery")
+def test_bounded_discovery_includes_canonical_target_reached_only_by_md_alias(tmp_path):
+    target = tmp_path / "Target.MD"
+    target.write_text("body", encoding="utf-8")
+    create_symlink_or_skip(tmp_path / "Alias.md", target)
+    vault = service_for(tmp_path)
+    assert vault.live_markdown_paths() == ["Target.MD"]
+    assert [path.relative_to(tmp_path).as_posix() for path in contained_markdown_files(tmp_path)] == [
+        "Target.MD",
+    ]
+    snapshot = vault.bounded_markdown_snapshot()
+    assert snapshot.complete and snapshot.resolution_complete
+    assert snapshot.paths == ("Target.MD",)
+    assert len(snapshot.path_facts) == 1
+    assert snapshot.path_facts[0].path == "Target.MD"
+    assert vault.verify_bounded_markdown_path(snapshot.path_facts[0])
+    assert vault.read_verified_markdown_snapshot(
+        "Target.MD", fact=snapshot.path_facts[0],
+    ).content == "body"
+    assert [(candidate.discovered_path, candidate.canonical_path)
+            for candidate in snapshot.candidates.live_candidates] == [
+        ("Alias.md", "Target.MD"),
+    ]
 
 
 def create_symlink_or_skip(link: Path, target: Path, *, target_is_directory: bool = False) -> None:

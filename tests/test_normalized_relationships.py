@@ -6,8 +6,12 @@ from pathlib import Path
 import pytest
 
 from app.services.relationships import RelationshipOccurrence, RelationshipService
-from app.services.vault import VaultService
-from app.services.wikilinks import Wikilink, WikilinkResolver
+from app.services.vault import (
+    LiveMarkdownPathCandidate,
+    MarkdownPathCandidateSnapshot,
+    VaultService,
+)
+from app.services.wikilinks import Wikilink, WikilinkResolutionSnapshot, WikilinkResolver
 
 
 def service_for(vault: Path) -> RelationshipService:
@@ -21,6 +25,38 @@ def create_symlink_or_skip(link: Path, target: Path) -> None:
         link.symlink_to(target)
     except OSError as exc:
         pytest.skip(f"Symlink creation is unavailable: {exc}")
+
+
+def test_snapshot_deduplicates_canonical_targets_per_unqualified_name(tmp_path):
+    (tmp_path / "Target.md").write_text("[[Target]]", encoding="utf-8")
+    candidates = (
+        LiveMarkdownPathCandidate("Target.md", "Target.md"),
+        LiveMarkdownPathCandidate("Folder/Target.md", "Target.md"),
+    )
+    snapshot = WikilinkResolutionSnapshot.from_candidates(candidates)
+    assert snapshot.unqualified_paths["Target.md"] == ("Target.md",)
+    assert WikilinkResolutionSnapshot.from_candidates(candidates) == snapshot
+    normalized = service_for(tmp_path).normalized_resolution_snapshot(
+        MarkdownPathCandidateSnapshot(candidates, frozenset())
+    )
+    links = service_for(tmp_path).normalized_relationships_from_content(
+        "[[Target]]", source_path="Target.md", snapshot=normalized,
+    )
+    assert [(link.resolution, link.resolved_path) for link in links] == [
+        ("resolved", "Target.md"),
+    ]
+
+
+def test_snapshot_keeps_genuinely_distinct_canonical_targets(tmp_path):
+    candidates = (
+        LiveMarkdownPathCandidate("First/Target.md", "First/Target.md"),
+        LiveMarkdownPathCandidate("Alias/Target.md", "First/Target.md"),
+        LiveMarkdownPathCandidate("Second/Target.md", "Second/Target.md"),
+    )
+    snapshot = WikilinkResolutionSnapshot.from_candidates(candidates)
+    assert snapshot.unqualified_paths["Target.md"] == (
+        "First/Target.md", "Second/Target.md",
+    )
 
 
 def test_normalized_outgoing_maps_both_dialects_in_true_source_order(tmp_path):

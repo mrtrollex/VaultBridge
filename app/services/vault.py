@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import errno
 import hashlib
+import heapq
 import json
 import os
 import re
@@ -64,6 +65,12 @@ SEMANTIC_EXCLUDED_DIRECTORIES = frozenset(
 )
 
 
+def _markdown_discovery_name(name: str) -> bool:
+    """Match the existing pathlib ``*.md`` discovery on this platform."""
+    path_type = PureWindowsPath if os.name == "nt" else PurePosixPath
+    return path_type(name).match("*.md")
+
+
 def _resolve_contained_path(path: Path, resolved_root: Path) -> Path:
     """Resolve one path and require its real target to remain under the vault root."""
     resolved_path = path.resolve()
@@ -100,6 +107,8 @@ def _contained_markdown_file_candidates(
     files: list[tuple[Path, Path]] = []
     try:
         for discovered_path in resolved_discovery_root.rglob("*.md"):
+            if not _markdown_discovery_name(discovered_path.name):
+                continue
             try:
                 resolved_path = _resolve_contained_path(discovered_path, resolved_root)
                 if resolved_path.suffix.lower() == ".md" and resolved_path.is_file():
@@ -153,6 +162,10 @@ class NoteTooLargeError(VaultServiceError):
     """A note exceeds the configured size limit."""
 
 
+class NoteUnavailableError(VaultServiceError):
+    """A verified read could not establish stable note bytes."""
+
+
 class NoteConflictError(VaultServiceError):
     """A note cannot be created because different content already exists."""
 
@@ -189,6 +202,7 @@ class LiveMarkdownPathCandidate:
 
     discovered_path: str
     canonical_path: str
+    spelling_fact: BoundedMarkdownSpellingFact | None = None
 
 
 @dataclass(frozen=True)
@@ -197,6 +211,44 @@ class MarkdownPathCandidateSnapshot:
 
     live_candidates: tuple[LiveMarkdownPathCandidate, ...]
     unsafe_unqualified_names: frozenset[str]
+    directory_alias_facts: tuple[BoundedDirectoryAliasFact, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class BoundedMarkdownSnapshot:
+    paths: tuple[str, ...]
+    candidates: MarkdownPathCandidateSnapshot
+    complete: bool
+    enumeration_unavailable: bool = False
+    resolution_complete: bool = True
+    path_facts: tuple[BoundedMarkdownPathFact, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class BoundedMarkdownPathFact:
+    """Owner-issued identities for one exactly spelled canonical note and its directories."""
+
+    path: str
+    file_identity: tuple[int, int, int, int]
+    directories: tuple[tuple[str, tuple[int, int, int, int]], ...]
+
+
+@dataclass(frozen=True, slots=True)
+class BoundedMarkdownSpellingFact:
+    path: str
+    entry_identity: tuple[int, int, int, int]
+    directories: tuple[tuple[str, tuple[int, int, int, int]], ...]
+    was_symlink: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class BoundedDirectoryAliasFact:
+    """One contained directory alias and the directory it denoted at discovery."""
+
+    path: str
+    spelling: BoundedMarkdownSpellingFact
+    target_path: str
+    target_identity: tuple[int, int, int, int]
 
 
 @dataclass(frozen=True)
@@ -308,6 +360,158 @@ class VaultService:
             )
         except (OSError, RuntimeError, ValueError, VaultValidationError):
             return MarkdownPathVerification("unsafe")
+
+    def verify_snapshot_markdown_spelling(
+        self, raw: str, exact_candidates: dict[str, LiveMarkdownPathCandidate],
+        *,
+        directory_alias_facts: dict[str, BoundedDirectoryAliasFact] | None = None,
+        selected_paths: frozenset[str] | None = None,
+    ) -> MarkdownPathVerification:
+        """Classify an exact spelling from one owner-issued candidate snapshot."""
+        candidate = exact_candidates.get(raw)
+        if candidate is not None:
+            if candidate.spelling_fact is None:
+                return self.verify_existing_markdown_path_result(raw, exact_spelling=True)
+            if not self.verify_bounded_markdown_spelling(candidate.spelling_fact):
+                raise NoteUnavailableError("relationship_unavailable")
+            outcome = self.verify_existing_markdown_path_result(raw, exact_spelling=False)
+            if outcome.resolved_path == candidate.canonical_path:
+                return outcome
+            raise NoteUnavailableError("relationship_unavailable")
+        if "/" in raw and directory_alias_facts is not None and selected_paths is not None:
+            return self.verify_snapshot_qualified_markdown_path(
+                raw, directory_alias_facts, selected_paths,
+            )
+        # Preserve unsafe classification without repeating exact sibling scans.
+        outcome = self.verify_existing_markdown_path_result(raw, exact_spelling=False)
+        return MarkdownPathVerification("unsafe" if outcome.resolution == "unsafe" else "missing")
+
+    def verify_snapshot_qualified_markdown_path(
+        self,
+        raw: str,
+        directory_alias_facts: dict[str, BoundedDirectoryAliasFact],
+        selected_paths: frozenset[str],
+    ) -> MarkdownPathVerification:
+        """Verify a qualified spelling directly, without enumerating siblings."""
+        parts = PurePosixPath(raw).parts
+        if (not parts or PurePosixPath(raw).is_absolute() or
+                PureWindowsPath(raw).is_absolute() or PureWindowsPath(raw).drive or
+                ".." in parts):
+            return MarkdownPathVerification("unsafe")
+        used_aliases: list[BoundedDirectoryAliasFact] = []
+
+        def revalidate_aliases() -> None:
+            for alias_fact in used_aliases:
+                if not self.verify_bounded_directory_alias_fact(alias_fact):
+                    raise NoteUnavailableError("relationship_unavailable")
+
+        def verified_missing() -> MarkdownPathVerification:
+            revalidate_aliases()
+            return MarkdownPathVerification("missing")
+
+        for index, part in enumerate(parts):
+            prefix = "/".join(parts[:index + 1])
+            known_alias = directory_alias_facts.get(prefix)
+            if known_alias is not None:
+                used_aliases.append(known_alias)
+                if not self.verify_bounded_directory_alias_fact(known_alias):
+                    raise NoteUnavailableError("relationship_unavailable")
+            probe = self.vault_root.joinpath(*parts[:index + 1])
+            try:
+                info = os.lstat(probe)
+            except FileNotFoundError:
+                return verified_missing()
+            except OSError:
+                raise NoteUnavailableError("relationship_unavailable") from None
+            if index < len(parts) - 1:
+                if stat.S_ISLNK(info.st_mode):
+                    if known_alias is None:
+                        # A directory alias not seen in the bounded walk has
+                        # no discovery identity to compare against.
+                        raise NoteUnavailableError("relationship_unavailable")
+                    try:
+                        resolved = probe.resolve(strict=True)
+                        resolved.relative_to(self.vault_root)
+                        if not resolved.is_dir():
+                            raise ValueError
+                    except (OSError, RuntimeError, ValueError):
+                        raise NoteUnavailableError("relationship_unavailable") from None
+                elif not stat.S_ISDIR(info.st_mode):
+                    return verified_missing()
+                elif os.name == "nt" and probe.resolve(strict=True).name != part:
+                    return verified_missing()
+            elif stat.S_ISLNK(info.st_mode):
+                # This alias-qualified file spelling had no discovery fact.
+                raise NoteUnavailableError("relationship_unavailable")
+            elif os.name == "nt" and probe.resolve(strict=True).name != part:
+                return verified_missing()
+        outcome = self.verify_existing_markdown_path_result(raw, exact_spelling=False)
+        if outcome.resolved_path is not None:
+            revalidate_aliases()
+            if outcome.resolved_path not in selected_paths:
+                raise NoteUnavailableError("relationship_unavailable")
+            return outcome
+        if outcome.resolution == "unsafe":
+            raise NoteUnavailableError("relationship_unavailable")
+        return verified_missing()
+
+    def verify_snapshot_unqualified_markdown_candidates(
+        self,
+        candidates: tuple[LiveMarkdownPathCandidate, ...],
+        exact_candidates: dict[str, LiveMarkdownPathCandidate],
+    ) -> None:
+        """Recheck every spelling that contributed to a bounded name lookup."""
+        if not candidates:
+            raise NoteUnavailableError("relationship_unavailable")
+        for candidate in candidates:
+            outcome = self.verify_snapshot_markdown_spelling(
+                candidate.discovered_path, exact_candidates,
+            )
+            if outcome.resolved_path != candidate.canonical_path:
+                raise NoteUnavailableError("relationship_unavailable")
+
+    def verify_snapshot_source_relative_markdown_path_result(
+        self,
+        source_path: str,
+        target_path: str,
+        exact_candidates: dict[str, LiveMarkdownPathCandidate],
+        *,
+        directory_alias_facts: dict[str, BoundedDirectoryAliasFact] | None = None,
+        selected_paths: frozenset[str] | None = None,
+    ) -> MarkdownPathVerification:
+        """Resolve a bounded source-relative link without listing sibling names."""
+        target = target_path.replace("\\", "/")
+        posix = PurePosixPath(target)
+        windows = PureWindowsPath(target_path)
+        if not target or posix.is_absolute() or windows.is_absolute() or windows.drive:
+            return MarkdownPathVerification("unsafe")
+        current = list(PurePosixPath(source_path).parent.parts)
+        for index, part in enumerate(posix.parts):
+            if part == "..":
+                if not current:
+                    return MarkdownPathVerification("unsafe")
+                current.pop()
+                continue
+            if part == ".":
+                continue
+            probe = self.vault_root.joinpath(*current, part)
+            try:
+                info = os.lstat(probe)
+                if stat.S_ISLNK(info.st_mode) and index < len(posix.parts) - 1:
+                    # Parent traversal through a link has platform-dependent
+                    # .. semantics; do not guess from a lexical snapshot.
+                    raise NoteUnavailableError("relationship_unavailable")
+                if os.name == "nt" and not stat.S_ISLNK(info.st_mode) and (
+                    probe.resolve(strict=True).name != part
+                ):
+                    return MarkdownPathVerification("missing")
+            except (FileNotFoundError, NotADirectoryError):
+                return MarkdownPathVerification("missing")
+            current.append(part)
+        return self.verify_snapshot_markdown_spelling(
+            "/".join(current), exact_candidates,
+            directory_alias_facts=directory_alias_facts, selected_paths=selected_paths,
+        )
 
     def verify_source_relative_markdown_path(
         self,
@@ -465,6 +669,8 @@ class VaultService:
         unsafe_names: set[str] = set()
         try:
             for discovered_path in self.vault_root.rglob("*.md"):
+                if not _markdown_discovery_name(discovered_path.name):
+                    continue
                 try:
                     relative_path = discovered_path.relative_to(
                         self.vault_root
@@ -509,6 +715,415 @@ class VaultService:
             ),
             unsafe_unqualified_names=frozenset(unsafe_names),
         )
+
+    def bounded_markdown_snapshot(self, *, limit: int = 10_000) -> BoundedMarkdownSnapshot:
+        """Walk eligible spellings once and retain the smallest canonical identities."""
+        if type(limit) is not int or not 1 <= limit <= 10_000:
+            raise ValueError("invalid bounded Markdown limit")
+        if not self.vault_root.is_dir():
+            raise NoteUnavailableError("scan_unavailable")
+        path_facts: dict[str, BoundedMarkdownPathFact] = {}
+        mandatory_candidates: dict[str, LiveMarkdownPathCandidate] = {}
+        alias_candidates: dict[str, LiveMarkdownPathCandidate] = {}
+        aliases_by_target: dict[str, set[str]] = {}
+        directory_alias_facts: dict[str, BoundedDirectoryAliasFact] = {}
+        unsafe_names: set[str] = set()
+        interrupted = False
+        excess = False
+        resolution_complete = True
+
+        def canonical_key(path: str) -> tuple[str, str]:
+            return path.casefold(), path
+
+        class ReverseCanonical:
+            def __init__(self, path: str):
+                self.path = path
+
+            def __lt__(self, other: ReverseCanonical) -> bool:
+                return canonical_key(self.path) > canonical_key(other.path)
+
+        largest_first: list[ReverseCanonical] = []
+
+        class ReverseAlias:
+            def __init__(self, path: str):
+                self.path = path
+
+            def __lt__(self, other: ReverseAlias) -> bool:
+                return canonical_key(self.path) > canonical_key(other.path)
+
+        largest_alias_first: list[ReverseAlias] = []
+
+        def remove_extra(path: str) -> None:
+            candidate = alias_candidates.pop(path, None)
+            if candidate is not None:
+                names = aliases_by_target[candidate.canonical_path]
+                names.remove(path)
+                if not names:
+                    del aliases_by_target[candidate.canonical_path]
+
+        def retain_extra(candidate: LiveMarkdownPathCandidate) -> None:
+            nonlocal resolution_complete
+            path = candidate.discovered_path
+            if path in alias_candidates:
+                return
+            while largest_alias_first and largest_alias_first[0].path not in alias_candidates:
+                heapq.heappop(largest_alias_first)
+            if len(alias_candidates) == limit:
+                resolution_complete = False
+                if canonical_key(path) >= canonical_key(largest_alias_first[0].path):
+                    return
+                remove_extra(heapq.heappop(largest_alias_first).path)
+            alias_candidates[path] = candidate
+            aliases_by_target.setdefault(candidate.canonical_path, set()).add(path)
+            heapq.heappush(largest_alias_first, ReverseAlias(path))
+            if len(largest_alias_first) > 2 * limit:
+                largest_alias_first[:] = [ReverseAlias(name) for name in alias_candidates]
+                heapq.heapify(largest_alias_first)
+
+        def retain_spelling(candidate: LiveMarkdownPathCandidate) -> None:
+            canonical = candidate.canonical_path
+            current = mandatory_candidates.get(canonical)
+            if current is None:
+                mandatory_candidates[canonical] = candidate
+                return
+            # Prefer an observed canonical spelling; an alias-only target uses
+            # the smallest eligible alias spelling, independent of walk order.
+            new_is_own = candidate.discovered_path == canonical
+            current_is_own = current.discovered_path == canonical
+            if (new_is_own and not current_is_own) or (
+                new_is_own == current_is_own and
+                canonical_key(candidate.discovered_path) < canonical_key(current.discovered_path)
+            ):
+                remove_extra(candidate.discovered_path)
+                mandatory_candidates[canonical] = candidate
+                if current.discovered_path != canonical:
+                    retain_extra(current)
+            elif candidate.discovered_path != canonical:
+                retain_extra(candidate)
+
+        def record_identity(
+            canonical: str, spelling: LiveMarkdownPathCandidate,
+        ) -> None:
+            """Keep the smallest bounded canonical identities observed so far."""
+            nonlocal excess, interrupted
+            if canonical in path_facts:
+                retain_spelling(spelling)
+                return
+            if len(path_facts) == limit:
+                excess = True
+                if canonical_key(canonical) >= canonical_key(largest_first[0].path):
+                    return
+            try:
+                fact = self._bounded_path_fact(canonical)
+            except (OSError, NoteUnavailableError):
+                interrupted = True
+                return
+            if len(path_facts) == limit:
+                displaced = heapq.heapreplace(largest_first, ReverseCanonical(canonical)).path
+                del path_facts[displaced]
+                mandatory_candidates.pop(displaced, None)
+                for alias in tuple(aliases_by_target.get(displaced, ())):
+                    remove_extra(alias)
+            else:
+                heapq.heappush(largest_first, ReverseCanonical(canonical))
+            path_facts[canonical] = fact
+            retain_spelling(spelling)
+
+        discoveries = self._sorted_markdown_discoveries()
+        try:
+            for discovered, was_symlink in discoveries:
+                if discovered is None:
+                    if was_symlink:
+                        resolution_complete = False
+                        # An omitted eligible alias might be the only route to
+                        # another canonical identity on this platform.
+                        interrupted = True
+                        continue
+                    interrupted = True
+                    continue
+                if discovered.endswith("/") and was_symlink:
+                    alias_path = discovered[:-1]
+                    if len(directory_alias_facts) == limit:
+                        resolution_complete = False
+                        continue
+                    try:
+                        fact = self._bounded_spelling_fact(alias_path)
+                        if not fact.was_symlink:
+                            interrupted = True
+                            continue
+                        resolved = _resolve_contained_path(
+                            self.vault_root / alias_path, self.vault_root,
+                        )
+                        if resolved.is_dir():
+                            directory_alias_facts[alias_path] = BoundedDirectoryAliasFact(
+                                alias_path, fact,
+                                resolved.relative_to(self.vault_root).as_posix(),
+                                self._bounded_directory_identity(os.stat(resolved)),
+                            )
+                    except (OSError, ValueError, NoteUnavailableError):
+                        # Unsafe directory aliases cannot establish a note
+                        # spelling; a later qualified lookup fails closed.
+                        continue
+                    continue
+                name = PurePosixPath(discovered).name
+                verification = self.verify_existing_markdown_path_result(
+                    # The pinned scandir entry supplied this exact spelling.
+                    # The later note read rechecks live exact spelling.
+                    discovered, exact_spelling=False,
+                )
+                canonical = verification.resolved_path
+                if canonical is None:
+                    if verification.resolution == "unsafe":
+                        if len(unsafe_names) < limit or name in unsafe_names:
+                            unsafe_names.add(name)
+                        else:
+                            resolution_complete = False
+                    if not was_symlink:
+                        # A discovered Markdown entry disappeared or changed before
+                        # its owner verification, so this walk cannot prove absence.
+                        interrupted = True
+                    continue
+                if not was_symlink and canonical != discovered:
+                    # A renamed or case-changed entry no longer matches the
+                    # exact spelling observed through the pinned directory.
+                    interrupted = True
+                    continue
+                if any(part in SEMANTIC_EXCLUDED_DIRECTORIES for part in PurePosixPath(canonical).parts):
+                    continue
+                if was_symlink:
+                    try:
+                        spelling = self._bounded_spelling_fact(discovered)
+                    except (OSError, NoteUnavailableError):
+                        interrupted = True
+                        continue
+                    if not spelling.was_symlink:
+                        interrupted = True
+                        continue
+                    record_identity(
+                        canonical, LiveMarkdownPathCandidate(discovered, canonical, spelling),
+                    )
+                    continue
+                try:
+                    spelling = self._bounded_spelling_fact(discovered)
+                    if spelling.was_symlink:
+                        interrupted = True
+                        continue
+                except (OSError, NoteUnavailableError):
+                    interrupted = True
+                    continue
+                record_identity(
+                    canonical, LiveMarkdownPathCandidate(discovered, canonical, spelling),
+                )
+        except OSError:
+            interrupted = True
+            if not path_facts:
+                raise NoteUnavailableError("scan_unavailable") from None
+        finally:
+            discoveries.close()
+        ordered = tuple(sorted(path_facts, key=canonical_key))
+        candidates = list(mandatory_candidates.values()) + list(alias_candidates.values())
+        return BoundedMarkdownSnapshot(
+            paths=ordered,
+            candidates=MarkdownPathCandidateSnapshot(
+                live_candidates=tuple(sorted(
+                    candidates,
+                    key=lambda candidate: (
+                        candidate.discovered_path.casefold(), candidate.discovered_path,
+                    ),
+                )),
+                unsafe_unqualified_names=frozenset(unsafe_names),
+                directory_alias_facts=tuple(
+                    directory_alias_facts[path]
+                    for path in sorted(directory_alias_facts, key=canonical_key)
+                ),
+            ),
+            complete=not (excess or interrupted),
+            enumeration_unavailable=interrupted,
+            resolution_complete=resolution_complete,
+            path_facts=tuple(path_facts[path] for path in ordered),
+        )
+
+    @staticmethod
+    def _bounded_identity(info: os.stat_result) -> tuple[int, int, int, int]:
+        # Windows fstat reports a different st_ctime_ns from lstat for some
+        # ordinary files; device/inode/size/mtime remain comparable by handle.
+        return info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns
+
+    @staticmethod
+    def _bounded_directory_identity(info: os.stat_result) -> tuple[int, int, int, int]:
+        return info.st_dev, info.st_ino, info.st_mtime_ns, info.st_ctime_ns
+
+    def _bounded_spelling_fact(self, path: str) -> BoundedMarkdownSpellingFact:
+        """Record identity and exact-spelling directory facts without sibling scans."""
+        parts = PurePosixPath(path).parts
+        directories: list[tuple[str, tuple[int, int, int, int]]] = []
+        root_info = os.lstat(self.vault_root)
+        if not stat.S_ISDIR(root_info.st_mode):
+            raise NoteUnavailableError("note_unavailable")
+        directories.append(("", self._bounded_directory_identity(root_info)))
+        for index in range(1, len(parts)):
+            relative = "/".join(parts[:index])
+            info = os.lstat(self.vault_root.joinpath(*parts[:index]))
+            if not stat.S_ISDIR(info.st_mode):
+                raise NoteUnavailableError("note_unavailable")
+            directories.append((relative, self._bounded_directory_identity(info)))
+        file_info = os.lstat(self.vault_root.joinpath(*parts))
+        return BoundedMarkdownSpellingFact(
+            path, self._bounded_identity(file_info), tuple(directories),
+            stat.S_ISLNK(file_info.st_mode),
+        )
+
+    def _bounded_path_fact(self, path: str) -> BoundedMarkdownPathFact:
+        """Record one ordinary canonical note from a discovered exact spelling."""
+        spelling = self._bounded_spelling_fact(path)
+        file_info = os.lstat(self.vault_root.joinpath(*PurePosixPath(path).parts))
+        if not stat.S_ISREG(file_info.st_mode):
+            raise NoteUnavailableError("note_unavailable")
+        return BoundedMarkdownPathFact(path, spelling.entry_identity, spelling.directories)
+
+    def verify_bounded_markdown_spelling(self, fact: BoundedMarkdownSpellingFact) -> bool:
+        try:
+            return self._bounded_spelling_fact(fact.path) == fact
+        except (OSError, NoteUnavailableError):
+            return False
+
+    def verify_bounded_directory_alias_fact(self, fact: BoundedDirectoryAliasFact) -> bool:
+        """Recheck both a symlink spelling and its original contained directory."""
+        if not self.verify_bounded_markdown_spelling(fact.spelling):
+            return False
+        try:
+            resolved = _resolve_contained_path(self.vault_root / fact.path, self.vault_root)
+            return (
+                resolved.is_dir()
+                and resolved.relative_to(self.vault_root).as_posix() == fact.target_path
+                and self._bounded_directory_identity(os.stat(resolved)) == fact.target_identity
+            )
+        except (OSError, RuntimeError, ValueError):
+            return False
+
+    def verify_bounded_markdown_path(self, fact: BoundedMarkdownPathFact) -> bool:
+        """Recheck one owner-issued path without enumerating sibling names."""
+        try:
+            return self._bounded_path_fact(fact.path) == fact
+        except (OSError, NoteUnavailableError):
+            return False
+
+    def _sorted_markdown_discoveries(self):
+        """Stream each pinned directory once; canonical ordering is selected later."""
+
+        def walk(directory: Path, prefix: str, directory_fd: int | None):
+            with os.scandir(directory if directory_fd is None else directory_fd) as listing:
+                for entry in listing:
+                    is_directory = entry.is_dir(follow_symlinks=False)
+                    if is_directory:
+                        if entry.name in SEMANTIC_EXCLUDED_DIRECTORIES:
+                            continue
+                    elif entry.is_symlink() and entry.is_dir(follow_symlinks=True):
+                        yield f"{prefix}{entry.name}/", True
+                        continue
+                    elif not _markdown_discovery_name(entry.name):
+                        continue
+                    name = entry.name
+                    relative = f"{prefix}{name}"
+                    if is_directory:
+                        if directory_fd is None:
+                            with windows_pinned_path(directory / name):
+                                yield from walk(directory / name, relative + "/", None)
+                        else:
+                            child_fd = os.open(
+                                name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                                dir_fd=directory_fd,
+                            )
+                            try:
+                                yield from walk(directory / name, relative + "/", child_fd)
+                            finally:
+                                os.close(child_fd)
+                    else:
+                        yield relative, entry.is_symlink()
+
+        if os.name == "nt":
+            with ExitStack() as stack:
+                for ancestor in reversed((self.vault_root, *self.vault_root.parents)):
+                    stack.enter_context(windows_pinned_path(ancestor))
+                yield from walk(self.vault_root, "", None)
+        else:
+            root_fd = open_root_directory(self.vault_root)
+            try:
+                yield from walk(self.vault_root, "", root_fd)
+            finally:
+                os.close(root_fd)
+
+    def read_verified_markdown_snapshot(
+        self, path: str, *, fact: BoundedMarkdownPathFact | None = None,
+    ) -> NoteReadResult:
+        """Read one canonical note through pinned, read-only handles with race checks."""
+        if fact is None:
+            initial = self.verify_existing_markdown_path_result(path, exact_spelling=True)
+            if initial.resolved_path != path:
+                raise NoteUnavailableError("note_unavailable")
+        elif fact.path != path or not self.verify_bounded_markdown_path(fact):
+            raise NoteUnavailableError("note_unavailable")
+        parts = PurePosixPath(path).parts
+        try:
+            with ExitStack() as stack:
+                if os.name == "nt":
+                    for ancestor in reversed((self.vault_root, *self.vault_root.parents)):
+                        stack.enter_context(windows_pinned_path(ancestor))
+                    current = self.vault_root
+                    for part in parts[:-1]:
+                        current /= part
+                        stack.enter_context(windows_pinned_path(current))
+                    stack.enter_context(windows_pinned_path(current / parts[-1]))
+                    if fact is not None and not self.verify_bounded_markdown_path(fact):
+                        raise NoteUnavailableError("note_unavailable")
+                    fd = os.open(current / parts[-1], os.O_RDONLY | os.O_BINARY)
+                else:
+                    directory_fd = open_root_directory(self.vault_root)
+                    stack.callback(os.close, directory_fd)
+                    expected_directories = dict(fact.directories) if fact is not None else None
+                    if expected_directories is not None and self._bounded_directory_identity(
+                        os.fstat(directory_fd)
+                    ) != expected_directories[""]:
+                        raise NoteUnavailableError("note_unavailable")
+                    prefix: list[str] = []
+                    for part in parts[:-1]:
+                        next_fd = os.open(
+                            part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                            dir_fd=directory_fd,
+                        )
+                        stack.callback(os.close, next_fd)
+                        directory_fd = next_fd
+                        prefix.append(part)
+                        if expected_directories is not None and self._bounded_directory_identity(
+                            os.fstat(directory_fd)
+                        ) != expected_directories["/".join(prefix)]:
+                            raise NoteUnavailableError("note_unavailable")
+                    fd = os.open(
+                        parts[-1], os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+                        dir_fd=directory_fd,
+                    )
+                with os.fdopen(fd, "rb") as stream:
+                    before = os.fstat(stream.fileno())
+                    if not stat.S_ISREG(before.st_mode):
+                        raise NoteUnavailableError("note_unavailable")
+                    if fact is not None and self._bounded_identity(before) != fact.file_identity:
+                        raise NoteUnavailableError("note_unavailable")
+                    data = stream.read(self.max_note_bytes + 1)
+                    after = os.fstat(stream.fileno())
+                if len(data) > self.max_note_bytes:
+                    raise NoteTooLargeError("Note is too large")
+                if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns) != (
+                    after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns,
+                ) or len(data) != after.st_size:
+                    raise NoteUnavailableError("note_unavailable")
+                if fact is None:
+                    if self.verify_existing_markdown_path_result(path, exact_spelling=True).resolved_path != path:
+                        raise NoteUnavailableError("note_unavailable")
+                elif not self.verify_bounded_markdown_path(fact):
+                    raise NoteUnavailableError("note_unavailable")
+                return NoteReadResult(path, data.decode("utf-8"))
+        except (OSError, UnsafeWritePathError) as exc:
+            raise NoteUnavailableError("note_unavailable") from exc
 
     @_coordinated
     def create_note(

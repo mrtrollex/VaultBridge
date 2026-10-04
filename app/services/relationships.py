@@ -5,6 +5,8 @@ from typing import Literal
 
 from app.services.markdown_links import MarkdownLink, MarkdownLinkResolver
 from app.services.vault import (
+    BoundedDirectoryAliasFact,
+    LiveMarkdownPathCandidate,
     MarkdownPathCandidateSnapshot,
     NoteNotFoundError,
     VaultService,
@@ -99,6 +101,9 @@ class RelationshipResolutionSnapshot:
     """Opaque immutable query-level resolution facts owned by RelationshipService."""
 
     _wikilinks: WikilinkResolutionSnapshot
+    _exact_candidates: dict[str, LiveMarkdownPathCandidate] | None = None
+    _directory_alias_facts: dict[str, BoundedDirectoryAliasFact] | None = None
+    _selected_paths: frozenset[str] | None = None
 
 
 class RelationshipService:
@@ -264,11 +269,23 @@ class RelationshipService:
         candidates: MarkdownPathCandidateSnapshot,
     ) -> RelationshipResolutionSnapshot:
         """Build one reusable normalized-resolution snapshot from one vault enumeration."""
+        exact_candidates = (
+            {candidate.discovered_path: candidate
+             for candidate in candidates.live_candidates}
+            if all(candidate.spelling_fact is not None
+                   for candidate in candidates.live_candidates)
+            else None
+        )
         return RelationshipResolutionSnapshot(
             WikilinkResolutionSnapshot.from_candidates(
                 candidates.live_candidates,
                 unsafe_unqualified_names=candidates.unsafe_unqualified_names,
-            )
+            ),
+            exact_candidates,
+            ({fact.path: fact for fact in candidates.directory_alias_facts}
+             if exact_candidates is not None else None),
+            (frozenset(candidate.canonical_path for candidate in candidates.live_candidates)
+             if exact_candidates is not None else None),
         )
 
     def normalized_relationships_from_content(
@@ -283,6 +300,9 @@ class RelationshipService:
             content,
             source_path=source_path.replace("\\", "/"),
             wikilink_snapshot=snapshot._wikilinks,
+            exact_candidates=snapshot._exact_candidates,
+            directory_alias_facts=snapshot._directory_alias_facts,
+            selected_paths=snapshot._selected_paths,
         )
 
     def _derive_normalized_relationships(
@@ -291,6 +311,9 @@ class RelationshipService:
         *,
         source_path: str,
         wikilink_snapshot: WikilinkResolutionSnapshot | None = None,
+        exact_candidates: dict[str, LiveMarkdownPathCandidate] | None = None,
+        directory_alias_facts: dict[str, BoundedDirectoryAliasFact] | None = None,
+        selected_paths: frozenset[str] | None = None,
     ) -> tuple[RelationshipOccurrence, ...]:
         snapshot = (
             self._wikilink_resolver.resolution_snapshot(include_unsafe=True)
@@ -310,6 +333,9 @@ class RelationshipService:
             resolved, resolution = self._wikilink_resolver.resolve_with_reason(
                 link,
                 snapshot=snapshot,
+                exact_candidates=exact_candidates,
+                directory_alias_facts=directory_alias_facts,
+                selected_paths=selected_paths,
             )
             positioned.append(
                 (link._source_position, "obsidian_wikilink", resolved, resolution)
@@ -319,6 +345,9 @@ class RelationshipService:
             resolved, resolution = self._markdown_link_resolver.resolve_with_reason(
                 link,
                 source_path=source_path,
+                exact_candidates=exact_candidates,
+                directory_alias_facts=directory_alias_facts,
+                selected_paths=selected_paths,
             )
             positioned.append(
                 (link._source_position, "markdown_link", resolved, resolution)
