@@ -180,6 +180,7 @@ def test_openapi_contract_matrix_has_stable_unique_operation_ids_and_identical_s
         "/health/ready",
         "/api/v1/notes/links",
         "/api/v1/notes/backlinks",
+        "/api/v1/knowledge/hygiene/scan",
     }
     operation_ids: list[str] = []
 
