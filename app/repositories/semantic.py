@@ -43,6 +43,7 @@ class SemanticIndexStatus:
     indexed_notes: int
     semantic_chunks: int
     last_successful_sync: str | None
+    error_kind: str | None = None
 
 
 @dataclass(frozen=True)
@@ -386,7 +387,9 @@ class SemanticRepository:
         )
 
     @staticmethod
-    def _storage_error_status(*, storage_exists: bool | None) -> SemanticIndexStatus:
+    def _storage_error_status(
+        *, storage_exists: bool | None, error_kind: str | None = None,
+    ) -> SemanticIndexStatus:
         return SemanticIndexStatus(
             storage_exists=storage_exists,
             storage_initialized=False,
@@ -396,6 +399,7 @@ class SemanticRepository:
             indexed_notes=0,
             semantic_chunks=0,
             last_successful_sync=None,
+            error_kind=error_kind,
         )
 
     @staticmethod
@@ -469,11 +473,11 @@ class SemanticRepository:
     def read_immutable_status(self) -> SemanticIndexStatus:
         """Inspect stopped/offline SQLite storage without creating or changing sidecars."""
         try:
-            if not self.db_path.exists():
-                return self._missing_status()
             sidecars = (Path(f"{self.db_path}-wal"), Path(f"{self.db_path}-shm"))
             if any(path.exists() for path in sidecars):
                 raise ImmutableIndexInspectionUnavailableError
+            if not self.db_path.exists():
+                return self._missing_status()
             database_uri = f"{self.db_path.resolve().as_uri()}?mode=ro&immutable=1"
             status = self._read_status_uri(database_uri)
             if any(path.exists() for path in sidecars):
@@ -483,8 +487,18 @@ class SemanticRepository:
             raise
         except sqlite3.ProgrammingError:
             raise
-        except (OSError, sqlite3.DatabaseError):
-            return self._storage_error_status(storage_exists=True)
+        except OSError:
+            return self._storage_error_status(
+                storage_exists=True, error_kind="storage_unavailable",
+            )
+        except sqlite3.OperationalError:
+            return self._storage_error_status(
+                storage_exists=True, error_kind="storage_unavailable",
+            )
+        except sqlite3.DatabaseError:
+            return self._storage_error_status(
+                storage_exists=True, error_kind="corrupt_storage",
+            )
 
     def read_availability_status(self) -> SemanticAvailabilityStatus:
         """Read only the storage metadata needed to decide search availability."""

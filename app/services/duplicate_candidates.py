@@ -10,7 +10,7 @@ from app.services.semantic_search import (
     SemanticSearchService,
     SemanticSearchUnavailableError,
 )
-from app.services.vault import VaultService
+from app.services.vault import BoundedMarkdownPathFact, NoteReadResult, VaultService
 
 DUPLICATE_CANDIDATE_OVERFETCH_FACTOR = 3
 DUPLICATE_CANDIDATE_LIMIT = 50
@@ -26,6 +26,22 @@ class DuplicateCandidate:
     lexical_score: float | None
     snippet: str | None
     heading: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class DuplicateBatchResult:
+    by_source: tuple[tuple[str, tuple[DuplicateCandidate, ...]], ...]
+    raced_paths: tuple[str, ...] = ()
+    source_unavailable: bool = False
+    candidate_unavailable: bool = False
+    semantic_unavailable: bool = False
+
+    @property
+    def state(self) -> Literal["complete", "partial"]:
+        return (
+            "partial" if self.source_unavailable or self.candidate_unavailable
+            or self.semantic_unavailable else "complete"
+        )
 
 
 def normalize_note_title(title: str) -> str:
@@ -45,6 +61,75 @@ class DuplicateCandidateService:
     ) -> None:
         self.vault_service = vault_service
         self.semantic_search_service = semantic_search_service
+
+    def find_bounded_batch(
+        self,
+        *,
+        universe: tuple[str, ...],
+        sources: tuple[NoteReadResult, ...],
+        semantic_candidates: bool = False,
+        path_facts: dict[str, BoundedMarkdownPathFact] | None = None,
+    ) -> DuplicateBatchResult:
+        """Use one verified filename lookup for a bounded set of already-read sources."""
+        def order(path: str) -> tuple[str, str]:
+            return path.casefold(), path
+        if (
+            len(universe) > 10_000 or len(set(universe)) != len(universe)
+            or tuple(sorted(universe, key=order)) != universe
+            or len(sources) > 20
+            or tuple(sorted((source.path for source in sources), key=order))
+            != tuple(source.path for source in sources)
+            or len({source.path for source in sources}) != len(sources)
+            or any(source.path not in universe for source in sources)
+            or (path_facts is not None and set(path_facts) != set(universe))
+        ):
+            raise ValueError("invalid bounded duplicate batch")
+        def still_verified(path: str) -> bool:
+            if path_facts is not None:
+                return self.vault_service.verify_bounded_markdown_path(path_facts[path])
+            return self.vault_service.verify_existing_markdown_path(
+                path, exact_spelling=True,
+            ) == path
+
+        lookup: dict[str, list[str]] = {}
+        for path in universe:
+            lookup.setdefault(normalize_note_title(PurePosixPath(path).stem), []).append(path)
+
+        source_unavailable = False
+        candidate_unavailable = False
+        raced_paths: set[str] = set()
+        rows: list[tuple[str, tuple[DuplicateCandidate, ...]]] = []
+        for source in sources:
+            if not still_verified(source.path):
+                source_unavailable = True
+                raced_paths.add(source.path)
+                continue
+            title = normalize_note_title(PurePosixPath(source.path).stem)
+            selected: list[DuplicateCandidate] = []
+            for path in lookup.get(title, ()):
+                if path == source.path:
+                    continue
+                if not still_verified(path):
+                    candidate_unavailable = True
+                    raced_paths.add(path)
+                    continue
+                selected.append(DuplicateCandidate(
+                    path=path,
+                    title=PurePosixPath(path).stem,
+                    match_type="exact_title",
+                    score=None, semantic_score=None, lexical_score=None,
+                    snippet=None, heading=None,
+                ))
+                if len(selected) == 5:
+                    break
+            rows.append((source.path, tuple(selected)))
+        return DuplicateBatchResult(
+            by_source=tuple(rows),
+            raced_paths=tuple(sorted(raced_paths, key=order)),
+            source_unavailable=source_unavailable,
+            candidate_unavailable=candidate_unavailable,
+            semantic_unavailable=semantic_candidates,
+        )
 
     def find_candidates(
         self,

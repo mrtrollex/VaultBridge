@@ -91,12 +91,13 @@ class FrontmatterResult:
     state: FrontmatterState
     metadata: Mapping[str, PortableValue] | None = None
     diagnostic: FrontmatterDiagnostic | None = None
+    body_offset: int | None = None
 
     def __post_init__(self) -> None:
         valid_shape = {
-            "absent": self.metadata is None and self.diagnostic is None,
+            "absent": self.metadata is None and self.diagnostic is None and self.body_offset is None,
             "valid": self.metadata is not None and self.diagnostic is None,
-            "invalid": self.metadata is None and self.diagnostic is not None,
+            "invalid": self.metadata is None and self.diagnostic is not None and self.body_offset is None,
         }
         if not valid_shape[self.state]:
             raise ValueError("frontmatter result fields do not match its state")
@@ -292,7 +293,8 @@ class FrontmatterParser:
             return FrontmatterResult(state="invalid", diagnostic=envelope)
 
         try:
-            metadata = _parse_payload(envelope)
+            payload, body_offset = envelope
+            metadata = _parse_payload(payload)
         except _InvalidFrontmatter as exc:
             return FrontmatterResult(
                 state="invalid",
@@ -302,7 +304,7 @@ class FrontmatterParser:
                     column=exc.column,
                 ),
             )
-        return FrontmatterResult(state="valid", metadata=metadata)
+        return FrontmatterResult(state="valid", metadata=metadata, body_offset=body_offset)
 
 
 class FrontmatterSerializationError(ValueError):
@@ -382,7 +384,7 @@ def serialize_frontmatter(metadata: Mapping[str, object]) -> str:
     return envelope
 
 
-def _extract_envelope(markdown: str) -> str | FrontmatterDiagnostic | None:
+def _extract_envelope(markdown: str) -> tuple[str, int] | FrontmatterDiagnostic | None:
     start = 1 if markdown.startswith("\ufeff") else 0
     opener_end, payload_start = _line_bounds(markdown, start)
     if opener_end - start != 3 or markdown[start:opener_end] != "---":
@@ -407,7 +409,7 @@ def _extract_envelope(markdown: str) -> str | FrontmatterDiagnostic | None:
         if is_closer:
             if envelope_bytes > MAX_FRONTMATTER_BYTES:
                 return FrontmatterDiagnostic(reason="frontmatter_too_large")
-            return markdown[payload_start:line_start]
+            return markdown[payload_start:line_start], segment_end
         if next_position is None:
             break
         position = next_position

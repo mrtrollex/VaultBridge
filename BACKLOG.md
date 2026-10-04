@@ -2814,16 +2814,28 @@ or credentials in results, failures, or routine logs. No debug log may print omi
 **One bounded ordinary enumeration and read:** Add one small read-only `VaultService` operation
 returning a bounded canonical Markdown candidate snapshot plus `complete`. Existing
 `live_markdown_paths()` and `markdown_path_candidate_snapshot()` materialize an unbounded vault and
-cannot be used for this scan. In one deterministic sorted discovered-path walk, apply existing
-Markdown eligibility, exclusions, exact-spelling, containment, and symlink rules; deduplicate by
-verified canonical path and stop after detecting a 10,001st distinct eligible canonical path.
-Return at most the first 10,000 distinct paths, sorted by `(path.casefold(), path)`, with the
+cannot be used for this scan. In one complete eligible filesystem discovery pass, enumerate each
+visited directory once and apply existing Markdown eligibility, exclusions, exact-spelling,
+containment, and symlink rules; deduplicate by verified canonical path. Discovery order does not
+affect the deterministic final `(path.casefold(), path)` selection. Retain bounded state so a later
+contained alias can introduce a canonical target before the current ordering cutoff. Detection of
+more than 10,000 distinct eligible canonical paths makes the scan partial; the 10,000 ceiling
+limits selected canonical notes and downstream note/content work, not discovery termination.
+Return the smallest 10,000 distinct paths, sorted by `(path.casefold(), path)`, with the
 owner's bounded candidate/unsafe-name resolution evidence needed by
-`RelationshipService.normalized_resolution_snapshot()`. Exactly 10,000 with exhausted traversal
-is complete; detecting an additional distinct path is partial. Never silently drop the extra
-path and claim completeness, retain unbounded host paths/metadata, or walk the filesystem from
-hygiene. A contained symlink alias is one canonical note; an unsafe alias is never a node. If
-the partial snapshot cannot safely establish normalized resolution against the full vault,
+`RelationshipService.normalized_resolution_snapshot()`. Each currently selected canonical note
+retains at most one mandatory owner-valid relationship spelling (at most 10,000 total); an
+alias-only target retains an eligible alias spelling. Prefer its discovered canonical spelling
+when available, otherwise choose the smallest eligible alias by `(path.casefold(), path)`,
+independent of discovery order. A separate allowance retains at most 10,000 additional alias
+spellings. Its overflow makes relationship resolution conservatively incomplete without evicting
+canonical notes or mandatory spellings. Evicting a note from canonical top-K removes its owner
+path fact and mandatory spelling evidence so stale selected-note state does not accumulate.
+Exactly 10,000 with exhausted traversal is complete; detecting an additional distinct path is
+partial. Never silently drop the extra path and claim completeness, retain unbounded host
+paths/metadata, or walk the filesystem from hygiene. A contained symlink alias is one canonical
+note; an unsafe alias is never a node. If the partial snapshot cannot safely establish normalized
+resolution against the full vault,
 withhold all relationship and isolation findings rather than label missing targets from a
 truncated candidate set.
 

@@ -818,6 +818,45 @@ class SemanticSearchService:
         """Return a filesystem-immutable snapshot for stopped/offline administration."""
         return self._inspection_from_storage(self.repository.read_immutable_status())
 
+    def inspect_hygiene_index(self) -> str:
+        """Classify existing storage without lifecycle, cache, or sidecar mutation."""
+        try:
+            storage = self.repository.read_immutable_status()
+        except ImmutableIndexInspectionUnavailableError:
+            return "inspection_unavailable"
+        if storage.storage_error:
+            return storage.error_kind or "storage_unavailable"
+        if not storage.storage_exists:
+            return "missing"
+        if not storage.storage_initialized or storage.index_signature is None:
+            return "invalid_metadata"
+        if not storage.index_signature.startswith(INDEX_SIGNATURE_PREFIX):
+            return "invalid_metadata"
+        try:
+            parsed_signature = json.loads(storage.index_signature.removeprefix(INDEX_SIGNATURE_PREFIX))
+        except (TypeError, ValueError):
+            return "invalid_metadata"
+        if not isinstance(parsed_signature, dict):
+            return "invalid_metadata"
+        if not self._stored_signature_matches_configuration(storage.index_signature):
+            return "incompatible"
+        # Resolving an uncached model fingerprint may mutate a model cache.
+        if self._resolved_index_signature is None:
+            return "inspection_unavailable"
+        if storage.index_signature != self._resolved_index_signature:
+            return "incompatible"
+        if storage.index_state is None:
+            return "compatible_ready" if storage.semantic_chunks else "invalid_metadata"
+        if storage.index_state == IndexState.READY.value:
+            return "compatible_ready"
+        if storage.index_state not in {state.value for state in IndexState}:
+            return "invalid_metadata"
+        if storage.index_state in {IndexState.INDEXING.value, IndexState.ERROR.value}:
+            # Persisted state may have been written by another process. This
+            # instance has no explicit current lifecycle phase to corroborate it.
+            return "inspection_unavailable" if storage.semantic_chunks else "invalid_metadata"
+        return "invalid_metadata"
+
     def probe_search_availability(self) -> bool:
         """Return search availability from a minimal, read-only storage snapshot."""
         storage = self.repository.read_availability_status()

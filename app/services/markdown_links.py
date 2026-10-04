@@ -5,7 +5,7 @@ from dataclasses import dataclass, field, replace
 from pathlib import PurePosixPath, PureWindowsPath
 from typing import Literal
 
-from app.services.vault import VaultService
+from app.services.vault import BoundedDirectoryAliasFact, LiveMarkdownPathCandidate, VaultService
 
 _FENCE_PATTERN = re.compile(r"^[ \t]{0,3}(`{3,}|~{3,})(.*)$")
 _URI_SCHEME_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
@@ -75,12 +75,30 @@ class MarkdownLinkResolver:
         link: MarkdownLink,
         *,
         source_path: str,
+        exact_candidates: dict[str, LiveMarkdownPathCandidate] | None = None,
+        directory_alias_facts: dict[str, BoundedDirectoryAliasFact] | None = None,
+        selected_paths: frozenset[str] | None = None,
     ) -> tuple[MarkdownLink, Literal["resolved", "missing", "unsafe"]]:
         """Resolve one link and return its bounded privacy-safe outcome."""
-        verification = self._vault_service.verify_source_relative_markdown_path_result(
-            source_path,
-            link.destination,
-        )
+        destination = link.destination.replace("\\", "/")
+        if exact_candidates is not None:
+            if ".." in PurePosixPath(destination).parts:
+                verification = self._vault_service.verify_snapshot_source_relative_markdown_path_result(
+                    source_path, destination, exact_candidates,
+                    directory_alias_facts=directory_alias_facts,
+                    selected_paths=selected_paths,
+                )
+            else:
+                relative = (PurePosixPath(source_path).parent / destination).as_posix()
+                verification = self._vault_service.verify_snapshot_markdown_spelling(
+                    relative, exact_candidates,
+                    directory_alias_facts=directory_alias_facts,
+                    selected_paths=selected_paths,
+                )
+        else:
+            verification = self._vault_service.verify_source_relative_markdown_path_result(
+                source_path, link.destination,
+            )
         return (
             replace(link, resolved_path=verification.resolved_path),
             verification.resolution,

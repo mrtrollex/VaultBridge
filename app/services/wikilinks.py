@@ -8,7 +8,7 @@ from pathlib import PurePosixPath, PureWindowsPath
 from types import MappingProxyType
 from typing import Literal
 
-from app.services.vault import LiveMarkdownPathCandidate, VaultService
+from app.services.vault import BoundedDirectoryAliasFact, LiveMarkdownPathCandidate, VaultService
 
 _FENCE_PATTERN = re.compile(r"^[ \t]{0,3}(`{3,}|~{3,})(.*)$")
 
@@ -30,6 +30,9 @@ class WikilinkResolutionSnapshot:
 
     unqualified_paths: Mapping[str, tuple[str, ...]]
     unsafe_unqualified_names: frozenset[str] = frozenset()
+    _unqualified_candidates: Mapping[str, tuple[LiveMarkdownPathCandidate, ...]] = field(
+        default_factory=lambda: MappingProxyType({}), compare=False, repr=False,
+    )
 
     @classmethod
     def from_candidates(
@@ -38,16 +41,20 @@ class WikilinkResolutionSnapshot:
         *,
         unsafe_unqualified_names: frozenset[str] = frozenset(),
     ) -> WikilinkResolutionSnapshot:
-        grouped: dict[str, list[str]] = defaultdict(list)
+        grouped: dict[str, dict[str, None]] = defaultdict(dict)
+        by_name: dict[str, list[LiveMarkdownPathCandidate]] = defaultdict(list)
         for candidate in candidates:
-            grouped[PurePosixPath(candidate.discovered_path).name].append(
-                candidate.canonical_path
-            )
+            name = PurePosixPath(candidate.discovered_path).name
+            grouped[name][candidate.canonical_path] = None
+            by_name[name].append(candidate)
         return cls(
             unqualified_paths=MappingProxyType(
                 {name: tuple(paths) for name, paths in grouped.items()}
             ),
             unsafe_unqualified_names=unsafe_unqualified_names,
+            _unqualified_candidates=MappingProxyType(
+                {name: tuple(rows) for name, rows in by_name.items()}
+            ),
         )
 
 
@@ -101,6 +108,9 @@ class WikilinkResolver:
         link: Wikilink,
         *,
         snapshot: WikilinkResolutionSnapshot | None = None,
+        exact_candidates: dict[str, LiveMarkdownPathCandidate] | None = None,
+        directory_alias_facts: dict[str, BoundedDirectoryAliasFact] | None = None,
+        selected_paths: frozenset[str] | None = None,
     ) -> tuple[Wikilink, Literal["resolved", "missing", "ambiguous", "unsafe"]]:
         """Resolve one link and return its bounded privacy-safe outcome."""
         live_snapshot = (
@@ -108,7 +118,10 @@ class WikilinkResolver:
             if snapshot is None
             else snapshot
         )
-        return self._resolve_with_reason(link, live_snapshot)
+        return self._resolve_with_reason(
+            link, live_snapshot, exact_candidates=exact_candidates,
+            directory_alias_facts=directory_alias_facts, selected_paths=selected_paths,
+        )
 
     def resolution_snapshot(
         self,
@@ -141,6 +154,10 @@ class WikilinkResolver:
         self,
         link: Wikilink,
         snapshot: WikilinkResolutionSnapshot,
+        *,
+        exact_candidates: dict[str, LiveMarkdownPathCandidate] | None = None,
+        directory_alias_facts: dict[str, BoundedDirectoryAliasFact] | None = None,
+        selected_paths: frozenset[str] | None = None,
     ) -> tuple[Wikilink, Literal["resolved", "missing", "ambiguous", "unsafe"]]:
         candidate = self._candidate_path(link.target)
         if candidate is None:
@@ -148,9 +165,15 @@ class WikilinkResolver:
 
         normalized = candidate.replace("\\", "/")
         if "/" in normalized:
-            verification = self._vault_service.verify_existing_markdown_path_result(
-                candidate,
-                exact_spelling=True,
+            verification = (
+                self._vault_service.verify_snapshot_markdown_spelling(
+                    normalized, exact_candidates,
+                    directory_alias_facts=directory_alias_facts,
+                    selected_paths=selected_paths,
+                ) if exact_candidates is not None else
+                self._vault_service.verify_existing_markdown_path_result(
+                    candidate, exact_spelling=True,
+                )
             )
             return (
                 replace(link, resolved_path=verification.resolved_path),
@@ -158,6 +181,10 @@ class WikilinkResolver:
             )
 
         matches = snapshot.unqualified_paths.get(normalized, ())
+        if matches and exact_candidates is not None:
+            self._vault_service.verify_snapshot_unqualified_markdown_candidates(
+                snapshot._unqualified_candidates.get(normalized, ()), exact_candidates,
+            )
         if len(matches) == 1:
             return replace(link, resolved_path=matches[0]), "resolved"
         if len(matches) > 1:

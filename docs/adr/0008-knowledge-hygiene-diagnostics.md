@@ -227,12 +227,20 @@ per-note stale finding or automatic rebuild is authorized.
 ### Scan consistency, bounds, and privacy
 
 A whole-vault scan is a sequence of reads, not an atomic snapshot. VB-141 must enumerate canonical
-Markdown notes through `VaultService` in deterministic path order, with a hard maximum of 10,000
-eligible paths per request and an explicit incomplete/limit result. If the existing enumeration
-API cannot stop at that bound, VB-141 must add a bounded read-only `VaultService` enumeration
-operation; hygiene must not work around the owner with raw filesystem traversal. Scan each path
-at most once for authored content in the ordinary pass and use the same verified content for
-frontmatter and relationship interpretation. Reverify primary and related paths before return
+Markdown notes through `VaultService` with final canonical paths in deterministic path order, with a
+hard maximum of 10,000 selected eligible paths per request and an explicit incomplete/limit result.
+The owner completes one bounded-memory filesystem discovery pass; its entry order does not affect
+selection of the smallest canonical paths when a later symlink alias reveals an earlier canonical
+target. VB-141 must add a bounded read-only `VaultService` enumeration operation; hygiene must not
+work around the owner with raw filesystem traversal. Scan each path at most once for authored
+content in the ordinary pass and use the same verified content for frontmatter and relationship
+interpretation. Each selected canonical note retains at most one mandatory owner-valid spelling
+for relationship resolution (at most 10,000); an alias-only target uses an eligible alias spelling.
+The owner prefers a discovered canonical spelling, otherwise the smallest eligible alias in
+canonical spelling order, independent of discovery order. Up to 10,000 additional alias spellings
+have a separate allowance; overflow makes resolution evidence incomplete without evicting
+selected notes or mandatory spellings. Canonical top-K eviction removes that note's owner path
+fact and mandatory spelling evidence. Reverify primary and related paths before return
 where practical. Missing, changed, unreadable, oversized, or unsafe paths are omitted from
 affected findings or reported as stable unavailable categories without leaking the path on a
 failure surface. Do not retry without a fixed bound. Incomplete enumeration or source evidence
