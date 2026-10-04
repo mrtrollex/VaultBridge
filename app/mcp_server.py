@@ -13,14 +13,21 @@ from mcp.server import MCPServer
 from mcp.server.context import CallNext, HandlerResult, ServerRequestContext
 from mcp.server.mcpserver.context import Context
 from mcp.server.mcpserver.exceptions import ResourceError, ResourceNotFoundError, ToolError
+from mcp.server.mcpserver.tools.base import Tool
 from mcp.shared.exceptions import MCPError
-from mcp_types import INTERNAL_ERROR, INVALID_PARAMS, ToolAnnotations
+from mcp_types import INTERNAL_ERROR, INVALID_PARAMS, CallToolResult, TextContent, ToolAnnotations
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from app.core.config import Settings
 from app.core.logging import configure_application_logging, log_event
+from app.knowledge_hygiene_transport import (
+    KnowledgeHygieneScanRequest,
+    KnowledgeHygieneScanResponse,
+    serialize_hygiene_result,
+)
 from app.services.duplicate_candidates import DuplicateCandidateService
 from app.services.indexer import BackgroundSemanticIndexer
+from app.services.knowledge_hygiene import KnowledgeHygieneError, KnowledgeHygieneService
 from app.services.note_writes import (
     clean_note_tags,
     clean_note_title,
@@ -214,6 +221,7 @@ def note_resource_uri(path: str) -> str:
 
 def _safe_tool_error(text: str) -> str:
     messages = {
+        "hygiene_unavailable": "hygiene_unavailable: A bounded hygiene scan is unavailable.",
         "invalid_path": "invalid_path: Invalid vault-relative path.",
         "note_not_found": "note_not_found: Note not found.",
         "note_conflict": "note_conflict: A note with this title already exists.",
@@ -240,6 +248,18 @@ async def _privacy_error_middleware(
     context: ServerRequestContext[Any, Any],
     call_next: CallNext,
 ) -> HandlerResult:
+    # Validate the raw argument object before the SDK can coerce or drop fields.
+    hygiene_call = (
+        context.method == "tools/call" and isinstance(context.params, dict)
+        and context.params.get("name") == "knowledge_hygiene_scan"
+    )
+    if hygiene_call:
+        try:
+            KnowledgeHygieneScanRequest.model_validate(context.params.get("arguments", {}))
+        except ValidationError:
+            return CallToolResult(is_error=True, content=[
+                TextContent(type="text", text="validation_error: Tool arguments are invalid."),
+            ])
     try:
         result = await call_next(context)
     except MCPError as exc:
@@ -259,7 +279,10 @@ async def _privacy_error_middleware(
             candidate = content[0].get("text")
             text = candidate if isinstance(candidate, str) else ""
         sanitized = dict(result)
-        sanitized["content"] = [{"type": "text", "text": _safe_tool_error(text)}]
+        message = _safe_tool_error(text)
+        if hygiene_call and message.startswith("validation_error:"):
+            message = "validation_error: Tool arguments are invalid."
+        sanitized["content"] = [{"type": "text", "text": message}]
         sanitized.pop("structuredContent", None)
         return sanitized
     return result
@@ -274,6 +297,7 @@ class VaultBridgeMCPAdapter:
         semantic_search_service: SemanticSearchService,
         duplicate_candidate_service: DuplicateCandidateService,
         relationship_service: RelationshipService,
+        knowledge_hygiene_service: KnowledgeHygieneService,
         semantic_indexer: BackgroundSemanticIndexer | None,
         transport: MCPTransport,
         operation_rate_limiter: FixedWindowRateLimiter | None,
@@ -283,6 +307,7 @@ class VaultBridgeMCPAdapter:
         self.semantic_search_service = semantic_search_service
         self.duplicate_candidate_service = duplicate_candidate_service
         self.relationship_service = relationship_service
+        self.knowledge_hygiene_service = knowledge_hygiene_service
         self.semantic_indexer = semantic_indexer
         self.transport = transport
         self.operation_rate_limiter = operation_rate_limiter
@@ -302,6 +327,16 @@ class VaultBridgeMCPAdapter:
         except ToolError:
             self._log_failure(operation, request_id, started_at, "rate_limited")
             raise
+        except KnowledgeHygieneError as exc:
+            code = {"invalid_request": "validation_error", "scan_unavailable": "hygiene_unavailable"}.get(
+                exc.reason, "internal_error",
+            )
+            self._log_failure(operation, request_id, started_at, code)
+            message = (
+                "validation_error: Tool arguments are invalid."
+                if code == "validation_error" else _safe_tool_error(f"{code}:")
+            )
+            raise ToolError(message) from None
         except VaultValidationError as exc:
             self._log_failure(operation, request_id, started_at, "invalid_path")
             raise ToolError("invalid_path: Invalid vault-relative path.") from exc
@@ -325,6 +360,10 @@ class VaultBridgeMCPAdapter:
                 "semantic_index_unavailable: A compatible ready semantic index is unavailable."
             ) from exc
         except (ValueError, ValidationError) as exc:
+            if operation == "knowledge_hygiene_scan":
+                self._log_failure(operation, request_id, started_at, "internal_error",
+                                  error_type=type(exc).__name__)
+                raise ToolError("internal_error: The operation could not be completed.") from None
             self._log_failure(operation, request_id, started_at, "validation_error")
             raise ToolError("validation_error: Tool arguments are invalid.") from exc
         except Exception as exc:
@@ -334,7 +373,7 @@ class VaultBridgeMCPAdapter:
                 started_at,
                 "internal_error",
                 error_type=type(exc).__name__,
-                exc_info=(type(exc), exc, exc.__traceback__),
+                exc_info=None if operation == "knowledge_hygiene_scan" else (type(exc), exc, exc.__traceback__),
             )
             raise ToolError("internal_error: The operation could not be completed.") from exc
 
@@ -390,6 +429,13 @@ class VaultBridgeMCPAdapter:
         if inspection.state is IndexState.INDEXING:
             raise SemanticIndexRebuildingError
         raise SemanticSearchUnavailableError
+
+    def knowledge_hygiene_scan(self, request: KnowledgeHygieneScanRequest) -> KnowledgeHygieneScanResponse:
+        return self._execute(
+            "knowledge_hygiene_scan",
+            lambda: serialize_hygiene_result(self.knowledge_hygiene_service.scan(request.to_domain())),
+            result_count=lambda result: len(result.findings),
+        )
 
     def list_notes(self, *, folder: str, limit: int) -> ListNotesResult:
         def action() -> ListNotesResult:
@@ -644,6 +690,7 @@ def create_mcp_server(
     semantic_search_service: SemanticSearchService | None = None,
     duplicate_candidate_service: DuplicateCandidateService | None = None,
     relationship_service: RelationshipService | None = None,
+    knowledge_hygiene_service: KnowledgeHygieneService | None = None,
     semantic_indexer: BackgroundSemanticIndexer | None = None,
     rate_limiter: FixedWindowRateLimiter | None = None,
     transport: MCPTransport = "stdio",
@@ -659,6 +706,14 @@ def create_mcp_server(
         semantic_search_service=app_semantic_service,
     )
     app_relationship_service = relationship_service or RelationshipService(app_vault_service)
+    app_hygiene_service = (
+        knowledge_hygiene_service if knowledge_hygiene_service is not None else KnowledgeHygieneService(
+            vault_service=app_vault_service,
+            relationship_service=app_relationship_service,
+            duplicate_candidate_service=app_duplicate_service,
+            semantic_search_service=app_semantic_service,
+        )
+    )
     if app_settings.mcp_write_enabled and semantic_indexer is None:
         raise ValueError("MCP writes require an owned semantic indexer")
     operation_rate_limiter = rate_limiter
@@ -674,10 +729,35 @@ def create_mcp_server(
         semantic_search_service=app_semantic_service,
         duplicate_candidate_service=app_duplicate_service,
         relationship_service=app_relationship_service,
+        knowledge_hygiene_service=app_hygiene_service,
         semantic_indexer=semantic_indexer,
         transport=transport,
         operation_rate_limiter=operation_rate_limiter,
     )
+    defaults = KnowledgeHygieneScanRequest()
+
+    def knowledge_hygiene_scan(
+        groups: list[str] = defaults.groups,
+        finding_limit: int = defaults.finding_limit,
+        duplicate_source_limit: int = defaults.duplicate_source_limit,
+        semantic_candidates: bool = defaults.semantic_candidates,
+        inspect_derived_index: bool = defaults.inspect_derived_index,
+    ) -> KnowledgeHygieneScanResponse:
+        """Run bounded, read-only Knowledge Hygiene diagnostics over canonical Markdown notes.
+
+        Results may be partial; duplicate candidates are advisory and semantic candidate evidence
+        is currently unavailable. Does not repair notes or refresh indexes.
+        """
+        request = KnowledgeHygieneScanRequest(
+            groups=groups, finding_limit=finding_limit, duplicate_source_limit=duplicate_source_limit,
+            semantic_candidates=semantic_candidates, inspect_derived_index=inspect_derived_index,
+        )
+        return adapter.knowledge_hygiene_scan(request)
+
+    hygiene_tool = Tool.from_function(
+        knowledge_hygiene_scan, annotations=READ_ONLY_ANNOTATIONS, structured_output=True,
+    )
+    hygiene_tool.parameters = KnowledgeHygieneScanRequest.model_json_schema()
     server = MCPServer(
         MCP_SERVER_NAME,
         description=(
@@ -688,6 +768,7 @@ def create_mcp_server(
         version=MCP_SERVER_VERSION,
         log_level="CRITICAL",
         middleware=[_privacy_error_middleware],
+        tools=[hygiene_tool],
     )
 
     @server.tool(annotations=READ_ONLY_ANNOTATIONS, structured_output=True)

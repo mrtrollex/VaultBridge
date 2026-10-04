@@ -14,6 +14,7 @@ from app.core.http_security import enforce_peer_rate_limit, verify_bearer_author
 from app.mcp_server import create_mcp_server
 from app.services.duplicate_candidates import DuplicateCandidateService
 from app.services.indexer import BackgroundSemanticIndexer
+from app.services.knowledge_hygiene import KnowledgeHygieneService
 from app.services.rate_limiter import FixedWindowRateLimiter
 from app.services.relationships import RelationshipService
 from app.services.semantic_search import SemanticSearchService
@@ -69,6 +70,7 @@ def create_mcp_http_transport(
     semantic_search_service: SemanticSearchService,
     duplicate_candidate_service: DuplicateCandidateService,
     relationship_service: RelationshipService,
+    knowledge_hygiene_service: KnowledgeHygieneService,
     semantic_indexer: BackgroundSemanticIndexer,
     rate_limiter: FixedWindowRateLimiter,
 ) -> tuple[MCPServer, ASGIApp]:
@@ -79,6 +81,7 @@ def create_mcp_http_transport(
         semantic_search_service=semantic_search_service,
         duplicate_candidate_service=duplicate_candidate_service,
         relationship_service=relationship_service,
+        knowledge_hygiene_service=knowledge_hygiene_service,
         semantic_indexer=semantic_indexer,
         transport="streamable-http",
     )

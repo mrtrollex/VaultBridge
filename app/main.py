@@ -267,6 +267,7 @@ def create_app(
             semantic_search_service=app_semantic_search_service,
             duplicate_candidate_service=app_duplicate_candidate_service,
             relationship_service=app_relationship_service,
+            knowledge_hygiene_service=app_knowledge_hygiene_service,
             semantic_indexer=app_semantic_indexer,
             rate_limiter=app_rate_limiter,
         )

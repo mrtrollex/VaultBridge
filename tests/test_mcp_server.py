@@ -206,6 +206,7 @@ def test_sdk_v2_server_advertises_exact_read_only_surface_and_no_prompts(tmp_pat
     tools, resources, templates, prompts = run_client(server, inspect_surface)
     assert version("mcp").split(".", 1)[0] == "2"
     assert [tool.name for tool in tools.tools] == [
+        "knowledge_hygiene_scan",
         "list_notes",
         "read_note",
         "search_notes",
@@ -236,6 +237,7 @@ def test_write_enabled_surface_adds_exact_write_tools_with_annotations(tmp_path)
 
     tools = run_client(server, lambda client: client.list_tools()).tools
     assert [tool.name for tool in tools] == [
+        "knowledge_hygiene_scan",
         "list_notes",
         "read_note",
         "search_notes",
@@ -908,6 +910,7 @@ def test_official_client_stdio_round_trip_and_clean_eof_shutdown(tmp_path):
         asyncio.wait_for(smoke(), timeout=20)
     )
     assert [tool.name for tool in tools.tools] == [
+        "knowledge_hygiene_scan",
         "list_notes",
         "read_note",
         "search_notes",

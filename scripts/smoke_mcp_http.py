@@ -21,6 +21,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 TOOLS = {
+    "knowledge_hygiene_scan",
     "list_notes",
     "read_note",
     "search_notes",
@@ -427,6 +428,17 @@ async def client_smoke(
             expected_tools = TOOLS | WRITE_TOOLS if writes else TOOLS
             assert names == expected_tools, f"unexpected MCP tools: {sorted(names)}"
             result = await client.call_tool("list_notes", {})
+            note_count = len(result.structured_content["notes"])
+            hygiene = await client.call_tool("knowledge_hygiene_scan", {"groups": []})
+            assert hygiene.is_error is False
+            assert hygiene.structured_content == {
+                "findings": [],
+                "scan": {"state": "complete", "reasons": [], "eligible_paths": note_count,
+                         "inspected_notes": note_count, "unavailable_notes": 0},
+                "candidates": {"state": "not_requested", "source_notes": 0, "reasons": []},
+                "derived_index": {"status": "not_requested"},
+                "findings_truncated": False,
+            }
             paths = {note["path"] for note in result.structured_content["notes"]}
             if writes:
                 target = await client.call_tool(

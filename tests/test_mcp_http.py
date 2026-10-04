@@ -241,6 +241,7 @@ def test_official_client_modern_http_lists_and_calls_read_only_surface(tmp_path)
         tools, templates, listed, read, links, resource = asyncio.run(smoke())
 
     assert [tool.name for tool in tools.tools] == [
+        "knowledge_hygiene_scan",
         "list_notes",
         "read_note",
         "search_notes",
