@@ -3312,6 +3312,64 @@ changes documentation only, and stops after `agent_finish.py` creates the review
 
 ---
 
+## Knowledge Spaces and Scope Policies
+
+### VB-150 — Knowledge Spaces and Scope Policies architecture / ADR — P1 (complete; accepted design only)
+
+**Status:** Complete as design-only work. Accepted design is recorded in
+[ADR 0009](docs/adr/0009-knowledge-spaces-and-scope-policies.md) after independent design review returned APPROVE.
+Milestone 16 remains PLANNED. This task defines architecture only; a review packet does not
+constitute ADR acceptance or runtime authorization.
+
+**Scope:** Inspect current Settings, containment, relationships, Knowledge Query, capture/promotion,
+hygiene, semantic/index ownership and REST/MCP/CLI composition before defining the smallest future
+multi-space boundary. Preserve current one-root support, Markdown authority, privacy, deterministic
+behavior, derived rebuildability, bounded operations and public compatibility.
+
+**Design acceptance criteria:**
+
+- Distinguish stable logical space ID from private contained root; define finite read/write/index
+  and supported dialect/capability policy through one authoritative domain boundary.
+- Define future note identity as `(space_id, canonical_relative_path)` without changing current
+  default-relative path identity or rewriting notes/provenance/indexes.
+- Preserve legacy `VAULT_PATH` as implicit `default`, with no mandatory single-root migration;
+  omitted scope never expands beyond default or falls back to another space.
+- Define bounded 1–8-space read scope, exactly one write destination, explicit invalid empty scope,
+  safe unknown/denied/unavailable handling and no partial authorization.
+- Compare index models and select independent derived per-space indexes as the future baseline;
+  retain existing default storage and defer precise composition/work/resource contracts.
+- Define bounded cross-space query identity/order/partial availability, local-only link/backlink
+  resolution, same-space explicit capture/promotion and logical provenance, and one-space hygiene
+  with disambiguating logical result context and unchanged ADR 0008 semantics.
+- Record alternatives, compatibility/security impacts, implementation gates and non-goals; define
+  conceptual operator configuration and adapter-visible IDs without final APIs or host paths.
+- Synchronize ARCHITECTURE/ROADMAP/PROJECT_STATE to distinguish current support, accepted design
+  and future work. Run docs consistency/link checks, `git diff --check` and docs-only
+  `agent_finish.py`; generate `.agent/review_packet.md` with actual evidence and stop.
+
+**Excluded:** Runtime, tests, adapters, configuration behavior, database/policy store, arbitrary
+roots, multi-tenancy/RBAC/account administration, cross-space automatic moves/repair, VB-151/VB-152
+implementation, release/deployment, commit or reviewer launch. ADR acceptance must precede a
+separately accepted runtime contract; sequence alone never authorizes implementation.
+
+### VB-151 — Compatibility-safe multi-space domain boundary — P1 (future; unscoped)
+
+**Status:** Future runtime/domain work. No implementation scope is reserved or authorized.
+Requires accepted ADR 0009 and a separate authoritative BACKLOG contract for exact configuration,
+owner composition, containment/policy denial tests, execution budgets, index binding/lifecycle,
+precise semantic composition, partial results and provenance/replay compatibility. This placeholder
+does not authorize code, storage migration, new workers or changes to single-root behavior.
+
+### VB-152 — Permission-aware query and write adapter integration — P1 (future; unscoped)
+
+**Status:** Future adapter work. No implementation scope is reserved or authorized.
+Requires accepted domain/runtime contracts and a separate authoritative BACKLOG contract selecting
+exact REST/MCP/CLI surfaces, qualified resources/results, error mapping and compatibility tests.
+It must reuse the common policy boundary and cannot independently authorize scope or infer write
+destinations. No endpoint, tool, URI, CLI flag or dashboard change is authorized here.
+
+---
+
 ## Release history
 
 ### v1.2.0 release

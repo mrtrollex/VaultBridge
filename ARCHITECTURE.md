@@ -525,6 +525,22 @@ manage arbitrary files, or bypass deferred VB-032/VB-033/VB-034 boundaries.
 
 ---
 
+## Accepted Knowledge Spaces design (VB-150; no current multi-space support)
+
+[ADR 0009: Knowledge Spaces and Scope Policies](docs/adr/0009-knowledge-spaces-and-scope-policies.md)
+is Accepted; VB-150 is complete as design-only work. Current support remains one contained Markdown root.
+The accepted design separates stable logical `space_id` from the private root binding and extends future
+note identity to `(space_id, canonical_relative_path)`. Existing path-only calls stay default-space
+calls; legacy `VAULT_PATH` remains valid without mandatory migration.
+
+One future domain/policy boundary validates finite selected scopes and read/write/index/capability
+policy before dispatch to existing per-space containment and domain owners. Reads may explicitly
+select up to eight spaces; writes select one destination. Independent derived semantic indexes,
+local-only relationship resolution, same-space promotion and one-space hygiene preserve current
+ownership. Precise cross-space execution/merge/provenance contracts remain implementation gates.
+VB-151 domain/runtime and VB-152 adapters need separate accepted BACKLOG contracts; design acceptance
+changes no registered route, operation ID, resource, configuration, persistence or runtime behavior.
+
 ## Target architecture
 
 ```text
@@ -882,7 +898,9 @@ Writes should not synchronously rebuild unrelated notes.
 
 ## Security boundaries
 
-VaultBridge is allowed to access one configured vault root and its own data directory.
+Current VaultBridge is allowed to access one configured vault root and its own data directory.
+Accepted ADR 0009 describes future separately contained space bindings; it grants no current
+multi-root access or permission to accept caller-supplied host paths.
 
 It must not expose:
 

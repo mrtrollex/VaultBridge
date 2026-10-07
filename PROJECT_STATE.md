@@ -301,6 +301,13 @@ Current post-v1 planning position:
   read-only, and advisory. Dashboard views are deferred; repair/mutation workflows and bounded
   semantic candidate retrieval remain separate future work, not completion dependencies.
   Milestone 16 remains planned. This documentation synchronization changes no runtime/test baseline
+- VB-150 is complete under accepted [ADR 0009: Knowledge Spaces and Scope Policies](docs/adr/0009-knowledge-spaces-and-scope-policies.md)
+  as design-only work after independent design review returned APPROVE. Current runtime still supports one contained
+  authoritative Markdown root. The accepted design defines logical space IDs and qualified note identity,
+  legacy default compatibility, one typed scope/policy boundary, bounded multi-space reads and
+  one-space writes, independent derived indexes, local links and one-space hygiene. VB-151 runtime
+  and VB-152 adapters remain future/unscoped, without implementation authorization. Milestone 16
+  remains PLANNED; no configuration, adapter, runtime, test or index-format behavior changed
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
 
