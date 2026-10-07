@@ -3352,13 +3352,691 @@ roots, multi-tenancy/RBAC/account administration, cross-space automatic moves/re
 implementation, release/deployment, commit or reviewer launch. ADR acceptance must precede a
 separately accepted runtime contract; sequence alone never authorizes implementation.
 
-### VB-151 — Compatibility-safe multi-space domain boundary — P1 (future; unscoped)
+### VB-151 — Compatibility-safe multi-space domain boundary — P1 (contract defined; runtime pending)
 
-**Status:** Future runtime/domain work. No implementation scope is reserved or authorized.
-Requires accepted ADR 0009 and a separate authoritative BACKLOG contract for exact configuration,
-owner composition, containment/policy denial tests, execution budgets, index binding/lifecycle,
-precise semantic composition, partial results and provenance/replay compatibility. This placeholder
-does not authorize code, storage migration, new workers or changes to single-root behavior.
+**Authority / status:** This is the authoritative future implementation contract under
+[Accepted ADR 0009](docs/adr/0009-knowledge-spaces-and-scope-policies.md). VB-150 is complete and
+merged. This task changes documentation only: no slice below is implemented, runtime is pending,
+Milestone 16 remains **PLANNED**, and VB-152 stays future/unscoped. A later explicitly requested
+implementation must follow this contract and ADRs 0005–0008 without reopening their semantics.
+
+#### Inspected owners and permitted extensions
+
+`Settings.from_env()` reads a finite environment allowlist, without a file loader or precedence
+stack. `vault_path` is resolved; `semantic_data_path` is expanded but not resolved by Settings.
+Defaults `/vault` and `/vault/.obsidian-chatgpt-data` are independent. `VaultService` owns containment,
+canonical paths, verified reads, coordinated writes and bounded hygiene snapshots. Current
+list/search/path enumeration and the hygiene walker do not bound all filesystem-entry work.
+List orders by modification time; literal search case-folds title/body. Knowledge Query instead
+uses ADR 0006 exact literal matching and live eligibility before semantic ranking; its current
+snapshot has no hard whole-vault work ceiling. `RelationshipService` already accepts verified
+content and a reusable local resolution snapshot. No replacement parser/resolver is authorized.
+
+`SemanticSearchService` owns fingerprints/signatures, lifecycle, sync locks, per-note best chunk,
+hybrid ranking and local relative floor. Current search loads all chunks before eligible filtering
+and returns four-decimal scores. `SemanticRepository` owns SQLite/WAL, state, batches and immutable
+inspection. `BackgroundSemanticIndexer` owns one executor, cancellation and coalesced relative-path
+jobs; it has no aggregate space queue bound. Capture/promotion own portable fields, exact hashes
+and coordinated commit/replay primitives. Duplicate bounded batches provide local title evidence,
+not bounded semantic retrieval. Hygiene consumes those owners with strictly immutable inspection.
+
+REST composition (`app/main.py`, `app/api/dependencies.py`), MCP HTTP shared injection, MCP stdio
+standalone composition and CLI local/lazy immutable readers/indexers remain adapter-owned.
+Inspecting them does not authorize editing them here. Future extensions are limited to budgeted
+VaultService discovery/verification, supplied-snapshot Query evaluation, precise bounded semantic
+retrieval, private repository binding checks, resource/scheduler leases and scoped v2 provenance.
+Federated relationship predicates additionally require the quota-aware relationship/parsing owner
+path specified below; current tuple-returning relationship APIs cannot enforce occurrence ceilings.
+
+#### Operator configuration and precedence
+
+Future Settings adds exactly `knowledge_spaces_json: str | None`, alias/environment name
+`KNOWLEDGE_SPACES_JSON`, to the existing allowlist, with `repr=False`. Absence or Python `None`
+means legacy mode. Empty/whitespace string is invalid, never absence. Direct Settings construction
+uses the same JSON string; supplying both alias and Python field name is invalid. No config-file
+indirection, YAML, dotenv loader, interpolation, second environment field, discovery or hot reload.
+Existing unrelated Settings parsing/defaults and ignored unknown environment names remain intact.
+
+Encoding: one UTF-8 JSON object with exactly `version` (strict integer 1, not bool) and `spaces`
+(array of 1..8 records). Raw field, including whitespace, is at most 32,768 UTF-8 bytes. Reject BOM,
+invalid Unicode/surrogates, duplicate keys at every depth, non-finite constants, trailing data,
+comments, unknown keys, type coercion and alternative encodings. Maximum nesting depth is 4
+(object=1, spaces array=2, record=3, finite-set array=4). Parse once before composition.
+
+Each record has these required fields and optional `label`; no nested policy object:
+
+| Field | Exact value and bound |
+| --- | --- |
+| `space_id` | ASCII string matching `[a-z][a-z0-9_-]{0,63}` |
+| `root` | Private absolute native path string, 1..4,096 UTF-8 bytes |
+| `semantic_data_path` | Private absolute native directory path string, same bound |
+| `label` | Optional nonempty string, <=128 UTF-8 bytes, no control characters; no automatic exposure |
+| `read`, `write` | Each exactly `allow` or `deny` |
+| `indexing` | Exactly `enabled` or `disabled` |
+| `dialects` | Array of 0..2 distinct names: `obsidian_wikilink`, `markdown_link` |
+| `capabilities` | Array of 0..12 distinct names from the set below |
+
+Capability names: `read_note`, `list_notes`, `literal_search`, `relationships`,
+`semantic_retrieval`, `knowledge_query`, `duplicate_candidates`, `capture`, `promotion`,
+`create_note`, `append_note`, `hygiene`. Empty sets deliberately deny those operations. Duplicate
+IDs/names/keys fail configuration, never last-wins. Check cardinalities before deduplication.
+No implicit string trimming. Root/data strings reject NUL/control characters, surrounding
+whitespace, `~`, substitutions, relative paths and dot/dot-dot components; reject Windows
+drive-relative/device paths. Ordinary absolute drive/UNC paths and native separators use owner
+containment checks; JSON backslashes must be escaped. These are operator fields, never caller roots.
+
+Named mode requires exactly one explicit reserved `default`. Its resolved root must equal effective
+legacy `Settings.vault_path`; its resolved data directory must equal effective legacy
+`Settings.semantic_data_path`, resolved against the same startup CWD. Compare effective defaults
+even when legacy environment fields are absent. Conflicts fail closed; neither source wins.
+Nonstandard default requires matching legacy and named fields. No per-space model, chunk, batch
+or note-size override: current global settings apply. Named policy fields are all explicit.
+
+Without the new field, preserve Settings and startup exactly; compose implicit `default` with
+existing root/data, all twelve capabilities, both dialects, read/write allow and indexing enabled.
+Current narrower adapter exposure, write opt-ins and approval still apply. New named startup checks
+must not retrofit fail-fast missing-root or binding-metadata requirements into legacy startup.
+An unavailable implicit default retains current errors/readiness, with no alternate fallback.
+
+#### Immutable domain types and privacy
+
+Use strict frozen/slotted dataclasses or equivalent immutable values in a small domain module.
+Space ID validation is owned by the shared domain validator used by config and policy resolution.
+No trimming, case-folding, Unicode normalization, aliases or fuzzy matching. Config invalid IDs
+produce `invalid_configuration`; caller invalid IDs produce `invalid_scope`. `default` denotes
+only the reserved legacy binding. Paths never substitute for logical IDs.
+
+| Type | Exact fields / semantics |
+| --- | --- |
+| `SpaceId` | `value: str`, regex above, 1..64 ASCII chars; exact equality/hash and ASCII lexical order |
+| `QualifiedNoteIdentity` | `space_id: SpaceId`, `canonical_relative_path: str`; equality/hash on both; order `(id, path.casefold(), path)`; path only from that VaultService's canonical verification |
+| `QualifiedPath` | Unverified input `space_id: SpaceId`, `relative_path: str`, 1..1,024 UTF-8 bytes; exact equality/hash; becomes identity only after owner verification |
+| `KnowledgeSpacePolicy` | `read`, `write`: `Literal['allow','deny']`; `indexing: Literal['enabled','disabled']`; `dialects: frozenset[Dialect]`, `capabilities: frozenset[Capability]`; finite enums above, structural equality, no ordering |
+| `KnowledgeSpaceDefinition` | `space_id: SpaceId`, `label: str | None`, `policy: KnowledgeSpacePolicy`, private `root_binding: Path`, private `semantic_data_binding: Path`; startup record, structural equality, no order |
+| `ReadScope` | `space_ids: tuple[SpaceId, ...]`; raw 1..8 count validated first, then exact dedup and ASCII sort; structural equality/hash on effective tuple |
+| `WriteScope` | `space_id: SpaceId`; exactly one, explicit on new write entry points |
+| `AuthorizedSpaceBinding` | `space_id: SpaceId`, `policy: KnowledgeSpacePolicy`, private `owners: SpaceOwners`, private `registry_token: object`; opaque internal handle, identity equality, no ordering/serialization |
+| `SpaceRegistry` | ID-sorted `definitions: tuple[KnowledgeSpaceDefinition, ...]`, private immutable owner mapping and startup token; <=8 records, identity equality, no discovery API |
+| `SpaceOwners` | Private fixed references to vault, relationships, query, duplicates, capture, promotion, hygiene, semantic/inspection facade and scheduler handle; semantic runtime optional when disabled; identity equality |
+
+Filesystem Paths appear only in private configuration/binding/owner objects. New scoped canonical
+output paths exceeding 1,024 UTF-8 bytes are omitted with partial coverage; legacy path behavior
+does not change. Definitions/owners exclude roots/data/labels from repr and generic serialization.
+Errors/logs contain stable categories and bounded counts, not host paths, labels, note/query text,
+SQL, embeddings, raw exceptions or symlink targets. Safe IDs/relative identities may appear in
+authorized results, not routine private-note diagnostics. VB-151 exposes no label listing.
+Bindings cannot be forged by adapters or reused across a different startup token; no durable grant.
+
+#### Registry startup validation
+
+Validate every named record before serving, storage preparation, workers or models. Operator-only
+startup may inspect denied roots to check configuration; an operation may never probe them.
+Strictly resolve roots as existing directories, compare resolved ancestry and native same-file
+identity, and check directory-open/enumeration access without recursive scans/probe-file writes.
+Write allow also checks OS permission hints; actual writes still fail safely through current owners.
+Write deny does not require OS read-only storage. Do not create a missing root.
+
+| Condition | Named startup result |
+| --- | --- |
+| Duplicate/invalid ID, absent default, bad schema/name/bound | Fatal `invalid_configuration` |
+| Identical roots, ancestor/descendant roots, same-file/case/short-name aliases, symlink/junction aliases | Fatal; one namespace cannot have two policy bindings |
+| Missing/unreadable/non-directory root or failed strict resolution/access | Fatal including default/denied records; never silently drop |
+| Write allow with read deny; indexing enabled with read deny | Fatal |
+| Read allow, write deny, indexing enabled | Valid; writable derived state with read-only Markdown policy |
+| Duplicate/overlapping data directories or aliased SQLite/state/sidecar locations | Fatal even when indexing disabled |
+| Data equals/contains a root, or lies inside another space's root | Fatal |
+| Data inside its own root | Only strictly below an existing `SEMANTIC_EXCLUDED_DIRECTORIES` component; all discovery/watch/sync paths exclude it |
+| Data outside all roots | Valid if distinct and not ancestor/descendant of another data binding |
+| Missing data directory | Valid with resolvable accessible existing ancestors and create-capable parent when enabled; selected lifecycle creates it later |
+| Existing non-directory/unsafe data binding or inaccessible enabled storage parent | Fatal |
+| Legacy/named default root or data mismatch | Fatal, no precedence |
+
+Resolve missing data leaves using a strict existing ancestor plus validated components; reverify
+identity/containment before create/open. Disabled data is structurally checked without opening DB;
+unreadable existing disabled data may remain and immutable inspection returns unavailable.
+There is no configured-temporarily-unavailable **named root at startup**. After startup, loss of an
+authorized root is `unavailable_space`; changed root identity/escape fails closed, never substitutes
+content. Legacy-only startup stays unchanged. Checks do not promise all-hardlink detection or
+operator/OS isolation; retain ADR 0009's no intentional file aliasing and cooperating-writer limits.
+
+#### Policy resolution and owner composition
+
+`SpacePolicyResolver` exclusively owns policy decisions. Internal APIs:
+`authorize_read(scope: ReadScope | None, operation: Capability, required_dialects: frozenset[Dialect])
+-> tuple[AuthorizedSpaceBinding, ...]`; `authorize_write(scope: WriteScope | None, operation:
+Capability, legacy: bool = False) -> AuthorizedSpaceBinding`; equivalent one-binding index
+authorization/inspection under the matrix below. None read scope means default. None write scope
+is permitted only for legacy calls, bound to default before review/mutation.
+
+Reject empty explicit scope, >8 raw IDs (even all duplicates), malformed/nested/wildcard selection,
+conflicting singular/plural fields and multi-space writes as `invalid_scope`. Valid duplicate IDs
+within raw bounds are exactly deduplicated as ADR 0009 requires; evaluate sorted effective IDs.
+Validate syntax, then authorize **all** selected read/write policies before any owner operation.
+Unknown and denied share `unknown_or_denied_space`, without echoing the offending ID or revealing
+registry membership. Next check all required capabilities/dialects/indexing/current enablement;
+only then issue immutable bindings. No path/root/repository probe, model load or discovery first.
+Unsafe supplied path scopes fail the request, never become partial authorization/availability.
+
+Each owner bundle contains one VaultService(root, global note-size), local RelationshipService,
+bound semantic/inspection facade/repository and existing query/duplicate/capture/promotion/hygiene
+owners injected with those same references. Capture/promotion enqueue closes over stable binding.
+Disabled semantic facade permits strictly immutable inspection only; search/init/sync unreachable.
+No union root, mutable switched-root service, second containment layer or giant replacement owner.
+Existing classes need no new mandatory public parameter. A small `SpaceOperations` orchestrator
+resolves policy then delegates. Trusted owner injection is not a new public bypass. Adapters may
+validate wire types but never permissions; adapter adoption/wiring waits for VB-152.
+
+Activation gate: VB-151 may construct/test named registries through its domain composition factory,
+but cannot serve named mode through today's direct-owner adapters. Until VB-152 integrates every
+applicable operation/resource/background entry point with the resolver, existing REST/MCP/CLI
+composition must reject supplied named configuration with a safe unsupported-configuration startup
+error, rather than ignore it or expose owners with bypassed policy. Enabling named serving is blocked
+on that separate contract. Legacy mode continues unchanged; no adapter schema/wiring is designed here.
+
+#### Domain errors (no transport mappings)
+
+| Category | Meaning |
+| --- | --- |
+| `invalid_configuration` | Startup fatal malformed/unsafe registry; bounded reason only |
+| `invalid_scope` | Shape/cardinality/conflicting scope or cross-space write/edge request |
+| `unknown_or_denied_space` | Whole-selection authorization failure, unknown and denied indistinguishable |
+| `unsupported_capability`, `unsupported_dialect` | Authorized selection lacks requested semantics; reject before work |
+| `indexing_disabled` | Selected semantic/sync operation forbidden even with old rows; whole-request rejection |
+| `unsafe_path`, `unsafe_scope` | Existing containment failure; preserve owner categories |
+| `unavailable_space` | Authorized root operation cannot execute after startup |
+| `semantic_unavailable` | No compatible executable semantic contribution |
+| `incompatible_semantic_configuration` | Present selected scoring descriptors differ; fail before scoring |
+| `operation_cancelled` | Cooperative request/shutdown cancellation, never successful partial |
+
+These refine ADR 0009's conceptual `scope_not_allowed`, `space_unavailable` and internal capability
+reasons. Its safe `capability_unavailable` projection/final HTTP/MCP/CLI mappings belong to VB-152.
+Authorization failures differ from runtime availability and post-authorization partial coverage.
+Unexpected programming errors propagate through current safe boundaries, not successful omissions.
+
+#### Operation matrix and compatibility freeze
+
+R=read allow; W=write allow plus R; I=indexing enabled plus R. Current auth/enablement, containment,
+sizes, approvals and errors also apply. Scoped one-space results use an outer ID; legacy shapes stay.
+
+| Operation | Scope | Required policy / capability | Dialect/index requirement | Partial eligibility |
+| --- | --- | --- | --- | --- |
+| Read note | One read ID | R / `read_note` | None | No |
+| List notes | ReadScope 1..8 | R / `list_notes` | None | New federation yes |
+| Literal search | ReadScope 1..8 | R / `literal_search` | None | New federation yes |
+| Outgoing/backlinks | One read ID | R / `relationships` | Requested origin; omitted normalized origin requires both dialects | Existing unresolved facts only |
+| Semantic retrieval | ReadScope 1..8 | R+I / `semantic_retrieval` | Compatible scoring/index | New federation yes |
+| Knowledge Query | ReadScope 1..8 | R / `knowledge_query`; relationship predicates add `relationships`; semantic mode adds `semantic_retrieval`+I | Predicate origin (omitted=both); text/tag/metadata need no dialect | New federation yes |
+| Duplicate candidates | One read ID | R / `duplicate_candidates` | Optional semantic evidence adds `semantic_retrieval`+I; absent/disabled means unavailable evidence, no search | Existing advisory fallback |
+| Capture | One write ID, explicit on new calls | W / `capture` | No indexing needed | Existing commit-unknown/index evidence only |
+| Promotion review/destination inspection | One read ID | R / `promotion`; optional advice adds `duplicate_candidates` | No indexing needed | Existing optional advice only |
+| Promotion apply | One write ID, same source/destination | W / `promotion` | Exact approval; no extra create/append capability (promotion is its own approved operation) | Existing uncertain-commit semantics |
+| Create/append note | One write ID | W / respective capability | No indexing needed | No |
+| Knowledge Hygiene | One read ID | R / `hygiene`; candidates add `duplicate_candidates`; relationship/isolation groups add `relationships` and both dialects | Immutable inspection allowed when disabled | ADR 0008 coverage only |
+| Full sync/targeted enqueue | One stable internal binding/job | R+I; indexing policy owns maintenance, no note-write capability | Binding/signature check | Existing lifecycle failure, no federation |
+| Immutable hygiene index inspection | One read ID | R / `hygiene` | Never initialization, disabled permitted | Existing unavailable classification |
+
+New list preserves modification-descending order with qualified path tie-break. New literal and
+nonsemantic Query order `(space_id, path.casefold(), path)`. New list/literal must use budget-aware
+owner entries, not repeat current full walks. Literal federation retains current case-folded
+title/body match and <=400-character snippets; Query literal stays exact case-sensitive full
+Markdown substring. New list/literal/semantic limits default 50/10/5, maximum 100 **global**;
+strict integers 1..100 (not bool). Common relative folder omission=root, missing=empty, explicit
+empty invalid, <=1,024 UTF-8 bytes. Literal text nonempty <=8,192 bytes; semantic text nonempty
+<=4,096; min-score default 0.28, finite float [0,1]. These new bounds do not retrofit legacy calls.
+
+No named configuration means exact Settings/startup/service-signature/response/relative-path/
+index/signature/ranking/write compatibility. Omitted scope and every existing adapter request stay
+default-only after adding records. Denied/unavailable default never falls back. Intentional named
+default policy denial may disable an old operation but cannot reroute it. No mandatory new legacy
+parameter, prefix, response field or adapter exposure. VB-151 adds domain APIs, not VB-152 syntax.
+
+#### Whole-request execution budgets
+
+New list/literal/semantic/Scoped Query entry points use these fixed ceilings, even with one explicit
+ID; legacy calls retain existing contracts. Federation is sequential in ID order, no opportunistic
+parallelism/repeated scans. Allocate each space `min(per_space_ceiling, floor(global_ceiling/n))`
+at admission (n=effective authorized IDs). Never redistribute unused quota; availability cannot
+raise another space's budget. Every phase, including symlink probes/rechecks, shares the counters.
+
+| Resource | Global ceiling | Per-space ceiling / rule |
+| --- | --- | --- |
+| Spaces / visible results | 8 / 100 | Operation limit global |
+| Retained canonical candidate paths | 20,000 | 10,000; below ADR 0009's 80,000 upper ceiling |
+| Consumed directory entries (all types, excluded/unsafe included) | 100,000 | 25,000 |
+| Directory opens | 10,000 | 2,500; depth <=64 below root |
+| Primitive filesystem probes | 2,000,000 | 500,000; stat/lstat, DirEntry probes, readlink, descriptor opens, resolve component checks and revalidation |
+| Extra alias spellings / directory-alias facts | 20,000 / 20,000 | 10,000 each, separate from mandatory spelling |
+| Verified authored reads | 20,016 | Candidate quota plus <=16 unique incoming sources globally, one-read reuse |
+| Authored bytes actually read | 268,435,456 (256 MiB) | Divide by n; includes extra reads and size-detection byte |
+| Relationship occurrences examined | 200,000 | 50,000; existing parser/target bounds apply |
+| Relationship predicate comparisons | 320,000 | <=16 global predicates times <=20,000 candidates; normalized target/origin sets precomputed |
+| Semantic chunk rows loaded/decoded/scored | 100,000 | 50,000, including overflow detection |
+| Semantic row payload bytes (content, heading, path, embedding) | 268,435,456 | Divide by n; preflight lengths before materialization |
+| SQLite VM steps in federation reads | 10,000,000 | 5,000,000; progress handler charges quotas and aborts |
+| Semantic note candidates sent to merge | <=4,000 | `min(500, max(global_limit*5, global_limit))` per space after eligibility |
+
+For the authored-read counter, reserve 16 reads globally for distinct incoming predicate sources,
+assigned to their qualified endpoint spaces; candidate reads use each space's candidate quota.
+Reuse a candidate read when it is also a source. No per-space reservation of 16 is permitted.
+
+Owner discovery counts before materialization, never `sorted(scandir)`/post-truncated `rglob`.
+At most one iterator step detects EOF/overflow and is charged. One contained pass retains canonical
+top-K plus mandatory verified spelling and separate aliases. If full discovery completes with
+candidate overflow, return smallest canonical quota with `path_limit`. If entry/open/probe/depth
+quota prevents full discovery, discard that space's candidate contribution and report
+`discovery_limit`; OS-order prefixes cannot define deterministic selection. No restart. Complete
+empty discovery is success. This strategy preserves bounded work without claiming full-vault top-K.
+
+Content/byte exhaustion evaluates a canonical prefix and marks `content_limit`. Unreadable,
+oversized, invalid-UTF-8/raced notes are omitted with `note_unavailable`. Read at most min(note-size+1,
+remaining byte quota); no preliminary full read or unlimited content cache. Release content after
+deriving required facts while retaining one-read identity. Relationship Query requires a complete
+resolution universe: incomplete path/alias/discovery coverage or exhausted relationship work
+discards that space's relationship contribution as `relationship_limit`, rather than inventing
+unambiguous targets. No full scan per predicate/backlink/source. Explicit paths share probe quotas.
+
+Chunk/payload/SQLite quota exhaustion discards that space's semantic contribution as `semantic_limit`;
+never rank a partial chunk prefix as a complete local floor. Read only eligible-path rows through
+the repository's indexed path lookup; count compatibility metadata/overflow queries too. One final
+live revalidation pass over merged candidates (<=4,000), no refill/widen/retry. Primitive-count
+tests instrument the full operation, not just a helper. If an OS resolver cannot prove ceilings,
+that slice blocks until an owner-contained bounded implementation/native/POSIX evidence exists.
+
+Cancellation token is checked before every directory entry/note/relationship source, every <=128
+chunk rows and <=1,000 SQLite VM steps. Cancellation fails whole request as `operation_cancelled`,
+closes iterators/cursors/descriptors and releases leases. Unexpected programming failures also
+fail whole request. Blocking OS/model calls need not be forcibly interrupted: these are work
+ceilings, not latency guarantees. Expected availability failures use coverage below.
+
+#### Required quota-aware relationship-owner path
+
+Confirmed owner limitation: `WikilinkResolver.parse()` and `MarkdownLinkResolver.parse()` each
+materialize per-line lists and then a complete whole-note tuple. RelationshipService's
+`_derive_normalized_relationships()` resolves all wikilinks and Markdown links, accumulates a
+combined positioned list, sorts that complete list, then materializes the normalized tuple.
+`normalized_relationships_from_content()` delegates to it; `normalized_backlinks()` repeats it
+for every source before collecting results. These paths currently have no quota/cancellation
+input. A post-return counter cannot enforce the declared occurrence work ceilings. The following
+additive owner extension is a prerequisite for slice C's federated relationship predicates;
+no runtime implementation or legacy API change is made by this contract repair.
+
+Pin the new internal interface (equivalent names may preserve this exact contract):
+`RelationshipService.derive_normalized_bounded(content: str, *, source_path: str,
+snapshot: RelationshipResolutionSnapshot, budget: RelationshipBudgetView,
+cancel: CancellationToken) -> BoundedRelationshipDerivation`.
+Content is one already verified read; snapshot is the existing complete, budgeted same-space
+resolution snapshot, never an implicit new scan. Result is immutable with
+`occurrences: tuple[RelationshipOccurrence, ...]`,
+`state: Literal['complete','limited']`, `reason: Literal['relationship_limit'] | None`.
+Complete requires EOF proven without exhausting a quota; limited always carries relationship_limit.
+The tuple contains only admitted occurrences in source order, never a full tuple subsequently sliced.
+
+Orchestration owns one request-local global occurrence counter initialized to **200,000** and
+one counter per authorized selected space with ceiling **50,000**. Preserve the existing fixed
+allocation rule `min(50,000, floor(200,000/n))`; it may lower effective quota for n>4, never raise
+either ceiling. A private `RelationshipBudgetView` binds the shared aggregate counter, that space's
+effective remaining quota, parse-work counter and cancellation token. `try_admit()` atomically
+checks/decrements both occurrence counters once, before constructing/materializing the occurrence
+object or resolving it. No negative counts, refunds, reset per note/predicate/dialect, or local
+copies of the global counter. The handle lives for the whole federated request, including incoming
+sources and outgoing candidate evaluation across selected spaces. Admitted unresolved/missing/
+unsafe occurrences consume one unit too; filtering/deduplication does not refund work.
+
+Exactly one logical occurrence (source position plus dialect origin under current parser semantics)
+costs one occurrence unit **once at admission**. Parsing normalization/resolution/return conversion
+never charges it again. Reuse derived facts when a verified source serves multiple predicates or
+both incoming and outgoing evaluation; do not derive/charge the same source snapshot again.
+Identical repeated links at different source positions remain separate occurrences. If both owners
+recognize an occurrence at one offset, each distinct origin is a separate logical occurrence,
+ordered wikilink then Markdown as the current stable positioned sort does.
+
+Both existing dialect owners must supply incremental recognition through one combined source-order
+cursor coordinated by RelationshipService, preserving their existing fence/code/link exclusions,
+written values and source offsets. Recognize syntax using bounded cursor/span state; call
+try_admit before creating a Wikilink/MarkdownLink/normalized occurrence or invoking a resolver.
+No complete `.parse()`, `_parse_line()` list, `resolve_markdown()`, positioned list/sort, or full
+normalized tuple may precede admission. A lazy wrapper around those eager APIs is nonconforming.
+Do not process all wikilinks before all Markdown links: combined `(source_position, origin tie)`
+order controls admission. Both dialects consume the **same** view, not one full quota each.
+For mixed 50,000-wiki/50,000-Markdown input with effective quota 50,000, admit at most 50,000 total.
+
+Before starting/continuing syntax recognition check remaining occurrence credit and cancellation;
+when either occurrence counter reaches zero, stop both dialect cursors immediately. No further
+candidate scan, overflow occurrence/lookahead, resolution, normalization or continuation is allowed
+for unadmitted occurrences. The last admitted occurrence may finish its already-authorized
+resolution/normalization, with a cancellation check before resolution; no new occurrence is admitted
+afterward. Conservatively report limited even if exactly quota links would have been the complete
+note; reaching zero never produces complete coverage. Do not scan the rest to prove EOF after
+quota exhaustion.
+
+Rejected/malformed/excluded candidate syntax consumes **no occurrence unit** and performs no
+resolution. Its cost is explicit parse-probe work: count each inspected Unicode code point,
+including delimiter lookahead/backtracking/rechecks, separately from filesystem probes and
+occurrence admission. For each verified content derive parse credit of `16 * UTF-8 byte length`,
+at most once for that source snapshot; sum credit cannot exceed 16 times the existing request/per-
+space authored-byte quotas. Both dialects share this credit. This bounds repeated recognition of
+rejected syntax without changing existing byte/occurrence/filesystem/predicate ceilings. Owner
+helpers must instrument scans/searches, not hide unbounded native find/regex loops. Exhausting
+parse credit also stops both cursors as relationship_limit. Do not allocate a whole split-lines
+array or rejected-candidate list; retain bounded cursor/span state plus admitted results only.
+
+Check cancellation before each admission and each resolution, and at most every 1,024 parse-probe
+units including inside long malformed labels/targets/code-span searches; never just between notes.
+Cancellation stops further recognition/admission/resolution, closes owner iterators and raises
+operation_cancelled for the entire request; a buffered prefix is not returned as successful partial.
+Current containment probes during admitted resolution still share the existing filesystem budget.
+
+Only Scoped Knowledge Query with relationship predicates currently requires federated relationship
+derivation. Both outgoing candidate facts and incoming endpoint-source facts must use this bounded
+path and shared view. It cannot call existing eager outgoing/backlink APIs or scan backlinks per
+predicate. List/literal/semantic-only federation has no relationship work. Standalone outgoing and
+backlink calls remain one-space with unchanged legacy semantics; this extension does not broaden
+their scope or add successful partial results. Any future internal use that claims these ceilings
+must use this bounded path (and budgeted source discovery for backlinks), never an eager fallback.
+
+On limited derivation, retain the admitted source-order prefix only as internal bounded evidence
+while unwinding; it cannot prove a failed/negative relationship predicate or complete result.
+Preserve the existing Query rule: discard **all** relationship-query matches from that space,
+including earlier matches, and stop its remaining relationship evaluation. Record
+SpaceCoverage(state='unavailable', reasons containing relationship_limit) for that selected ID,
+with counts reflecting charged work, not discarded matches. A per-space/parse limit need not
+stop other spaces with remaining authorized credits. Global occurrence exhaustion forbids further
+relationship parsing in every remaining space; those requiring relationship evaluation receive
+relationship_limit coverage too. Prior fully completed spaces may retain their qualified matches.
+Coverage stays in selected-ID order, retained results use existing canonical/semantic qualified
+ordering, and the outer ScopedReadResult is partial, never complete after a reported limit.
+If no space supplies an executable contribution, preserve unavailable_space for nonsemantic Query
+or semantic_unavailable for semantic Query; an already-completed available empty space permits
+explicit partial empty success. No hidden retries/continuation or public transport mapping.
+For a non-partial operation, incomplete evidence fails safely without returning a successful prefix;
+existing one-space relationship/backlink APIs and their error behavior are not retrofitted here.
+
+#### Knowledge Query: wrapper B
+
+Pin B: `ScopedKnowledgeQuery(scope: ReadScope | None, query: KnowledgeQuery,
+paths: tuple[QualifiedPath, ...] = (), relationships: tuple[QualifiedRelationshipPredicate, ...] = ())`.
+Qualified predicate fields: `direction: Literal['incoming','outgoing']`, `other: QualifiedPath`,
+`origin: Dialect | None`. Immutable request; wrapped query's bare paths/relationships must be empty
+on this new API even for one ID. Qualified raw bounds 64 paths/16 relationships globally before
+deduplication. Retain all ADR 0006 text/scalar/tag/metadata bounds, default20/max100 limit and empty
+query rejection. Scope alone is not a query. Qualified IDs outside selected scope fail before work.
+
+Qualified paths are one global OR; a space with no listed paths contributes empty when paths are
+present. Relationships remain AND/same-space: candidate ID must equal every endpoint ID. Mixed
+endpoint IDs yield no candidates, not cross-space resolution. Common folder applies recursively,
+segment-aware in each root; missing is empty locally. Text/tag/metadata semantics reuse ADR 0006.
+No bare path fan-out, first match or global edge. Omitted origin requires both dialects.
+
+Add narrow internal KnowledgeQueryService evaluation accepting one supplied budgeted VaultService
+snapshot, authorized per-space projection, counters/token and precise semantic owner API. Reuse
+current validation/filter helpers and supplied-content relationship derivation, not n calls to the
+unbounded legacy query. Relationship predicates require derive_normalized_bounded and its shared
+budget for incoming/outgoing facts, never eager derivation or a full backlink scan. Nonsemantic
+ordering `(id, path.casefold(), path)`; semantic ordering
+`(-final, -semantic, -lexical, id, path.casefold(), path)` before rounding. Live eligibility comes
+first; final verification may reduce count. Existing `query(KnowledgeQuery)` stays unchanged.
+
+#### Precise semantic federation
+
+Add internal `search_federation_candidates(text, eligible_paths, limit, min_score, budget, cancel)`
+to SemanticSearchService returning immutable full-precision candidates plus owner index basis.
+Candidate has canonical local path and binary64 final/semantic/lexical scores as currently
+calculated from float32 vectors/dot-product and existing best-chunk tie rules; bounded display
+fields only where needed. Rounded public SemanticResult cannot enter merge. Existing public
+scores still round four decimals after ordering; no new public score precision contract.
+
+Repository adds a quota-aware eligible-path chunk reader inside one read transaction per space,
+deterministic `(path.casefold(), path, chunk_index, row_id)` order, preflight lengths and SQLite
+progress limits before payload materialization. No all-index loader or second vector store/ranker.
+Before embedding/scoring collect exact `ScoringDescriptor`: model string, embedding-v1 fingerprint,
+full existing index signature (schema/content/chunk size/overlap), vector dimensions/backend
+normalization, weights 1.0/0.70, hybrid formula, threshold and local floor 0.78. Available selected
+scoring descriptors must match exactly; equal model names alone do not suffice. A present
+incompatible scoring configuration fails whole request before scoring, not partial omission.
+Missing/unreadable index is availability coverage. Lazy fingerprint validation is authorized and
+resource-controlled. Space/root identity never enters the scoring signature.
+
+`ScoringDescriptor` is an immutable structural value with `model: str`, `embedding_fingerprint: str`,
+`index_signature: str`, `dimensions: int` (>0), `backend_contract: str`,
+`rank_contract: Literal['vaultbridge-hybrid-v1']`, `semantic_weight: float = 1.0`,
+`lexical_weight: float = 0.70`, `min_score: float`, `relative_floor: float = 0.78`.
+The rank contract denotes the current normalization/lexical/hybrid/best-chunk rules, not a new model.
+An old stored signature incompatible with its own effective owner configuration is index unavailable;
+different effective descriptors of otherwise searchable selected owners are whole-request mismatch.
+Visit eligible paths in Python canonical order, then rows by chunk_index/id, rather than assuming
+SQLite collation equals Python casefold. Cursor/connection snapshot and payload limits remain bounded.
+
+Keep existing threshold (default0.28), lexical/hybrid formula, best-chunk selection and each
+space's **local** 0.78 floor on its eligible universe. Obtain the local window
+`min(500,max(limit*5,limit))`, merge precise windows once, qualified tie-break, reverify, truncate
+globally. No global floor or concatenation of rounded/truncated public results; no widening.
+ADR 0009 deliberately permits a weaker local winner. Exhausted work drops the contribution,
+not the floor. Require below-four-decimal tie tests, within-budget single-space ranking parity
+and unchanged deterministic evaluation baseline; no ranking-model redesign.
+
+Basis is `none`, `compatible_ready`, `compatible_previous_refresh`, `compatible_previous_error`.
+Compatible previous states remain usable without Markdown freshness claims. Missing/incompatible
+index never becomes literal mode. Disabled indexing rejects before search/init even with old rows.
+No executable semantic contribution fails `semantic_unavailable`; a searchable empty contribution
+is successful. Live eligible Markdown may be newer than its compatible indexed score.
+
+#### Qualified result and availability model
+
+New `ScopedReadResult[T]`: `items: tuple[T,...]`, `coverage: tuple[SpaceCoverage,...]`,
+`state: Literal['complete','partial']`, `ordering: Literal['canonical_path','modified','semantic']`,
+`result_limited: bool`. Note items contain QualifiedNoteIdentity and operation payload/scores,
+even on explicit default-only calls. Single-owner envelopes such as ScopedHygieneResult carry
+`space_id: SpaceId` and the unchanged owner result; local/pathless findings inherit that ID.
+Legacy default shapes remain unchanged. These are domain types, not final public JSON.
+
+SpaceCoverage fields: `space_id: SpaceId`, `state: Literal['complete','partial','unavailable']`,
+`reasons: tuple[CoverageReason,...]`, `semantic_index_basis: SemanticIndexBasis`,
+`enumerated_paths: int`, `evaluated_paths: int`, `returned_candidates: int` (nonnegative quota-bound).
+Reasons are sorted distinct finite names: `root_unavailable`, `index_unavailable`, `discovery_limit`,
+`path_limit`, `alias_limit`, `content_limit`, `relationship_limit`, `semantic_limit`, `note_unavailable`.
+Exactly one coverage row per authorized selected ID in ID order. No host details or inaccessible
+counts. Unavailable means no executable contribution; partial means an inspected subset with omitted
+evidence. Alias limits matter only for resolution-dependent operations. Ordinary top-limit truncation
+sets result_limited, not partial: complete means work coverage, not every hit returned.
+
+Only new list/literal/semantic/Scoped Query federation permits partial space availability. Root
+loss drops that space's items with root_unavailable; index loss drops semantic contribution only,
+with index_unavailable. Nonsemantic requests never check/open indexes. Per-note races omit the
+identity with partial coverage. Root failure during final verification drops all buffered items
+from that space. Preserve other authorized contributions. All unavailable fails unavailable_space
+for nonsemantic, semantic_unavailable for semantic, never successful empty. At least one executable
+empty contribution permits explicitly partial empty success. Unknown/denied IDs never reach coverage.
+Policy/scoring/unsafe-input errors fail whole request; one-space reads/relationships/writes and
+existing hygiene/advisory coverage retain owner semantics, without default fallback.
+
+#### Independent index binding and lifecycle
+
+Each private data directory maps to existing `semantic-index.sqlite3`, its sidecars/state and
+`models`; default preserves SEMANTIC_DATA_PATH. No owner opens another's note repository; validate
+directory/DB aliases before use. Existing SQLite schema and scoring signature remain unchanged.
+New non-default repositories use private meta keys `knowledge_space_binding_version='1'`,
+`knowledge_space_id=<ID>`, `knowledge_space_root_sha256=<64 lowercase hex>`. Digest is SHA-256 of
+UTF-8 native `normcase(str(strict_resolved_root))`. This private relocation detector is neither
+note identity, permission nor scoring signature; no raw root persisted/logged.
+
+Empty new repository writes binding keys only at authorized initialization. Populated non-default
+storage missing/mismatching them is not adopted/searched/synced: unavailable until explicit
+stopped-service rebuild of that binding. Never borrow default rows. Default retains optional legacy
+metadata and compatible indexes; adding records cannot reset it. Check compatibility without
+destructive prepare; signature rebuild uses current authorized lifecycle. Hygiene writes no keys.
+Root rebinding/ID rename requires stopped service, deliberate logical-namespace confirmation and
+explicit derived rebuild/binding validation before resume; no automatic reuse on matching paths.
+Default relocation retains existing operator-controlled rebuild responsibilities. Operator-facing
+rebind/rebuild/migration command syntax needs a separate blocking contract, not runtime invention.
+
+Legacy lifecycle stays current. Named mode constructs cheap <=8 owner shells, no eager models or
+per-space executors. Extend current indexer to accept one process-owned single-thread executor,
+execute one bounded sync batch then yield. Independent locks/state/cancellation per semantic owner.
+Ready jobs round-robin sorted IDs; coalesce qualified path plus registry token, never bare path.
+Targeted queues cap 10,000 identities globally, 2,000 per space; overflow becomes one full-sync-needed
+flag per binding. <=8 full-sync flags, one active sync batch, current durable batch-size semantics.
+Startup schedules enabled validated owners once; disabled never initializes/enqueues/searches or
+loads model. Root loss fails that binding's jobs safely. Enqueue after durable note commit cannot
+negate/repeat the write; existing pending/unavailable evidence remains.
+
+Named composition owns one lazy process FastEmbedder resource, one global embedding lease/lock,
+at most one loaded model. Global settings make its scoring configuration common. Serialize embed,
+backend validation and fingerprint calls; current per-owner locks alone do not guard a shared
+instance. Shared assets are immutable model files under default data's `models`, not note/index
+storage; never cache note/query texts/vectors/results or per-space lifecycle there. Repositories
+and owner locks remain separate. Fake/local embedder tests prove no cloud/runtime dependency.
+
+New scoped domain operations share an admission lock (one active operation including scoped
+writes/hygiene); sole background worker may coexist under existing owner/write locks and embedding
+lease. No distributed coordinator. Acquire admission before resource/owner access; scheduler never
+waits for admission holding an owner lock. Shared embedder wrapper owns its lease during `_embed`,
+so no inversion with current sync/configuration locks. Named watch enablement reuses local event
+interpreters/debounce with one process observer scheduling <=8 enabled roots and capped bound jobs;
+disabled not watched. Safe observer/executor/resource injection is an implementation acceptance
+gate; failure cannot be resolved by starting eight independent expensive workers/models.
+Debounce pending identities share the same 10,000-global/2,000-per-space caps before enqueue;
+overflow requests one coalesced full-sync flag, rather than retaining an unbounded pre-worker queue.
+
+Shutdown rejects new work, signals all owner cancellation first, stops observer/debounce submission,
+cancels queued tasks, then drains the one active safe batch/blocking call and releases resources.
+Do not wait through eight full syncs. Policy restart never deletes old derived files. Stopped-service
+maintenance and existing cooperating-writer guarantees remain; no cross-process locking claim.
+
+#### Capture/promotion: portable version and replay binding
+
+Keep v1/default bytes, digest, manifest/markers and retry proof unchanged. Provenance without
+version/space means default only, even if copied elsewhere. It cannot authorize promotion/retry
+in another space; ordinary authorized Markdown read remains possible. New scoped entry points,
+including explicit default, use v2; legacy default entry points use v1. Unknown/incomplete versions,
+conflicting IDs and mixed replay evidence fail safely. No automatic rewrite/rehash/conversion.
+
+V2 capture adds reserved frontmatter `capture_provenance_version: 2` (strict YAML integer),
+`capture_space_id: <SpaceId>` alongside current fields. Caller metadata cannot override them;
+current envelope/item/complete-note bounds include them. Identity is qualified
+`(ID, Inbox/Captures/<capture_id>.md)`; exact-byte idempotency remains local. Declared source is
+attribution, never selector. Artifact claiming another ID is unsafe promotion source. Preserve
+inbox/draft, size, coordinated commit and commit-unknown semantics.
+
+`ScopedPromotionReview(space_id: SpaceId, provenance_version: Literal[2], review: PromotionReview)`
+and scoped decision preserve reviewed hashes and exact approval. Bind policy before source/read/
+destination/decision/apply; verify outer ID, artifact ID and authorized registry token. Source and
+destination IDs must agree or invalid_scope before reads. This is logical review context, not a
+new authentication scheme or durable bearer token. V2 promotion consumes v2 capture only; v1
+promotion consumes v1 default capture only. Old-artifact conversion needs its own migration contract.
+
+V2 decision digest: current v1 digest_object plus exactly `provenance_version: 2`,
+`source_space_id: <ID>`, `destination_space_id: <same ID>`; SHA-256 of unchanged `_json_bytes`
+rules (sorted keys, separators `(',', ':')`, ensure_ascii=True, allow_nan=False, UTF-8), existing
+exact content/hashes/timestamps/transfer order. V2 create frontmatter adds
+`promotion_provenance_version: 2`, `promotion_space_id`, `promoted_from_capture_space_id` to
+current fields. V2 append manifest adds `provenance_version: 2`, source_space_id, destination_space_id;
+opening `<!-- vaultbridge-promotion:v2 id=<uuid> sha256=<digest> -->`, closing
+`<!-- /vaultbridge-promotion:v2 id=<uuid> -->`, current JSON '<' escaping/fence rules. Reserve/check
+both v1/v2 marker families for the same UUID. Retry proves exact complete bytes/block, digest,
+logical IDs and canonical binding with current coordinated source/destination rechecks. No mixed
+format or downgrade establishes success. Advice never picks destination/action or supplies approval.
+
+#### Local relationships, hygiene and duplicates
+
+One RelationshipService per space; no unqualified global lookup or cross-space missing-target
+fallback. Backlinks scan only selected root. Multi-space Query creates no edges; symlink into
+another root is escape even when selected. Cross-space Markdown syntax is out of scope.
+
+`hygiene(space_id, existing KnowledgeHygieneRequest)` binds one owner and outer ID; keep ADR 0008
+finding semantics and local paths, including pathless index evidence. Keep 10,000 paths, 500 findings,
+10 related paths, optional 20 sources/5 candidates and immutable coverage/inspection. No cross-space
+alias/duplicate/isolation inference, repairs or newly authorized hygiene semantic candidates.
+Disabled index inspection remains no-write. Do not infer unrelated hygiene fixes from this contract.
+
+DuplicateCandidateService stays strictly per-space including promotion advice; no cross-space
+comparison/authorization. Optional forbidden semantic advice marks evidence unavailable without
+calling search. Existing local fallback remains; cross-space duplicate evidence needs separate scope.
+
+#### Required future tests and implementation slices
+
+Future implementation requires focused fake/local-embedder tests for:
+
+- JSON size/depth/keys/types, duplicate IDs/names, exact ID/default validation, config precedence;
+  legacy direct/environment defaults and startup parity.
+- Duplicate/overlapping/alias/symlink/junction roots, native case behavior, data binding ancestry,
+  missing/unreadable roots, policy combinations and excluded derived directories.
+- Cross-space traversal/absolute/symlink escape; unavailable/denied default never fallback;
+  mixed authorized+unknown/denied scopes fail with zero operation filesystem/index/model work.
+- Omitted scope stays default, cardinality-before-dedup; identical relative paths stay distinct;
+  reversed enumeration/registry/caller order gives deterministic identities/order/coverage.
+- No relationship/backlink fallback; same-space qualified predicates and dialect enforcement;
+  one-space hygiene/duplicate evidence, no global collisions/graph edges.
+- Multi-space writes/capture/promotion rejected before reads, v2 digest/review binding, copied v1/v2
+  artifacts and mixed markers cannot replay elsewhere, exact default v1/commit-unknown parity.
+- Disabled indexing never initializes/prepares/searches/syncs; immutable DB/sidecar proof;
+  repository/callback/job isolation despite equal paths, binding mismatch blocks adoption.
+- Primitive counts across full federation including rechecks, byte/row/VM limits, adversarial deep/
+  non-Markdown/alias trees; deterministic overflow discard, no scan-per-predicate/retries.
+- Precise sub-rounding ranking ties, local-floor parity, scoring mismatch before ranking,
+  chunk overflow unavailable, previous-compatible/stale states, partial/all-unavailable/empty cases.
+- Queue caps/fairness/cancellation, one model/executor, lock order, cleanup/shutdown, concurrent
+  external edits and existing coordinated-write/TOCTOU root/parent/staged/destination races.
+- No host paths/labels/raw exceptions/unselected counts/chunks in errors/logs/representations;
+  legacy REST/MCP/CLI/dashboard/service/index signature and evaluation regression parity.
+- Native Windows and **actual POSIX/WSL** containment/symlink/concurrency coverage; Windows
+  privilege skips are not POSIX proof. No stronger hostile-writer guarantee than current owners.
+
+Future quota-aware relationship tests must use synthetic compact content and instrument owner
+admission, recognition, resolution and counters end-to-end, not create a huge expected-result list:
+
+- One note with >50,000 short wikilinks and one with >50,000 short Markdown note links each stops
+  at effective single-space quota 50,000; no overflow candidate is scanned/materialized/resolved.
+- Mixed interleaved dialects share one quota with exact source-order prefix, not 50,000 each;
+  unresolved/duplicate written links consume once per occurrence, normalization never charges twice.
+- Multiple selected spaces share one 200,000 counter with existing fixed allocations; repeated
+  sources/predicates cannot reset credit. Assert total admissions/resolutions never exceed it and
+  no remaining space parses after global exhaustion; n>4 retains the existing lower quotas.
+- relationship_limit discards that space's Query matches, produces the specified unavailable
+  coverage/partial envelope in deterministic order, retains only other completed contributions,
+  and preserves all-unavailable versus available-empty failure/success semantics.
+- Cancellation during long valid and rejected-syntax parsing/resolution stops work at specified
+  checkpoints, fails whole request and performs no continuation; rejected syntax uses shared
+  parse-probe credit without consuming occurrence units.
+- Legacy outgoing/backlink/parser/normalized APIs remain unchanged; normal small-input bounded
+  results are semantically identical, including both dialect exclusions, offsets, ties, duplicates,
+  unresolved reasons and same-space qualified incoming/outgoing predicate meaning.
+
+Fixtures need only quota+1 compact occurrences per dialect plus a small interleaved fixture; assert
+prefix counters/digests or streamed comparisons. Use small injected remaining credits to exhaust
+each boundary deterministically, plus production-ceiling cases; do not allocate millions of objects
+or invoke an eager parser to manufacture the bounded path's expected output.
+
+Use separate narrowly reviewable implementation PRs; none is implemented in this contract task:
+
+1. **A: immutable config/types/registry/resolver**, strict startup and authorization/no-work tests.
+2. **B: owner bundles/qualified one-space orchestration**, disabled inspection facade, local owners
+   and default compatibility; no adapters.
+3. **C: budgeted discovery/nonsemantic federation**, supplied-snapshot Query and qualified predicates,
+   quota-aware relationship/parsing owner admission, list/literal ordering, full counters and coverage.
+4. **D: precise semantic federation**, bounded repository reads/descriptors/local merge and eval parity.
+5. **E: binding/lifecycle/resources**, private meta binding, shared scheduler/embedder/observer leases,
+   bound targeted jobs, queue caps/cancellation/shutdown.
+6. **F: scoped v2 capture/promotion**, portable fields/digest/replay isolation and atomic protections.
+7. **G: integration/regression hardening**, full Windows/POSIX work/privacy/compatibility evidence.
+
+B exposes nonsemantic one-space behavior only; new semantic scope stays gated until D+E pass,
+scoped writes with index callbacks until E+F pass. Existing legacy calls remain valid throughout.
+Failure to meet budgets/owner safety/resource/provenance rules blocks the dependent slice; no
+silent relaxation/ranking change/root adoption. Each later scoped PR uses task/check/finish and
+separate fresh review. VB-152 gets its own authoritative contract after runtime exists.
+
+Resolved ADR 0009 gates: exact config/precedence, immutable policy/registry/owners, fixed aggregate
+discovery/probe/chunk/byte/cancellation work, qualified Query, precise local-floor merge, coverage,
+storage/binding/resource lifecycle and portable v2 replay. Remaining **blocking separate contracts**:
+operator-facing root/ID rebind and old-artifact migration tooling; expanded health/discovery exposure;
+final VB-152 endpoints/OpenAPI/MCP tools/resources/CLI/dashboard/error mappings. None authorizes
+runtime improvisation; normally configured new spaces need no migration tooling.
+
+**Non-goals:** multi-tenancy/users/groups/RBAC; policy DB/DSL; caller host roots/hot reload;
+cross-space Markdown links/graph/duplicates; automatic note migration/move; cross-space promotion;
+hygiene repair; new ranker/model/index format; cloud embeddings; distributed queue/coordinator;
+VB-152 adapters; Docker/release/deployment. This task changes no runtime/test/Settings/ADR, commits
+nothing and launches no reviewer. Milestone 16 is not complete.
 
 ### VB-152 — Permission-aware query and write adapter integration — P1 (future; unscoped)
 

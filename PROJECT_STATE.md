@@ -305,9 +305,13 @@ Current post-v1 planning position:
   as design-only work after independent design review returned APPROVE. Current runtime still supports one contained
   authoritative Markdown root. The accepted design defines logical space IDs and qualified note identity,
   legacy default compatibility, one typed scope/policy boundary, bounded multi-space reads and
-  one-space writes, independent derived indexes, local links and one-space hygiene. VB-151 runtime
-  and VB-152 adapters remain future/unscoped, without implementation authorization. Milestone 16
-  remains PLANNED; no configuration, adapter, runtime, test or index-format behavior changed
+  one-space writes, independent derived indexes, local links and one-space hygiene.
+- VB-151 now has the authoritative implementation contract in BACKLOG.md: strict bounded JSON
+  configuration, immutable registry/policy bindings, qualified Query wrapper, aggregate work budgets,
+  precise local-floor semantic federation, explicit coverage, independent index lifecycle and v2
+  scoped provenance. This is documentation only; runtime remains pending. VB-152 adapters remain
+  future/unscoped and need a separate contract after domain runtime exists. Milestone 16 remains
+  PLANNED; no Settings, configuration, adapter, runtime, test or index-format behavior changed
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
 
