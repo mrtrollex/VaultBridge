@@ -431,10 +431,18 @@ async def client_smoke(
             note_count = len(result.structured_content["notes"])
             hygiene = await client.call_tool("knowledge_hygiene_scan", {"groups": []})
             assert hygiene.is_error is False
+            scan = hygiene.structured_content["scan"]
+            assert scan["inspected_notes"] + scan["unavailable_notes"] == note_count
+            # Bind-mount permissions may enforce chmod(0) or leave Smoke.md readable.
+            assert scan in (
+                {"state": "complete", "reasons": [], "eligible_paths": note_count,
+                 "inspected_notes": note_count, "unavailable_notes": 0},
+                {"state": "partial", "reasons": ["note_unavailable"], "eligible_paths": note_count,
+                 "inspected_notes": 0, "unavailable_notes": note_count},
+            )
             assert hygiene.structured_content == {
                 "findings": [],
-                "scan": {"state": "complete", "reasons": [], "eligible_paths": note_count,
-                         "inspected_notes": note_count, "unavailable_notes": 0},
+                "scan": scan,
                 "candidates": {"state": "not_requested", "source_notes": 0, "reasons": []},
                 "derived_index": {"status": "not_requested"},
                 "findings_truncated": False,
