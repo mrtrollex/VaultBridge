@@ -537,9 +537,10 @@ One future domain/policy boundary validates finite selected scopes and read/writ
 policy before dispatch to existing per-space containment and domain owners. Reads may explicitly
 select up to eight spaces; writes select one destination. Independent derived semantic indexes,
 local-only relationship resolution, same-space promotion and one-space hygiene preserve current
-ownership. Precise cross-space execution/merge/provenance contracts remain implementation gates.
-VB-151 domain/runtime and VB-152 adapters need separate accepted BACKLOG contracts; design acceptance
-changes no registered route, operation ID, resource, configuration, persistence or runtime behavior.
+ownership. BACKLOG.md now defines VB-151's authoritative configuration, execution-budget, precise
+merge, lifecycle and provenance implementation contract; runtime remains pending. VB-152 adapters
+still need a separate contract after domain runtime exists. This documentation changes no registered
+route, operation ID, resource, Settings, configuration, persistence or runtime behavior.
 
 ## Target architecture
 
