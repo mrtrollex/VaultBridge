@@ -295,9 +295,12 @@ Current post-v1 planning position:
   review/promotion with a local CLI adapter and additive coordinated create/append protection
 - VB-140 is complete as design-only work: accepted ADR 0008 defines read-only Knowledge Hygiene
   diagnostics; VB-141's bounded read-only domain runtime is implemented and merged via PR #112
-- VB-142 now has a defined BACKLOG thin-adapter contract for CLI, REST and MCP (contract complete
-  once this design change merges); adapter implementation is pending, dashboard views are deferred,
-  and Milestone 15 remains in progress. This documentation task changes no runtime/test baseline
+- VB-142's BACKLOG thin-adapter contract is complete and merged via PR #113. Required adapters are
+  implemented and merged: REST via PR #114, MCP via PR #115, and CLI via PR #116. VB-142
+  implementation and Milestone 15 are complete. Knowledge Hygiene remains bounded, diagnostic,
+  read-only, and advisory. Dashboard views are deferred; repair/mutation workflows and bounded
+  semantic candidate retrieval remain separate future work, not completion dependencies.
+  Milestone 16 remains planned. This documentation synchronization changes no runtime/test baseline
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
 
@@ -393,7 +396,7 @@ Current milestones:
 - **Milestone 12 — Portable PKM model (complete)**
 - **Milestone 13 — Knowledge Query Layer (complete; VB-120 through VB-122 complete)**
 - **Milestone 14 — Knowledge Capture / Portable Memory (complete; VB-130 design accepted, VB-131 and VB-132 implemented and merged)**
-- **Milestone 15 — Knowledge Hygiene (in progress; VB-140 design complete, VB-141 runtime merged, VB-142 contract defined for completion on merge; adapter implementation pending)**
+- **Milestone 15 — Knowledge Hygiene — COMPLETE (VB-140 design complete; VB-141 runtime complete and merged; VB-142 contract and required CLI/REST/MCP adapters complete and merged; dashboard deferred; repair/mutation and bounded semantic candidate retrieval remain separate future scope)**
 
 ## Working production characteristics
 

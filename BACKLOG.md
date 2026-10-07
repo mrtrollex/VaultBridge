@@ -3016,13 +3016,19 @@ release, or deployment change. VB-142 requires its own contract.
 
 ---
 
-### VB-142 — Knowledge Hygiene thin adapters — P1 (contract defined; implementation pending)
+### VB-142 — Knowledge Hygiene thin adapters — P1 (complete; implementation merged)
 
-**Status and authority:** This design-only change defines the implementation contract; contract
-completion is recorded when it merges. Runtime adapters remain pending. Accepted ADR 0008 and the
+**Status:** Contract complete and merged via PR #113. Required runtime adapters are implemented
+and merged: REST via PR #114, MCP via PR #115, and CLI via PR #116. VB-142 implementation and
+Milestone 15 are complete. Knowledge Hygiene remains bounded, diagnostic, read-only, and advisory.
+Dashboard presentation is deferred to separate future scope and is not a completion dependency;
+repair/mutation workflows and bounded semantic candidate retrieval remain separate future work.
+
+**Historical contract and authority:** The original design-only task defined the implementation
+contract below; accepting that contract added no runtime. Its surface decisions and acceptance
+criteria remain authoritative for the subsequently merged adapters. Accepted ADR 0008 and the
 completed VB-141 runtime remain authoritative for semantics. No new ADR is needed: these adapters
-add no service, storage, dependency, authentication model, or breaking migration. Milestone 15
-remains in progress until the included adapter implementation is completed and validated.
+add no service, storage, dependency, authentication model, or breaking migration.
 
 **Inspected conventions and surface decision**
 
