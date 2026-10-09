@@ -175,6 +175,7 @@ def create_app(
     knowledge_hygiene_service: KnowledgeHygieneService | None = None,
 ) -> FastAPI:
     app_settings = settings if settings is not None else Settings.from_env()
+    app_settings.require_legacy_composition()
     app_semantic_search_service = (
         semantic_search_service
         if semantic_search_service is not None

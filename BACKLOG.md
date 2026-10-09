@@ -3352,13 +3352,16 @@ roots, multi-tenancy/RBAC/account administration, cross-space automatic moves/re
 implementation, release/deployment, commit or reviewer launch. ADR acceptance must precede a
 separately accepted runtime contract; sequence alone never authorizes implementation.
 
-### VB-151 — Compatibility-safe multi-space domain boundary — P1 (contract defined; runtime pending)
+### VB-151 — Compatibility-safe multi-space domain boundary — P1 (Slice A implemented; later slices pending)
 
 **Authority / status:** This is the authoritative future implementation contract under
 [Accepted ADR 0009](docs/adr/0009-knowledge-spaces-and-scope-policies.md). VB-150 is complete and
-merged. This task changes documentation only: no slice below is implemented, runtime is pending,
-Milestone 16 remains **PLANNED**, and VB-152 stays future/unscoped. A later explicitly requested
-implementation must follow this contract and ADRs 0005–0008 without reopening their semantics.
+merged. The original contract was documentation-only. Runtime Slice A now implements immutable
+config/types/registry/resolver, strict startup validation and authorization/no-work tests. Existing
+direct-owner composition rejects supplied named configuration; real owner bundles, orchestration
+and Slices B–G remain pending. Milestone 16 remains **PLANNED**, and VB-152 stays future/unscoped.
+Later explicitly requested implementation must follow this contract and ADRs 0005–0008 without
+reopening their semantics.
 
 #### Inspected owners and permitted extensions
 

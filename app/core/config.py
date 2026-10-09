@@ -5,7 +5,18 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import ClassVar
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr, ValidationInfo, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    PrivateAttr,
+    SecretStr,
+    ValidationInfo,
+    field_validator,
+    model_validator,
+)
+
+from app.services.knowledge_spaces import KnowledgeSpaceDefinition, SpaceError, parse_knowledge_spaces
 
 DEFAULT_SEMANTIC_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
@@ -19,6 +30,7 @@ class Settings(BaseModel):
         "API_KEY",
         "API_KEY_PREVIOUS",
         "VAULT_PATH",
+        "KNOWLEDGE_SPACES_JSON",
         "MAX_NOTE_BYTES",
         "SEMANTIC_DATA_PATH",
         "SEMANTIC_MODEL",
@@ -46,6 +58,13 @@ class Settings(BaseModel):
         repr=False,
     )
     vault_path: Path = Field(default=Path("/vault"), alias="VAULT_PATH")
+    knowledge_spaces_json: str | None = Field(
+        default=None,
+        alias="KNOWLEDGE_SPACES_JSON",
+        repr=False,
+        exclude=True,
+    )
+    _knowledge_space_definitions: tuple[KnowledgeSpaceDefinition, ...] | None = PrivateAttr(default=None)
     max_note_bytes: int = Field(default=1_000_000, alias="MAX_NOTE_BYTES", gt=0)
     semantic_data_path: Path = Field(
         default=Path("/vault/.obsidian-chatgpt-data"),
@@ -84,6 +103,28 @@ class Settings(BaseModel):
         source = os.environ if environ is None else environ
         values = {name: source[name] for name in cls.ENVIRONMENT_VARIABLES if name in source}
         return cls.model_validate(values)
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_space_configuration_input(cls, values):
+        if isinstance(values, Mapping):
+            if "KNOWLEDGE_SPACES_JSON" in values and "knowledge_spaces_json" in values:
+                raise SpaceError("invalid_configuration")
+            raw = values.get("KNOWLEDGE_SPACES_JSON", values.get("knowledge_spaces_json"))
+            if raw is not None and type(raw) is not str:
+                raise SpaceError("invalid_configuration")
+        return values
+
+    @model_validator(mode="after")
+    def parse_space_configuration(self) -> Settings:
+        if self.knowledge_spaces_json is not None and self._knowledge_space_definitions is None:
+            object.__setattr__(self, "_knowledge_space_definitions", parse_knowledge_spaces(self.knowledge_spaces_json))
+        return self
+
+    def require_legacy_composition(self) -> None:
+        """Named serving is blocked until every adapter adopts the policy owner."""
+        if self.knowledge_spaces_json is not None:
+            raise SpaceError("invalid_configuration", reason="named_serving_unsupported")
 
     @field_validator("vault_path", "semantic_data_path", mode="before")
     @classmethod
