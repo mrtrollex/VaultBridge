@@ -191,6 +191,15 @@ def overview_script() -> FileResponse:
     )
 
 
+@router.api_route("/ui/assets/hygiene.js", methods=["GET", "HEAD"], name="ui_hygiene_script")
+def hygiene_script() -> FileResponse:
+    return FileResponse(
+        _ASSET_ROOT / "hygiene.js",
+        media_type="text/javascript",
+        headers=UI_SECURITY_HEADERS,
+    )
+
+
 @router.api_route("/ui/assets/search.js", methods=["GET", "HEAD"], name="ui_search_script")
 def search_script() -> FileResponse:
     return FileResponse(

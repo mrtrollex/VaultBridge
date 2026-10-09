@@ -298,9 +298,11 @@ Current post-v1 planning position:
 - VB-142's BACKLOG thin-adapter contract is complete and merged via PR #113. Required adapters are
   implemented and merged: REST via PR #114, MCP via PR #115, and CLI via PR #116. VB-142
   implementation and Milestone 15 are complete. Knowledge Hygiene remains bounded, diagnostic,
-  read-only, and advisory. Dashboard views are deferred; repair/mutation workflows and bounded
+  read-only, and advisory. The separately scoped v1.4.0 plan P1 — Read-only Knowledge Hygiene Dashboard
+  now adds explicit browser scans over the unchanged REST endpoint, safe findings/coverage presentation,
+  shared cookie authentication, and logout/401/stale-request cleanup. Repair/mutation workflows and bounded
   semantic candidate retrieval remain separate future work, not completion dependencies.
-  Milestone 16 remains planned. This documentation synchronization changes no runtime/test baseline
+  Milestone 16 remains planned. This dashboard implementation does not constitute a v1.4.0 release
 - VB-150 is complete under accepted [ADR 0009: Knowledge Spaces and Scope Policies](docs/adr/0009-knowledge-spaces-and-scope-policies.md)
   as design-only work after independent design review returned APPROVE. Current runtime still supports one contained
   authoritative Markdown root. The accepted design defines logical space IDs and qualified note identity,
@@ -416,7 +418,7 @@ Current milestones:
 - **Milestone 12 — Portable PKM model (complete)**
 - **Milestone 13 — Knowledge Query Layer (complete; VB-120 through VB-122 complete)**
 - **Milestone 14 — Knowledge Capture / Portable Memory (complete; VB-130 design accepted, VB-131 and VB-132 implemented and merged)**
-- **Milestone 15 — Knowledge Hygiene — COMPLETE (VB-140 design complete; VB-141 runtime complete and merged; VB-142 contract and required CLI/REST/MCP adapters complete and merged; dashboard deferred; repair/mutation and bounded semantic candidate retrieval remain separate future scope)**
+- **Milestone 15 — Knowledge Hygiene — COMPLETE (VB-140 design complete; VB-141 runtime complete and merged; VB-142 contract and required CLI/REST/MCP adapters complete and merged; dashboard implemented separately under v1.4.0 plan P1; repair/mutation and bounded semantic candidate retrieval remain separate future scope)**
 
 ## Working production characteristics
 

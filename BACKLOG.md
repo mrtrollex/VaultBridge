@@ -3021,8 +3021,9 @@ release, or deployment change. VB-142 requires its own contract.
 **Status:** Contract complete and merged via PR #113. Required runtime adapters are implemented
 and merged: REST via PR #114, MCP via PR #115, and CLI via PR #116. VB-142 implementation and
 Milestone 15 are complete. Knowledge Hygiene remains bounded, diagnostic, read-only, and advisory.
-Dashboard presentation is deferred to separate future scope and is not a completion dependency;
-repair/mutation workflows and bounded semantic candidate retrieval remain separate future work.
+Dashboard presentation is implemented separately by v1.4.0 plan P1 — Read-only Knowledge Hygiene
+Dashboard; it remains outside VB-142 and is not a Milestone 15 completion dependency.
+Repair/mutation workflows and bounded semantic candidate retrieval remain separate future work.
 
 **Historical contract and authority:** The original design-only task defined the implementation
 contract below; accepting that contract added no runtime. Its surface decisions and acceptance

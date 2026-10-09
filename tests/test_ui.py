@@ -67,6 +67,7 @@ def test_known_ui_assets_have_correct_media_types_and_head_support(tmp_path):
         ("/ui/assets/app.js", "text/javascript"),
         ("/ui/assets/overview.js", "text/javascript"),
         ("/ui/assets/search.js", "text/javascript"),
+        ("/ui/assets/hygiene.js", "text/javascript"),
         ("/ui/assets/vaultbridge-logo.webp", "image/webp"),
     ):
         response = client.get(path)
@@ -87,6 +88,7 @@ def test_ui_asset_route_inventory_matches_bundled_files(tmp_path):
         "app.js",
         "overview.js",
         "search.js",
+        "hygiene.js",
         "vaultbridge-logo.webp",
     }
     client = client_for(tmp_path)
@@ -155,6 +157,7 @@ def test_ui_resources_apply_strict_security_headers(tmp_path):
         "/ui/assets/app.js",
         "/ui/assets/overview.js",
         "/ui/assets/search.js",
+        "/ui/assets/hygiene.js",
         "/ui/assets/vaultbridge-logo.webp",
     ):
         response = client.get(path)
@@ -197,6 +200,7 @@ def test_server_secrets_are_never_rendered_in_ui_resources(tmp_path):
             "/ui/assets/app.js",
             "/ui/assets/overview.js",
             "/ui/assets/search.js",
+            "/ui/assets/hygiene.js",
         )
     )
 
@@ -386,10 +390,11 @@ def test_search_replaces_placeholder_with_protected_accessible_retrieval_form(tm
 def test_section_headings_share_vertical_accent_title_structure(tmp_path):
     html = client_for(tmp_path).get("/ui/").text
 
-    assert html.count('class="panel-heading__title"') == 4
+    assert html.count('class="panel-heading__title"') == 5
     for eyebrow, heading in (
         ("Workspace", "Overview"),
         ("Knowledge retrieval", "Search"),
+        ("Read-only diagnostics", "Knowledge Hygiene"),
         ("Client connection", "API / Integration"),
         ("Project", "About VaultBridge"),
     ):
@@ -587,7 +592,8 @@ def test_javascript_implements_session_auth_status_and_safe_rendering_contract(t
     script = client_for(tmp_path).get("/ui/assets/app.js").text
     overview_script = client_for(tmp_path).get("/ui/assets/overview.js").text
     search_script = client_for(tmp_path).get("/ui/assets/search.js").text
-    all_scripts = f"{script}\n{overview_script}\n{search_script}"
+    hygiene_script = client_for(tmp_path).get("/ui/assets/hygiene.js").text
+    all_scripts = f"{script}\n{overview_script}\n{search_script}\n{hygiene_script}"
 
     assert 'import { initializeOverview } from "./overview.js"' in script
     assert "initializeOverview(applicationUrl)" in script
@@ -952,6 +958,7 @@ def test_ui_resources_exclude_remote_dependencies_truenas_behavior_and_mutation_
             "/ui/assets/app.js",
             "/ui/assets/overview.js",
             "/ui/assets/search.js",
+            "/ui/assets/hygiene.js",
         )
     }
     combined = "\n".join(resources.values())
