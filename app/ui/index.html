@@ -44,12 +44,16 @@
         <span class="nav-button__index" aria-hidden="true">02</span>
         <span>Search</span>
       </button>
-      <button id="nav-api" class="nav-button" type="button" aria-controls="api-panel">
+      <button id="nav-hygiene" class="nav-button" type="button" aria-controls="hygiene-panel">
         <span class="nav-button__index" aria-hidden="true">03</span>
+        <span>Hygiene</span>
+      </button>
+      <button id="nav-api" class="nav-button" type="button" aria-controls="api-panel">
+        <span class="nav-button__index" aria-hidden="true">04</span>
         <span>API / Integration</span>
       </button>
       <button id="nav-about" class="nav-button" type="button" aria-controls="about-panel">
-        <span class="nav-button__index" aria-hidden="true">04</span>
+        <span class="nav-button__index" aria-hidden="true">05</span>
         <span>About</span>
       </button>
     </nav>
@@ -322,6 +326,22 @@
             </div>
           </section>
         </section>
+      </section>
+
+      <section id="hygiene-panel" class="dashboard-panel" aria-labelledby="hygiene-heading" hidden>
+        <div class="panel-heading">
+          <div class="panel-heading__title">
+            <p class="eyebrow">Read-only diagnostics</p>
+            <h2 id="hygiene-heading">Knowledge Hygiene</h2>
+          </div>
+        </div>
+        <p>Inspect note relationships, isolation, frontmatter and aliases. Findings are advisory; scans do not change notes or repair issues.</p>
+        <div class="hygiene-actions">
+          <button id="hygiene-run" class="primary-button" type="button" disabled>Run scan</button>
+          <button id="hygiene-access" class="inline-action" type="button" hidden>Unlock in API / Integration →</button>
+        </div>
+        <p id="hygiene-status" role="status" aria-live="polite" aria-atomic="true" data-hygiene-state="checking-session">Checking protected access…</p>
+        <div id="hygiene-results" aria-busy="false"></div>
       </section>
 
       <section id="api-panel" class="dashboard-panel" aria-labelledby="api-heading" hidden>

@@ -1,5 +1,6 @@
 import { initializeOverview } from "./overview.js";
 import { initializeSearch } from "./search.js";
+import { initializeHygiene } from "./hygiene.js";
 
 const SESSION_STATES = ["checking-session", "locked", "unlocked", "unavailable"];
 
@@ -18,16 +19,19 @@ const globalStatus = document.querySelector("#global-status");
 const applicationBase = document.querySelector("#application-base");
 const searchNavigationButton = document.querySelector("#nav-search");
 const apiNavigationButton = document.querySelector("#nav-api");
+const hygieneNavigationButton = document.querySelector("#nav-hygiene");
 
 const navigation = new Map([
   [document.querySelector("#nav-overview"), document.querySelector("#overview-panel")],
   [searchNavigationButton, document.querySelector("#search-panel")],
+  [hygieneNavigationButton, document.querySelector("#hygiene-panel")],
   [document.querySelector("#nav-api"), document.querySelector("#api-panel")],
   [document.querySelector("#nav-about"), document.querySelector("#about-panel")],
 ]);
 
 let requestGeneration = 0;
 let searchController = null;
+let hygieneController = null;
 const activeRequests = new Set();
 
 class ProtectedRequestError extends Error {
@@ -55,6 +59,9 @@ function applicationUrl(relativePath) {
 }
 
 function selectPanel(selectedButton) {
+  if (selectedButton !== hygieneNavigationButton) {
+    hygieneController?.deactivate();
+  }
   if (selectedButton !== searchNavigationButton) {
     searchController?.deactivate();
   }
@@ -109,9 +116,11 @@ function setSessionState(state, message, hasStoredCredential = false) {
   );
   setText(globalStatus, message);
   searchController?.setAccessState(state);
+  hygieneController?.setAccessState(state);
 }
 
 function invalidateProtectedRequests() {
+  hygieneController?.setAccessState("locked");
   requestGeneration += 1;
   for (const controller of activeRequests) {
     controller.abort();
@@ -165,7 +174,7 @@ async function authenticatedFetch(relativePath, options = {}) {
       signal: controller.signal,
     });
   } catch (error) {
-    if (generation !== requestGeneration || error.name === "AbortError") {
+    if (generation !== requestGeneration || callerSignal?.aborted || error.name === "AbortError") {
       throw new StaleRequestError();
     }
     throw new ProtectedRequestError("network");
@@ -174,7 +183,7 @@ async function authenticatedFetch(relativePath, options = {}) {
     activeRequests.delete(controller);
   }
 
-  if (generation !== requestGeneration) {
+  if (generation !== requestGeneration || callerSignal?.aborted) {
     throw new StaleRequestError();
   }
   if (response.ok) {
@@ -182,6 +191,8 @@ async function authenticatedFetch(relativePath, options = {}) {
   }
   if (response.status === 401) {
     invalidateProtectedRequests();
+    setSessionState("locked", "Authentication required");
+    showApiPanel(true);
     await clearServerSession();
     throw new ProtectedRequestError("authentication-required");
   }
@@ -364,6 +375,15 @@ initializeOverview(applicationUrl);
 searchController = initializeSearch({
   authenticatedFetch,
   navigateToApi: () => showApiPanel(true),
+  onAuthenticationRequired: () => {
+    setSessionState("locked", "Authentication required");
+    showApiPanel(true);
+  },
+});
+hygieneController = initializeHygiene({
+  authenticatedFetch,
+  navigateToApi: () => showApiPanel(true),
+  messageForRequestError,
   onAuthenticationRequired: () => {
     setSessionState("locked", "Authentication required");
     showApiPanel(true);

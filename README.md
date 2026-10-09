@@ -103,25 +103,28 @@ The vault is never replaced by the index, and there is no general filesystem end
 ### 🖥️ Web Dashboard
 
 - bundled same-origin `/ui/` entry point with no second frontend service
-- accessible Overview, Search, API / Integration, and About navigation
+- accessible Overview, Search, Hygiene, API / Integration, and About navigation
 - read-only Overview using the existing public `/health` facts, with manual refresh and explicit
   loading/unavailable states
-- API-key validation through the existing protected API and tab-scoped `sessionStorage`
+- API-key unlock through the existing dashboard session boundary and signed HttpOnly cookie
 - strict browser security headers, local assets, and text-only dynamic rendering
 - protected literal and semantic Search using existing backend ranking and read-only result fields,
   with no query/history persistence
 - bounded outgoing-link and backlink facts for a successfully read note, using the existing
   authenticated versioned endpoints without client-side relationship parsing or persistence
+- read-only Knowledge Hygiene scans on explicit Run scan / Refresh scan, with returned finding
+  counts, canonical note paths, safe evidence, and separate scan/candidate/index coverage;
+  partial scans and truncated findings are explicitly labelled
 - retrieval-only operator visibility: no note editor, index-maintenance controls, account system,
   or TrueNAS-specific behavior
 
 Open the dashboard from the same VaultBridge origin at `/ui/`. The browser session uses an
-operator-supplied existing API key and stores it only in namespaced `sessionStorage` after the
-protected API validates it. Logout and an authentication failure clear protected form and result
+operator-supplied existing API key once through `/ui/session`; the key is not stored by browser
+JavaScript. The signed HttpOnly cookie restores access across reloads. Logout and an authentication failure clear protected form and result
 state; the public Overview remains available.
 
 The dashboard targets current evergreen browsers with support for ES modules, `fetch`,
-`AbortController`, `sessionStorage`, `URL`, and `Intl.NumberFormat`. This is a modest
+`AbortController`, `URL`, and `Intl.NumberFormat`. This is a modest
 standards-based compatibility statement, not a claim that every browser/version has been tested.
 Actual browser and production-image evidence is tracked separately in
 [`docs/DASHBOARD_RELEASE_CHECKLIST.md`](docs/DASHBOARD_RELEASE_CHECKLIST.md).

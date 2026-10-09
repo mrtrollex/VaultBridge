@@ -369,7 +369,7 @@ ChatGPT / curl / scripts / integrations
    +----------------------------------> VaultBridge API
 ```
 
-The current shell contains Overview, Search, API / Integration, and About areas. Overview
+The current shell contains Overview, Search, Hygiene, API / Integration, and About areas. Overview
 automatically reads the existing public `GET /health` contract. Search uses the existing protected
 `POST /api/v1/notes/search` and `POST /api/v1/notes/related` contracts. After a selected note is read,
 its bounded Relationships section uses protected `GET /api/v1/notes/links` and
@@ -392,13 +392,21 @@ fetch helper in `app.js`, public health fetching/validation/rendering in `overvi
   server order and duplicates, caps each group at 20 visible items, uses text-only DOM APIs, and adds
   no browser persistence, relationship parsing, graph ownership, or mutation.
 
-The public shell contains no configured credential. Unlock and reload revalidation call
-`GET /api/v1/notes/list?limit=1`; a successful response allows the submitted key to be stored under
-`vaultbridge.ui.apiKey` in `sessionStorage` and used by one authenticated fetch helper. Logout and
-`401` clear it, while `429`, `503`, and network failures do not misclassify an already stored key.
+Hygiene uses a focused `hygiene.js` presentation module and the existing protected
+`POST /api/v1/knowledge/hygiene/scan` contract. Only Run scan / Refresh scan initiates a scan.
+The panel renders every returned finding (up to 500) with safe typed evidence and canonical paths,
+groups returned counts by kind, and displays scan, candidate and derived-index coverage separately.
+No diagnostic rules, repairs, mutation, persistence or automatic polling are added.
+Navigation away cancels pending scan presentation; generation checks suppress late results/failures.
+
+The public shell contains no configured credential. Unlock, restore and logout use the existing
+`/ui/session` boundary and signed HttpOnly cookie; JavaScript does not store the API key.
+The authenticated fetch helper uses same-origin credentials and `X-VaultBridge-UI-Request: 1`.
+Logout and `401` invalidate requests and clear protected Hygiene data immediately; `429`, `503`
+and network failures retain the session.
 The UI receives the ADR 0003 CSP, `nosniff`, and no-referrer headers, loads no third-party resources,
-and renders dynamic strings through text-only DOM APIs. No account, cookie, OAuth, secret-return, or
-dashboard-specific authentication endpoint exists.
+and renders dynamic strings through text-only DOM APIs. No account, OAuth or secret-return endpoint
+is introduced by Hygiene.
 
 The Overview displays only facts already exposed by `/health`: application/vault status, semantic
 lifecycle/readiness/search availability, vault/index/chunk counts, last successful full sync,

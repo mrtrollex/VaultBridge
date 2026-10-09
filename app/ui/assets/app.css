@@ -230,7 +230,7 @@ h3 {
 
 .app-navigation {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   background: var(--card-background);
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border-strong);
@@ -1379,3 +1379,15 @@ code {
     transition: none;
   }
 }
+
+/* Read-only Hygiene uses the shared session, buttons and focus styles. */
+.hygiene-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-block: 1.5rem; }
+#hygiene-panel, #hygiene-results, .hygiene-findings li { min-width: 0; overflow-wrap: anywhere; }
+#hygiene-status { border-inline-start: 0.2rem solid var(--focus); padding: 0.75rem 1rem; }
+.hygiene-facts { display: grid; gap: 0.6rem; }
+.hygiene-facts > div { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; }
+.hygiene-facts dt { font-weight: 600; }
+.hygiene-facts dd { margin: 0; min-width: 0; }
+.hygiene-findings { padding-inline-start: 1.5rem; }
+.hygiene-findings > li { padding: 1rem; margin-block: 1rem; border: 1px solid var(--border); border-radius: 0.5rem; }
+.hygiene-path { font-weight: 600; }

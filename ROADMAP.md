@@ -154,8 +154,8 @@ relationship/query store, or multiple-knowledge-space runtime today.
 
 `KnowledgeHygieneService` exists as the bounded, read-only VB-141 domain/runtime owner;
 Knowledge Hygiene domain diagnostics and VB-142 CLI, REST and MCP transport adapters are
-implemented and merged. Milestone 15 is COMPLETE. Dashboard presentation remains deferred under
-the accepted contract; repair/mutation workflows and bounded semantic candidate retrieval remain
+implemented and merged. Milestone 15 is COMPLETE. The separately scoped v1.4.0 plan P1 now implements
+the read-only Hygiene Dashboard over the unchanged REST contract; repair/mutation workflows and bounded semantic candidate retrieval remain
 separate future scope. Findings remain diagnostic, read-only, and advisory.
 
 ## Completed foundation tasks
@@ -1136,7 +1136,8 @@ VB-142 thin diagnostic adapters — contract complete and merged via PR #113
   CLI — complete and merged via PR #116
 ```
 
-The earlier optional dashboard views are explicitly deferred to a separately scoped ticket.
+The earlier optional dashboard views were deferred to a separately scoped ticket; v1.4.0 plan
+P1 — Read-only Knowledge Hygiene Dashboard now implements that presentation separately.
 VB-142 requires no dashboard implementation; all three required adapters are implemented and
 merged, completing Milestone 15. Repair/mutation workflows and bounded semantic candidate
 retrieval remain separate future scope, not milestone completion dependencies. Knowledge Hygiene
@@ -1211,7 +1212,8 @@ Accepted VB-110, VB-120, and VB-130 establish domain semantics before their sepa
 runtime or adapter work. These three design tasks, the completed VB-131 intake contract, the
 implemented VB-132 promotion contract, VB-140/ADR 0008, the completed VB-141 diagnostic runtime,
 and the completed VB-142 thin-adapter contract and implementation are authoritative in
-`BACKLOG.md`. Required REST, MCP and CLI adapters are merged; dashboard presentation is deferred.
+`BACKLOG.md`. Required REST, MCP and CLI adapters are merged; dashboard presentation is now
+implemented separately under v1.4.0 plan P1, without changing their contract.
 VB-150 is complete as design-only work under accepted ADR 0009 and its BACKLOG contract.
 VB-151 has an authoritative contract in BACKLOG.md; runtime Slices A–C are implemented, D–G pending.
 VB-152 adapters remain future/unscoped and require their own contract after domain runtime exists.
@@ -1351,7 +1353,8 @@ NEXT. VB-130 and ADR 0007 are accepted as design only. VB-131 and VB-132 are imp
 merged; Milestone 14 is complete. VB-140 and ADR 0008 establish hygiene definitions only.
 VB-141 runtime is complete and merged via PR #112. VB-142's contract is complete via PR #113,
 and required REST, MCP and CLI adapters are complete and merged via PRs #114, #115 and #116,
-respectively. Milestone 15 is complete. Dashboard views are deferred; repair/mutation and bounded
+respectively. Milestone 15 is complete. The separate v1.4.0 plan P1 implements read-only Hygiene
+Dashboard presentation; repair/mutation and bounded
 semantic candidate retrieval remain separate future scope. Milestone 16 remains planned.
 VB-150 and ADR 0009 are complete / accepted as design only; VB-151 has a defined domain contract.
 VB-151 runtime Slices A–C implement private configuration/registry/policy resolution, local owner
