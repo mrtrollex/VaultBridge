@@ -472,13 +472,22 @@ class SemanticRepository:
 
     def read_immutable_status(self) -> SemanticIndexStatus:
         """Inspect stopped/offline SQLite storage without creating or changing sidecars."""
+        return self._read_immutable_status()
+
+    def _read_immutable_status(self, *, validated_path: Path | None = None) -> SemanticIndexStatus:
+        """Named inspection may supply its already validated canonical DB target.
+
+        Do not resolve that target again. This does not pin descriptors against
+        concurrent hostile mutation; ordinary callers keep their existing path.
+        """
         try:
             sidecars = (Path(f"{self.db_path}-wal"), Path(f"{self.db_path}-shm"))
             if any(path.exists() for path in sidecars):
                 raise ImmutableIndexInspectionUnavailableError
             if not self.db_path.exists():
                 return self._missing_status()
-            database_uri = f"{self.db_path.resolve().as_uri()}?mode=ro&immutable=1"
+            target = self.db_path.resolve() if validated_path is None else validated_path
+            database_uri = f"{target.as_uri()}?mode=ro&immutable=1"
             status = self._read_status_uri(database_uri)
             if any(path.exists() for path in sidecars):
                 raise ImmutableIndexInspectionUnavailableError

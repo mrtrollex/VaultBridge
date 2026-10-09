@@ -139,6 +139,7 @@ class DuplicateCandidateService:
         folder: str = "",
         limit: int = 5,
         min_score: float = 0.28,
+        semantic_candidates: bool = True,
     ) -> list[DuplicateCandidate]:
         canonical_folder = ""
         if folder:
@@ -169,6 +170,10 @@ class DuplicateCandidateService:
         )
         query = title if not text else f"{title}\n\n{text}"
         try:
+            if not semantic_candidates:
+                # Internal nonsemantic advice retains the existing title fallback
+                # without calling a forbidden or not-yet-executable search owner.
+                raise SemanticSearchUnavailableError("Semantic search unavailable")
             semantic_results = self.semantic_search_service.search(
                 query,
                 folder=canonical_folder,

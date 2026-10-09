@@ -1,7 +1,7 @@
 """Private, startup-owned knowledge-space configuration and policy boundary.
 
-No serving owners are constructed here. Slice A accepts opaque trusted references;
-real owner composition and binding consumption belong to subsequent slices.
+Registry validation is independent of owner construction. Domain composition is
+explicit and remains inaccessible to today's direct-owner public adapters.
 """
 
 from __future__ import annotations
@@ -22,6 +22,14 @@ from app.services.vault import SEMANTIC_EXCLUDED_DIRECTORIES
 
 if TYPE_CHECKING:
     from app.core.config import Settings
+    from app.services.capture import CaptureService
+    from app.services.duplicate_candidates import DuplicateCandidateService
+    from app.services.knowledge_hygiene import KnowledgeHygieneService
+    from app.services.knowledge_query import KnowledgeQueryService
+    from app.services.promotion import PromotionService
+    from app.services.relationships import RelationshipService
+    from app.services.space_owners import DeferredSpaceIndexLifecycle, ImmutableSpaceInspection
+    from app.services.vault import VaultService
 
 
 class SpaceError(Exception):
@@ -31,7 +39,7 @@ class SpaceError(Exception):
         self,
         category: Literal[
             "invalid_configuration", "invalid_scope", "unknown_or_denied_space",
-            "unsupported_capability", "unsupported_dialect", "indexing_disabled",
+            "unsupported_capability", "unsupported_dialect", "indexing_disabled", "unavailable_space",
         ],
         *,
         reason: Literal["named_serving_unsupported"] | None = None,
@@ -227,11 +235,6 @@ class WriteScope:
         _require_id(self.space_id)
 
 
-# Deliberately opaque: Slice B will define the fixed SpaceOwners references.
-# No attributes/methods are inspected by registry construction or authorization.
-SpaceOwners = object
-
-
 class _PrivateImmutable:
     __slots__ = ()
 
@@ -243,6 +246,38 @@ class _PrivateImmutable:
 
     def __reduce_ex__(self, protocol):
         raise TypeError("private binding is not serializable")
+
+
+class SpaceOwners(_PrivateImmutable):
+    """Fixed private local references; no generic serialization or value equality.
+
+    Construction belongs to space_owners; registry authorization never touches a
+    reference. Capture/promotion are local owners only, not scoped v2 entry points.
+    """
+
+    __slots__ = ("vault", "relationships", "query", "duplicates", "capture", "promotion",
+                 "hygiene", "semantic", "scheduler", "_definition", "_root_identity")
+
+    vault: VaultService
+    relationships: RelationshipService
+    query: KnowledgeQueryService
+    duplicates: DuplicateCandidateService
+    capture: CaptureService
+    promotion: PromotionService
+    hygiene: KnowledgeHygieneService
+    semantic: ImmutableSpaceInspection
+    scheduler: DeferredSpaceIndexLifecycle | None
+
+    def __init__(self, *, definition, root_identity, vault, relationships, query, duplicates, capture, promotion,
+                 hygiene, semantic, scheduler):
+        for name, value in (("_definition", definition), ("_root_identity", root_identity), ("vault", vault),
+                            ("relationships", relationships), ("query", query),
+                            ("duplicates", duplicates), ("capture", capture), ("promotion", promotion),
+                            ("hygiene", hygiene), ("semantic", semantic), ("scheduler", scheduler)):
+            object.__setattr__(self, name, value)
+
+    def __repr__(self):
+        return "SpaceOwners()"
 
 
 class AuthorizedSpaceBinding(_PrivateImmutable):
@@ -299,6 +334,8 @@ class SpaceRegistry(_PrivateImmutable):
         owner_refs = {} if owners is None else dict(owners)
         by_id = {item.space_id: item for item in definitions}
         if any(type(key) is not SpaceId or key not in by_id for key in owner_refs):
+            raise _invalid_configuration()
+        if any(type(owner) is SpaceOwners and owner._definition != by_id[key] for key, owner in owner_refs.items()):
             raise _invalid_configuration()
         object.__setattr__(result, "_definitions", definitions)
         object.__setattr__(result, "_by_id", MappingProxyType(by_id))

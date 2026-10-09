@@ -312,8 +312,11 @@ Current post-v1 planning position:
   scoped provenance. Runtime Slice A implements strict `KNOWLEDGE_SPACES_JSON`, immutable private
   config/types/registry, non-mutating named startup validation and `SpacePolicyResolver`, with
   authorization-before-work tests. Existing direct-owner REST/MCP/CLI composition rejects named
-  configuration before owner work; legacy startup remains unchanged. Slices B–G remain pending,
-  including real owner bundles. VB-152 adapters remain future/unscoped and need a separate contract.
+  configuration before owner work; legacy startup remains unchanged. Slice B adds explicit private
+  local owner bundles, qualified one-space note/relationship/duplicate-advice/hygiene/inspection
+  orchestration and a disabled-index immutable facade. Semantic execution/scheduling and scoped
+  capture/promotion remain deferred seams. Slices C–G remain pending; VB-151 is not complete.
+  VB-152 adapters remain future/unscoped and need a separate contract; named serving remains blocked.
   Milestone 16 remains PLANNED; multi-space serving and index-format changes are not implemented
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
