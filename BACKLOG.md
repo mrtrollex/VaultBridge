@@ -3352,14 +3352,19 @@ roots, multi-tenancy/RBAC/account administration, cross-space automatic moves/re
 implementation, release/deployment, commit or reviewer launch. ADR acceptance must precede a
 separately accepted runtime contract; sequence alone never authorizes implementation.
 
-### VB-151 — Compatibility-safe multi-space domain boundary — P1 (Slice A implemented; later slices pending)
+### VB-151 — Compatibility-safe multi-space domain boundary — P1 (Slices A–B implemented; C–G pending)
 
 **Authority / status:** This is the authoritative future implementation contract under
 [Accepted ADR 0009](docs/adr/0009-knowledge-spaces-and-scope-policies.md). VB-150 is complete and
 merged. The original contract was documentation-only. Runtime Slice A now implements immutable
 config/types/registry/resolver, strict startup validation and authorization/no-work tests. Existing
-direct-owner composition rejects supplied named configuration; real owner bundles, orchestration
-and Slices B–G remain pending. Milestone 16 remains **PLANNED**, and VB-152 stays future/unscoped.
+direct-owner composition rejects supplied named configuration. Slice B implements real private
+owner bundles and qualified nonsemantic one-space operations: note read, outgoing/backlinks,
+local title duplicate advice, hygiene and immutable index inspection. Query/capture/promotion
+owners are local structural references, without new scoped execution. Semantic runtime and enabled
+scheduler are deferred behind immutable inspection and a no-worker lifecycle handle; disabled
+spaces have no scheduler. Scoped writes/index callbacks and provenance remain gated on E/F.
+Slices C–G remain pending. Milestone 16 remains **PLANNED**, and VB-152 stays future/unscoped.
 Later explicitly requested implementation must follow this contract and ADRs 0005–0008 without
 reopening their semantics.
 
@@ -4009,11 +4014,12 @@ prefix counters/digests or streamed comparisons. Use small injected remaining cr
 each boundary deterministically, plus production-ceiling cases; do not allocate millions of objects
 or invoke an eager parser to manufacture the bounded path's expected output.
 
-Use separate narrowly reviewable implementation PRs; none is implemented in this contract task:
+Use separate narrowly reviewable implementation PRs; runtime A and B are implemented, C–G pending:
 
 1. **A: immutable config/types/registry/resolver**, strict startup and authorization/no-work tests.
 2. **B: owner bundles/qualified one-space orchestration**, disabled inspection facade, local owners
-   and default compatibility; no adapters.
+   and default compatibility; no adapters. Implemented through explicit `compose_space_registry`
+   and `SpaceOperations`; named serving remains blocked. No new semantic or scoped write execution.
 3. **C: budgeted discovery/nonsemantic federation**, supplied-snapshot Query and qualified predicates,
    quota-aware relationship/parsing owner admission, list/literal ordering, full counters and coverage.
 4. **D: precise semantic federation**, bounded repository reads/descriptors/local merge and eval parity.
@@ -4038,8 +4044,9 @@ runtime improvisation; normally configured new spaces need no migration tooling.
 **Non-goals:** multi-tenancy/users/groups/RBAC; policy DB/DSL; caller host roots/hot reload;
 cross-space Markdown links/graph/duplicates; automatic note migration/move; cross-space promotion;
 hygiene repair; new ranker/model/index format; cloud embeddings; distributed queue/coordinator;
-VB-152 adapters; Docker/release/deployment. This task changes no runtime/test/Settings/ADR, commits
-nothing and launches no reviewer. Milestone 16 is not complete.
+VB-152 adapters; Docker/release/deployment. The original contract task was documentation-only;
+runtime changes require explicitly scoped slices. Slice B changes no public adapter or accepted
+ADR, commits nothing and launches no reviewer. Milestone 16 is not complete.
 
 ### VB-152 — Permission-aware query and write adapter integration — P1 (future; unscoped)
 

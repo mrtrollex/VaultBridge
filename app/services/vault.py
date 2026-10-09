@@ -279,6 +279,18 @@ class VaultService:
     def vault_exists(self) -> bool:
         return self.vault_root.exists()
 
+    def root_binding_identity(self) -> tuple[int, int]:
+        """Private composition anchor; not a note identity or containment substitute.
+
+        Scoped composition may detect root replacement between operations. Existing
+        callers do not acquire this new startup requirement. Ordinary owner path
+        containment and cooperating-writer guarantees still apply during an operation.
+        """
+        info = self.vault_root.stat()
+        if not stat.S_ISDIR(info.st_mode):
+            raise NoteUnavailableError("Vault unavailable")
+        return info.st_dev, info.st_ino
+
     def vault_available(self) -> bool:
         """Return whether the configured vault is an inspectable directory."""
         try:

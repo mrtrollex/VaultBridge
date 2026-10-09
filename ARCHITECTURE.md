@@ -542,7 +542,20 @@ merge, lifecycle and provenance implementation contract. Runtime Slice A impleme
 immutable configuration/types/registry and `SpacePolicyResolver` in `services/knowledge_spaces.py`.
 `KNOWLEDGE_SPACES_JSON` is parsed once by Settings; the internal registry factory performs
 non-mutating named binding validation. Legacy implicit-default construction adds no filesystem
-checks. Opaque owner references are a seam only; real bundles and orchestration remain pending.
+checks. Slice B's explicit `services/space_owners.py: compose_space_registry` validates all records
+before composing one private `SpaceOwners` bundle per definition: VaultService, relationships,
+query, duplicates, capture, promotion, hygiene, immutable semantic inspection and a deferred
+enabled-index lifecycle handle (None when disabled). Every local dependency uses that same vault.
+No model, writable repository, worker or bound enqueue callback is created. Immutable inspection
+reuses the existing semantic owner's classifier and repository's immutable reader without loading
+a fingerprint. Enabled semantic execution/resource scheduling waits for D/E; scoped
+capture/promotion provenance and index callbacks wait for E/F.
+`services/space_operations.py: SpaceOperations` authorizes through SpacePolicyResolver before
+owner access, verifies the registry token/exact bundle and named root identity, then delegates
+only one-space note reads, outgoing/backlinks, nonsemantic duplicate advice, hygiene or inspection.
+Read identities are qualified only after VaultService canonical containment verification; other
+local payloads inherit the outer authorized space ID. Query/list/literal federation is deferred
+to C, semantic federation to D/E. Slices C–G remain pending; VB-151 is not complete.
 Existing REST/MCP/CLI composition rejects named configuration before owner construction with
 `invalid_configuration` (internal reason `named_serving_unsupported`). Named serving remains blocked
 until VB-152 integrates every applicable entry point. No public schema, route, operation ID,
