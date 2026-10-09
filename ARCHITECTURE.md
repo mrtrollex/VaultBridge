@@ -554,8 +554,20 @@ capture/promotion provenance and index callbacks wait for E/F.
 owner access, verifies the registry token/exact bundle and named root identity, then delegates
 only one-space note reads, outgoing/backlinks, nonsemantic duplicate advice, hygiene or inspection.
 Read identities are qualified only after VaultService canonical containment verification; other
-local payloads inherit the outer authorized space ID. Query/list/literal federation is deferred
-to C, semantic federation to D/E. Slices C–G remain pending; VB-151 is not complete.
+local payloads inherit the outer authorized space ID. Slice C adds internal `scoped_list`,
+`scoped_literal_search` and nonsemantic `scoped_query`. One request-local `ScopedBudget` fixes
+per-space allocations before sequential ASCII-ID execution. `VaultService.scoped_session` streams
+charged directory entries, retains canonical top-K, accounts native component/handle probes and
+bounded verified bytes, and holds a read-only root handle until final root verification. Incomplete
+discovery discards the space; retention overflow preserves canonical top-K with partial coverage.
+`ScopedKnowledgeQuery` wrapper B rejects legacy bare predicates and projects qualified same-space
+constraints into `KnowledgeQueryService.evaluate_supplied_nonsemantic`, reusing ADR 0006 validation
+and filters. `RelationshipService.derive_normalized_bounded` coordinates incremental dialect spans
+in source order, shares occurrence/parse credits, admits before materialization/resolution and
+reuses supplied local resolution facts. Exhaustion discards that space's relationship matches.
+Frozen qualified results carry finite authorized coverage; cancellation fails the whole request.
+Legacy eager APIs remain unchanged. Scoped semantic text is gated with `unsupported_capability`;
+semantic federation waits for D/E. Slices A–C are implemented; D–G remain pending; VB-151 is incomplete.
 Existing REST/MCP/CLI composition rejects named configuration before owner construction with
 `invalid_configuration` (internal reason `named_serving_unsupported`). Named serving remains blocked
 until VB-152 integrates every applicable entry point. No public schema, route, operation ID,

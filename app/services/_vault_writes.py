@@ -96,7 +96,7 @@ def coordinated_write(root: Path):
 
 
 @contextmanager
-def windows_pinned_path(path: Path):
+def windows_pinned_path(path: Path, *, probe=None):
     """Reject reparse points and deny rename/delete while a path is in use."""
     from ctypes import wintypes
 
@@ -115,11 +115,15 @@ def windows_pinned_path(path: Path):
     kernel.GetFileInformationByHandle.argtypes = [wintypes.HANDLE, ctypes.c_void_p]
     # GENERIC_READ; attribute-only handles do not prevent directory renames.
     # Share read/write, but deliberately not delete.
+    if probe is not None:
+        probe()
     handle = kernel.CreateFileW(str(path), 0x80000000, 3, None, 3, 0x02200000, None)
     if handle == ctypes.c_void_p(-1).value:
         raise ctypes.WinError(ctypes.get_last_error())
     try:
         information = (ctypes.c_byte * 52)()
+        if probe is not None:
+            probe()
         if not kernel.GetFileInformationByHandle(handle, information):
             raise ctypes.WinError(ctypes.get_last_error())
         attributes = ctypes.cast(information, ctypes.POINTER(wintypes.DWORD))[0]

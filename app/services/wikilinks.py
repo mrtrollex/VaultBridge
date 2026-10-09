@@ -65,6 +65,11 @@ class WikilinkResolver:
         self._vault_service = vault_service
 
     @staticmethod
+    def recognize_bounded_at(cursor, position):
+        """Additive incremental span recognition; no occurrence object yet."""
+        return cursor.wiki(position)
+
+    @staticmethod
     def parse(markdown: str) -> tuple[Wikilink, ...]:
         """Return valid wikilinks outside fenced code in source order."""
         links: list[Wikilink] = []

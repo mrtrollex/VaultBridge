@@ -279,6 +279,12 @@ class VaultService:
     def vault_exists(self) -> bool:
         return self.vault_root.exists()
 
+    def scoped_session(self, *, space_id, budget, cancel, root_identity):
+        """Additive request-local owner path; legacy discovery is unchanged."""
+        from app.services._scoped_vault import ScopedVaultSession
+
+        return ScopedVaultSession(self, space_id, budget, cancel, root_identity)
+
     def root_binding_identity(self) -> tuple[int, int]:
         """Private composition anchor; not a note identity or containment substitute.
 

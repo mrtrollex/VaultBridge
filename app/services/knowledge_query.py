@@ -144,6 +144,134 @@ class KnowledgeQueryService:
         self._relationships = relationship_service
         self._semantic = semantic_search_service
 
+    def evaluate_supplied_nonsemantic(self, request, *, snapshot, session, paths,
+                                     relationships, budget, cancel, reasons, validated):
+        """Evaluate one authorized projection using one budgeted supplied universe.
+
+        Request validation remains shared with query(); this seam does no discovery,
+        semantic work, eager relationship derivation or legacy backlink scans.
+        Content is released after retaining scalar eligibility and target/origin sets.
+        """
+        from app.services.relationships import ScopedRelationshipSnapshot
+        from app.services.scoped_budget import BudgetExhausted
+        from app.services.vault import NoteUnavailableError
+
+        if request.semantic_text is not None:
+            raise KnowledgeQuerySemanticUnavailableError()
+        universe = ScopedRelationshipSnapshot(snapshot, session)
+        if relationships and not snapshot.resolution_complete:
+            reasons.add("relationship_limit")
+            return (), 0, False
+        selected = None
+        if paths is not None:
+            selected = set()
+            for path in paths:
+                try:
+                    resolved, outcome = universe.exact(path)
+                except (NoteUnavailableError, OSError):
+                    reasons.add("note_unavailable")
+                    continue
+                if outcome == "unsafe":
+                    raise UnsafeKnowledgeQueryScopeError()
+                if resolved is not None:
+                    selected.add(resolved)
+        if selected == set():
+            return (), 0, True
+        targets = []
+        for predicate in relationships:
+            target, outcome = universe.exact(predicate.other.relative_path)
+            if outcome == "unsafe":
+                raise UnsafeKnowledgeQueryScopeError()
+            targets.append(target)
+        facts = {fact.path: fact for fact in snapshot.facts}
+        eligible = {}
+        edges = {}
+        evaluated = 0
+        view = budget.relationships(session.sid, cancel)
+        outgoing = any(predicate.direction == "outgoing" for predicate in relationships)
+
+        def candidate_scope(path):
+            return ((selected is None or path in selected)
+                    and (request.folder is None or _path_is_below(path, request.folder.replace("\\", "/"))))
+
+        def inspect(path):
+            nonlocal evaluated
+            cancel.check()
+            if path in eligible:
+                return True
+            fact = facts[path]
+            try:
+                note = session.read(fact, incoming=not candidate_scope(path))
+            except (NoteUnavailableError, UnicodeError, OSError):
+                reasons.add("note_unavailable")
+                eligible[path] = False
+                edges[path] = frozenset()
+                return True
+            evaluated += 1
+            frontmatter = FrontmatterParser.parse(note.content) if request.tags or request.metadata else None
+            eligible[path] = (
+                (request.literal_text is None or request.literal_text in note.content)
+                and (not request.tags or _matches_tags(frontmatter, validated.tags))
+                and (not request.metadata or _matches_metadata(frontmatter, request.metadata))
+            )
+            if relationships and (outgoing or path in incoming_targets):
+                try:
+                    derivation = self._relationships.derive_normalized_bounded(
+                        note.content, source_path=path, snapshot=universe, budget=view, cancel=cancel,
+                    )
+                except (NoteUnavailableError, OSError):
+                    reasons.add("note_unavailable")
+                    eligible[path] = False
+                    edges[path] = frozenset()
+                    return True
+                if derivation.state == "limited":
+                    reasons.add("relationship_limit")
+                    return False
+                edges[path] = frozenset((row.resolved_path, row.origin) for row in derivation.occurrences
+                                        if row.resolved_path is not None)
+            return True
+
+        if any(target is None for target in targets):
+            return (), 0, True
+        incoming_targets = {target for predicate, target in zip(relationships, targets, strict=True)
+                            if predicate.direction == "incoming"}
+        try:
+            for predicate, target in zip(relationships, targets, strict=True):
+                if predicate.direction == "incoming" and not inspect(target):
+                    return (), evaluated, False
+            matches = []
+            for fact in snapshot.facts:
+                cancel.check()
+                path = fact.path
+                if request.folder is not None and not _path_is_below(path, request.folder.replace("\\", "/")):
+                    continue
+                if selected is not None and path not in selected:
+                    continue
+                if not inspect(path):
+                    return (), evaluated, False
+                if not eligible[path]:
+                    continue
+                if relationships and outgoing and path not in edges:
+                    raise AssertionError("missing bounded derivation")
+                matched = True
+                for predicate, target in zip(relationships, targets, strict=True):
+                    budget.charge(session.sid, "comparisons")
+                    source, destination = (path, target) if predicate.direction == "outgoing" else (target, path)
+                    origins = (predicate.origin.value,) if predicate.origin is not None else (
+                        "obsidian_wikilink", "markdown_link",
+                    )
+                    if not any((destination, origin) in edges.get(source, ()) for origin in origins):
+                        matched = False
+                        break
+                if matched:
+                    matches.append(path)
+        except BudgetExhausted as exc:
+            reasons.add("content_limit" if exc.resource == "bytes" else "relationship_limit")
+            if relationships:
+                reasons.add("relationship_limit")
+                return (), evaluated, False
+        return tuple(matches), evaluated, True
+
     def query(self, request: KnowledgeQuery) -> KnowledgeQueryResult:
         validated = self._validate_request(request)
 

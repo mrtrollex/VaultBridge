@@ -29,6 +29,11 @@ class MarkdownLinkResolver:
         self._vault_service = vault_service
 
     @staticmethod
+    def recognize_bounded_at(cursor, position):
+        """Additive incremental span recognition; no occurrence object yet."""
+        return cursor.markdown(position)
+
+    @staticmethod
     def parse(markdown: str) -> tuple[MarkdownLink, ...]:
         """Return bounded inline Markdown note links in source order."""
         links: list[MarkdownLink] = []
