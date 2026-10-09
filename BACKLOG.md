@@ -3352,7 +3352,7 @@ roots, multi-tenancy/RBAC/account administration, cross-space automatic moves/re
 implementation, release/deployment, commit or reviewer launch. ADR acceptance must precede a
 separately accepted runtime contract; sequence alone never authorizes implementation.
 
-### VB-151 — Compatibility-safe multi-space domain boundary — P1 (Slices A–B implemented; C–G pending)
+### VB-151 — Compatibility-safe multi-space domain boundary — P1 (Slices A–C implemented; D–G pending)
 
 **Authority / status:** This is the authoritative future implementation contract under
 [Accepted ADR 0009](docs/adr/0009-knowledge-spaces-and-scope-policies.md). VB-150 is complete and
@@ -3364,7 +3364,11 @@ local title duplicate advice, hygiene and immutable index inspection. Query/capt
 owners are local structural references, without new scoped execution. Semantic runtime and enabled
 scheduler are deferred behind immutable inspection and a no-worker lifecycle handle; disabled
 spaces have no scheduler. Scoped writes/index callbacks and provenance remain gated on E/F.
-Slices C–G remain pending. Milestone 16 remains **PLANNED**, and VB-152 stays future/unscoped.
+Slice C adds internal sequential Markdown-only list/literal/nonsemantic Scoped Query federation,
+qualified predicates, supplied snapshots, request-local work admission, incremental mixed-dialect
+relationship derivation, cancellation and finite coverage. Slices A–C are implemented; D–G remain
+pending. VB-151 remains incomplete. Named serving remains blocked. Milestone 16 remains **PLANNED**,
+and VB-152 stays future/unscoped.
 Later explicitly requested implementation must follow this contract and ADRs 0005–0008 without
 reopening their semantics.
 
@@ -4014,7 +4018,7 @@ prefix counters/digests or streamed comparisons. Use small injected remaining cr
 each boundary deterministically, plus production-ceiling cases; do not allocate millions of objects
 or invoke an eager parser to manufacture the bounded path's expected output.
 
-Use separate narrowly reviewable implementation PRs; runtime A and B are implemented, C–G pending:
+Use separate narrowly reviewable implementation PRs; runtime A–C are implemented, D–G pending:
 
 1. **A: immutable config/types/registry/resolver**, strict startup and authorization/no-work tests.
 2. **B: owner bundles/qualified one-space orchestration**, disabled inspection facade, local owners
@@ -4022,6 +4026,8 @@ Use separate narrowly reviewable implementation PRs; runtime A and B are impleme
    and `SpaceOperations`; named serving remains blocked. No new semantic or scoped write execution.
 3. **C: budgeted discovery/nonsemantic federation**, supplied-snapshot Query and qualified predicates,
    quota-aware relationship/parsing owner admission, list/literal ordering, full counters and coverage.
+   Implemented through new internal `SpaceOperations.scoped_list`, `scoped_literal_search` and
+   `scoped_query`; legacy calls and public activation gates are unchanged. No semantic execution.
 4. **D: precise semantic federation**, bounded repository reads/descriptors/local merge and eval parity.
 5. **E: binding/lifecycle/resources**, private meta binding, shared scheduler/embedder/observer leases,
    bound targeted jobs, queue caps/cancellation/shutdown.

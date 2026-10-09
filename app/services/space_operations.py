@@ -1,6 +1,6 @@
-"""Qualified nonsemantic single-owner operations; no ReadScope execution.
+"""Qualified local operations and bounded Markdown-only read federation.
 
-Query/list/literal/semantic execution waits for C/D/E. Writes and scoped
+Semantic execution waits for D/E. Writes and scoped
 capture/promotion wait for their bound lifecycle/provenance implementation.
 """
 
@@ -59,6 +59,23 @@ class QualifiedNoteRead:
 @dataclass(frozen=True, slots=True)
 class SpaceOperations:
     _resolver: SpacePolicyResolver = field(repr=False)
+
+    def scoped_list(self, scope=None, *, folder=None, limit=50, cancel=None, limits=None):
+        from app.services._scoped_federation import federate
+
+        return federate(self, mode="list", scope=scope, folder=folder, limit=limit,
+                        cancel=cancel, limits=limits)
+
+    def scoped_literal_search(self, text, scope=None, *, folder=None, limit=10, cancel=None, limits=None):
+        from app.services._scoped_federation import federate
+
+        return federate(self, mode="literal", text=text, scope=scope, folder=folder, limit=limit,
+                        cancel=cancel, limits=limits)
+
+    def scoped_query(self, request, *, cancel=None, limits=None):
+        from app.services._scoped_federation import federate
+
+        return federate(self, mode="query", request=request, cancel=cancel, limits=limits)
 
     def _read(self, space_id, operation, dialects=frozenset()) -> AuthorizedSpaceBinding:
         if space_id is not None and type(space_id) is not SpaceId:

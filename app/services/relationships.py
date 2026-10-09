@@ -106,6 +106,89 @@ class RelationshipResolutionSnapshot:
     _selected_paths: frozenset[str] | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class BoundedRelationshipDerivation:
+    occurrences: tuple[RelationshipOccurrence, ...]
+    state: Literal["complete", "limited"]
+    reason: Literal["relationship_limit"] | None
+
+    def __post_init__(self):
+        if (type(self.occurrences) is not tuple
+                or (self.state, self.reason) not in {("complete", None), ("limited", "relationship_limit")}):
+            raise ValueError("invalid bounded relationship derivation")
+
+
+class ScopedRelationshipSnapshot:
+    """Complete local supplied universe with request-accounted live proof."""
+
+    def __init__(self, snapshot, session):
+        self.snapshot, self.session = snapshot, session
+        session.resolution_snapshot = snapshot
+        self.facts = {fact.path: fact for fact in snapshot.facts}
+        candidates = tuple(LiveMarkdownPathCandidate(spelling, canonical)
+                           for spelling, canonical in snapshot.spellings.items())
+        self.wikilinks = WikilinkResolutionSnapshot.from_candidates(
+            candidates, unsafe_unqualified_names=snapshot.unsafe_names,
+        )
+        self.exact_candidates = {candidate.discovered_path: candidate for candidate in candidates}
+
+    def exact(self, relative):
+        from app.services._vault_writes import UnsafeWritePathError
+        from app.services.vault import NoteUnavailableError
+
+        try:
+            canonical, info = self.session.resolve(relative)
+        except FileNotFoundError:
+            if relative in self.snapshot.spellings or any(
+                    relative == alias or relative.startswith(alias + "/")
+                    for alias in self.snapshot.directory_aliases):
+                raise NoteUnavailableError("note_unavailable") from None
+            return None, "missing"
+        except UnsafeWritePathError:
+            return None, "unsafe"
+        fact = self.facts.get(canonical)
+        if fact is None:
+            return None, "missing"
+        if self.session.identity(info) != fact.identity:
+            raise NoteUnavailableError("note_unavailable")
+        self.session.verify(fact)
+        return canonical, "resolved"
+
+    def verify_snapshot_markdown_spelling(self, relative, candidates, **kwargs):
+        from app.services.vault import MarkdownPathVerification
+
+        path, reason = self.exact(relative)
+        return MarkdownPathVerification(reason, path)
+
+    def verify_snapshot_source_relative_markdown_path_result(self, source, destination, candidates, **kwargs):
+        from pathlib import PurePosixPath
+
+        return self.verify_snapshot_markdown_spelling(
+            (PurePosixPath(source).parent / destination).as_posix(), candidates,
+        )
+
+    def verify_snapshot_unqualified_markdown_candidates(self, candidates, exact_candidates):
+        from app.services.vault import NoteUnavailableError
+
+        for candidate in candidates:
+            path, outcome = self.exact(candidate.discovered_path)
+            if outcome != "resolved" or path != candidate.canonical_path:
+                raise NoteUnavailableError("note_unavailable")
+
+    def resolve(self, source, origin, target):
+        # Existing dialect resolvers retain syntax/ambiguity/locality semantics;
+        # their verification seam is supplied by this accounted vault snapshot.
+        if origin == "obsidian_wikilink":
+            link, reason = WikilinkResolver(self).resolve_with_reason(
+                Wikilink(target), snapshot=self.wikilinks, exact_candidates=self.exact_candidates,
+            )
+        else:
+            link, reason = MarkdownLinkResolver(self).resolve_with_reason(
+                MarkdownLink(target, None, ""), source_path=source, exact_candidates=self.exact_candidates,
+            )
+        return link.resolved_path, reason
+
+
 class RelationshipService:
     """Derive read-only note relationships from live vault Markdown."""
 
@@ -113,6 +196,38 @@ class RelationshipService:
         self._vault_service = vault_service
         self._wikilink_resolver = WikilinkResolver(vault_service)
         self._markdown_link_resolver = MarkdownLinkResolver(vault_service)
+
+    def derive_normalized_bounded(self, content, *, source_path, snapshot, budget, cancel):
+        """Admit a combined source-order occurrence before constructing/resolving it.
+
+        The supplied resolution universe owns accounted containment verification;
+        legacy eager resolution snapshots and APIs are deliberately unchanged.
+        """
+        from app.services._scoped_links import recognize
+        from app.services.scoped_budget import BudgetExhausted
+
+        cancel.check()
+        if not budget.available:
+            return BoundedRelationshipDerivation((), "limited", "relationship_limit")
+        budget.source(source_path, len(content.encode("utf-8")))
+        occurrences = []
+        try:
+            for position, origin, spec in recognize(content, budget):
+                budget.try_admit()
+                cancel.check()
+                target, fragment, label = spec
+                resolved, reason = snapshot.resolve(source_path, origin, target)
+                occurrences.append(RelationshipOccurrence(
+                    source_path, target, resolved, reason, origin, "note_link",
+                    fragment, label, len(occurrences),
+                ))
+                if not budget.available:
+                    return BoundedRelationshipDerivation(tuple(occurrences), "limited", "relationship_limit")
+        except BudgetExhausted:
+            return BoundedRelationshipDerivation(tuple(occurrences), "limited", "relationship_limit")
+        if content and budget.parse_exhausted:
+            return BoundedRelationshipDerivation(tuple(occurrences), "limited", "relationship_limit")
+        return BoundedRelationshipDerivation(tuple(occurrences), "complete", None)
 
     def outgoing_relationships(self, source_path: str) -> tuple[OutgoingRelationship, ...]:
         """Return outgoing relationship occurrences in source order."""
