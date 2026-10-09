@@ -1170,7 +1170,8 @@ per-folder access-policy candidates are absorbed here; neither is current behavi
 This milestone does not authorize multi-tenancy, account administration, a hosted SaaS control
 plane, or a dashboard user-management system. The current one-root vault configuration remains the
 only supported implementation. The authoritative VB-151 contract is now defined in BACKLOG.md;
-multi-space runtime remains pending and requires a later explicitly scoped implementation task.
+runtime Slice A implements private immutable config/types/registry/resolver and strict validation.
+Named serving is blocked by startup guards; later runtime slices require separately scoped work.
 
 [Accepted ADR 0009](docs/adr/0009-knowledge-spaces-and-scope-policies.md) defines the VB-150
 accepted design boundary: qualified `(space_id, canonical_relative_path)`
@@ -1184,7 +1185,7 @@ Task states (authoritative scope is in BACKLOG.md):
 ```text
 VB-150 knowledge-space and scope-policy ADR — complete, accepted design
    ↓
-VB-151 compatibility-safe multi-space domain boundary — contract defined, runtime pending
+VB-151 compatibility-safe multi-space domain boundary — Slice A implemented, later slices pending
    ↓
 VB-152 permission-aware query and write adapter integration — future, unscoped
 ```
@@ -1208,7 +1209,7 @@ implemented VB-132 promotion contract, VB-140/ADR 0008, the completed VB-141 dia
 and the completed VB-142 thin-adapter contract and implementation are authoritative in
 `BACKLOG.md`. Required REST, MCP and CLI adapters are merged; dashboard presentation is deferred.
 VB-150 is complete as design-only work under accepted ADR 0009 and its BACKLOG contract.
-VB-151 now has an authoritative implementation contract in BACKLOG.md; runtime remains pending.
+VB-151 has an authoritative contract in BACKLOG.md; runtime Slice A is implemented, B–G pending.
 VB-152 adapters remain future/unscoped and require their own contract after domain runtime exists.
 
 ## Deployment and integration candidates
@@ -1349,8 +1350,8 @@ and required REST, MCP and CLI adapters are complete and merged via PRs #114, #1
 respectively. Milestone 15 is complete. Dashboard views are deferred; repair/mutation and bounded
 semantic candidate retrieval remain separate future scope. Milestone 16 remains planned.
 VB-150 and ADR 0009 are complete / accepted as design only; VB-151 has a defined domain contract.
-VB-151 runtime remains pending; VB-152 adapters remain future/unscoped. The documentation contract
-does not implement runtime or authorize adapter work.
+VB-151 runtime Slice A implements private configuration/registry/policy resolution only; B–G remain
+pending and current adapters reject named configuration. VB-152 remains future/unscoped.
 
 ---
 

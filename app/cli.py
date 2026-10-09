@@ -330,6 +330,7 @@ def run_index_check(
     service: SemanticSearchService | None = None,
 ) -> int:
     """Run the read-only index integrity check and return its process exit code."""
+    settings.require_legacy_composition()
     stream = output or sys.stdout
     vault_service = VaultService(
         vault_root=settings.vault_path,
@@ -373,6 +374,7 @@ def run_status(
     service: SemanticSearchService | None = None,
 ) -> int:
     """Show the existing read-only persisted index inspection."""
+    settings.require_legacy_composition()
     return run_index_check(settings, output=output, service=service)
 
 
@@ -507,6 +509,7 @@ def run_index(
     service: SemanticSearchService | None = None,
 ) -> int:
     """Synchronize the current derived index without discarding compatible data first."""
+    settings.require_legacy_composition()
     stream = output or sys.stdout
     error_stream = error_output or sys.stderr
     vault_service = _vault_service(settings)
@@ -552,6 +555,7 @@ def run_index_rebuild(
     service: SemanticSearchService | None = None,
 ) -> int:
     """Run an explicit full rebuild and return its process exit code."""
+    settings.require_legacy_composition()
     stream = output or sys.stdout
     error_stream = error_output or sys.stderr
     vault_service = VaultService(
@@ -598,6 +602,7 @@ def run_reindex(
     service: SemanticSearchService | None = None,
 ) -> int:
     """Run the existing clean-rebuild behavior through a friendly top-level command."""
+    settings.require_legacy_composition()
     return run_index_rebuild(
         settings,
         output=output,
@@ -617,6 +622,7 @@ def run_search(
     vault_service: VaultService | None = None,
 ) -> int:
     """Run the existing literal vault search and print bounded relative-path results."""
+    settings.require_legacy_composition()
     stream = output or sys.stdout
     error_stream = error_output or sys.stderr
     service = vault_service or _vault_service(settings)
@@ -663,6 +669,7 @@ def run_related(
     vault_service: VaultService | None = None,
 ) -> int:
     """Search an existing compatible semantic index and display only verified live notes."""
+    settings.require_legacy_composition()
     stream = output or sys.stdout
     error_stream = error_output or sys.stderr
     live_vault = vault_service or _vault_service(settings)
@@ -736,6 +743,7 @@ def run_knowledge_query(
     service: KnowledgeQueryService | None = None,
 ) -> int:
     """Run the existing bounded domain query and print only its safe result evidence."""
+    settings.require_legacy_composition()
     stream = output or sys.stdout
     error_stream = error_output or sys.stderr
     query_service = service
@@ -776,6 +784,7 @@ def run_hygiene_scan(
     service: KnowledgeHygieneService | None = None,
 ) -> int:
     """Map a validated request to one read-only domain scan, preserving its evidence."""
+    settings.require_legacy_composition()
     stream = output or sys.stdout
     error_stream = error_output or sys.stderr
     try:
@@ -822,6 +831,7 @@ def run_capture(
     service: CaptureService | None = None,
 ) -> int:
     """Read one bounded request; the domain owns validation and all capture semantics."""
+    settings.require_legacy_composition()
     stream = output or sys.stdout
 
     def unique_object(pairs):
@@ -881,6 +891,7 @@ def run_capture(
 def run_promote_review(settings: Settings, *, source_path: str, capture_id: str,
                        candidate_limit: int | None = None, destination: str | None = None,
                        output: TextIO | None = None, service: PromotionService | None = None) -> int:
+    settings.require_legacy_composition()
     stream = output or sys.stdout
     if service is None:
         vault = _vault_service(settings)
@@ -914,6 +925,7 @@ def run_promote_review(settings: Settings, *, source_path: str, capture_id: str,
 
 def run_promote_apply(settings: Settings, *, input_stream: BinaryIO | None = None,
                       output: TextIO | None = None, service: PromotionService | None = None) -> int:
+    settings.require_legacy_composition()
     stream = output or sys.stdout
 
     def unique_object(pairs):
@@ -973,6 +985,7 @@ def main(argv: Sequence[str] | None = None, *, settings: Settings | None = None)
     try:
         configure_application_logging()
         app_settings = settings or Settings.from_env()
+        app_settings.require_legacy_composition()
         configured = True
         if args.action == "hygiene_scan":
             defaults = KnowledgeHygieneRequest()

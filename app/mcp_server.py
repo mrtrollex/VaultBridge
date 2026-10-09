@@ -696,6 +696,7 @@ def create_mcp_server(
     transport: MCPTransport = "stdio",
 ) -> MCPServer:
     app_settings = settings if settings is not None else Settings.from_env()
+    app_settings.require_legacy_composition()
     app_vault_service = vault_service or VaultService(
         vault_root=app_settings.vault_path,
         max_note_bytes=app_settings.max_note_bytes,
@@ -871,6 +872,7 @@ def main() -> int:
     semantic_indexer: BackgroundSemanticIndexer | None = None
     try:
         settings = Settings.from_env()
+        settings.require_legacy_composition()
         vault_service = VaultService(
             vault_root=settings.vault_path,
             max_note_bytes=settings.max_note_bytes,

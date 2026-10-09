@@ -538,9 +538,15 @@ policy before dispatch to existing per-space containment and domain owners. Read
 select up to eight spaces; writes select one destination. Independent derived semantic indexes,
 local-only relationship resolution, same-space promotion and one-space hygiene preserve current
 ownership. BACKLOG.md now defines VB-151's authoritative configuration, execution-budget, precise
-merge, lifecycle and provenance implementation contract; runtime remains pending. VB-152 adapters
-still need a separate contract after domain runtime exists. This documentation changes no registered
-route, operation ID, resource, Settings, configuration, persistence or runtime behavior.
+merge, lifecycle and provenance implementation contract. Runtime Slice A implements the private
+immutable configuration/types/registry and `SpacePolicyResolver` in `services/knowledge_spaces.py`.
+`KNOWLEDGE_SPACES_JSON` is parsed once by Settings; the internal registry factory performs
+non-mutating named binding validation. Legacy implicit-default construction adds no filesystem
+checks. Opaque owner references are a seam only; real bundles and orchestration remain pending.
+Existing REST/MCP/CLI composition rejects named configuration before owner construction with
+`invalid_configuration` (internal reason `named_serving_unsupported`). Named serving remains blocked
+until VB-152 integrates every applicable entry point. No public schema, route, operation ID,
+resource, storage format or legacy response changes.
 
 ## Target architecture
 

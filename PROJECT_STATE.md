@@ -309,9 +309,12 @@ Current post-v1 planning position:
 - VB-151 now has the authoritative implementation contract in BACKLOG.md: strict bounded JSON
   configuration, immutable registry/policy bindings, qualified Query wrapper, aggregate work budgets,
   precise local-floor semantic federation, explicit coverage, independent index lifecycle and v2
-  scoped provenance. This is documentation only; runtime remains pending. VB-152 adapters remain
-  future/unscoped and need a separate contract after domain runtime exists. Milestone 16 remains
-  PLANNED; no Settings, configuration, adapter, runtime, test or index-format behavior changed
+  scoped provenance. Runtime Slice A implements strict `KNOWLEDGE_SPACES_JSON`, immutable private
+  config/types/registry, non-mutating named startup validation and `SpacePolicyResolver`, with
+  authorization-before-work tests. Existing direct-owner REST/MCP/CLI composition rejects named
+  configuration before owner work; legacy startup remains unchanged. Slices B–G remain pending,
+  including real owner bundles. VB-152 adapters remain future/unscoped and need a separate contract.
+  Milestone 16 remains PLANNED; multi-space serving and index-format changes are not implemented
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
 

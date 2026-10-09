@@ -75,6 +75,7 @@ def create_mcp_http_transport(
     rate_limiter: FixedWindowRateLimiter,
 ) -> tuple[MCPServer, ASGIApp]:
     """Create the mounted SDK app over the live application's service objects."""
+    settings.require_legacy_composition()
     server = create_mcp_server(
         settings=settings,
         vault_service=vault_service,
