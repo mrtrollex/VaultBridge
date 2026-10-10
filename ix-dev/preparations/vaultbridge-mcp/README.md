@@ -27,13 +27,37 @@ The historical package metadata and templates at `ix-dev/community/vaultbridge/`
 `1.0.0`, image `1.1.0`, old port `30486`. The prepared candidate retains upstream's
 port `30491`, CDN icon, `/ui/` portal, image `1.3.0`, API-key fields, watcher fields,
 storage/Host Path/ixVolume choices, identity/constraints, resources and library.
-An actual rendered baseline comparison proves only four environment mappings are added.
+An actual rendered baseline comparison with an explicit debounce value proves only
+four MCP environment mappings are added. The candidate also hardens the existing
+watcher debounce mapping as described below.
 
 `1.0.4` is a **disposable test candidate identity**, derived from inspected `1.0.3`.
 Its migration has `from.max_version: 1.0.3` and `target.min_version: 1.0.4`, covering
 both historical `1.0.2` and current `1.0.3` saved state. P5 must refresh upstream and choose actual
 revision/bounds and an already-published stable image. Do not submit this fixture
 identity or claim it selects v1.4.0.
+
+## Live watcher finding and candidate hardening
+
+The task's live reproduction on TrueNAS `25.10.7`, Community package `1.0.3` /
+image `1.3.0`, found that disabling Filesystem Watcher could leave the hidden
+`watch_debounce_seconds` absent or empty. The container then received
+`SEMANTIC_WATCH_ENABLED=false` and an empty `SEMANTIC_WATCH_DEBOUNCE_SECONDS`,
+which failed runtime Settings float validation. Enabling the watcher and saving
+debounce `1` restored healthy startup.
+
+The generator now applies Jinja `default(1, true)` to the candidate's existing
+debounce environment mapping. Missing and empty values render as `1`; explicit
+valid values such as `2` or `0.5` are preserved. The watcher form retains its
+conditional visibility, runtime Settings parsing remains strict, and pinned
+upstream inputs and historical package files remain unchanged. Focused tests
+render both watcher states through the upstream library and parse the resulting
+debounce with unchanged runtime Settings.
+
+The task reports that the TrueNAS RC runtime canary passed. This is separate from
+verification of this candidate template repair and does not prove real catalog
+package migration. Real candidate-package migration and actual catalog package
+migration remain pending; no catalog migration pass is claimed.
 
 ## Supported mechanism and provenance
 
@@ -104,6 +128,7 @@ From the VaultBridge root, using development dependencies:
 
 Output must be a new disposable directory. The generator copies pinned inputs,
 adds MCP form/environment fields and migration files, and sets executable mode.
+It also adds the watcher debounce fallback to the generated template.
 The generator normalizes output text to LF, including the migration shebang and
 library; preserve its executable permission when transferring to POSIX. Historical package sources
 and external checkouts are never overwritten.
@@ -132,7 +157,7 @@ unrelated entries/order, dedicated-only state, absent-vs-saved defaults,
 idempotence, subprocess success/failure, future-edit rejection and actual library
 rendering/collision protection. See the separate review packet for executed totals.
 
-## O1/O3 live canary: NOT YET VERIFIED
+## O1/O3 package migration: NOT YET VERIFIED
 
 ### Mandatory refresh immediately before O1 and again immediately before O3
 

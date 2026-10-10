@@ -80,6 +80,11 @@ def prepared_questions() -> dict:
 
 def prepared_template() -> str:
     template = (PREPARATION / "upstream/templates/docker-compose.yaml").read_text(encoding="utf-8")
+    debounce = 'values.vaultbridge.watch_debounce_seconds'
+    debounce_mapping = '{% do c1.environment.add_env("SEMANTIC_WATCH_DEBOUNCE_SECONDS", ' + debounce + ') %}'
+    assert template.count(debounce_mapping) == 1
+    # Hidden watcher fields may be absent or empty in saved middleware values.
+    template = template.replace(debounce_mapping, debounce_mapping.replace(debounce, debounce + " | default(1, true)"))
     anchor = "{% do c1.environment.add_user_envs(values.vaultbridge.additional_envs) %}"
     assert template.count(anchor) == 1
     mappings = "\n".join(
