@@ -6,14 +6,42 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ## [Unreleased]
 
+Candidate scope: **1.4.0-rc.1**, prepared source only; no RC or stable v1.4.0 publication is claimed.
+
 ### Added
 
-- accepted ADR 0006 for a bounded, client-agnostic Knowledge Query domain capability that composes
-  live Markdown scope, literal text, portable tags, frontmatter, normalized relationships, and the
-  existing semantic ranker without adding a runtime engine, public adapter, or persistent store
-- immutable domain-only Knowledge Query runtime with exact bounded live scope/literal/tag/metadata/
-  relationship filtering before unchanged semantic ranking, deterministic ordering, conservative
-  stale-index behavior, and privacy-safe failures; no REST, MCP, CLI, or dashboard surface is added
+- read-only Knowledge Hygiene Dashboard: explicit scans, canonical finding paths, safe typed
+  evidence, honest partial/truncation states and separate scan/candidate/index coverage
+- shared bounded Hygiene diagnostics through REST `POST /api/v1/knowledge/hygiene/scan`, MCP
+  `knowledge_hygiene_scan` and CLI `hygiene scan`; broken wikilinks/inline Markdown relationships,
+  isolation, frontmatter/portable-field/alias and empty-body findings, with optional advisory evidence
+- bounded Knowledge Query CLI combining literal/semantic text, folders, exact paths and required tags
+  over live Markdown eligibility and the existing semantic ranker
+- portable inbox/draft `capture` CLI with provenance, exact-byte retries and explicit uncertain outcomes
+- explicit `promote review` / `promote apply` CLI with source/destination hash checks, human-approved
+  create/append, replay evidence and retained capture source
+- bounded portable YAML frontmatter/aliases/tags and normalized wikilink/Markdown-link domain support
+
+### Changed
+
+- Dashboard unlock now submits a key once to a signed HttpOnly cookie session, restores access across
+  reload/reopen, and clears protected page data on logout/authentication failure; raw keys are not
+  persisted by JavaScript and current-key rotation invalidates existing signed sessions
+- cooperating Markdown writes share local thread/process coordination and containment checks;
+  semantic index writers still require stopped-service CLI operation
+- prepared TrueNAS MCP form/migration delivery against pinned package 1.0.3/image 1.3.0, with
+  legacy allowlist carry-forward/conflict fixtures; public catalog delivery and live migration
+  remain pending and require refreshing upstream before execution
+
+### Release preparation
+
+- reusable immutable-image functional gate takes explicit digest/source/version, verifies OCI and
+  runtime identity, current session/Hygiene/REST/CLI behavior, semantic persistence, logs and cleanup;
+  historical v1.1.0 exact-image evidence is preserved
+- prerelease regression coverage protects exact RC tags, reviewed-source identity, recovery of an
+  existing published release and exclusion of stable rolling aliases
+- internal multi-space A-C groundwork remains activation-gated, with no public named serving;
+  Query/Capture/Promotion REST/MCP/dashboard, multi-space D-G/VB-152 and Hygiene mutations are deferred
 
 ## [1.3.0] - 2026-09-24
 

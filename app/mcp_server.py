@@ -50,7 +50,7 @@ from app.services.vault import (
 )
 
 MCP_SERVER_NAME = "VaultBridge"
-MCP_SERVER_VERSION = "1.3.0"
+MCP_SERVER_VERSION = "1.4.0-rc.1"
 MCP_CLIENT_ID = "stdio-process"
 MCPTransport = Literal["stdio", "streamable-http"]
 NOTE_RESOURCE_TEMPLATE = "vaultbridge://note/{path}"

@@ -34,8 +34,13 @@
 > release. Its immutable source, workflow, OCI digests, aliases, anonymous pull, MCP smoke, and full
 > functional verification are recorded in
 > [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md#v130-release-evidence). The current TrueNAS
-> Community package is `1.0.2` and selects application image `1.3.0`, but its upstream form does not
-> yet include the first-class MCP configuration fields.
+> Community package pinned by P2 is `1.0.3` and selects application image `1.3.0`; refresh upstream
+> before operational tests. Its pinned form does not yet include the first-class MCP configuration fields.
+
+> **Candidate source:** `1.4.0-rc.1` is being prepared, with read-only Dashboard Hygiene,
+> remembered sessions and Hygiene/Query/Capture/Promotion CLI workflows. These source capabilities
+> require a future candidate image; no RC is published by P3. See the
+> [RC runbook](docs/V140_RC_RUNBOOK.md).
 
 > **v1.3.0 scope:** This release adds verified Obsidian wikilink
 > relationships across REST, MCP, and the dashboard, plus default-off MCP note creation/appending and
@@ -120,8 +125,14 @@ The vault is never replaced by the index, and there is no general filesystem end
 
 Open the dashboard from the same VaultBridge origin at `/ui/`. The browser session uses an
 operator-supplied existing API key once through `/ui/session`; the key is not stored by browser
-JavaScript. The signed HttpOnly cookie restores access across reloads. Logout and an authentication failure clear protected form and result
-state; the public Overview remains available.
+JavaScript. The signed HttpOnly cookie restores access across reloads and browser reopen for up to seven days;
+successful restoration refreshes that lifetime. It uses `SameSite=Strict`, path `/`, and `Secure`
+when the application sees HTTPS. Unlock sends the key in a JSON POST body, never a URL. Protected
+requests use the cookie plus `X-VaultBridge-UI-Request: 1`. Changing the current API key invalidates
+existing sessions, even while the previous key remains accepted for Bearer clients and new unlocks.
+Logout deletes the browser cookie and clears protected form/results; `401` also clears that page
+state. There is no server-side revocation list: a copied signed token remains valid until expiry or
+current-key rotation. The public Overview remains available.
 
 The dashboard targets current evergreen browsers with support for ES modules, `fetch`,
 `AbortController`, `URL`, and `Intl.NumberFormat`. This is a modest
@@ -151,7 +162,8 @@ python -m app.mcp_server
 ```
 
 The stdio transport exposes `list_notes`, `read_note`, `search_notes`, `related_notes`,
-`duplicate_candidates`, `note_links`, and `note_backlinks`, plus contained Markdown Resources such as
+`duplicate_candidates`, `note_links`, `note_backlinks`, and `knowledge_hygiene_scan` (eight read-only
+tools), plus contained Markdown Resources such as
 `vaultbridge://note/Projects%2FLaunch%20plan.md`. The process reuses `VAULT_PATH`,
 `SEMANTIC_DATA_PATH`, model, size, and rate-limit settings. It does not require `API_KEY`; the local
 spawning process and filesystem permissions are the trust boundary.
@@ -171,7 +183,7 @@ args:
   - app.mcp_server
 ```
 
-The same seven read-only tools and contained Markdown Resources can be exposed over Streamable HTTP
+The same eight read-only tools and contained Markdown Resources can be exposed over Streamable HTTP
 at `/mcp` on the existing application port. It is disabled by default. Enable it with
 `MCP_HTTP_ENABLED=true`, keep using `Authorization: Bearer <token>`, and configure
 `MCP_HTTP_ALLOWED_HOSTS` plus `MCP_HTTP_ALLOWED_ORIGINS` for the actual deployment. The defaults
@@ -180,7 +192,8 @@ clients when its Host is allowed. The HTTP transport accepts the current `API_KE
 `API_KEY_PREVIOUS`, and shares the normal process-local peer rate limit and live application
 services/index lifecycle.
 
-Set `MCP_WRITE_ENABLED=true` to add exactly `create_note` and `append_note` to either transport.
+Set `MCP_WRITE_ENABLED=true` to add exactly `create_note` and `append_note` to either transport
+(ten tools total).
 They reuse the protected REST write behavior: create never overwrites, append supports an optional
 dedupe key, and only committed changes queue targeted semantic refresh. Stdio owns and shuts down a
 targeted index worker only in this mode; it does not start an unnecessary full sync. For remote
@@ -220,6 +233,7 @@ New integrations should use the versioned application API:
 | GET | `/api/v1/notes/list` | `listNotesV1` |
 | GET | `/api/v1/notes/links` | `listNoteLinksV1` |
 | GET | `/api/v1/notes/backlinks` | `listNoteBacklinksV1` |
+| POST | `/api/v1/knowledge/hygiene/scan` | `scanKnowledgeHygieneV1` |
 
 Existing clients may continue using the unversioned compatibility layer:
 
@@ -451,7 +465,7 @@ host PUID:PGID  ->  container process user and group
 | `RATE_LIMIT_WINDOW_SECONDS` | `60` | Positive fixed-window duration in seconds |
 | `RATE_LIMIT_MAX_CLIENTS` | `1024` | Positive hard cap on process-local peer state |
 | `MCP_HTTP_ENABLED` | `false` | Opt in to Streamable HTTP at `/mcp` on the existing application port |
-| `MCP_WRITE_ENABLED` | `false` | Add MCP `create_note` and `append_note`; the default seven-tool surface remains read-only |
+| `MCP_WRITE_ENABLED` | `false` | Add MCP `create_note` and `append_note`; the default eight-tool surface remains read-only |
 | `MCP_HTTP_ALLOWED_HOSTS` | loopback hosts with any port | Comma-separated Host allowlist enforced by the MCP SDK; external hosts must be explicit |
 | `MCP_HTTP_ALLOWED_ORIGINS` | loopback HTTP origins with any port | Comma-separated allowlist for a present Origin; external origins must be explicit |
 | `OBSIDIAN_VAULT_PATH` | `/path/to/your/Obsidian/Vault` | Required absolute host path to the vault |
@@ -697,7 +711,44 @@ temporary file linked atomically without replacement. Active capture destination
 namespace mutation by a non-cooperating filesystem writer is outside that strong guarantee;
 detected uncertainty does not confirm creation. Ordinary external Markdown editing remains
 supported. The filesystem must support hard links; unsupported filesystems fail safely. This adds
-no capture database, promotion, or review operation.
+no capture database. Explicit review and promotion are separate CLI operations described below.
+
+`hygiene scan` reads live Markdown and reports relationship (wikilink and inline Markdown link),
+isolation, frontmatter, alias and authored-body diagnostics without repairs:
+
+```bash
+python -m app.cli hygiene scan --json
+python -m app.cli hygiene scan --group relationships --finding-limit 100
+```
+
+The same bounded diagnostics are available through protected
+`POST /api/v1/knowledge/hygiene/scan`, MCP `knowledge_hygiene_scan`, and the Dashboard Hygiene panel.
+Coverage, unavailable notes, truncation and optional duplicate/index evidence are explicit; advice
+is not a repair, freshness guarantee or semantic-duplicate promise.
+
+Explicit promotion retains the capture source and requires a human decision:
+
+```bash
+python -m app.cli promote review --source-path Inbox/Captures/<capture-id>.md --capture-id <capture-id>
+python -m app.cli promote apply < promotion-decision.json
+```
+
+Replace `<capture-id>` with the original lowercase UUID v4. Review emits the source bytes/metadata
+and `source_sha256`; `--destination Notes/Target.md` additionally inspects an append destination.
+Treat review output as private vault content. Apply accepts one bounded JSON decision with
+`source_path`, `capture_id`, `expected_source_sha256`, `approved_content`, `action` (`create` or
+`append`), `destination`, a stable lowercase UUID v4 `promotion_id`, UTC-second `approved_at`, and
+ordered `transfer_fields` (selected existing `title`, `tags`, `capture_type`). Create also requires
+`expected_destination: "absent"`; append instead requires `expected_destination_sha256` from review.
+Changed source/destination bytes fail closed. Preserve the exact decision for retries; do not change
+IDs after uncertain outcomes. `commit_unknown` requires operator reconciliation before another
+write. Markdown success and derived-index outcome are separate. Stop the serving process for
+Capture and Promotion apply because they own targeted index writes; use the same offline discipline
+for review with optional candidate evidence. Focused Capture/Promotion tests cover synthetic writes
+separately from the image gate, which only checks their parsers.
+
+Query, Capture and Promotion have no REST/MCP/dashboard adapters. Named multi-space serving and
+Hygiene mutations remain unavailable.
 
 `index` brings derived semantic data up to date through the production incremental/full sync path;
 `reindex` first discards and then rebuilds derived semantic data. Markdown remains the source of

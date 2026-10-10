@@ -31,7 +31,9 @@ cache, or query projection are disposable derived data and must be rebuildable.
 
 ### Authentication
 
-All protected legacy and `/api/v1` routes share one Bearer-token dependency. `API_KEY` is the
+All protected legacy and `/api/v1` routes share one authentication dependency. Bearer integrations
+use current/previous keys; same-origin Dashboard requests can instead use the signed session cookie
+with `X-VaultBridge-UI-Request: 1` when no Authorization header is present. `API_KEY` is the
 required current credential. An optional secret-safe `API_KEY_PREVIOUS` is accepted only during an
 operator-controlled rotation window; removing it and restarting/redeploying ends that window. Both
 configured candidates are checked with standard-library constant-time comparison. Authentication
@@ -400,7 +402,11 @@ No diagnostic rules, repairs, mutation, persistence or automatic polling are add
 Navigation away cancels pending scan presentation; generation checks suppress late results/failures.
 
 The public shell contains no configured credential. Unlock, restore and logout use the existing
-`/ui/session` boundary and signed HttpOnly cookie; JavaScript does not store the API key.
+`/ui/session` boundary and signed HttpOnly cookie; JavaScript does not store the API key. Unlock posts it as JSON, never a URL parameter.
+The cookie has path `/`, `HttpOnly`, `SameSite=Strict`, a seven-day refreshed lifetime, and `Secure`
+when the request scheme is HTTPS. Sessions are signed using the current key; rotating that key
+invalidates them even during previous-key Bearer overlap. Logout deletes the browser cookie without
+a server-side revocation list; a copied token remains valid until expiry or current-key rotation.
 The authenticated fetch helper uses same-origin credentials and `X-VaultBridge-UI-Request: 1`.
 Logout and `401` invalidate requests and clear protected Hygiene data immediately; `429`, `503`
 and network failures retain the session.
@@ -519,7 +525,7 @@ application's direct-peer limiter before SDK dispatch. The adapter reuses the ex
 `create_app()`, so it sees the live index lifecycle and relationship behavior without creating
 another owner. The route remains outside REST OpenAPI.
 
-HTTP uses stateless JSON responses and the same default seven read-only tools and contained Resource. It has
+HTTP uses stateless JSON responses and the same default eight read-only tools and contained Resource. It has
 no MCP operation limiter inside the adapter, preventing double counting with the HTTP boundary. The
 deprecated standalone HTTP+SSE transport, a custom transport, a second MCP service/container, and a
 new port are not implemented.
