@@ -15,9 +15,12 @@ no mandatory cloud AI, embedding, database, or knowledge service is required.
 
 ## Release-track boundary
 
-P1 Hygiene Dashboard and P2 MCP delivery preparation are merged. P3 prepares `1.4.0-rc.1` source
-only; published stable remains `v1.3.0`. O1 publication/real TrueNAS canary, P4 stable, P5 catalog
-and O3 lifecycle remain pending. P2 pinned package 1.0.3/image 1.3.0; refresh it before operations.
+P1 Hygiene Dashboard and P2 MCP delivery preparation are merged. `v1.4.0-rc.1` was published and
+exact-image verified; its bounded TrueNAS 25.10.7 runtime canary passed the tested checks.
+Source now prepares `1.4.0-rc.2` after the reviewed, CI-passed package-only watcher debounce repair
+(PR #128, merged as `c98c70c`). rc.2 publication, P4 stable, P5 catalog and O3 lifecycle remain
+pending; real catalog / Edit App migration is unverified. Published stable remains `v1.3.0`.
+P2 pinned package 1.0.3/image 1.3.0; refresh it before operations.
 Historical dashboard milestones below describe their then-current sessionStorage behavior; current
 source uses the signed HttpOnly cookie session documented in README. Named spaces remain disabled.
 See [RC runbook](docs/V140_RC_RUNBOOK.md).

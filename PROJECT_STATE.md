@@ -4,11 +4,21 @@ This document is the current factual snapshot for future Codex sessions. It shou
 
 ## v1.4.0 candidate source preparation
 
-P1 and P2 are merged. P3 prepares application metadata `1.4.0-rc.1`, current capability/session
-notes and reusable release-image checks. Published stable remains `v1.3.0`; no candidate tag/image
-or release is implied. O1 publication/canary, P4 stable, P5 catalog and O3 catalog lifecycle remain
-pending. See [RC runbook](docs/V140_RC_RUNBOOK.md). Older release/package records below retain their
-historical identities; P2 pinned package 1.0.3/image 1.3.0 and execution must refresh upstream.
+P1 and P2 are merged. `v1.4.0-rc.1` was published and its exact OCI image verified. The bounded
+runtime/image canary on TrueNAS 25.10.7 passed for the checks actually tested; this does not prove
+catalog package migration. It exposed a separate watcher-disabled package rendering bug that could
+emit `SEMANTIC_WATCH_DEBOUNCE_SECONDS=""`. The package-preparation repair was reviewed, passed CI,
+and merged in PR #128 as `c98c70ce153f4af3071698af071cbe89aae96168`; it changes no VaultBridge runtime
+image behavior.
+
+Current application metadata is `1.4.0-rc.2`, source preparation only until separately authorized
+publication after review/merge. Published stable remains `v1.3.0`; stable v1.4.0 is neither authorized
+nor published. Real catalog package migration / Edit App migration, host reboot, actual generated
+catalog upgrade, rollback/recovery and ixVolume lifecycle gates remain **NOT YET VERIFIED**.
+There is no supported pre-merge candidate-package catalog workflow, so the rc.1 runtime canary
+cannot close those gates. See [RC runbook](docs/V140_RC_RUNBOOK.md). Older release/package records
+below retain their historical identities; P2 pinned package 1.0.3/image 1.3.0 and execution must
+refresh upstream.
 
 ## Baseline date
 
@@ -431,7 +441,7 @@ Current milestones:
 ## Working production characteristics
 
 - FastAPI application
-- package, FastAPI application, and MCP server source metadata align to candidate `1.4.0-rc.1`;
+- package, FastAPI application, and MCP server source metadata align to candidate `1.4.0-rc.2` (source preparation only);
   published stable remains `v1.3.0`;
   the P2-pinned TrueNAS Community package `1.0.3` also selects image `1.3.0`, while its first-class MCP
   form fields and live lifecycle verification remain separate delivery evidence

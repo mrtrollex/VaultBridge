@@ -660,10 +660,19 @@ a real prerelease artifact while preserving stable/catalog separation:
    Package preparation must prove the legacy MCP carry-forward/conflict policy through the supported
    upgrade hook; missing-field defaults are insufficient for existing `additional_envs` settings.
 2. Align all RC version metadata, freeze reviewed source, pass exact-source CI and publish GitHub
-   prerelease `v1.4.0-rc.1` using the existing workflow. It accepts v-prefixed prerelease SemVer,
-   builds verified source, publishes exact `1.4.0-rc.1`, and skips stable aliases. **STOP** if tag/SHA,
+   prerelease `v1.4.0-rc.2` using the existing workflow. `v1.4.0-rc.1` was already published and
+   exact-image verified; its bounded TrueNAS runtime canary exposed the package-only watcher
+   debounce bug repaired in reviewed, CI-passed PR #128 (merged as `c98c70c`). rc.2 is source
+   preparation until separately authorized publication after review/merge; see the
+   [current RC runbook](V140_RC_RUNBOOK.md) for execution and pending catalog gates.
+   The workflow accepts v-prefixed prerelease SemVer,
+   builds verified source, publishes exact `1.4.0-rc.2`, and skips stable aliases. **STOP** if tag/SHA,
    prerelease state, metadata, platform or anonymously pullable digest disagree.
 3. Run immutable-image functional/MCP gates, then the real TrueNAS RC/custom-app canary above.
+   Current execution boundary: there is no supported pre-merge candidate-package catalog workflow.
+   The rc.1 runtime canary does not satisfy package migration; record that proof as pending and
+   follow the current RC runbook without touching the production app. The requirements below
+   remain gates, not claims that the unavailable catalog path has been exercised.
    Prepare package validation against current upstream and exercise available preview/current
    catalog lifecycle surfaces, including live saved-values migration from the mandatory non-default
    legacy Host/Origin baseline and the before/after accepted/rejected Origin pair through a supported
