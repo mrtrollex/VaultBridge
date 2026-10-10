@@ -1,5 +1,9 @@
 # VaultBridge
 
+For current-upstream MCP migration preparation, see
+[P2 preparation](../../preparations/vaultbridge-mcp/README.md). This historical package remains
+unchanged; the preparation is not a catalog publication or live upgrade result.
+
 [VaultBridge](https://github.com/mrtrollex/VaultBridge) is a self-hosted REST and semantic search
 bridge for Obsidian Markdown vaults. It is licensed under the MIT License. Project documentation is
 available in the [repository README](https://github.com/mrtrollex/VaultBridge#readme) and the

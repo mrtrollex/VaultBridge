@@ -14,7 +14,7 @@ Versioned GHCR images remain the runtime artifact for both the Community App and
 Installing the Community App does not automatically migrate an existing source-built Custom App.
 
 > **Current availability:** VaultBridge is available from the TrueNAS Community catalog through
-> **Apps > Discover Apps**. Current upstream `truenas/apps` master has catalog package `1.0.2`,
+> **Apps > Discover Apps**. Inspected upstream `truenas/apps` master (2026-10-10) has development package `1.0.3`,
 > selects VaultBridge `1.3.0`, and defaults the Web UI to port `30491`.
 >
 > VaultBridge `v1.3.0` is the latest stable application and GHCR release. The catalog's automated
@@ -34,8 +34,13 @@ Installing the Community App does not automatically migrate an existing source-b
 The checked-in VB-106 package source defines an **MCP Configuration** group with **Enable MCP
 HTTP**, **Enable MCP Writes**, **MCP Allowed Hosts**, and **MCP Allowed Origins**. Those fields use
 the same Web Port and remove the normal need for Additional Environment Variables. Current upstream
-package `1.0.2` selects image `1.3.0` but still lacks these form fields; they require a separate
+development package `1.0.3` selects image `1.3.0` but still lacks these form fields; they require a separate
 reviewed `truenas/apps` source update rather than only an automated image-version bump.
+
+[P2 delivery preparation](ix-dev/preparations/vaultbridge-mcp/README.md) provides a pinned
+current-upstream candidate and tested legacy MCP carry-forward/conflict handling. It does not
+change catalog availability. Live candidate migration remains pending O1; actual catalog delivery
+and upgrade verification remain pending P5/O3.
 
 The catalog form masks secret API-key inputs. Masking prevents casual display in the form; a
 privileged TrueNAS or Docker administrator can still inspect deployed container configuration.

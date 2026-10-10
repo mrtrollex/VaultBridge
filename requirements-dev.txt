@@ -3,3 +3,7 @@ pytest>=8.4,<9.0
 pytest-playwright>=0.9,<1.0
 httpx>=0.28,<1.0
 ruff>=0.12,<1.0
+# Exercise the unchanged TrueNAS Jinja/library renderer in package preparation tests.
+jinja2>=3.1,<4.0
+docker>=7.0,<8.0
+bcrypt>=4.0,<6.0
