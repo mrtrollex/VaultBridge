@@ -17,9 +17,16 @@ no mandatory cloud AI, embedding, database, or knowledge service is required.
 
 P1 Hygiene Dashboard and P2 MCP delivery preparation are merged. `v1.4.0-rc.1` was published and
 exact-image verified; its bounded TrueNAS 25.10.7 runtime canary passed the tested checks.
-Source now prepares `1.4.0-rc.2` after the reviewed, CI-passed package-only watcher debounce repair
-(PR #128, merged as `c98c70c`). rc.2 publication, P4 stable, P5 catalog and O3 lifecycle remain
-pending; real catalog / Edit App migration is unverified. Published stable remains `v1.3.0`.
+On 2026-10-10, `v1.4.0-rc.2` publication, exact-image functional/MCP verification and bounded O1
+runtime/image canary completed after the reviewed, CI-passed package-only watcher debounce repair
+(PR #128, merged as `c98c70c`). The TrueNAS Custom App rc.1 -> rc.2 image swap and App Stop/Start
+preserved synthetic Markdown, compatible derived state and safe MCP behavior; production remained
+untouched. This does not prove catalog migration or live execution of the package repair.
+P4 stable preparation is the next application-release decision/task, without stable publication
+authorization. P5 requires refreshed upstream and a verified published stable image; O3 remains
+pending. Real package/legacy MCP field migration, Edit App persistence, host reboot, generated
+catalog upgrade, catalog rollback/recovery and new-package ixVolume retain/remove remain unverified.
+Published stable remains `v1.3.0`.
 P2 pinned package 1.0.3/image 1.3.0; refresh it before operations.
 Historical dashboard milestones below describe their then-current sessionStorage behavior; current
 source uses the signed HttpOnly cookie session documented in README. Named spaces remain disabled.

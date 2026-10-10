@@ -1,8 +1,73 @@
-# v1.4.0-rc.2 source freeze and O1 runbook
+# v1.4.0-rc.2 evidence and O1 runbook
 
-This rc.2 task prepares source only. Published stable remains **v1.3.0**. Publication of rc.2 is a
-separate authorized operational step after review/merge. Nothing here records a future PASS or
-authorizes a tag, Release, registry push, upstream mutation or live TrueNAS execution.
+As of 2026-10-10, rc.2 publication, exact-image functional/MCP gates and the bounded O1 runtime/image
+canary are complete. Published stable remains **v1.3.0**. The completed observations below come
+from the assigned evidence task; this documentation change did not rerun publication or live checks.
+The source-freeze/publication procedure retained below is a reference for the completed RC work,
+not a pending instruction to republish rc.2. It authorizes no new release or live operation.
+See [exact publication/OCI evidence](RELEASE_CHECKLIST.md#v140-rc2-publication-evidence--2026-10-10).
+
+## Completed bounded O1 runtime/image canary — 2026-10-10
+
+**PASS for the tested rc.2 runtime/image scope only.** On TrueNAS **25.10.7**, disposable Custom App
+`vault-rc-canary` moved from `ghcr.io/mrtrollex/vaultbridge:1.4.0-rc.1`, OCI index
+`sha256:574365f7012b9110dbcf5901586520f043de765d9d82347f88350ce7aa15959e`, to only the rc.2
+immutable image
+`ghcr.io/mrtrollex/vaultbridge@sha256:6be3f86fd01b4b337704a17f8b8b8da57d6fb5ab62281344e18638acbf16a02f`.
+Production app `vault_prod` remained untouched. This was an existing-vault/runtime image-upgrade
+simulation on a Custom App, not a real Community package migration.
+
+The upgraded container was healthy and `/health/live` returned `{ok:true}`. Invalid Bearer
+authentication returned HTTP 401; the valid current credential immediately afterward returned
+HTTP 200 (**PASS**, without retaining the credential).
+
+Authoritative synthetic Markdown remained byte-identical through the image swap and Stop/Start:
+
+| Synthetic note | SHA-256 before and after |
+|---|---|
+| `Alpha.md` | `d49b1ab973a5fcba93c59f65f3a6c279c15c96c41401142a25ef73f7bf7146d2` |
+| `Beta.md` | `1ed1ead7b3f751fdd640e1abbdb86a53eb138260a2739a7d621e315126e20764` |
+
+After rc.1 -> rc.2, `semantic_sync_completed` reported `indexed_notes=0`, `unchanged_notes=2`,
+`removed_notes=0`, `index_state=ready`. These counters directly prove reuse of compatible existing
+semantic state for the two unchanged synthetic notes.
+
+Only the following safe persisted settings were retained as evidence:
+
+```text
+MCP_HTTP_ENABLED=true
+MCP_WRITE_ENABLED=false
+MCP_HTTP_ALLOWED_HOSTS=mcp-rc.example.test:*
+MCP_HTTP_ALLOWED_ORIGINS=https://mcp-rc.example.test
+CANARY_MARKER=preserve-this
+```
+
+Four MCP live checks passed before restart and were repeated after App Stop/Start, all **PASS**:
+
+1. Server version `1.4.0-rc.2` and exactly eight read-only tools: `knowledge_hygiene_scan`,
+   `list_notes`, `read_note`, `search_notes`, `related_notes`, `duplicate_candidates`, `note_links`,
+   `note_backlinks`; no write tools exposed.
+2. Configured Origin initialization/read accepted.
+3. `Alpha.md` / `Beta.md` visibility and read succeeded.
+4. Denied Origin `https://mcp-denied.example.test` returned HTTP 403.
+
+A real TrueNAS UI **App Stop -> Start** was performed. Container `StartedAt` changed from
+`2026-10-10T16:16:49.696408696Z` to `2026-10-10T16:29:57.212965727Z`. The exact rc.2 digest,
+healthy/live state, safe MCP settings and marker, and Alpha/Beta hashes persisted. Post-start
+`semantic_sync_completed` at `2026-10-10T16:29:59.920Z` again reported `indexed_notes=0`,
+`unchanged_notes=2`, `removed_notes=0`, `index_state=ready`.
+
+**NOT YET VERIFIED / PENDING:** real current Community package -> candidate/new package migration;
+legacy `additional_envs` MCP Host/Origin migration into dedicated form fields; real Edit App
+persistence of those fields; actual generated public-catalog upgrade; host reboot persistence;
+catalog rollback/recovery; new-package ixVolume retain/remove lifecycle. Accepted/denied Origin
+checks above prove runtime enforcement with persisted Custom App settings, not preservation through
+package migration. The watcher-debounce package-preparation repair has not been live-proved through
+a catalog migration.
+
+P4 stable preparation is the next application-release decision/task. Stable v1.4.0 is neither
+authorized nor published by this evidence update. P5 remains later, requires refreshed upstream and
+a verified published stable image; O3 actual catalog migration/lifecycle remains pending.
 
 ## Historical rc.1 evidence and reason for rc.2
 
@@ -241,8 +306,8 @@ package **1.0.3 / image 1.3.0**; 1.0.2 is historical retained-state compatibilit
 [productization plan](V140_RELEASE_PRODUCTIZATION_PLAN.md) O1 gates and
 [lifecycle runbook](VB_082_TRUENAS_LIFECYCLE_RUNBOOK.md). Do not mutate upstream in O1.
 
-The rc.1 bounded runtime/image canary passed only its tested checks. rc.2 runtime/image checks
-must be executed against its own published digest. The following remain **NOT YET VERIFIED**:
+The rc.1 and rc.2 bounded runtime/image canaries passed only their tested checks; rc.2's own digest
+and Stop/Start evidence are recorded above. The following remain **NOT YET VERIFIED**:
 current-package to candidate migration, saved non-default
 Host and Origin migration, accepted Origin and denied Origin HTTP 403 after migration, Edit App
 persistence, host reboot, actual generated catalog upgrade, rollback/recovery and new-package
@@ -255,7 +320,8 @@ separately scoped reviewed fix and new RC.
 
 ## POST-CATALOG — P5/O3 remain pending
 
-P4 stable preparation/publication requires successful O1 and explicit authorization. P5 requires
+P4 stable preparation is the next decision/task after bounded O1 runtime/image completion; this
+does not close the package/lifecycle gates above or authorize stable publication. P5 requires
 a real verified stable image and fresh upstream identity. O3 must then repeat migration, saved
 allowlists/runtime denial, Edit App/lifecycle/rollback and retain/remove proof on the actual
-generated catalog upgrade. None of these stages is complete from source preparation.
+generated catalog upgrade. None of these stages is completed by the Custom App runtime/image proof.
