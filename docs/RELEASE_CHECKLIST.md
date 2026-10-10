@@ -1,8 +1,23 @@
 # VaultBridge release checklist
 
-This is the durable completed release evidence for VaultBridge. VB-056 established the original
+This is the durable release checklist and historical completed release evidence for VaultBridge. VB-056 established the original
 `v1.0.0` audit, and each later release adds its own immutable record without replacing earlier tags,
 GitHub Releases, or artifact evidence.
+
+## v1.4.0-rc.1 preparation and operational gates
+
+| Stage | State / required evidence |
+|---|---|
+| PREPARED | Candidate source metadata, current release notes and reusable image gate are prepared by P3; actual local results belong in the review packet, not this future gate ledger. |
+| REQUIRED BEFORE RC PUBLICATION | Independent P3 review, merged frozen source SHA, exact-source CI including Chromium and Docker, explicit publication authorization, version/tag alignment. |
+| REQUIRED AFTER RC PUBLICATION | Published GitHub prerelease, exact tag/source/workflow/OCI revision agreement, anonymous digest pull, labels/platform, MCP eight/ten-tool smoke, reusable functional gate, then authorized real TrueNAS O1 canary. |
+| REQUIRED BEFORE STABLE | O1 migration/restart/reboot/persistence/recovery evidence, saved non-default Host/Origin carry-forward and accepted/403-denied Origin, reviewed stable metadata/source/CI and explicit P4 publication authorization. |
+| POST-CATALOG | Authorized P5 update against refreshed upstream, then O3 actual generated catalog upgrade, Edit App persistence, rollback/recovery and ixVolume retain/remove proof. |
+
+Follow [V140_RC_RUNBOOK.md](V140_RC_RUNBOOK.md). Published stable remains `v1.3.0`.
+P2 pinned upstream package `1.0.3` / image `1.3.0`; refresh before O1/O3. All candidate live TrueNAS
+gates are **NOT YET VERIFIED**. Historical sections below preserve their original SHA/digest and
+then-current tool/session/package evidence. `verify-vb075-image.sh` is v1.1.0 evidence only.
 
 ## `v1.3.0` release evidence
 

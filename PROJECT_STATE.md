@@ -2,6 +2,14 @@
 
 This document is the current factual snapshot for future Codex sessions. It should describe what exists **now**, not future plans.
 
+## v1.4.0 candidate source preparation
+
+P1 and P2 are merged. P3 prepares application metadata `1.4.0-rc.1`, current capability/session
+notes and reusable release-image checks. Published stable remains `v1.3.0`; no candidate tag/image
+or release is implied. O1 publication/canary, P4 stable, P5 catalog and O3 catalog lifecycle remain
+pending. See [RC runbook](docs/V140_RC_RUNBOOK.md). Older release/package records below retain their
+historical identities; P2 pinned package 1.0.3/image 1.3.0 and execution must refresh upstream.
+
 ## Baseline date
 
 2026-09-28
@@ -86,7 +94,7 @@ Current post-v1 planning position:
 
 - ADR 0003 is accepted and VB-071 is complete; a bundled schema-hidden dashboard shell is served at
   canonical `/ui/` with explicit local assets and no SPA catch-all
-- the shell has accessible Overview, Search, API / Integration, and About navigation; Overview loads
+- the shell has accessible Overview, Search, Hygiene, API / Integration, and About navigation; Overview loads
   the existing public `/health` facts automatically and Search calls the existing protected
   `/api/v1/notes/search` and `/api/v1/notes/related` routes
 - Overall status, Vault, Semantic index, and Background indexing cards distinguish lifecycle state
@@ -94,9 +102,9 @@ Current post-v1 planning position:
   loading, unavailable, and malformed-response states without polling or maintenance controls
 - public Overview requests never send the dashboard Bearer credential and remain independent of
   locked, unlocked, invalid-key, and logout session states
-- unlock and reload revalidation call the existing protected `GET /api/v1/notes/list?limit=1` route;
-  a validated key is stored only as `vaultbridge.ui.apiKey` in `sessionStorage`, while logout and
-  `401` clear it
+- unlock/restore/logout use `/ui/session` and a signed seven-day HttpOnly cookie; raw API keys
+  are not persisted by JavaScript. Current-key rotation invalidates sessions; logout/`401` clear
+  protected page data (see README for cookie and token-revocation limits)
 - strict UI-only CSP, `nosniff`, no-referrer headers, same-origin document-relative requests, and
   text-only dynamic rendering provide the initial browser security boundary
 - Literal and Semantic modes preserve backend order and existing result fields; Search adds no
@@ -134,9 +142,9 @@ Current post-v1 planning position:
   reviewed and merged on 2026-09-16 at merge commit
   `fd185603de32444f9e36f872dbcd84af44509115`
 - accepted source now exists in upstream `master` under `ix-dev/community/vaultbridge/`, and the
-  current generated catalog entry exists under `trains/community/vaultbridge/1.0.2/`
+  P2-pinned generated catalog entry exists under `trains/community/vaultbridge/1.0.3/`
 - the accepted Community package is `vaultbridge` / **VaultBridge** on the `community` train, catalog
-  package `1.0.2`, app/image `1.3.0`, library `2.3.11`, default Web UI port `30491`, Portal path
+  P2-pinned package `1.0.3`, app/image `1.3.0`, library `2.3.11`, default Web UI port `30491`, Portal path
   `/ui/`, and icon `https://media.sys.truenas.net/apps/vaultbridge/icons/icon.webp`
 - VaultBridge is available through the TrueNAS Community train / Discover Apps delivery path
 - VB-082 is in progress / partial validation: a fresh TrueNAS `25.10.6` custom-YAML install of the
@@ -194,7 +202,7 @@ Current post-v1 planning position:
   vault, and data were removed afterward. The production vault was not used or validated.
 - VB-075 is complete with exact-source CI and exact-image runtime evidence
 - VB-106 adds default-off `create_note` and `append_note` parity to both MCP transports. The disabled
-  surface remains the exact seven read-only tools; write-enabled stdio owns and shuts down a targeted
+  surface now contains eight read-only tools including Hygiene; write-enabled stdio owns and shuts down a targeted
   indexer, while HTTP reuses the live application indexer
 - OAuth, Prompts, delete/overwrite/file-management tools, VB-034 backlink insertion, and VaultBridge
   subscription features remain unimplemented
@@ -228,7 +236,7 @@ Current post-v1 planning position:
   loading, empty, failure, logout, abort, and stale-response states without persisting relationship data
 - the checked-in TrueNAS package source now exposes MCP HTTP, MCP writes, and explicit Host/Origin
   allowlists as first-class form values on the existing Web Port; the released image contains the
-  runtime support, but current upstream package `1.0.2` still lacks those form fields
+  runtime support, but P2-pinned upstream package `1.0.3` still lacks those form fields
 - VB-101 through VB-105 remain read-only and reserve any Markdown mutation for the later opt-in
   VB-034 task
 - VB-110 is complete as design-only work: ADR 0005 accepts the portable document and normalized
@@ -337,7 +345,7 @@ Published `v1.3.0` release and distribution status:
 - release workflow `36019163750` passed all three jobs; exact OCI index
   `sha256:5a1709c279c3731f891b59026adb7e8f5497c299687596b74b49ffd64a9f5a0e`, runtime manifest,
   attestation, labels, aliases, anonymous pull, MCP smoke, and full functional gate were verified
-- current upstream TrueNAS package `1.0.2` selects image `1.3.0`, but its source/generated form still
+- P2-pinned upstream TrueNAS package `1.0.3` selects image `1.3.0`, but its source/generated form still
   omits the four first-class MCP fields; form delivery and live lifecycle validation remain separate
 
 Published `v1.2.1` release and distribution status:
@@ -423,8 +431,9 @@ Current milestones:
 ## Working production characteristics
 
 - FastAPI application
-- package, FastAPI application, and MCP server metadata align to published stable version `1.3.0`;
-  the current TrueNAS Community package `1.0.2` also selects image `1.3.0`, while its first-class MCP
+- package, FastAPI application, and MCP server source metadata align to candidate `1.4.0-rc.1`;
+  published stable remains `v1.3.0`;
+  the P2-pinned TrueNAS Community package `1.0.3` also selects image `1.3.0`, while its first-class MCP
   form fields and live lifecycle verification remain separate delivery evidence
 - tracked source and reachable remote branch history passed the VB-060 public-exposure audit
 - public GitHub source was anonymously cloned and clean-built on TrueNAS SCALE / Linux amd64 with
@@ -433,8 +442,11 @@ Current milestones:
   authenticated `GET /api/v1/notes/list?limit=5` returned an empty note list
 - Python 3.12 container
 - FastAPI routes, vault operations, semantic orchestration and SQLite persistence have separate modules
-- explicit read-only `python -m app.mcp_server` local stdio adapter with five MCP tools, one contained
-  Markdown Resource template, process-wide monotonic rate limiting, and safe stderr-only diagnostics
+- `python -m app.mcp_server` local stdio adapter with exactly eight default read-only tools:
+  `knowledge_hygiene_scan`, `list_notes`, `read_note`, `search_notes`, `related_notes`,
+  `duplicate_candidates`, `note_links`, and `note_backlinks`; opt-in MCP writes add only
+  `create_note` and `append_note` (ten total). It provides one contained Markdown Resource template,
+  process-wide monotonic rate limiting, and safe stderr-only diagnostics
 - disabled-by-default read-only MCP Streamable HTTP at exact `/mcp` on the application port, using
   SDK Host/Origin protection, shared Bearer rotation, the live direct-peer limiter, live services,
   and the parent FastAPI lifespan without a second service or index owner
@@ -445,7 +457,10 @@ Current milestones:
 - context-local HTTP request correlation and latency events via `app/core/observability.py`
 - bundled same-origin `/ui/` dashboard with local HTML/CSS/vanilla JavaScript, a public health-backed
   read-only Overview, protected literal/semantic retrieval, strict browser security headers, and
-  operator-supplied Bearer-key validation through the existing protected API
+  API-key submission as JSON to `/ui/session` to establish a signed HttpOnly session cookie.
+  Protected Dashboard requests use that cookie with `X-VaultBridge-UI-Request: 1`; JavaScript keeps
+  no raw request credential in sessionStorage/localStorage. Logout clears the browser session and
+  protected UI state; invalidated authentication (`401`) also clears protected content
 - required current `API_KEY` plus one optional secret-safe `API_KEY_PREVIOUS` allow a controlled
   two-key rotation window through the shared constant-time legacy/v1 Bearer verifier
 - protected legacy and `/api/v1` traffic has a thread-safe, process-local fixed-window limiter before

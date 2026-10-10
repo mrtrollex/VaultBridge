@@ -13,6 +13,15 @@ VaultBridge is self-hosted, not local-only. It may run on a workstation, NAS, ho
 another operator-controlled host. "Local-first" describes the default privacy and processing model:
 no mandatory cloud AI, embedding, database, or knowledge service is required.
 
+## Release-track boundary
+
+P1 Hygiene Dashboard and P2 MCP delivery preparation are merged. P3 prepares `1.4.0-rc.1` source
+only; published stable remains `v1.3.0`. O1 publication/real TrueNAS canary, P4 stable, P5 catalog
+and O3 lifecycle remain pending. P2 pinned package 1.0.3/image 1.3.0; refresh it before operations.
+Historical dashboard milestones below describe their then-current sessionStorage behavior; current
+source uses the signed HttpOnly cookie session documented in README. Named spaces remain disabled.
+See [RC runbook](docs/V140_RC_RUNBOOK.md).
+
 ## Product principles
 
 1. **Portable knowledge is authoritative.** Markdown files and portable metadata are the source of
@@ -99,7 +108,7 @@ The published stable GitHub Release and GHCR application release are `v1.3.0`, b
 `sha256:5a1709c279c3731f891b59026adb7e8f5497c299687596b74b49ffd64a9f5a0e`.
 Stable aliases `1.3`, `1`, and `latest` were also published.
 
-Current upstream TrueNAS package `1.0.2` selects application image `1.3.0`, but its source and
+P2-pinned upstream TrueNAS package `1.0.3` selects application image `1.3.0`, but its source and
 generated forms do **not** contain the new first-class MCP configuration fields. Delivering those
 fields and completing the unresolved VB-082 post-merge validation gates remain separate from
 application publication.
@@ -778,7 +787,7 @@ default surface remains the exact seven read-only tools after VB-103; write-enab
 live application indexer, while stdio owns a targeted indexer only in write mode and shuts it down
 without starting a full sync. The checked-in TrueNAS package source adds first-class MCP HTTP,
 write, Host, and Origin fields on the existing Web Port. The `v1.3.0` application image containing
-this work is now published. Upstream package `1.0.2` selects that image through the catalog's
+this work is now published. P2-pinned upstream package `1.0.3` selects that image through the catalog's
 automated image update, but its form still lacks those fields; their source update remains externally
 owned delivery work.
 
@@ -1331,8 +1340,8 @@ remains healthy. The favicon-and-screenshot-only `v1.2.1` patch remains historic
 `v1.3.0` is now the published stable GitHub/GHCR release from source commit
 `a7e14ece0de74632d1d9be599d53678931dc64b3`; exact image tag `1.3.0`, aliases `1.3`, `1`, and
 `latest`, and OCI digest
-`sha256:5a1709c279c3731f891b59026adb7e8f5497c299687596b74b49ffd64a9f5a0e` are published. Current
-upstream TrueNAS package `1.0.2` selects image `1.3.0`, but it does not yet contain the first-class
+`sha256:5a1709c279c3731f891b59026adb7e8f5497c299687596b74b49ffd64a9f5a0e` are published. The
+P2-pinned upstream TrueNAS package `1.0.3` selects image `1.3.0`, but it does not yet contain the first-class
 MCP form fields. Their delivery remains separate, and VB-082's lifecycle gates stay open.
 
 Milestone 11 is complete as the PKM relationship foundation. VB-100 implements the reusable

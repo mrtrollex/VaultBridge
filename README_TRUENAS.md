@@ -23,6 +23,25 @@ Installing the Community App does not automatically migrate an existing source-b
 > verification remain separate work. See the
 > [`v1.3.0` release evidence](docs/RELEASE_CHECKLIST.md#v130-release-evidence).
 
+## Candidate preparation boundary
+
+Source is being prepared for `1.4.0-rc.1`; the published stable remains `v1.3.0`.
+The future candidate adds Dashboard Hygiene and remembered signed-cookie access, eight read-only
+MCP tools (ten with opt-in create/append), and local Query/Capture/Promotion/Hygiene CLI workflows.
+See the [main README](README.md#local-cli-and-semantic-index-administration) for stopped-service
+index-write rules and the [RC runbook](docs/V140_RC_RUNBOOK.md) for publication gates.
+The browser submits a key as JSON to `/ui/session`; JavaScript does not persist it. The HttpOnly,
+SameSite=Strict cookie lasts up to seven days, refreshes on restore, and is Secure when the app sees
+HTTPS. Current-key rotation invalidates saved sessions; logout clears the browser cookie and
+protected results. Configure trusted HTTPS termination appropriately; no stronger proxy behavior
+is implied. Named multi-space serving is unavailable.
+
+P2 pinned upstream package `1.0.3` / image `1.3.0`; refresh actual Community package identity before
+O1/O3. First-class MCP Edit App controls remain pending P5/O3. Current-package migration,
+non-default Host/Origin preservation and accepted/denied Origin behavior, Edit App persistence,
+host reboot, generated catalog upgrade, rollback/recovery and ixVolume retain/remove outcomes are
+**NOT YET VERIFIED** for this candidate. P3 executes no live TrueNAS tests.
+
 ## Preferred installation: TrueNAS Community App
 
 1. Open **Apps > Discover Apps**.
