@@ -194,6 +194,33 @@ def test_renderer_collision_guard_is_unchanged(render):
         render(values)
 
 
+@pytest.mark.parametrize("watch_enabled", [False, True])
+@pytest.mark.parametrize(
+    "case, debounce, expected",
+    [("absent", None, "1"), ("empty", "", "1"), ("explicit", 2, "2"), ("fractional", 0.5, "0.5")],
+)
+def test_candidate_watch_debounce_handles_hidden_saved_values(render, watch_enabled, case, debounce, expected):
+    values = saved_values(MAPPING)
+    values["vaultbridge"]["watch_enabled"] = watch_enabled
+    if case == "absent":
+        values["vaultbridge"].pop("watch_debounce_seconds", None)
+    else:
+        values["vaultbridge"]["watch_debounce_seconds"] = debounce
+    before = copy.deepcopy(values)
+    environment = render(MIGRATION["migrate"](values))["services"]["vaultbridge"]["environment"]
+    assert values == before
+    assert environment["SEMANTIC_WATCH_ENABLED"] == str(watch_enabled).lower()
+    assert environment["SEMANTIC_WATCH_DEBOUNCE_SECONDS"] == expected
+    settings = Settings(
+        _env_file=None,
+        SEMANTIC_WATCH_ENABLED=environment["SEMANTIC_WATCH_ENABLED"],
+        SEMANTIC_WATCH_DEBOUNCE_SECONDS=environment["SEMANTIC_WATCH_DEBOUNCE_SECONDS"],
+    )
+    assert settings.semantic_watch_debounce_seconds == float(expected)
+    for name in MAPPING:
+        assert list(environment).count(name) == 1
+
+
 @pytest.mark.parametrize("conflict", [False, True])
 def test_real_migration_file_interface(tmp_path, conflict):
     values = saved_values(MAPPING)
@@ -257,7 +284,7 @@ def test_documented_baselines_match_pinned_preparation(candidate):
 
 def test_live_baseline_procedures_require_current_package_and_execution_refresh():
     document = (PREP / "README.md").read_text(encoding="utf-8")
-    live = document.split("## O1/O3 live canary: NOT YET VERIFIED", 1)[1]
+    live = document.split("## O1/O3 package migration: NOT YET VERIFIED", 1)[1]
     refresh = live.split("### Mandatory refresh immediately before O1 and again immediately before O3", 1)[1]
     refresh, procedures = refresh.split("### O1 current-baseline candidate procedure", 1)
     for recorded in (
