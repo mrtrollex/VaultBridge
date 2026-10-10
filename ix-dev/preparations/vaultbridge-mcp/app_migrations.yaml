@@ -1,0 +1,8 @@
+# TEST CANDIDATE ONLY. Reconcile both bounds with then-current upstream in P5.
+# 1.0.4 is a disposable fixture identity following inspected 1.0.3, not a catalog revision.
+migrations:
+  - file: carry_forward_mcp
+    from:
+      max_version: 1.0.3
+    target:
+      min_version: 1.0.4
