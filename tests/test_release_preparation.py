@@ -26,7 +26,7 @@ def constant(path: str, name: str) -> str:
 def test_candidate_versions_agree():
     version = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
     assert version == constant("app/main.py", "APP_VERSION") == constant(
-        "app/mcp_server.py", "MCP_SERVER_VERSION") == "1.4.0-rc.1"
+        "app/mcp_server.py", "MCP_SERVER_VERSION") == "1.4.0-rc.2"
 
 
 def workflow():
@@ -39,6 +39,7 @@ def test_release_semver_and_prerelease_contract():
     pattern = re.search(r"semver_pattern='([^']+)'", script)[1]
     # The workflow's Bash ERE is also valid for these Python regex cases.
     assert re.fullmatch(pattern, "v1.4.0-rc.1")
+    assert re.fullmatch(pattern, "v1.4.0-rc.2")
     assert re.fullmatch(pattern, "v1.4.0")
     assert not re.fullmatch(pattern, "1.4.0-rc.1")
     assert not re.fullmatch(pattern, "v1.4.0+local")
@@ -85,6 +86,10 @@ def test_recovery_and_exact_source_contract():
     ("v1.4.0-rc.1", "false", "false", "false", "2026-01-01", False),
     ("v1.4.0-rc.1", "true", "false", "false", "2026-01-01", False),
     ("v1.4.0-rc.1", "true", "true", "true", "", False),
+    ("v1.4.0-rc.2", "true", "true", "false", "2026-01-01", True),
+    ("v1.4.0-rc.2", "false", "false", "false", "2026-01-01", False),
+    ("v1.4.0-rc.2", "true", "false", "false", "2026-01-01", False),
+    ("v1.4.0-rc.2", "true", "true", "true", "", False),
     ("v1.4.0", "false", "false", "false", "2026-01-01", True),
 ])
 def test_execute_release_validation_without_network(tmp_path, tag, expected, actual, draft, published, success):
@@ -131,13 +136,14 @@ def test_bad_identity_inputs_rejected(field, value):
         gate.validate_inputs(args)
 
 
-def test_identity_labels_must_match():
-    args = arguments()
+@pytest.mark.parametrize("version", ["1.4.0-rc.1", "1.4.0-rc.2", "1.3.0"])
+def test_identity_labels_must_match(version):
+    args = arguments("--expected-version", version)
     gate.validate_inputs(args)
     image = {"Os": "linux", "Architecture": "amd64", "RepoDigests": [args.image], "Config": {"Labels": {
         "org.opencontainers.image.source": gate.SOURCE,
         "org.opencontainers.image.revision": args.expected_revision,
-        "org.opencontainers.image.version": "v1.4.0-rc.1",
+        "org.opencontainers.image.version": f"v{version}",
         "org.opencontainers.image.licenses": "MIT"}}}
     gate.verify_identity(image, args.image, args.expected_revision, args.expected_version)
     for key in ("source", "revision", "version", "licenses"):
@@ -253,9 +259,10 @@ def test_runbook_fails_closed_and_pins_all_source_checks():
     assert "@('status', '--porcelain')).Count -ne 0" in freeze
     assert "$headSha -cne $reviewedSha" in freeze
     for block in blocks:
+        assert "1.4.0-rc.1" not in block, "historical rc.1 must not be the next execution target"
         assert not re.search(r"(?m)^\s*(git|gh|python|docker)\s", block), "unchecked native command"
     for required in (
-        "$tag = 'v1.4.0-rc.1'", "'for-each-ref'", "$localRefs.Count -ne 0",
+        "$tag = 'v1.4.0-rc.2'", "'for-each-ref'", "$localRefs.Count -ne 0",
         "'ls-remote', '--tags'", "'fetch', '--no-tags'", "'FETCH_HEAD^{commit}'",
         "$remoteBefore -cne $reviewedSha", "$localCommit -cne $reviewedSha",
         "$remoteAfter -cne $reviewedSha", "$publishedCommit -cne $reviewedSha",

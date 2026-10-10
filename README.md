@@ -37,9 +37,10 @@
 > Community package pinned by P2 is `1.0.3` and selects application image `1.3.0`; refresh upstream
 > before operational tests. Its pinned form does not yet include the first-class MCP configuration fields.
 
-> **Candidate source:** `1.4.0-rc.1` is being prepared, with read-only Dashboard Hygiene,
-> remembered sessions and Hygiene/Query/Capture/Promotion CLI workflows. These source capabilities
-> require a future candidate image; no RC is published by P3. See the
+> **Candidate source:** `1.4.0-rc.2` preparation follows the published, exact-image-verified
+> `v1.4.0-rc.1` and its bounded TrueNAS runtime canary. rc.1 includes read-only Dashboard Hygiene,
+> remembered sessions and Hygiene/Query/Capture/Promotion CLI workflows. rc.2 carries the subsequent
+> package-only watcher debounce repair; rc.2 publication and catalog migration remain pending. See the
 > [RC runbook](docs/V140_RC_RUNBOOK.md).
 
 > **v1.3.0 scope:** This release adds verified Obsidian wikilink

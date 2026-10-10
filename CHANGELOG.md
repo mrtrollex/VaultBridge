@@ -6,7 +6,22 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ## [Unreleased]
 
-Candidate scope: **1.4.0-rc.1**, prepared source only; no RC or stable v1.4.0 publication is claimed.
+Candidate scope: **1.4.0-rc.2**, source preparation only; publication requires separate authorization.
+Stable v1.4.0 and real TrueNAS catalog package / Edit App migration remain pending.
+
+### After rc.1
+
+- `v1.4.0-rc.1` was published and its exact OCI image verified; the bounded runtime/image
+  canary on TrueNAS 25.10.7 passed for the checks actually exercised
+- that canary exposed a separate package rendering bug: watcher disabled could render
+  `SEMANTIC_WATCH_DEBOUNCE_SECONDS=""`; reviewed, CI-passed PR #128 merged as `c98c70c`
+  repairs package preparation without changing VaultBridge runtime image behavior
+- rc.2 aligns candidate identity with that repair; host reboot, actual generated-catalog upgrade,
+  Edit App migration, rollback and ixVolume lifecycle proof remain pending
+
+### Scope carried forward from published rc.1
+
+The following capabilities and release checks were already included in rc.1:
 
 ### Added
 
