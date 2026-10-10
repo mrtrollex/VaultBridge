@@ -1115,3 +1115,36 @@ DEFER UNTIL AFTER RELEASE:
 
 FIRST IMPLEMENTATION TASK:
     P1 — Read-only Knowledge Hygiene Dashboard over the unchanged scan REST contract.
+
+## 19. Execution-status addendum — 2026-10-10
+
+The analysis and planning gates above retain their historical baseline and recommendations,
+including the then-pending rc.2 status in section 11. This dated update records subsequent execution;
+it does not rewrite those baselines or waive unverified package/lifecycle gates.
+
+P1 and P2 are merged. Following the reviewed package-only watcher-debounce repair (PR #128),
+`v1.4.0-rc.2` was published on 2026-10-10 from exact reviewed source
+`01f3c105b9e5b787e91914ea89879881dd988fb4`. Release source verification and image publication
+passed; stable-alias publication was skipped. The exact published digest passed the immutable-image
+functional gate and read-only/write-enabled MCP container smoke. See the
+[publication ledger](RELEASE_CHECKLIST.md#v140-rc2-publication-evidence--2026-10-10).
+
+Bounded O1 runtime/image evidence is **PASS** on TrueNAS 25.10.7: disposable Custom App
+`vault-rc-canary` moved rc.1 -> exact rc.2 digest, preserved synthetic Markdown and compatible
+derived state, passed credential denial/recovery and exact read-only MCP/Origin checks, and
+preserved image/settings/marker/data through real App Stop/Start. Production remained untouched.
+See the [bounded canary record](V140_RC_RUNBOOK.md#completed-bounded-o1-runtimeimage-canary--2026-10-10).
+This is Custom App image-swap proof; it does not exercise real package migration or live-prove
+the watcher-debounce package repair.
+
+Real current Community package migration, legacy `additional_envs` Host/Origin carry-forward into
+dedicated fields, Edit App persistence, actual generated public-catalog upgrade, host reboot,
+catalog rollback/recovery and new-package ixVolume retain/remove remain **NOT YET VERIFIED / PENDING**.
+There is no supported pre-merge candidate-package catalog workflow. Runtime Origin acceptance/403
+does not substitute for the required migration preservation proof in this historical plan.
+
+P4 stable preparation is the next application-release decision/task, with these limits explicit;
+stable v1.4.0 is neither authorized nor published by this update. Published stable remains v1.3.0.
+P5 remains later and requires refreshed upstream and a verified published stable image; O3 actual
+catalog migration/lifecycle verification remains pending. Bounded O1 completion does not mean all
+of the original plan's coordinated delivery gates passed or that VB-082 is complete.

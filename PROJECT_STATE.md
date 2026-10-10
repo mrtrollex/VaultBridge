@@ -2,7 +2,7 @@
 
 This document is the current factual snapshot for future Codex sessions. It should describe what exists **now**, not future plans.
 
-## v1.4.0 candidate source preparation
+## v1.4.0 candidate publication and bounded O1 evidence — 2026-10-10
 
 P1 and P2 are merged. `v1.4.0-rc.1` was published and its exact OCI image verified. The bounded
 runtime/image canary on TrueNAS 25.10.7 passed for the checks actually tested; this does not prove
@@ -11,12 +11,22 @@ emit `SEMANTIC_WATCH_DEBOUNCE_SECONDS=""`. The package-preparation repair was re
 and merged in PR #128 as `c98c70ce153f4af3071698af071cbe89aae96168`; it changes no VaultBridge runtime
 image behavior.
 
-Current application metadata is `1.4.0-rc.2`, source preparation only until separately authorized
-publication after review/merge. Published stable remains `v1.3.0`; stable v1.4.0 is neither authorized
-nor published. Real catalog package migration / Edit App migration, host reboot, actual generated
-catalog upgrade, rollback/recovery and ixVolume lifecycle gates remain **NOT YET VERIFIED**.
-There is no supported pre-merge candidate-package catalog workflow, so the rc.1 runtime canary
-cannot close those gates. See [RC runbook](docs/V140_RC_RUNBOOK.md). Older release/package records
+`v1.4.0-rc.2` publication and immutable-image functional/MCP verification are complete from source
+`01f3c105b9e5b787e91914ea89879881dd988fb4`; see the
+[release evidence](docs/RELEASE_CHECKLIST.md#v140-rc2-publication-evidence--2026-10-10).
+The bounded O1 runtime/image canary on TrueNAS 25.10.7 passed: the disposable Custom App moved
+from rc.1 to the exact rc.2 digest, preserving synthetic Markdown, compatible derived state,
+safe MCP settings/marker, credential denial/recovery, read-only tools and Origin enforcement,
+including a real App Stop/Start. Production app `vault_prod` remained untouched.
+This image swap is not a catalog package migration and does not live-prove the watcher-debounce
+package repair. Real current-package migration, legacy `additional_envs` Host/Origin carry-forward
+into dedicated fields, Edit App persistence, host reboot, actual generated catalog upgrade,
+catalog rollback/recovery and new-package ixVolume retain/remove remain **NOT YET VERIFIED**.
+There is no supported pre-merge candidate-package catalog workflow. P4 stable preparation is the
+next application-release decision/task; stable v1.4.0 is neither authorized nor published, and
+published stable remains `v1.3.0`. P5 requires refreshed upstream and a verified published stable
+image; O3 catalog migration/lifecycle remains pending. See [RC runbook](docs/V140_RC_RUNBOOK.md).
+Older release/package records
 below retain their historical identities; P2 pinned package 1.0.3/image 1.3.0 and execution must
 refresh upstream.
 
@@ -441,7 +451,7 @@ Current milestones:
 ## Working production characteristics
 
 - FastAPI application
-- package, FastAPI application, and MCP server source metadata align to candidate `1.4.0-rc.2` (source preparation only);
+- package, FastAPI application, and MCP server source metadata align to published prerelease `1.4.0-rc.2`;
   published stable remains `v1.3.0`;
   the P2-pinned TrueNAS Community package `1.0.3` also selects image `1.3.0`, while its first-class MCP
   form fields and live lifecycle verification remain separate delivery evidence

@@ -4,22 +4,45 @@ This is the durable release checklist and historical completed release evidence 
 `v1.0.0` audit, and each later release adds its own immutable record without replacing earlier tags,
 GitHub Releases, or artifact evidence.
 
-## v1.4.0-rc.2 preparation and operational gates
+## v1.4.0-rc.2 publication evidence — 2026-10-10
 
 | Stage | State / required evidence |
 |---|---|
-| PREPARED | rc.2 source metadata and notes follow the reviewed package-only debounce repair in PR #128; actual local results belong in the review packet, not this future gate ledger. |
-| REQUIRED BEFORE RC PUBLICATION | Independent P3 review, merged frozen source SHA, exact-source CI including Chromium and Docker, explicit publication authorization, version/tag alignment. |
-| REQUIRED AFTER RC PUBLICATION | Published GitHub prerelease, exact tag/source/workflow/OCI revision agreement, anonymous digest pull, labels/platform, MCP eight/ten-tool smoke, reusable functional gate, then authorized real TrueNAS O1 canary. |
-| REQUIRED BEFORE STABLE | O1 migration/restart/reboot/persistence/recovery evidence, saved non-default Host/Origin carry-forward and accepted/403-denied Origin, reviewed stable metadata/source/CI and explicit P4 publication authorization. |
-| POST-CATALOG | Authorized P5 update against refreshed upstream, then O3 actual generated catalog upgrade, Edit App persistence, rollback/recovery and ixVolume retain/remove proof. |
+| RC PUBLICATION — PASS | Published non-draft prerelease from exact reviewed source; source verification and image publication passed; stable-alias job skipped. |
+| EXACT IMAGE — PASS | OCI identity agreed with release source; `verify_release_image.py` immutable-image gate and `smoke_mcp_http.py` read-only/write-enabled container smoke passed against the exact digest below. |
+| BOUNDED O1 RUNTIME/IMAGE — PASS | TrueNAS 25.10.7 disposable Custom App rc.1 -> rc.2 image swap and real App Stop/Start passed the tested checks in the [RC runbook](V140_RC_RUNBOOK.md#completed-bounded-o1-runtimeimage-canary--2026-10-10). |
+| P4 STABLE — PENDING | Stable preparation is the next application-release decision/task; stable metadata/source/CI and publication require separate scope/authorization. No stable v1.4.0 publication is claimed. |
+| PACKAGE / LIFECYCLE — NOT YET VERIFIED | Real current-package migration, legacy MCP Host/Origin into dedicated fields, Edit App persistence, generated public-catalog upgrade, host reboot, catalog rollback/recovery and new-package ixVolume retain/remove. P5 requires refreshed upstream and a verified published stable image; O3 remains pending. |
 
 Follow [V140_RC_RUNBOOK.md](V140_RC_RUNBOOK.md). Published stable remains `v1.3.0`.
-P2 pinned upstream package `1.0.3` / image `1.3.0`; refresh before O1/O3. All candidate live TrueNAS
-catalog migration/lifecycle gates are **NOT YET VERIFIED**. `v1.4.0-rc.1` was published and its
+P2 pinned upstream package `1.0.3` / image `1.3.0`; refresh before package operations. `v1.4.0-rc.1` was published and its
 exact OCI image verified; the bounded TrueNAS 25.10.7 runtime/image canary passed its tested checks.
-rc.2 publication and its own digest verification remain pending. Historical sections below preserve their original SHA/digest and
+The rc.2 Custom App image swap is not a real catalog migration and cannot live-prove the
+watcher-debounce package-preparation repair. Historical sections below preserve their original SHA/digest and
 then-current tool/session/package evidence. `verify-vb075-image.sh` is v1.1.0 evidence only.
+
+### Exact rc.2 publication and OCI identity
+
+- Tag / GitHub Release: [`v1.4.0-rc.2`](https://github.com/mrtrollex/VaultBridge/releases/tag/v1.4.0-rc.2).
+  `draft=false`, `prerelease=true`, `publishedAt=2026-10-10T14:19:41Z`.
+- Exact reviewed/source commit: `01f3c105b9e5b787e91914ea89879881dd988fb4`.
+- Release workflow: [run 38059164718](https://github.com/mrtrollex/VaultBridge/actions/runs/38059164718).
+  `Verify release source` **PASS**; `Build and publish` **PASS**;
+  `Publish stable aliases` **SKIPPED**. Stable aliases were not advanced by this RC publication.
+
+```text
+OCI index: sha256:6be3f86fd01b4b337704a17f8b8b8da57d6fb5ab62281344e18638acbf16a02f
+immutable image: ghcr.io/mrtrollex/vaultbridge@sha256:6be3f86fd01b4b337704a17f8b8b8da57d6fb5ab62281344e18638acbf16a02f
+linux/amd64 runtime manifest: sha256:633deac16bb757c37cc3792bc03e6ebb13caf8ebc24944147cdd27799c0c47f3
+BuildKit attestation manifest: sha256:52a6a27b78f6249f6a2395a7dfb10a88d5a7d3cc367dcaedc1b2c3aaf1ccec8c
+```
+
+OCI revision/source/version/license identity agreed with the release source.
+`scripts/verify_release_image.py` against this digest reported **Release immutable-image gate = PASS**,
+revision `01f3c105b9e5b787e91914ea89879881dd988fb4`, runtime version `1.4.0-rc.2`.
+`scripts/smoke_mcp_http.py` against the same digest reported **read-only/write-enabled container
+smoke = PASS**. These are completed observations supplied by the assigned evidence task, not
+checks rerun by this documentation change.
 
 ## `v1.3.0` release evidence
 
