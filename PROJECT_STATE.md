@@ -2,7 +2,7 @@
 
 This document is the current factual snapshot for future Codex sessions. It should describe what exists **now**, not future plans.
 
-## v1.4.0 candidate publication and bounded O1 evidence — 2026-10-10
+## v1.4.0 stable source and historical bounded O1 evidence — 2026-10-10
 
 P1 and P2 are merged. `v1.4.0-rc.1` was published and its exact OCI image verified. The bounded
 runtime/image canary on TrueNAS 25.10.7 passed for the checks actually tested; this does not prove
@@ -22,10 +22,17 @@ This image swap is not a catalog package migration and does not live-prove the w
 package repair. Real current-package migration, legacy `additional_envs` Host/Origin carry-forward
 into dedicated fields, Edit App persistence, host reboot, actual generated catalog upgrade,
 catalog rollback/recovery and new-package ixVolume retain/remove remain **NOT YET VERIFIED**.
-There is no supported pre-merge candidate-package catalog workflow. P4 stable preparation is the
-next application-release decision/task; stable v1.4.0 is neither authorized nor published, and
-published stable remains `v1.3.0`. P5 requires refreshed upstream and a verified published stable
-image; O3 catalog migration/lifecycle remains pending. See [RC runbook](docs/V140_RC_RUNBOOK.md).
+Source metadata is prepared as stable `1.4.0`, with no runtime logic change from rc.2.
+Stable `v1.4.0` is **NOT yet published**; published stable remains `v1.3.0`.
+After fresh review, merge and successful exact-source CI, P4 stable publication is the immediate next
+operational step under separate publication authorization, using the
+[stable procedure](docs/V140_RC_RUNBOOK.md#p4-stable-publication--v140) and
+[release notes](docs/V140_RELEASE_NOTES.md). The completed bounded rc.2 O1 runtime/image canary
+remains pre-stable qualification; no repeat TrueNAS canary is required solely for this version-only
+transition. The published stable digest still requires immutable-image verification and MCP smoke.
+P5 requires refreshed upstream and a verified published stable image; O3 catalog migration/lifecycle
+remains pending. The unavailable pre-merge candidate catalog path does not block application stable
+publication or close any package/lifecycle gate.
 Older release/package records
 below retain their historical identities; P2 pinned package 1.0.3/image 1.3.0 and execution must
 refresh upstream.
@@ -451,8 +458,8 @@ Current milestones:
 ## Working production characteristics
 
 - FastAPI application
-- package, FastAPI application, and MCP server source metadata align to published prerelease `1.4.0-rc.2`;
-  published stable remains `v1.3.0`;
+- package, FastAPI application, and MCP server source metadata align to stable target `1.4.0`;
+  stable publication remains pending, while published stable is `v1.3.0`;
   the P2-pinned TrueNAS Community package `1.0.3` also selects image `1.3.0`, while its first-class MCP
   form fields and live lifecycle verification remain separate delivery evidence
 - tracked source and reachable remote branch history passed the VB-060 public-exposure audit

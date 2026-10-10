@@ -37,11 +37,12 @@
 > Community package pinned by P2 is `1.0.3` and selects application image `1.3.0`; refresh upstream
 > before operational tests. Its pinned form does not yet include the first-class MCP configuration fields.
 
-> **Candidate source:** `1.4.0-rc.2` preparation follows the published, exact-image-verified
-> `v1.4.0-rc.1` and its bounded TrueNAS runtime canary. rc.1 includes read-only Dashboard Hygiene,
-> remembered sessions and Hygiene/Query/Capture/Promotion CLI workflows. rc.2 carries the subsequent
-> package-only watcher debounce repair; rc.2 publication and catalog migration remain pending. See the
-> [RC runbook](docs/V140_RC_RUNBOOK.md).
+> **Stable source prepared:** `1.4.0` includes read-only Dashboard Hygiene, remembered sessions and
+> Hygiene/Query/Capture/Promotion CLI workflows. Published rc.2 passed exact-image verification and
+> its bounded TrueNAS runtime/image canary. Stable `v1.4.0` is not yet published; publication follows
+> review, merge and successful exact-source CI under separate authorization. P5/O3 catalog delivery
+> and migration remain separate and pending. See the
+> [stable publication procedure](docs/V140_RC_RUNBOOK.md#p4-stable-publication--v140).
 
 > **v1.3.0 scope:** This release adds verified Obsidian wikilink
 > relationships across REST, MCP, and the dashboard, plus default-off MCP note creation/appending and

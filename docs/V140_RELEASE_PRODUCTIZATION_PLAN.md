@@ -1,5 +1,11 @@
 # VaultBridge v1.4.0 release productization plan
 
+**Current execution status:** see [section 19](#19-execution-status-addendum--2026-10-10) and the
+[P4 stable publication procedure](V140_RC_RUNBOOK.md#p4-stable-publication--v140).
+Sections 1–18 preserve the historical coordinated-delivery proposal; their pre-stable package/lifecycle
+recommendations are not additional application-publication prerequisites. Those unverified gates
+remain pending P5/O3 work under the current accepted release scope.
+
 ## Executive summary
 
 **Recommendation: v1.4.0, after a read-only Hygiene Dashboard and an exact-image RC canary on real
@@ -1143,8 +1149,12 @@ catalog rollback/recovery and new-package ixVolume retain/remove remain **NOT YE
 There is no supported pre-merge candidate-package catalog workflow. Runtime Origin acceptance/403
 does not substitute for the required migration preservation proof in this historical plan.
 
-P4 stable preparation is the next application-release decision/task, with these limits explicit;
-stable v1.4.0 is neither authorized nor published by this update. Published stable remains v1.3.0.
+P4 stable preparation is complete: source metadata is prepared as `1.4.0` with no runtime logic
+changes. This supersedes the previous status that P4 stable preparation was next. The next
+application-release step is stable publication after review, merge, and successful exact-source CI
+validation, following the [P4 stable publication procedure](V140_RC_RUNBOOK.md#p4-stable-publication--v140).
+Publication still requires separate authorization; stable v1.4.0 is not yet published.
+Published stable remains v1.3.0.
 P5 remains later and requires refreshed upstream and a verified published stable image; O3 actual
 catalog migration/lifecycle verification remains pending. Bounded O1 completion does not mean all
 of the original plan's coordinated delivery gates passed or that VB-082 is complete.

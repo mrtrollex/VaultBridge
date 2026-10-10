@@ -4,6 +4,22 @@ This is the durable release checklist and historical completed release evidence 
 `v1.0.0` audit, and each later release adds its own immutable record without replacing earlier tags,
 GitHub Releases, or artifact evidence.
 
+## v1.4.0 stable publication gate - pending
+
+Use the [P4 stable procedure](V140_RC_RUNBOOK.md#p4-stable-publication--v140) and tracked
+[stable release notes](V140_RELEASE_NOTES.md). Require annotated tag `v1.4.0` to resolve to the
+reviewed merge SHA, clean checkout and successful CI on that exact SHA, a published non-draft,
+non-prerelease Release, and **PASS** for `Verify release source`, `Build and publish` and
+`Publish stable aliases` (SKIPPED is failure for stable publication). Record OCI index/runtime
+manifest, labels and aliases `1.4`, `1`, `latest`; verify the exact immutable stable digest with
+`scripts/verify_release_image.py` (expected revision = final merge SHA, version = `1.4.0`) and
+`scripts/smoke_mcp_http.py`. Any identity/artifact/runtime failure is **STOP**.
+
+The completed bounded rc.2 O1 canary below remains pre-stable runtime qualification; no repeat
+TrueNAS canary is required solely for unchanged-runtime rc.2 -> stable metadata. P5/O3 catalog
+migration/lifecycle gates remain separate and pending; their unavailable pre-merge catalog path
+does not block application stable publication. No stable publication evidence exists yet.
+
 ## v1.4.0-rc.2 publication evidence — 2026-10-10
 
 | Stage | State / required evidence |
@@ -11,7 +27,7 @@ GitHub Releases, or artifact evidence.
 | RC PUBLICATION — PASS | Published non-draft prerelease from exact reviewed source; source verification and image publication passed; stable-alias job skipped. |
 | EXACT IMAGE — PASS | OCI identity agreed with release source; `verify_release_image.py` immutable-image gate and `smoke_mcp_http.py` read-only/write-enabled container smoke passed against the exact digest below. |
 | BOUNDED O1 RUNTIME/IMAGE — PASS | TrueNAS 25.10.7 disposable Custom App rc.1 -> rc.2 image swap and real App Stop/Start passed the tested checks in the [RC runbook](V140_RC_RUNBOOK.md#completed-bounded-o1-runtimeimage-canary--2026-10-10). |
-| P4 STABLE — PENDING | Stable preparation is the next application-release decision/task; stable metadata/source/CI and publication require separate scope/authorization. No stable v1.4.0 publication is claimed. |
+| P4 STABLE - SOURCE PREPARED / PUBLICATION PENDING | Source metadata is `1.4.0`, with no runtime logic changes. Fresh review, merge and exact-source CI precede the immediate next operational step: separately authorized stable publication. `v1.4.0` is NOT yet published; published stable remains `v1.3.0`. |
 | PACKAGE / LIFECYCLE — NOT YET VERIFIED | Real current-package migration, legacy MCP Host/Origin into dedicated fields, Edit App persistence, generated public-catalog upgrade, host reboot, catalog rollback/recovery and new-package ixVolume retain/remove. P5 requires refreshed upstream and a verified published stable image; O3 remains pending. |
 
 Follow [V140_RC_RUNBOOK.md](V140_RC_RUNBOOK.md). Published stable remains `v1.3.0`.
