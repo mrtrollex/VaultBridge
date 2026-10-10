@@ -23,16 +23,17 @@ Installing the Community App does not automatically migrate an existing source-b
 > verification remain separate work. See the
 > [`v1.3.0` release evidence](docs/RELEASE_CHECKLIST.md#v130-release-evidence).
 
-## Candidate preparation boundary
+## Stable preparation boundary
 
-Source is being prepared for `1.4.0-rc.2`; the published stable remains `v1.3.0`.
-`v1.4.0-rc.1` was published and exact-image verified; its bounded runtime canary on TrueNAS 25.10.7
-passed the tested checks. rc.2 carries the subsequent reviewed package-only watcher debounce repair;
-publication and real catalog migration remain pending.
-The candidate scope includes Dashboard Hygiene and remembered signed-cookie access, eight read-only
+Source is prepared as `1.4.0`; it is not yet published, and the published stable remains `v1.3.0`.
+Published rc.2 passed exact-image verification and its bounded runtime/image canary on TrueNAS 25.10.7.
+Stable publication follows review, merge and successful exact-source CI under separate authorization.
+The version-only transition requires no repeat TrueNAS canary; the exact published stable digest
+still requires immutable-image verification and MCP smoke. Real catalog migration remains pending.
+The stable source includes Dashboard Hygiene and remembered signed-cookie access, eight read-only
 MCP tools (ten with opt-in create/append), and local Query/Capture/Promotion/Hygiene CLI workflows.
 See the [main README](README.md#local-cli-and-semantic-index-administration) for stopped-service
-index-write rules and the [RC runbook](docs/V140_RC_RUNBOOK.md) for publication gates.
+index-write rules and the [stable publication procedure](docs/V140_RC_RUNBOOK.md#p4-stable-publication--v140).
 The browser submits a key as JSON to `/ui/session`; JavaScript does not persist it. The HttpOnly,
 SameSite=Strict cookie lasts up to seven days, refreshes on restore, and is Secure when the app sees
 HTTPS. Current-key rotation invalidates saved sessions; logout clears the browser cookie and
@@ -40,10 +41,11 @@ protected results. Configure trusted HTTPS termination appropriately; no stronge
 is implied. Named multi-space serving is unavailable.
 
 P2 pinned upstream package `1.0.3` / image `1.3.0`; refresh actual Community package identity before
-O1/O3. First-class MCP Edit App controls remain pending P5/O3. Current-package migration,
+P5/O3. First-class MCP Edit App controls remain pending P5/O3. Current-package migration,
 non-default Host/Origin preservation and accepted/denied Origin behavior, Edit App persistence,
 host reboot, generated catalog upgrade, rollback/recovery and ixVolume retain/remove outcomes are
-**NOT YET VERIFIED** for this candidate. rc.2 preparation executes no live TrueNAS tests.
+**NOT YET VERIFIED** through a catalog upgrade. The package-only watcher debounce repair has no live
+catalog proof from the Custom App canary. These P5/O3 gates remain separate from application stable publication.
 
 ## Preferred installation: TrueNAS Community App
 
@@ -61,8 +63,11 @@ reviewed `truenas/apps` source update rather than only an automated image-versio
 
 [P2 delivery preparation](ix-dev/preparations/vaultbridge-mcp/README.md) provides a pinned
 current-upstream candidate and tested legacy MCP carry-forward/conflict handling. It does not
-change catalog availability. Live candidate migration remains pending O1; actual catalog delivery
-and upgrade verification remain pending P5/O3.
+change catalog availability. Bounded O1 TrueNAS runtime/image qualification is complete; the supported
+pre-merge candidate catalog migration path was unavailable. Actual TrueNAS Community package delivery
+belongs to P5; subsequent real catalog migration, Edit App persistence, rollback/recovery and ixVolume
+lifecycle verification belong to O3 and remain **NOT YET VERIFIED**. Custom App image-swap evidence
+does not prove package migration.
 
 The catalog form masks secret API-key inputs. Masking prevents casual display in the form; a
 privileged TrueNAS or Docker administrator can still inspect deployed container configuration.

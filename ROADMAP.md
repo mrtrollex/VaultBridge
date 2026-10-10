@@ -22,9 +22,14 @@ runtime/image canary completed after the reviewed, CI-passed package-only watche
 (PR #128, merged as `c98c70c`). The TrueNAS Custom App rc.1 -> rc.2 image swap and App Stop/Start
 preserved synthetic Markdown, compatible derived state and safe MCP behavior; production remained
 untouched. This does not prove catalog migration or live execution of the package repair.
-P4 stable preparation is the next application-release decision/task, without stable publication
-authorization. P5 requires refreshed upstream and a verified published stable image; O3 remains
-pending. Real package/legacy MCP field migration, Edit App persistence, host reboot, generated
+Source is prepared as stable `1.4.0` without runtime logic changes. After fresh review, merge and
+successful exact-source CI, P4 stable publication is the immediate next operational step, requiring
+separate publication authorization. `v1.4.0` is NOT yet published. The rc.2 bounded O1 canary remains
+pre-stable runtime qualification; no repeat TrueNAS canary is required solely for the version
+transition, but the exact published stable digest must pass immutable-image verification and MCP
+smoke. P5 requires refreshed upstream and a verified published stable image; O3 remains pending.
+The unavailable pre-merge catalog path does not block application stable publication.
+Real package/legacy MCP field migration, Edit App persistence, host reboot, generated
 catalog upgrade, catalog rollback/recovery and new-package ixVolume retain/remove remain unverified.
 Published stable remains `v1.3.0`.
 P2 pinned package 1.0.3/image 1.3.0; refresh it before operations.

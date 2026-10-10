@@ -6,22 +6,9 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ## [Unreleased]
 
-Candidate scope: **1.4.0-rc.2**, source preparation only; publication requires separate authorization.
-Stable v1.4.0 and real TrueNAS catalog package / Edit App migration remain pending.
+## [1.4.0] - 2026-10-10
 
-### After rc.1
-
-- `v1.4.0-rc.1` was published and its exact OCI image verified; the bounded runtime/image
-  canary on TrueNAS 25.10.7 passed for the checks actually exercised
-- that canary exposed a separate package rendering bug: watcher disabled could render
-  `SEMANTIC_WATCH_DEBOUNCE_SECONDS=""`; reviewed, CI-passed PR #128 merged as `c98c70c`
-  repairs package preparation without changing VaultBridge runtime image behavior
-- rc.2 aligns candidate identity with that repair; host reboot, actual generated-catalog upgrade,
-  Edit App migration, rollback and ixVolume lifecycle proof remain pending
-
-### Scope carried forward from published rc.1
-
-The following capabilities and release checks were already included in rc.1:
+Stable source prepared for publication; v1.4.0 is not yet published. Published stable remains v1.3.0.
 
 ### Added
 
@@ -46,15 +33,16 @@ The following capabilities and release checks were already included in rc.1:
   semantic index writers still require stopped-service CLI operation
 - prepared TrueNAS MCP form/migration delivery against pinned package 1.0.3/image 1.3.0, with
   legacy allowlist carry-forward/conflict fixtures; public catalog delivery and live migration
-  remain pending and require refreshing upstream before execution
+  remain pending and require refreshing upstream before execution; the watcher-disabled debounce
+  rendering repair is package preparation only and has not been live-proved through catalog migration
 
-### Release preparation
+### Validation and scope
 
 - reusable immutable-image functional gate takes explicit digest/source/version, verifies OCI and
   runtime identity, current session/Hygiene/REST/CLI behavior, semantic persistence, logs and cleanup;
   historical v1.1.0 exact-image evidence is preserved
-- prerelease regression coverage protects exact RC tags, reviewed-source identity, recovery of an
-  existing published release and exclusion of stable rolling aliases
+- release regression coverage protects stable and historical RC identities, reviewed-source verification,
+  recovery of an existing published release and stable-alias publication only for non-prereleases
 - internal multi-space A-C groundwork remains activation-gated, with no public named serving;
   Query/Capture/Promotion REST/MCP/dashboard, multi-space D-G/VB-152 and Hygiene mutations are deferred
 

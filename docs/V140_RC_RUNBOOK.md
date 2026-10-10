@@ -1,11 +1,192 @@
-# v1.4.0-rc.2 evidence and O1 runbook
+# v1.4.0 stable publication and historical RC/O1 runbook
 
 As of 2026-10-10, rc.2 publication, exact-image functional/MCP gates and the bounded O1 runtime/image
 canary are complete. Published stable remains **v1.3.0**. The completed observations below come
 from the assigned evidence task; this documentation change did not rerun publication or live checks.
-The source-freeze/publication procedure retained below is a reference for the completed RC work,
+The historical RC source-freeze/publication procedure retained below is a reference for completed work,
 not a pending instruction to republish rc.2. It authorizes no new release or live operation.
 See [exact publication/OCI evidence](RELEASE_CHECKLIST.md#v140-rc2-publication-evidence--2026-10-10).
+
+## P4 stable publication — v1.4.0
+
+**Prepared procedure only; v1.4.0 is NOT yet published. Published stable remains v1.3.0.**
+Execute only after separate publication authorization, fresh review, merge and successful CI on the
+final stable merge SHA. The next operational step is stable publication, not another RC/preparation
+cycle. This version-only transition changes no runtime logic. The completed bounded rc.2 O1 canary
+below remains pre-stable runtime qualification; do not repeat a TrueNAS canary solely for the version
+transition. Exact published stable image verification remains mandatory.
+
+Run these blocks sequentially in one PowerShell session from the reviewed merged checkout.
+Record the actual final `$reviewedSha` at execution time; never substitute the old RC SHA or mutable
+branch name. Every native command uses checked exit handling. Any missing, failed, skipped required,
+unavailable or mismatched source/Release/artifact/runtime gate is **STOP**; do not retag or replace
+published identities. Require the independent exact-source CI suite (Ruff, full non-E2E, compileall,
+Chromium E2E, Compose, image build and MCP dependency/stdio/HTTP smoke).
+
+```powershell
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+function Invoke-Checked {
+    param([string]$Command, [string[]]$Arguments)
+    $output = & $Command @Arguments
+    if ($LASTEXITCODE -ne 0) { throw "$Command failed with exit code $LASTEXITCODE" }
+    return $output
+}
+$reviewedSha = (Invoke-Checked git -Arguments @('rev-parse', '--verify', 'HEAD^{commit}')).Trim()
+if ($reviewedSha -cnotmatch '^[0-9a-f]{40}$') { throw 'Invalid reviewed source SHA' }
+function Assert-ReviewedCheckout {
+    if (@(Invoke-Checked git -Arguments @('status', '--porcelain')).Count -ne 0) {
+        throw 'Working tree must be clean'
+    }
+    $headSha = (Invoke-Checked git -Arguments @('rev-parse', '--verify', 'HEAD^{commit}')).Trim()
+    if ($headSha -cne $reviewedSha) { throw 'HEAD changed from reviewed source' }
+}
+Assert-ReviewedCheckout
+Invoke-Checked python -Arguments @('-m', 'pytest', '-q', 'tests/test_release_preparation.py', 'tests/test_smoke_mcp_http.py')
+Invoke-Checked python -Arguments @('scripts/agent_check.py')
+$releaseRepository = 'mrtrollex/VaultBridge'
+$ciRun = '<successful-final-merge-CI-run-id>' # Record the observed run, not the historical RC run.
+if ($ciRun -cnotmatch '^[0-9]+$') { throw 'Exact-source CI run ID required' }
+$ci = (Invoke-Checked gh -Arguments @('run', 'view', $ciRun, '--repo', $releaseRepository,
+    '--json', 'headSha,status,conclusion,workflowName,url,jobs')) | ConvertFrom-Json
+if ($ci.headSha -cne $reviewedSha -or $ci.status -cne 'completed' -or
+    $ci.conclusion -cne 'success' -or $ci.workflowName -cne 'CI') {
+    throw 'Successful CI on exact reviewed merge SHA required'
+}
+foreach ($jobName in @('python', 'dashboard-e2e', 'docker')) {
+    $jobs = @($ci.jobs | Where-Object { $_.name -ceq $jobName })
+    if ($jobs.Count -ne 1 -or $jobs[0].conclusion -cne 'success') { throw "CI job failed: $jobName" }
+}
+$ci.url # Retain the URL and checked source SHA in the execution record.
+```
+
+The following creates the annotated tag and non-draft, non-prerelease Release using the tracked
+[stable notes](V140_RELEASE_NOTES.md). An existing local tag requires investigation. An existing
+remote tag is usable only if annotated and independently dereferenced to the reviewed merge SHA.
+Release source is the verified tag commit, not GitHub's mutable target-branch display field.
+
+```powershell
+$tag = 'v1.4.0'
+$releaseRepository = 'mrtrollex/VaultBridge'
+$releaseRemote = "https://github.com/$releaseRepository.git"
+$notesFile = 'docs/V140_RELEASE_NOTES.md'
+if (-not (Test-Path -LiteralPath $notesFile -PathType Leaf)) { throw 'Reviewed notes file missing' }
+if ($reviewedSha -cnotmatch '^[0-9a-f]{40}$') { throw 'Invalid reviewed source SHA' }
+
+function Resolve-RemoteReleaseCommit {
+    $refs = @(Invoke-Checked git -Arguments @('ls-remote', '--tags', $releaseRemote,
+        "refs/tags/$tag", "refs/tags/$tag^{}"))
+    if ($refs.Count -eq 0) { return $null }
+    # Exact remote ref only; --no-tags avoids overwriting/creating a local release tag.
+    Invoke-Checked git -Arguments @('fetch', '--no-tags', $releaseRemote, "refs/tags/$tag") | Out-Null
+    $tagType = (Invoke-Checked git -Arguments @('cat-file', '-t', 'FETCH_HEAD')).Trim()
+    if ($tagType -cne 'tag') { throw 'Remote release tag must be annotated' }
+    $commit = (Invoke-Checked git -Arguments @('rev-parse', '--verify', 'FETCH_HEAD^{commit}')).Trim()
+    if ($commit -cnotmatch '^[0-9a-f]{40}$') { throw 'Invalid remote tag commit' }
+    return $commit
+}
+
+$localRefs = @(Invoke-Checked git -Arguments @('for-each-ref', '--format=%(refname)', "refs/tags/$tag"))
+if ($localRefs.Count -ne 0) { throw 'Local stable tag already exists; investigate before continuing' }
+$remoteBefore = Resolve-RemoteReleaseCommit
+if ($null -ne $remoteBefore -and $remoteBefore -cne $reviewedSha) {
+    throw 'Existing remote tag differs from reviewed source'
+}
+Assert-ReviewedCheckout # Clean worktree and exact HEAD immediately before tag creation.
+if ($null -eq $remoteBefore) {
+    Invoke-Checked git -Arguments @('tag', '-a', $tag, $reviewedSha, '-m', "VaultBridge $tag")
+    $localCommit = (Invoke-Checked git -Arguments @('rev-parse', '--verify', "$tag^{commit}")).Trim()
+    if ($localCommit -cne $reviewedSha) { throw 'Local tag differs from reviewed source' }
+    Invoke-Checked git -Arguments @('push', $releaseRemote, "refs/tags/$tag")
+}
+# Always fetch/dereference independently after push (or when the matching remote tag existed).
+$remoteAfter = Resolve-RemoteReleaseCommit
+if ($remoteAfter -cne $reviewedSha) { throw 'Remote tag differs from reviewed source' }
+
+Invoke-Checked gh -Arguments @('release', 'create', $tag, '--repo', $releaseRepository,
+    '--verify-tag', '--prerelease=false', '--title', "VaultBridge $tag", '--notes-file', $notesFile)
+$release = (Invoke-Checked gh -Arguments @('release', 'view', $tag, '--repo', $releaseRepository,
+    '--json', 'tagName,isDraft,isPrerelease,publishedAt,url')) | ConvertFrom-Json
+if ($release.tagName -cne $tag -or $release.isPrerelease -ne $false -or
+    $release.isDraft -ne $false -or [string]::IsNullOrWhiteSpace($release.publishedAt)) {
+    throw 'Published GitHub Release identity/state mismatch'
+}
+$publishedCommit = Resolve-RemoteReleaseCommit
+if ($publishedCommit -cne $reviewedSha) { throw 'Published release tag differs from reviewed source' }
+```
+
+Wait for the matching release publication workflow. Require **PASS** for `Verify release source`,
+`Build and publish` and `Publish stable aliases`; stable aliases must not be SKIPPED. Record the
+workflow URL, verified/publish checkout SHA and observed build digest. Verify exact tag `1.4.0` and
+stable aliases `1.4`, `1`, `latest` resolve to that digest. No mutable tag substitutes for artifact
+verification. OCI version label must be `v1.4.0`, revision the final merge SHA; APP/MCP/FastAPI
+runtime version must be `1.4.0`.
+
+```powershell
+$publishRun = '<release-publication-run-id>' # Observe the release-triggered workflow run.
+if ($publishRun -cnotmatch '^[0-9]+$') { throw 'Publication workflow run ID required' }
+Invoke-Checked gh -Arguments @('run', 'watch', $publishRun, '--repo', $releaseRepository, '--exit-status')
+$run = (Invoke-Checked gh -Arguments @('run', 'view', $publishRun, '--repo', $releaseRepository,
+    '--json', 'headSha,event,status,conclusion,workflowName,url,jobs')) | ConvertFrom-Json
+if ($run.headSha -cne $reviewedSha -or $run.event -cne 'release' -or
+    $run.workflowName -cne 'Publish GHCR image' -or $run.status -cne 'completed' -or
+    $run.conclusion -cne 'success') { throw 'Stable publication workflow identity/state mismatch' }
+foreach ($jobName in @('Verify release source', 'Build and publish', 'Publish stable aliases')) {
+    $jobs = @($run.jobs | Where-Object { $_.name -ceq $jobName })
+    if ($jobs.Count -ne 1 -or $jobs[0].conclusion -cne 'success') {
+        throw "Stable publication job must PASS, never SKIPPED: $jobName"
+    }
+}
+$run.url
+$indexDigest = 'sha256:<observed-stable-index-digest>' # From successful build output.
+if ($indexDigest -cnotmatch '^sha256:[0-9a-f]{64}$') { throw 'Observed OCI index digest required' }
+$imageRepository = 'ghcr.io/mrtrollex/vaultbridge'
+$image = "$imageRepository@$indexDigest"
+Invoke-Checked docker -Arguments @('buildx', 'imagetools', 'inspect', $image)
+$index = (Invoke-Checked docker -Arguments @('buildx', 'imagetools', 'inspect', $image, '--raw')) |
+    ConvertFrom-Json
+$runtime = @($index.manifests | Where-Object {
+    $_.platform.os -ceq 'linux' -and $_.platform.architecture -ceq 'amd64'
+})
+if ($runtime.Count -ne 1 -or $runtime[0].digest -cnotmatch '^sha256:[0-9a-f]{64}$') {
+    throw 'Exactly one linux/amd64 runtime manifest required'
+}
+$runtime[0].digest # Record runtime manifest separately from index/attestation digests.
+foreach ($alias in @('1.4.0', '1.4', '1', 'latest')) {
+    $inspection = (Invoke-Checked docker -Arguments @('buildx', 'imagetools', 'inspect',
+        "${imageRepository}:$alias")) -join "`n"
+    $digestMatch = [regex]::Match($inspection, '(?m)^Digest:\s+(sha256:[0-9a-f]{64})\s*$')
+    if (-not $digestMatch.Success -or $digestMatch.Groups[1].Value -cne $indexDigest) {
+        throw "Stable tag/alias digest mismatch: $alias"
+    }
+}
+Invoke-Checked python -Arguments @('scripts/verify_release_image.py', '--image', $image,
+    '--expected-revision', $reviewedSha, '--expected-version', '1.4.0')
+Invoke-Checked python -Arguments @('scripts/smoke_mcp_http.py', '--image', $image)
+```
+
+Record Release/tag/source, CI/publication URLs, OCI index and linux/amd64 runtime manifest, labels,
+anonymous pull, immutable-image gate and MCP smoke results, cleanup and execution UTC. The image
+gate must report `Release immutable-image gate = PASS`; local mechanics cannot substitute. Retain
+only sanitized outcomes, without credentials, cookies, private paths or vault content.
+
+Recovery, if separately authorized, is only for an existing published stable Release with the same
+annotated tag/source and `draft=false`, `prerelease=false`, nonempty `publishedAt`. Use checked
+`workflow run publish-ghcr.yml` with `release_tag=v1.4.0`, `expected_source_sha=$reviewedSha` and
+`expected_prerelease=false`. Record the recovery workflow commit separately, verify its release
+source/publish checkout still equals `$reviewedSha`, and require all three jobs plus the same
+artifact gates; recovery does not permit another source or replacement tag.
+
+P5/O3 remain separate and pending: refreshed upstream package delivery, real Community package
+migration, legacy `additional_envs` Host/Origin migration, Edit App persistence, generated catalog
+upgrade, host reboot, rollback/recovery and ixVolume retain/remove. The unavailable pre-merge
+catalog path does not block application stable publication. The watcher-debounce package repair
+has no live catalog proof from the Custom App canary.
+
+## Historical RC procedure and evidence
+
+The remaining RC-targeted commands and preparation descriptions are retained historical reference
+only. Current source metadata is `1.4.0`; use the P4 procedure above for the next publication.
 
 ## Completed bounded O1 runtime/image canary — 2026-10-10
 
@@ -65,8 +246,9 @@ checks above prove runtime enforcement with persisted Custom App settings, not p
 package migration. The watcher-debounce package-preparation repair has not been live-proved through
 a catalog migration.
 
-P4 stable preparation is the next application-release decision/task. Stable v1.4.0 is neither
-authorized nor published by this evidence update. P5 remains later, requires refreshed upstream and
+P4 stable source is prepared above; publication is the immediate next operational step after
+fresh review, merge and exact-source CI. Stable v1.4.0 is not yet published.
+P5 remains later, requires refreshed upstream and
 a verified published stable image; O3 actual catalog migration/lifecycle remains pending.
 
 ## Historical rc.1 evidence and reason for rc.2
@@ -80,14 +262,14 @@ never replace the published rc.1 tag/image or relabel its evidence as rc.2.
 
 Real catalog package / Edit App migration remains pending: no supported pre-merge candidate-package
 catalog workflow exists. Neither the rc.1 canary nor static package tests prove host reboot, actual
-generated-catalog upgrade, Edit App migration, rollback or ixVolume lifecycle gates. P4 stable,
+generated-catalog upgrade, Edit App migration, rollback or ixVolume lifecycle gates. P4 stable publication,
 P5 catalog and O3 lifecycle remain pending. No step requires touching the production TrueNAS app;
 any future authorized canary must use an isolated disposable app with synthetic data.
 
-## PREPARED — inspect and review source
+## HISTORICAL RC PREPARATION — inspect and review source
 
 Review the rc.2 preparation diff and `.agent/review_packet.md` in a separate fresh session. Candidate runtime
-metadata is `1.4.0-rc.2` in `pyproject.toml`, `app/main.py:APP_VERSION` and
+metadata was `1.4.0-rc.2` in `pyproject.toml`, `app/main.py:APP_VERSION` and
 `app/mcp_server.py:MCP_SERVER_VERSION`. The Git tag and OCI version label are **v1.4.0-rc.2**;
 the exact GHCR image tag is **1.4.0-rc.2**, without `v`.
 
@@ -298,7 +480,7 @@ platform/labels, anonymous pull and both smoke outputs, clean cleanup and execut
 sanitized outcomes: no complete environment, cookies, Authorization headers, keys, private paths,
 vault bytes or review output. **STOP before live TrueNAS on any artifact identity/runtime failure.**
 
-## REQUIRED BEFORE STABLE — authorized O1 TrueNAS canary
+## Historical O1 qualification and pending P5/O3 catalog gates
 
 Refresh actual current Community package immediately before execution. P2 pinned development
 package **1.0.3 / image 1.3.0**; 1.0.2 is historical retained-state compatibility only. Follow
@@ -320,8 +502,8 @@ separately scoped reviewed fix and new RC.
 
 ## POST-CATALOG — P5/O3 remain pending
 
-P4 stable preparation is the next decision/task after bounded O1 runtime/image completion; this
-does not close the package/lifecycle gates above or authorize stable publication. P5 requires
+P4 stable publication follows review, merge and exact-source CI of the stable source; this
+does not close the package/lifecycle gates above or authorize publication by itself. P5 requires
 a real verified stable image and fresh upstream identity. O3 must then repeat migration, saved
 allowlists/runtime denial, Edit App/lifecycle/rollback and retain/remove proof on the actual
 generated catalog upgrade. None of these stages is completed by the Custom App runtime/image proof.

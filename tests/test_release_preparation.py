@@ -1,4 +1,4 @@
-"""Candidate identity and safety-critical release workflow contracts."""
+"""Stable identity and safety-critical release workflow contracts."""
 from __future__ import annotations
 
 import ast
@@ -23,10 +23,10 @@ def constant(path: str, name: str) -> str:
                 and any(isinstance(target, ast.Name) and target.id == name for target in node.targets))
 
 
-def test_candidate_versions_agree():
+def test_stable_versions_agree():
     version = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
     assert version == constant("app/main.py", "APP_VERSION") == constant(
-        "app/mcp_server.py", "MCP_SERVER_VERSION") == "1.4.0-rc.2"
+        "app/mcp_server.py", "MCP_SERVER_VERSION") == "1.4.0"
 
 
 def workflow():
@@ -70,6 +70,7 @@ def test_recovery_and_exact_source_contract():
     assert set(inputs) == {"release_tag", "expected_source_sha", "expected_prerelease"}
     assert all(value["required"] for value in inputs.values())
     assert inputs["expected_prerelease"]["type"] == "boolean"
+    assert inputs["expected_prerelease"]["default"] is False
     verify = data["jobs"]["verify"]["steps"]
     assert "releases/tags/${release_tag}" in verify[0]["run"]
     source = next(step for step in verify if step.get("id") == "source")["run"]
@@ -91,6 +92,9 @@ def test_recovery_and_exact_source_contract():
     ("v1.4.0-rc.2", "true", "false", "false", "2026-01-01", False),
     ("v1.4.0-rc.2", "true", "true", "true", "", False),
     ("v1.4.0", "false", "false", "false", "2026-01-01", True),
+    ("v1.4.0", "false", "true", "false", "2026-01-01", False),
+    ("v1.4.0", "false", "false", "true", "2026-01-01", False),
+    ("v1.4.0", "false", "false", "false", "", False),
 ])
 def test_execute_release_validation_without_network(tmp_path, tag, expected, actual, draft, published, success):
     # Execute the real safety-critical Bash step, substituting only the GitHub API.
@@ -136,7 +140,7 @@ def test_bad_identity_inputs_rejected(field, value):
         gate.validate_inputs(args)
 
 
-@pytest.mark.parametrize("version", ["1.4.0-rc.1", "1.4.0-rc.2", "1.3.0"])
+@pytest.mark.parametrize("version", ["1.4.0", "1.4.0-rc.1", "1.4.0-rc.2", "1.3.0"])
 def test_identity_labels_must_match(version):
     args = arguments("--expected-version", version)
     gate.validate_inputs(args)
@@ -228,7 +232,8 @@ def test_documented_cli_examples_parse():
 
 def test_current_documentation_local_links_exist():
     for name in ("README.md", "README_TRUENAS.md", "ARCHITECTURE.md", "PROJECT_STATE.md", "ROADMAP.md",
-                 "docs/RELEASE_CHECKLIST.md", "docs/DASHBOARD_RELEASE_CHECKLIST.md", "docs/V140_RC_RUNBOOK.md"):
+                 "docs/RELEASE_CHECKLIST.md", "docs/DASHBOARD_RELEASE_CHECKLIST.md", "docs/V140_RC_RUNBOOK.md",
+                 "docs/V140_RELEASE_NOTES.md"):
         path = ROOT / name
         content = re.sub(r"```.*?```", "", path.read_text(encoding="utf-8"), flags=re.S)
         content = re.sub(r"`[^`\n]+`", "", content)
@@ -239,9 +244,10 @@ def test_current_documentation_local_links_exist():
             assert (path.parent / local).exists(), f"{name}: missing local link {local}"
 
 
-def publication_blocks():
+def publication_blocks(*, historical=False):
     doc = (ROOT / "docs/V140_RC_RUNBOOK.md").read_text(encoding="utf-8")
-    blocks = re.findall(r"```powershell\n(.*?)```", doc, re.S)
+    stable, historical_doc = doc.split("## Historical RC procedure and evidence", 1)
+    blocks = re.findall(r"```powershell\n(.*?)```", historical_doc if historical else stable, re.S)
     assert blocks, "publication procedure must use checked PowerShell"
     freeze = next(block for block in blocks if "function Invoke-Checked" in block)
     publication = next(block for block in blocks if "'release', 'create'" in block)
@@ -262,12 +268,12 @@ def test_runbook_fails_closed_and_pins_all_source_checks():
         assert "1.4.0-rc.1" not in block, "historical rc.1 must not be the next execution target"
         assert not re.search(r"(?m)^\s*(git|gh|python|docker)\s", block), "unchecked native command"
     for required in (
-        "$tag = 'v1.4.0-rc.2'", "'for-each-ref'", "$localRefs.Count -ne 0",
+        "$tag = 'v1.4.0'", "'for-each-ref'", "$localRefs.Count -ne 0",
         "'ls-remote', '--tags'", "'fetch', '--no-tags'", "'FETCH_HEAD^{commit}'",
         "$remoteBefore -cne $reviewedSha", "$localCommit -cne $reviewedSha",
         "$remoteAfter -cne $reviewedSha", "$publishedCommit -cne $reviewedSha",
-        "'--verify-tag', '--prerelease'", "$release.tagName -cne $tag",
-        "$release.isPrerelease -ne $true", "$release.isDraft -ne $false",
+        "'--verify-tag', '--prerelease=false'", "$release.tagName -cne $tag",
+        "$release.isPrerelease -ne $false", "$release.isDraft -ne $false",
         "IsNullOrWhiteSpace($release.publishedAt)", "'--repo', $releaseRepository",
     ):
         assert required in publication
@@ -276,7 +282,35 @@ def test_runbook_fails_closed_and_pins_all_source_checks():
               "@('release', 'create'", "@('release', 'view'", "$publishedCommit =",
               "$publishedCommit -cne $reviewedSha")
     positions = [publication.index(phase) for phase in phases]
-    assert positions == sorted(positions), "source/prerelease checks must guard publication in order"
+    assert positions == sorted(positions), "source/stable checks must guard publication in order"
+
+
+def test_stable_publication_requires_ci_aliases_and_immutable_image():
+    blocks, freeze, publication = publication_blocks()
+    assert "$ci.headSha -cne $reviewedSha" in freeze
+    assert "$ci.conclusion -cne 'success'" in freeze
+    assert "docs/V140_RELEASE_NOTES.md" in publication
+    assert "@('cat-file', '-t', 'FETCH_HEAD')" in publication
+    assert "$tagType -cne 'tag'" in publication
+    artifacts = next(block for block in blocks if "$publishRun =" in block)
+    for required in (
+        "'--exit-status'", "$run.headSha -cne $reviewedSha", "$run.event -cne 'release'",
+        "'Verify release source', 'Build and publish', 'Publish stable aliases'",
+        "$jobs.Count -ne 1", "$jobs[0].conclusion -cne 'success'",
+        "'^sha256:[0-9a-f]{64}$'", '"$imageRepository@$indexDigest"',
+        "@('1.4.0', '1.4', '1', 'latest')", "$digestMatch.Groups[1].Value -cne $indexDigest",
+        "'scripts/verify_release_image.py', '--image', $image",
+        "'--expected-revision', $reviewedSha, '--expected-version', '1.4.0'",
+        "'scripts/smoke_mcp_http.py', '--image', $image",
+    ):
+        assert required in artifacts
+
+
+def test_historical_rc_procedure_is_retained():
+    _, _, publication = publication_blocks(historical=True)
+    assert "$tag = 'v1.4.0-rc.2'" in publication
+    assert "'--verify-tag', '--prerelease'" in publication
+    assert "$release.isPrerelease -ne $true" in publication
 
 
 def powershell():
@@ -303,6 +337,8 @@ def test_checked_runbook_helper_stops_on_native_failure(tmp_path):
 
 def test_runbook_powershell_blocks_parse_without_execution(tmp_path):
     blocks, _, _ = publication_blocks()
+    historical, _, _ = publication_blocks(historical=True)
+    blocks += historical
     source = tmp_path / "runbook.ps1"
     source.write_text("\n".join(blocks), encoding="utf-8")
     parser_script = (
