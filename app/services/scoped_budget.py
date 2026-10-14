@@ -35,6 +35,9 @@ CEILINGS = {
     "bytes": (268_435_456, 268_435_456),
     "relationships": (200_000, 50_000),
     "comparisons": (320_000, 320_000),
+    "semantic_rows": (100_000, 50_000),
+    "semantic_bytes": (268_435_456, 268_435_456),
+    "sqlite_steps": (10_000_000, 5_000_000),
 }
 
 
