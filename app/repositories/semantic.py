@@ -290,6 +290,18 @@ class SemanticRepository:
         finally:
             connection.close()
 
+    def read_eligible_snapshot(self, eligible_paths, *, budget, space_id, cancel):
+        """Internal bounded live reader; no preparation, scoring or binding writes.
+
+        Paths must already be authorized/canonicalized by the vault owner. Returns
+        only a complete snapshot; quota exhaustion never exposes a partial prefix.
+        """
+        from app.repositories.semantic_reads import read_eligible_snapshot
+
+        return read_eligible_snapshot(
+            self.db_path, eligible_paths, budget=budget, space_id=space_id, cancel=cancel,
+        )
+
     @staticmethod
     def _load_chunks_connection(connection: sqlite3.Connection) -> list[StoredChunk]:
         connection.row_factory = sqlite3.Row
