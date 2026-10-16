@@ -1,8 +1,10 @@
-"""Sequential Markdown-only orchestration after whole-selection authorization."""
+"""Sequential scoped retrieval after whole-selection authorization."""
 
 import stat
-from dataclasses import replace
+from contextlib import ExitStack
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
+from math import isfinite
 from pathlib import PurePosixPath
 
 from app.services._scoped_vault import ScopedVaultSnapshot, validate_path
@@ -30,9 +32,194 @@ from app.services.scoped_reads import (
     ScopedKnowledgeQuery,
     ScopedNoteMatch,
     ScopedReadResult,
+    ScopedSemanticMatch,
     SpaceCoverage,
 )
+from app.services.semantic_search import SemanticSearchService, SemanticSearchUnavailableError
 from app.services.vault import NoteUnavailableError
+
+
+@dataclass
+class _SemanticContribution:
+    binding: object
+    session: object = None
+    facts: dict = field(default_factory=dict)
+    eligible: list = field(default_factory=list)
+    reasons: set = field(default_factory=set)
+    prepared: object = None
+    local: list = field(default_factory=list)
+    available: bool = True
+    evaluated: int = 0
+    basis: str = "none"
+
+    def unavailable(self, reason):
+        self.available = False
+        self.local.clear()
+        self.reasons.add(reason)
+
+
+def federate_semantic(operations, text, *, scope=None, folder=None, limit=5,
+                      min_score=0.28, cancel=None, limits=None):
+    """Internal D3a entry; executable owners are supplied only by trusted composition.
+
+    Discovery, preparation, scoring and final verification are separate phases.
+    Retain all root sessions until the final bounded pass, including on failures.
+    """
+    _bounded_text(text, 4096, allow_empty=False, trim_empty=True)
+    if (type(limit) is not int or not 1 <= limit <= 100
+            or type(min_score) is not float or not isfinite(min_score) or not 0 <= min_score <= 1):
+        raise InvalidKnowledgeQueryError()
+    if folder is not None:
+        folder = _path(folder, folder=True)
+    bindings = operations._resolver.authorize_read(scope, Capability.SEMANTIC_RETRIEVAL)
+    for binding in bindings:
+        if (not operations._resolver._registry._accepts(binding)
+                or type(binding._owners) is not SpaceOwners):
+            raise SpaceError("invalid_scope")
+    ids = tuple(binding.space_id for binding in bindings)
+    cancel = CancellationToken() if cancel is None else cancel
+    cancel.check()
+    budget = ScopedBudget(ids, limits=limits)
+    contributions = [_SemanticContribution(binding) for binding in bindings]
+    with ExitStack() as sessions:
+        for row in contributions:
+            cancel.check()
+            sid, owners = row.binding.space_id, row.binding._owners
+            try:
+                row.session = sessions.enter_context(owners.vault.scoped_session(
+                    space_id=sid, budget=budget, cancel=cancel, root_identity=owners._root_identity,
+                ))
+                local_folder, missing = folder, False
+                if folder is not None and folder != ".":
+                    try:
+                        local_folder, info = row.session.resolve(folder)
+                    except FileNotFoundError:
+                        missing = True
+                    except UnsafeWritePathError:
+                        raise UnsafeKnowledgeQueryScopeError() from None
+                    else:
+                        missing = not stat.S_ISDIR(info.st_mode)
+                        local_folder = local_folder or "."
+                snapshot = (ScopedVaultSnapshot((), {}, frozenset(), {}, ())
+                            if missing else row.session.discover())
+                row.facts = {fact.path: fact for fact in snapshot.facts}
+                row.reasons.update(set(snapshot.reasons) - {"alias_limit"})
+                if "discovery_limit" in row.reasons:
+                    row.unavailable("discovery_limit")
+                    continue
+                for fact in snapshot.facts:
+                    cancel.check()
+                    if (local_folder is not None and local_folder != "."
+                            and PurePosixPath(local_folder) not in PurePosixPath(fact.path).parents):
+                        continue
+                    try:
+                        # Establish readable live Markdown, releasing authored content
+                        # immediately; derived snippets remain the semantic owner's.
+                        row.session.read(fact)
+                    except (OSError, UnicodeError, NoteUnavailableError, UnsafeWritePathError):
+                        row.reasons.add("note_unavailable")
+                    except BudgetExhausted as exc:
+                        if exc.resource != "bytes":
+                            raise
+                        row.reasons.add("content_limit")
+                        break
+                    else:
+                        row.evaluated += 1
+                        row.eligible.append(fact.path)
+                row.session.verify_root()
+            except (OSError, NoteUnavailableError, UnsafeWritePathError):
+                row.unavailable("root_unavailable")
+            except BudgetExhausted:
+                row.unavailable("discovery_limit")
+
+        # Every executable contribution is prepared before any query inference.
+        for row in contributions:
+            cancel.check()
+            if not row.available:
+                continue
+            owner = row.binding._owners.semantic
+            if not isinstance(owner, SemanticSearchService):
+                row.unavailable("index_unavailable")
+                continue
+            try:
+                row.prepared = owner.prepare_federation_candidates(
+                    tuple(row.eligible), space_id=row.binding.space_id,
+                    budget=budget, cancel=cancel, min_score=min_score,
+                )
+            except SemanticSearchUnavailableError:
+                row.unavailable("index_unavailable")
+            except BudgetExhausted as exc:
+                row.unavailable("semantic_limit" if exc.resource in {
+                    "semantic_rows", "semantic_bytes", "sqlite_steps",
+                } else "discovery_limit")
+            else:
+                row.basis = row.prepared.index_basis
+        descriptors = {row.prepared.descriptor for row in contributions if row.prepared is not None}
+        if len(descriptors) > 1:
+            raise SpaceError("incompatible_semantic_configuration")
+        for row in contributions:
+            cancel.check()
+            if not row.available:
+                continue
+            try:
+                result = row.binding._owners.semantic.search_federation_candidates(
+                    text, space_id=row.binding.space_id, limit=limit, min_score=min_score,
+                    budget=budget, cancel=cancel, prepared=row.prepared,
+                )
+            except SemanticSearchUnavailableError:
+                row.unavailable("index_unavailable")
+            except BudgetExhausted:
+                row.unavailable("semantic_limit")
+            else:
+                row.local = [ScopedSemanticMatch(
+                    QualifiedNoteIdentity(row.binding.space_id, item.path), item.title,
+                    item.score, item.semantic_score, item.lexical_score, item.snippet, item.heading,
+                ) for item in result.candidates]
+        merged = sorted((item for row in contributions for item in row.local), key=lambda item: (
+            -item.score, -item.semantic_score, -item.lexical_score, item.identity.space_id.value,
+            item.identity.canonical_relative_path.casefold(), item.identity.canonical_relative_path,
+        ))
+        by_id = {row.binding.space_id: row for row in contributions}
+        verified = []
+        for item in merged:
+            cancel.check()
+            row = by_id[item.identity.space_id]
+            if not row.available:
+                continue
+            try:
+                row.session.verify(row.facts[item.identity.canonical_relative_path])
+            except (OSError, NoteUnavailableError, UnsafeWritePathError):
+                row.reasons.add("note_unavailable")
+            except BudgetExhausted:
+                row.unavailable("discovery_limit")
+            else:
+                verified.append(item)
+        for row in contributions:
+            cancel.check()
+            if row.session is None:
+                continue
+            try:
+                row.session.verify_root()
+            except (OSError, NoteUnavailableError, UnsafeWritePathError):
+                row.unavailable("root_unavailable")
+            except BudgetExhausted:
+                row.unavailable("discovery_limit")
+        cancel.check()
+        verified = [item for item in verified if by_id[item.identity.space_id].available]
+        counts = dict.fromkeys(ids, 0)
+        for item in verified:
+            counts[item.identity.space_id] += 1
+        coverage = tuple(SpaceCoverage(
+            row.binding.space_id,
+            "unavailable" if not row.available else "partial" if row.reasons else "complete",
+            tuple(sorted(row.reasons)), row.basis, len(row.facts), row.evaluated,
+            counts[row.binding.space_id],
+        ) for row in contributions)
+        if all(row.state == "unavailable" for row in coverage):
+            raise SpaceError("semantic_unavailable")
+        return ScopedReadResult(tuple(verified[:limit]), coverage,
+                                "partial" if any(row.state != "complete" for row in coverage) else "complete",
+                                "semantic", len(verified) > limit)
 
 
 def _path(raw, *, folder=False):
