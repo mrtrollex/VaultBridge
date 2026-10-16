@@ -1,6 +1,6 @@
 """Qualified local operations and bounded Markdown-only read federation.
 
-Semantic execution waits for D/E. Writes and scoped
+Named semantic activation waits for E. Writes and scoped
 capture/promotion wait for their bound lifecycle/provenance implementation.
 """
 
@@ -76,6 +76,13 @@ class SpaceOperations:
         from app.services._scoped_federation import federate
 
         return federate(self, mode="query", request=request, cancel=cancel, limits=limits)
+
+    def scoped_semantic_search(self, text, scope=None, *, folder=None, limit=5,
+                               min_score=0.28, cancel=None, limits=None):
+        from app.services._scoped_federation import federate_semantic
+
+        return federate_semantic(self, text, scope=scope, folder=folder, limit=limit,
+                                 min_score=min_score, cancel=cancel, limits=limits)
 
     def _read(self, space_id, operation, dialects=frozenset()) -> AuthorizedSpaceBinding:
         if space_id is not None and type(space_id) is not SpaceId:
