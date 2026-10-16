@@ -562,7 +562,7 @@ query, duplicates, capture, promotion, hygiene, immutable semantic inspection an
 enabled-index lifecycle handle (None when disabled). Every local dependency uses that same vault.
 No model, writable repository, worker or bound enqueue callback is created. Immutable inspection
 reuses the existing semantic owner's classifier and repository's immutable reader without loading
-a fingerprint. Enabled semantic execution/resource scheduling waits for D/E; scoped
+a fingerprint. Named semantic activation/resource scheduling waits for E; scoped
 capture/promotion provenance and index callbacks wait for E/F.
 `services/space_operations.py: SpaceOperations` authorizes through SpacePolicyResolver before
 owner access, verifies the registry token/exact bundle and named root identity, then delegates
@@ -580,8 +580,15 @@ and filters. `RelationshipService.derive_normalized_bounded` coordinates increme
 in source order, shares occurrence/parse credits, admits before materialization/resolution and
 reuses supplied local resolution facts. Exhaustion discards that space's relationship matches.
 Frozen qualified results carry finite authorized coverage; cancellation fails the whole request.
-Legacy eager APIs remain unchanged. Scoped semantic text is gated with `unsupported_capability`;
-semantic federation waits for D/E. Slices A–C are implemented; D–G remain pending; VB-151 is incomplete.
+Legacy eager APIs remain unchanged. Semantic Scoped Query text remains gated with
+`unsupported_capability` pending D3b. D3a adds internal `scoped_semantic_search` for trusted executable
+semantic owners, without changing normal owner composition. It establishes bounded live Markdown
+eligibility, prepares D2 snapshots for all executable contributions, compares immutable scoring
+descriptors before any query embedding, and delegates precise scoring and local floors/windows to
+D2. A single qualified full-precision merge is reverified once under retained root sessions before
+global truncation; there is no refill or global relative floor. Index/work failures produce bounded
+coverage, while descriptor mismatch and cancellation fail the whole request. D1/D2 and D3a are
+internal primitives only; D3b and E–G remain pending and VB-151 is incomplete.
 Existing REST/MCP/CLI composition rejects named configuration before owner construction with
 `invalid_configuration` (internal reason `named_serving_unsupported`). Named serving remains blocked
 until VB-152 integrates every applicable entry point. No public schema, route, operation ID,

@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from app.services.knowledge_query import KnowledgeQueryService
     from app.services.promotion import PromotionService
     from app.services.relationships import RelationshipService
+    from app.services.semantic_search import SemanticSearchService
     from app.services.space_owners import DeferredSpaceIndexLifecycle, ImmutableSpaceInspection
     from app.services.vault import VaultService
 
@@ -40,6 +41,7 @@ class SpaceError(Exception):
         category: Literal[
             "invalid_configuration", "invalid_scope", "unknown_or_denied_space",
             "unsupported_capability", "unsupported_dialect", "indexing_disabled", "unavailable_space",
+            "operation_cancelled", "incompatible_semantic_configuration", "semantic_unavailable",
         ],
         *,
         reason: Literal["named_serving_unsupported"] | None = None,
@@ -265,7 +267,7 @@ class SpaceOwners(_PrivateImmutable):
     capture: CaptureService
     promotion: PromotionService
     hygiene: KnowledgeHygieneService
-    semantic: ImmutableSpaceInspection
+    semantic: ImmutableSpaceInspection | SemanticSearchService
     scheduler: DeferredSpaceIndexLifecycle | None
 
     def __init__(self, *, definition, root_identity, vault, relationships, query, duplicates, capture, promotion,

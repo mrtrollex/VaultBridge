@@ -75,3 +75,14 @@ class ScopedNoteMatch:
     title: str
     snippet: str | None = None
     modified: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ScopedSemanticMatch:
+    identity: QualifiedNoteIdentity
+    title: str
+    score: float
+    semantic_score: float
+    lexical_score: float
+    snippet: str
+    heading: str | None
