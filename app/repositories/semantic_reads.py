@@ -35,6 +35,7 @@ class EligibleSemanticSnapshot:
     index_signature: str | None = field(repr=False)
     index_state: str | None
     chunks: tuple[StoredChunk, ...] = field(repr=False)
+    has_chunks: bool = False
 
 
 def _identity(path, *, budget, space_id, cancel, directory=False):
@@ -142,6 +143,7 @@ def read_eligible_snapshot(
                 if not isinstance(value, str):
                     raise SemanticReadUnavailableError
                 metadata.append(value)
+        has_chunks = one("SELECT EXISTS(SELECT 1 FROM chunks LIMIT 1)") == (1,)
         chunks = []
         for path in paths:
             cancel.check()
@@ -187,7 +189,7 @@ def read_eligible_snapshot(
         if _storage_identity(target, budget=budget, space_id=space_id, cancel=cancel) != before:
             raise SemanticReadUnavailableError
         cancel.check()
-        return EligibleSemanticSnapshot(metadata[0], metadata[1], tuple(chunks))
+        return EligibleSemanticSnapshot(metadata[0], metadata[1], tuple(chunks), has_chunks)
     except sqlite3.ProgrammingError:
         raise
     except sqlite3.DatabaseError:

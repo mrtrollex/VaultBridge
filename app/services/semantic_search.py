@@ -9,10 +9,11 @@ import threading
 import time
 import unicodedata
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from itertools import batched
+from math import isfinite
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Literal, Protocol, runtime_checkable
 
@@ -27,6 +28,9 @@ from app.repositories.semantic import (
     StoredChunk,
     StoredNote,
 )
+from app.repositories.semantic_reads import EligibleSemanticSnapshot, SemanticReadUnavailableError
+from app.services.knowledge_spaces import SpaceId
+from app.services.scoped_budget import CancellationToken, ScopedBudget
 from app.services.vault import SEMANTIC_EXCLUDED_DIRECTORIES, eligible_markdown_files
 
 DEFAULT_MODEL = DEFAULT_SEMANTIC_MODEL
@@ -80,6 +84,27 @@ class TargetedSynchronizationError(RuntimeError):
 
 class Embedder(Protocol):
     def embed(self, texts: Sequence[str]) -> list[np.ndarray]: ...
+
+
+@dataclass(frozen=True, slots=True)
+class EmbeddingCompatibilityEvidence:
+    embedding_fingerprint: str
+    dimensions: int
+    backend_contract: str
+
+    def __post_init__(self):
+        if (
+            not isinstance(self.embedding_fingerprint, str)
+            or not re.fullmatch(r"embedding-v1:[0-9a-f]{64}", self.embedding_fingerprint)
+            or type(self.dimensions) is not int or self.dimensions <= 0
+            or not isinstance(self.backend_contract, str) or not self.backend_contract
+        ):
+            raise ValueError("invalid embedding compatibility evidence")
+
+
+@runtime_checkable
+class EmbeddingCompatibilityProvider(Protocol):
+    def resolve_embedding_compatibility(self) -> EmbeddingCompatibilityEvidence: ...
 
 
 @runtime_checkable
@@ -176,6 +201,7 @@ class FastEmbedder:
         self.enable_cpu_mem_arena = enable_cpu_mem_arena
         self._model = None
         self._embedding_fingerprint: str | None = None
+        self._compatibility_evidence: EmbeddingCompatibilityEvidence | None = None
         self._lock = threading.Lock()
 
     def _get_model(self):
@@ -238,12 +264,25 @@ class FastEmbedder:
                 model_file=model_file,
                 backend_contract_id=backend_contract_id,
             )
+            dimensions = getattr(description, "dim", None)
+            if type(dimensions) is int and dimensions > 0:
+                self._compatibility_evidence = EmbeddingCompatibilityEvidence(
+                    self._embedding_fingerprint, dimensions, backend_contract_id,
+                )
             return self._embedding_fingerprint
+
+    def resolve_embedding_compatibility(self) -> EmbeddingCompatibilityEvidence:
+        """Resolve artifacts and declared vector shape without probe inference."""
+        self.resolve_embedding_fingerprint()
+        if self._compatibility_evidence is None:
+            raise SemanticIndexOperationError("Embedding compatibility evidence is unavailable")
+        return self._compatibility_evidence
 
     def invalidate_embedding_compatibility_cache(self) -> None:
         """Discard artifact identity and partially initialized lazy backend state."""
         with self._lock:
             self._embedding_fingerprint = None
+            self._compatibility_evidence = None
             self._model = None
 
     def validate_embedding_backend(self) -> None:
@@ -297,6 +336,64 @@ SemanticQueryBasis = Literal[
     "compatible_previous_refresh",
     "compatible_previous_error",
 ]
+
+
+@dataclass(frozen=True, slots=True)
+class ScoringDescriptor:
+    model: str
+    embedding_fingerprint: str
+    index_signature: str
+    dimensions: int
+    backend_contract: str
+    min_score: float
+    rank_contract: Literal["vaultbridge-hybrid-v1"] = "vaultbridge-hybrid-v1"
+    semantic_weight: float = 1.0
+    lexical_weight: float = 0.70
+    relative_floor: float = 0.78
+
+    def __post_init__(self):
+        EmbeddingCompatibilityEvidence(
+            self.embedding_fingerprint, self.dimensions, self.backend_contract,
+        )
+        if (
+            not isinstance(self.model, str) or not self.model
+            or not isinstance(self.index_signature, str) or not self.index_signature
+            or not isfinite(self.min_score) or not 0 <= self.min_score <= 1
+            or self.rank_contract != "vaultbridge-hybrid-v1"
+            or self.semantic_weight != SEMANTIC_RANK_WEIGHT
+            or self.lexical_weight != LEXICAL_RANK_WEIGHT
+            or self.relative_floor != RELATIVE_RESULT_FLOOR
+        ):
+            raise ValueError("invalid scoring descriptor")
+
+
+@dataclass(frozen=True, slots=True)
+class PreciseSemanticCandidate:
+    path: str
+    title: str
+    score: float
+    semantic_score: float
+    lexical_score: float
+    snippet: str
+    heading: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class PreciseSemanticResult:
+    candidates: tuple[PreciseSemanticCandidate, ...]
+    descriptor: ScoringDescriptor
+    index_basis: SemanticQueryBasis
+
+
+@dataclass(frozen=True, slots=True)
+class _PreparedSemanticSearch:
+    descriptor: ScoringDescriptor
+    index_basis: SemanticQueryBasis
+    snapshot: EligibleSemanticSnapshot = field(repr=False)
+    owner: object = field(repr=False)
+    budget: ScopedBudget = field(repr=False)
+    cancel: CancellationToken = field(repr=False)
+    space_id: SpaceId
 
 
 @dataclass(frozen=True)
@@ -396,10 +493,15 @@ class SemanticSearchService:
         index_batch_size: int = 25,
         embedder: Embedder | None = None,
         embedding_fingerprint: str | None = None,
+        compatibility_evidence: EmbeddingCompatibilityEvidence | None = None,
+        indexing_enabled: bool = True,
     ) -> None:
         self.vault_root = vault_root
         self.repository = repository
         self.model_name = model_name
+        self._indexing_enabled = indexing_enabled
+        self._federation_evidence = compatibility_evidence
+        self._federation_evidence_lock = threading.Lock()
         self.cache_dir = cache_dir or repository.db_path.parent / "models"
         self.max_note_bytes = max_note_bytes
         self.chunk_chars = max(250, chunk_chars)
@@ -526,6 +628,8 @@ class SemanticSearchService:
 
     def _invalidate_dynamic_compatibility_cache(self) -> None:
         with self._fingerprint_lock:
+            with self._federation_evidence_lock:
+                self._federation_evidence = None
             if isinstance(self.embedder, EmbeddingCompatibilityCache):
                 self.embedder.invalidate_embedding_compatibility_cache()
             self._resolved_index_signature = self._explicit_index_signature
@@ -1799,6 +1903,206 @@ class SemanticSearchService:
                 operation_name="targeted",
             )
 
+    def _rank_chunks(
+        self, text: str, query: np.ndarray, chunks, *, min_score: float,
+        strict: bool = False, cancel: CancellationToken | None = None,
+    ) -> list[tuple[str, _RankedChunk]]:
+        best: dict[str, _RankedChunk] = {}
+        for chunk in chunks:
+            if cancel is not None:
+                cancel.check()
+            if strict and (
+                chunk.dimensions != query.size
+                or len(chunk.embedding) != chunk.dimensions * np.dtype(np.float32).itemsize
+            ):
+                raise SemanticSearchUnavailableError("Invalid indexed vector")
+            vector = np.frombuffer(
+                chunk.embedding,
+                dtype=np.float32,
+                count=chunk.dimensions,
+            )
+            if strict and (not np.all(np.isfinite(vector)) or not np.any(vector)):
+                raise SemanticSearchUnavailableError("Invalid indexed vector")
+            if vector.size != query.size:
+                continue
+            semantic_score = float(np.dot(query, vector))
+            if strict and not isfinite(semantic_score):
+                raise SemanticSearchUnavailableError("Invalid semantic score")
+            if semantic_score < min_score:
+                continue
+            lexical_score = self._lexical_score(
+                text,
+                path=chunk.path,
+                heading=chunk.heading,
+                content=chunk.content,
+            )
+            candidate = _RankedChunk(
+                score=self._hybrid_score(semantic_score, lexical_score),
+                semantic_score=semantic_score,
+                lexical_score=lexical_score,
+                chunk=chunk,
+            )
+            if strict and not all(isfinite(value) for value in (
+                candidate.score, candidate.semantic_score, candidate.lexical_score,
+            )):
+                raise SemanticSearchUnavailableError("Invalid ranking score")
+            current = best.get(chunk.path)
+            if current is None or candidate.note_selection_key > current.note_selection_key:
+                best[chunk.path] = candidate
+
+        ordered = sorted(
+            best.items(),
+            key=lambda item: (
+                -item[1].score,
+                -item[1].semantic_score,
+                -item[1].lexical_score,
+                item[0].casefold(),
+                item[0],
+            ),
+        )
+        relative_floor = ordered[0][1].score * RELATIVE_RESULT_FLOOR if ordered else 0.0
+        if cancel is not None:
+            cancel.check()
+        return [(path, ranked) for path, ranked in ordered if not ranked.score < relative_floor]
+
+    def prepare_federation_candidates(
+        self, eligible_paths: tuple[str, ...] | frozenset[str], *,
+        space_id: SpaceId, budget: ScopedBudget, cancel: CancellationToken,
+        min_score: float = 0.28,
+    ) -> _PreparedSemanticSearch:
+        """Prepare one complete bounded contribution, without query inference/writes.
+
+        D3 callers must compare every available descriptor before scoring any owner.
+        The prepared value holds the read snapshot, so scoring never reopens SQLite.
+        """
+        cancel.check()
+        if not isfinite(min_score) or not 0 <= min_score <= 1:
+            raise ValueError("invalid semantic threshold")
+        if space_id not in budget.allocations:
+            raise ValueError("space is outside budget selection")
+        if not self._indexing_enabled or self._fingerprint_resolution_failed:
+            raise SemanticSearchUnavailableError("Semantic index is unavailable")
+        try:
+            snapshot = self.repository.read_eligible_snapshot(
+                eligible_paths, budget=budget, space_id=space_id, cancel=cancel,
+            )
+        except SemanticReadUnavailableError:
+            raise SemanticSearchUnavailableError("Semantic index is unavailable") from None
+        if not self._stored_signature_matches_configuration(snapshot.index_signature):
+            raise SemanticSearchUnavailableError("Semantic index is unavailable")
+        # Poll lock acquisition so queued compatibility work is cancellable too.
+        while not self._federation_evidence_lock.acquire(timeout=0.05):
+            cancel.check()
+        try:
+            cancel.check()
+            evidence = self._federation_evidence
+            if evidence is None:
+                if not isinstance(self.embedder, EmbeddingCompatibilityProvider):
+                    raise SemanticSearchUnavailableError("Embedding compatibility is unavailable")
+                budget.charge(space_id, "probes")
+                try:
+                    evidence = self.embedder.resolve_embedding_compatibility()
+                except Exception as exc:
+                    cancel.check()
+                    raise SemanticSearchUnavailableError("Embedding compatibility is unavailable") from exc
+                cancel.check()
+                if not isinstance(evidence, EmbeddingCompatibilityEvidence):
+                    raise SemanticSearchUnavailableError("Embedding compatibility is unavailable")
+                self._federation_evidence = evidence
+        finally:
+            self._federation_evidence_lock.release()
+        signature = self._build_index_signature(evidence.embedding_fingerprint)
+        if (
+            snapshot.index_signature != signature
+            or (self._resolved_index_signature is not None and self._resolved_index_signature != signature)
+        ):
+            raise SemanticSearchUnavailableError("Semantic index is unavailable")
+        state = snapshot.index_state
+        if state == IndexState.READY.value or (state is None and snapshot.has_chunks):
+            basis: SemanticQueryBasis = "compatible_ready"
+        else:
+            with self._availability_lock:
+                completed = self._search_available
+            if not completed or state not in {IndexState.INDEXING.value, IndexState.ERROR.value}:
+                raise SemanticSearchUnavailableError("Semantic index is unavailable")
+            basis = (
+                "compatible_previous_refresh" if state == IndexState.INDEXING.value
+                else "compatible_previous_error"
+            )
+        cancel.check()
+        return _PreparedSemanticSearch(
+            ScoringDescriptor(
+                self.model_name, evidence.embedding_fingerprint, signature,
+                evidence.dimensions, evidence.backend_contract, min_score,
+            ), basis, snapshot, self, budget, cancel, space_id,
+        )
+
+    def search_federation_candidates(
+        self, text: str, eligible_paths: tuple[str, ...] | frozenset[str] = (), *,
+        space_id: SpaceId, limit: int = 20, min_score: float = 0.28,
+        budget: ScopedBudget, cancel: CancellationToken,
+        prepared: _PreparedSemanticSearch | None = None,
+    ) -> PreciseSemanticResult:
+        """Score only after compatibility preparation; never return a partial prefix."""
+        cancel.check()
+        if (
+            not isinstance(text, str) or not text.strip()
+            or len(text.encode("utf-8")) > 4096
+            or type(limit) is not int or not 1 <= limit <= 100
+            or not isfinite(min_score) or not 0 <= min_score <= 1
+        ):
+            raise ValueError("invalid semantic search arguments")
+        if prepared is None:
+            prepared = self.prepare_federation_candidates(
+                eligible_paths, space_id=space_id, budget=budget, cancel=cancel,
+                min_score=min_score,
+            )
+        elif (
+            prepared.owner is not self or prepared.space_id != space_id
+            or prepared.budget is not budget or prepared.cancel is not cancel
+            or prepared.descriptor.min_score != min_score or eligible_paths
+        ):
+            raise ValueError("prepared search association mismatch")
+        if not self._indexing_enabled or self._fingerprint_resolution_failed:
+            raise SemanticSearchUnavailableError("Semantic index is unavailable")
+        while not self._embed_lock.acquire(timeout=0.05):
+            cancel.check()
+        try:
+            cancel.check()
+            try:
+                vectors = self.embedder.embed([text])
+            except Exception as exc:
+                cancel.check()
+                raise SemanticSearchUnavailableError("Query embedding is unavailable") from exc
+        finally:
+            self._embed_lock.release()
+        cancel.check()
+        try:
+            if len(vectors) != 1:
+                raise ValueError("invalid query vector count")
+            raw = np.asarray(vectors[0], dtype=np.float32).reshape(-1)
+            if raw.size != prepared.descriptor.dimensions or not np.all(np.isfinite(raw)):
+                raise ValueError("invalid query vector")
+            query = self._normalize(raw)
+            if not np.all(np.isfinite(query)) or not np.any(query):
+                raise ValueError("invalid normalized query vector")
+        except (ValueError, TypeError, SemanticIndexOperationError) as exc:
+            raise SemanticSearchUnavailableError("Query embedding is unavailable") from exc
+        ordered = self._rank_chunks(
+            text, query, prepared.snapshot.chunks, min_score=min_score,
+            strict=True, cancel=cancel,
+        )
+        candidates = []
+        for path, ranked in ordered[:min(500, max(limit * 5, limit))]:
+            cancel.check()
+            candidates.append(PreciseSemanticCandidate(
+                path, Path(path).stem, ranked.score, ranked.semantic_score,
+                ranked.lexical_score, " ".join(ranked.chunk.content.split())[:500],
+                ranked.chunk.heading[:200] if ranked.chunk.heading is not None else None,
+            ))
+        cancel.check()
+        return PreciseSemanticResult(tuple(candidates), prepared.descriptor, prepared.index_basis)
+
     def search(
         self,
         text: str,
@@ -1818,8 +2122,6 @@ class SemanticSearchService:
         query = self._normalize(embedded_query[0])
         folder = folder.strip().replace("\\", "/").strip("/")
         prefix = f"{folder}/" if folder else ""
-        best: dict[str, _RankedChunk] = {}
-
         with self._availability_lock:
             persisted_read_only_search = self._persisted_read_only_search
         try:
@@ -1842,48 +2144,14 @@ class SemanticSearchService:
             raise SemanticSearchUnavailableError(
                 "Persisted semantic index is unavailable for immutable reads"
             ) from exc
-        for chunk in chunks:
-            if prefix and not chunk.path.startswith(prefix):
-                continue
-            if eligible_paths is not None and chunk.path not in eligible_paths:
-                continue
-            vector = np.frombuffer(
-                chunk.embedding,
-                dtype=np.float32,
-                count=chunk.dimensions,
-            )
-            if vector.size != query.size:
-                continue
-            semantic_score = float(np.dot(query, vector))
-            if semantic_score < min_score:
-                continue
-            lexical_score = self._lexical_score(
-                text,
-                path=chunk.path,
-                heading=chunk.heading,
-                content=chunk.content,
-            )
-            candidate = _RankedChunk(
-                score=self._hybrid_score(semantic_score, lexical_score),
-                semantic_score=semantic_score,
-                lexical_score=lexical_score,
-                chunk=chunk,
-            )
-            current = best.get(chunk.path)
-            if current is None or candidate.note_selection_key > current.note_selection_key:
-                best[chunk.path] = candidate
-
-        results: list[SemanticResult] = []
-        ordered = sorted(
-            best.items(),
-            key=lambda item: (
-                -item[1].score,
-                -item[1].semantic_score,
-                -item[1].lexical_score,
-                item[0].casefold(),
-                item[0],
-            ),
+        ordered = self._rank_chunks(
+            text, query,
+            (chunk for chunk in chunks
+             if (not prefix or chunk.path.startswith(prefix))
+             and (eligible_paths is None or chunk.path in eligible_paths)),
+            min_score=min_score,
         )
+        results: list[SemanticResult] = []
         relative_floor = ordered[0][1].score * RELATIVE_RESULT_FLOOR if ordered else 0.0
         for path, ranked in ordered:
             if ranked.score < relative_floor:
