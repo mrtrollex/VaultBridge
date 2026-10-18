@@ -580,15 +580,18 @@ and filters. `RelationshipService.derive_normalized_bounded` coordinates increme
 in source order, shares occurrence/parse credits, admits before materialization/resolution and
 reuses supplied local resolution facts. Exhaustion discards that space's relationship matches.
 Frozen qualified results carry finite authorized coverage; cancellation fails the whole request.
-Legacy eager APIs remain unchanged. Semantic Scoped Query text remains gated with
-`unsupported_capability` pending D3b. D3a adds internal `scoped_semantic_search` for trusted executable
+Legacy eager APIs remain unchanged. D3a adds internal `scoped_semantic_search` for trusted executable
 semantic owners, without changing normal owner composition. It establishes bounded live Markdown
 eligibility, prepares D2 snapshots for all executable contributions, compares immutable scoring
 descriptors before any query embedding, and delegates precise scoring and local floors/windows to
 D2. A single qualified full-precision merge is reverified once under retained root sessions before
 global truncation; there is no refill or global relative floor. Index/work failures produce bounded
-coverage, while descriptor mismatch and cancellation fail the whole request. D1/D2 and D3a are
-internal primitives only; D3b and E–G remain pending and VB-151 is incomplete.
+coverage, while descriptor mismatch and cancellation fail the whole request. D3b enables semantic
+`scoped_query` through this same pipeline after whole-selection Query, semantic/indexing and applicable
+relationship authorization. Shared `KnowledgeQueryService.evaluate_supplied_eligibility` evaluates
+live filters on the supplied bounded snapshot before semantic preparation, reusing source reads and
+relationship derivations. The nonsemantic supplied evaluator retains its contract. D1–D3b are internal
+primitives only; E–G remain pending and VB-151 is incomplete.
 Existing REST/MCP/CLI composition rejects named configuration before owner construction with
 `invalid_configuration` (internal reason `named_serving_unsupported`). Named serving remains blocked
 until VB-152 integrates every applicable entry point. No public schema, route, operation ID,

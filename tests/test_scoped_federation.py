@@ -134,13 +134,11 @@ def test_wrapper_validation_before_work(tmp_path, monkeypatch, scoped_request):
         operations(registry).scoped_query(scoped_request)
 
 
-def test_outside_scope_and_semantic_are_gated_before_work(tmp_path, monkeypatch):
+def test_outside_scope_is_gated_before_work(tmp_path, monkeypatch):
     _, registry = setup_spaces(tmp_path)
     monkeypatch.setattr(VaultService, "scoped_session", lambda *a, **kw: pytest.fail("owner work"))
     with pytest.raises(SpaceError, match="invalid_scope"):
         operations(registry).scoped_query(scoped(paths=(QualifiedPath(RESEARCH, "Same.md"),), scope=None))
-    with pytest.raises(SpaceError, match="unsupported_capability"):
-        operations(registry).scoped_query(scoped(KnowledgeQuery(semantic_text="hello")))
 
 
 def test_candidate_retention_canonical_smallest_after_full_discovery(tmp_path, monkeypatch):
