@@ -59,19 +59,21 @@ class _SemanticContribution:
 
 
 def federate_semantic(operations, text, *, scope=None, folder=None, limit=5,
-                      min_score=0.28, cancel=None, limits=None):
+                      min_score=0.28, cancel=None, limits=None,
+                      _query=None, _validated=None, _bindings=None):
     """Internal D3a entry; executable owners are supplied only by trusted composition.
 
     Discovery, preparation, scoring and final verification are separate phases.
     Retain all root sessions until the final bounded pass, including on failures.
     """
-    _bounded_text(text, 4096, allow_empty=False, trim_empty=True)
+    _bounded_text(text, 4096, allow_empty=False, trim_empty=_query is None)
     if (type(limit) is not int or not 1 <= limit <= 100
             or type(min_score) is not float or not isfinite(min_score) or not 0 <= min_score <= 1):
         raise InvalidKnowledgeQueryError()
     if folder is not None:
         folder = _path(folder, folder=True)
-    bindings = operations._resolver.authorize_read(scope, Capability.SEMANTIC_RETRIEVAL)
+    bindings = (_bindings if _bindings is not None else
+                operations._resolver.authorize_read(scope, Capability.SEMANTIC_RETRIEVAL))
     for binding in bindings:
         if (not operations._resolver._registry._accepts(binding)
                 or type(binding._owners) is not SpaceOwners):
@@ -100,12 +102,31 @@ def federate_semantic(operations, text, *, scope=None, folder=None, limit=5,
                     else:
                         missing = not stat.S_ISDIR(info.st_mode)
                         local_folder = local_folder or "."
+                predicates = () if _query is None else tuple(dict.fromkeys(_query.relationships))
+                paths = () if _query is None else _query.paths
+                empty_projection = _query is not None and (
+                    (bool(paths) and not any(path.space_id == sid for path in paths))
+                    or any(predicate.other.space_id != sid for predicate in predicates)
+                )
                 snapshot = (ScopedVaultSnapshot((), {}, frozenset(), {}, ())
-                            if missing else row.session.discover())
+                            if missing or empty_projection else row.session.discover())
                 row.facts = {fact.path: fact for fact in snapshot.facts}
-                row.reasons.update(set(snapshot.reasons) - {"alias_limit"})
+                row.reasons.update(set(snapshot.reasons) - (set() if predicates else {"alias_limit"}))
                 if "discovery_limit" in row.reasons:
                     row.unavailable("discovery_limit")
+                    continue
+                if _query is not None:
+                    if not missing and not empty_projection:
+                        local_paths = (tuple(dict.fromkeys(
+                            _path(p.relative_path) for p in paths if p.space_id == sid
+                        )) if paths else None)
+                        matches, row.evaluated, row.available = owners.query.evaluate_supplied_eligibility(
+                            replace(_query.query, folder=local_folder), snapshot=snapshot,
+                            session=row.session, paths=local_paths, relationships=predicates,
+                            budget=budget, cancel=cancel, reasons=row.reasons, validated=_validated,
+                        )
+                        row.eligible = list(matches)
+                    row.session.verify_root()
                     continue
                 for fact in snapshot.facts:
                     cancel.check()
@@ -165,6 +186,7 @@ def federate_semantic(operations, text, *, scope=None, folder=None, limit=5,
                 result = row.binding._owners.semantic.search_federation_candidates(
                     text, space_id=row.binding.space_id, limit=limit, min_score=min_score,
                     budget=budget, cancel=cancel, prepared=row.prepared,
+                    allow_blank_text=_query is not None,
                 )
             except SemanticSearchUnavailableError:
                 row.unavailable("index_unavailable")
@@ -294,7 +316,11 @@ def federate(operations, *, mode, scope=None, limit=None, folder=None, text=None
             (predicate.origin,) if predicate.origin else tuple(Dialect)))
         operations._resolver.authorize_read(ReadScope(selected_ids), Capability.RELATIONSHIPS, dialects)
     if request is not None and request.query.semantic_text is not None:
-        raise SpaceError("unsupported_capability")
+        operations._resolver.authorize_read(ReadScope(selected_ids), Capability.SEMANTIC_RETRIEVAL)
+        return federate_semantic(
+            operations, request.query.semantic_text, folder=folder, limit=limit,
+            cancel=cancel, limits=limits, _query=request, _validated=validated, _bindings=bindings,
+        )
     for binding in bindings:
         if (not operations._resolver._registry._accepts(binding)
                 or type(binding._owners) is not SpaceOwners):

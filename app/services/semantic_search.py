@@ -2042,11 +2042,16 @@ class SemanticSearchService:
         space_id: SpaceId, limit: int = 20, min_score: float = 0.28,
         budget: ScopedBudget, cancel: CancellationToken,
         prepared: _PreparedSemanticSearch | None = None,
+        allow_blank_text: bool = False,
     ) -> PreciseSemanticResult:
-        """Score only after compatibility preparation; never return a partial prefix."""
+        """Score only after compatibility preparation; never return a partial prefix.
+
+        Scoped Knowledge Query permits whitespace as text under ADR 0006;
+        retrieval callers retain nonblank validation unless explicitly opted in.
+        """
         cancel.check()
         if (
-            not isinstance(text, str) or not text.strip()
+            not isinstance(text, str) or not text or (not allow_blank_text and not text.strip())
             or len(text.encode("utf-8")) > 4096
             or type(limit) is not int or not 1 <= limit <= 100
             or not isfinite(min_score) or not 0 <= min_score <= 1

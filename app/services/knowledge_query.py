@@ -146,6 +146,17 @@ class KnowledgeQueryService:
 
     def evaluate_supplied_nonsemantic(self, request, *, snapshot, session, paths,
                                      relationships, budget, cancel, reasons, validated):
+        """Preserve the nonsemantic entry contract over shared live eligibility."""
+        if request.semantic_text is not None:
+            raise KnowledgeQuerySemanticUnavailableError()
+        return self.evaluate_supplied_eligibility(
+            request, snapshot=snapshot, session=session, paths=paths,
+            relationships=relationships, budget=budget, cancel=cancel,
+            reasons=reasons, validated=validated,
+        )
+
+    def evaluate_supplied_eligibility(self, request, *, snapshot, session, paths,
+                                      relationships, budget, cancel, reasons, validated):
         """Evaluate one authorized projection using one budgeted supplied universe.
 
         Request validation remains shared with query(); this seam does no discovery,
@@ -156,8 +167,6 @@ class KnowledgeQueryService:
         from app.services.scoped_budget import BudgetExhausted
         from app.services.vault import NoteUnavailableError
 
-        if request.semantic_text is not None:
-            raise KnowledgeQuerySemanticUnavailableError()
         universe = ScopedRelationshipSnapshot(snapshot, session)
         if relationships and not snapshot.resolution_complete:
             reasons.add("relationship_limit")
