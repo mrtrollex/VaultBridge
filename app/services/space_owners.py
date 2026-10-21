@@ -12,6 +12,7 @@ from types import MappingProxyType
 
 from app.core.config import Settings
 from app.repositories.semantic import ImmutableIndexInspectionUnavailableError, SemanticRepository
+from app.repositories.semantic_binding import ExpectedIndexBinding
 from app.services.capture import CaptureService
 from app.services.duplicate_candidates import DuplicateCandidateService
 from app.services.knowledge_hygiene import KnowledgeHygieneService
@@ -42,11 +43,12 @@ class _NoSemanticExecution:
 
 
 class _ImmutableRepository:
-    __slots__ = ("_path", "_named", "_directories")
+    __slots__ = ("_path", "_named", "_directories", "_binding")
 
-    def __init__(self, path, *, named):
+    def __init__(self, path, *, named, binding=None):
         self._path = path
         self._named = named
+        self._binding = binding
         self._directories = None
         if named:
             # Capture only existing directory identities. Missing suffixes may be
@@ -126,7 +128,7 @@ class _ImmutableRepository:
             return SemanticRepository._missing_status()
         # Preserve the validated canonical target; no independent second resolve.
         # This is cooperative-filesystem validation, not hostile-writer pinning.
-        return SemanticRepository(target)._read_immutable_status(validated_path=target)
+        return SemanticRepository(target, _expected_binding=self._binding)._read_immutable_status(validated_path=target)
 
 
 class ImmutableSpaceInspection(_PrivateImmutable):
@@ -145,6 +147,8 @@ class ImmutableSpaceInspection(_PrivateImmutable):
             repository=_ImmutableRepository(
                 definition.semantic_data_binding / "semantic-index.sqlite3",
                 named=settings.knowledge_spaces_json is not None,
+                binding=(ExpectedIndexBinding(definition.space_id.value, definition.root_binding)
+                         if definition.space_id.value != "default" else None),
             ),
             cache_dir=definition.semantic_data_binding / "models",
             model_name=settings.semantic_model,

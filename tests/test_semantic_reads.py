@@ -357,8 +357,8 @@ def test_replaced_storage_discards_snapshot(tmp_path, monkeypatch):
     def identity(path, **kwargs):
         nonlocal count
         count += 1
-        directories, file = original(path, **kwargs)
-        return directories, file if count == 1 else (file[0], file[1] + 1)
+        directories, file, sidecars = original(path, **kwargs)
+        return directories, file if count == 1 else (file[0], file[1] + 1), sidecars
     monkeypatch.setattr(semantic_reads, "_storage_identity", identity)
     with pytest.raises(SemanticReadUnavailableError):
         read(repository)

@@ -590,8 +590,8 @@ coverage, while descriptor mismatch and cancellation fail the whole request. D3b
 `scoped_query` through this same pipeline after whole-selection Query, semantic/indexing and applicable
 relationship authorization. Shared `KnowledgeQueryService.evaluate_supplied_eligibility` evaluates
 live filters on the supplied bounded snapshot before semantic preparation, reusing source reads and
-relationship derivations. The nonsemantic supplied evaluator retains its contract. D1–D3b are internal
-primitives only; E–G remain pending and VB-151 is incomplete.
+relationship derivations. The nonsemantic supplied evaluator retains its contract. D1–D3b and E1 are
+internal primitives only; E2–E6 and F–G remain pending and VB-151 is incomplete.
 Existing REST/MCP/CLI composition rejects named configuration before owner construction with
 `invalid_configuration` (internal reason `named_serving_unsupported`). Named serving remains blocked
 until VB-152 integrates every applicable entry point. No public schema, route, operation ID,
@@ -756,6 +756,54 @@ ranking change.
 ### `repositories/semantic.py`
 
 All SQLite persistence for semantic metadata/chunks/index state.
+
+VB-151 E1 adds an optional immutable private expected binding to internal repository
+construction. Non-default spaces use the existing `meta` table with exactly
+`knowledge_space_binding_version='1'`, `knowledge_space_id=<configured SpaceId>` and
+`knowledge_space_root_sha256=<SHA-256 hex of UTF-8 os.path.normcase(str(strict_resolved_root))>`.
+The digest detects relocation; it is neither authorization, note identity nor scoring evidence,
+and never appears in public results. Default and unbound legacy repositories retain their
+existing storage/signature behavior without mandatory binding keys.
+Bound semantic services accept only the exact native source-root representation assigned by
+that immutable repository binding. Construction and reconfiguration reject different roots or
+alternate spellings before model/storage work or configuration mutation; lifecycle, preparation
+and embedding recheck the effective source root, including changes made outside reconfiguration.
+Same-root configuration changes remain supported, and legacy unbound reconfiguration is unchanged.
+
+Bound lifecycle operations inspect storage without writable preparation or model work first,
+then revalidate under a writer transaction before binding/signature writes or derived resets.
+Only missing storage or a recognized empty unbound schema may initialize; both notes and chunks
+must be empty. All three keys commit atomically with initialization. Partial, malformed,
+unknown-version, contradictory, populated unbound or unrecognized/corrupt storage fails closed;
+there is no automatic adoption or destructive recovery. Authorized signature changes/reset keep
+binding metadata. Binding keys cannot be changed through the metadata setter. Root, directory,
+database and sidecar checks reject aliases and observed replacements, within the existing
+cooperating-filesystem model rather than a promise of hostile-writer isolation.
+
+Bound lifecycle preflight conservatively requires stopped storage without WAL/SHM/journal
+sidecars, so immutable inspection cannot ignore newer binding metadata or modify coordination
+files. During indexing, embedding validates binding on the already guarded, repository-issued
+transaction, including database/root identity and current transaction metadata; its own rollback
+journal does not cause an external preflight. Foreign, inactive or cross-thread sessions cannot
+use this path. Failed first initialization closes SQLite before removing only its exclusively
+created, identity/owner-checked empty database without sidecars. Uncertain ownership or residual
+data leaves storage untouched and unavailable; existing databases are never cleanup candidates.
+D1 instead validates binding inside its bounded read transaction before chunk payloads,
+charging metadata length preflights/payload bytes and SQLite instructions to the shared budget.
+Stopped storage first receives bounded immutable rejection-only screening to avoid creating
+WAL/SHM for an invalid namespace/schema; that screening never authorizes returned data.
+D1 independently revalidates under normal SQLite read locking, establishing one snapshot before
+binding metadata and retaining it through chunk loading, with WAL-aware SHM coordination.
+The required chunks path index must be full, not partial; pre-existing sidecar identities are checked
+again before accepting a snapshot. Immutable hygiene never initializes or repairs binding.
+Bound full-chunk, metadata and live-status reads likewise validate binding and materialize results
+in one normally locked read-only transaction, supporting rollback-journal and WAL snapshots.
+Immutable reads remain limited to rejection-only screening and explicit stopped-service inspection.
+Schema preflight also requires the existing single-column primary keys (including the chunks integer
+rowid key) and the chunks.path-to-notes.path foreign key with ON DELETE CASCADE. Incompatible storage,
+including constraint-free CREATE TABLE AS SELECT replacements, is rejected without repair or migration.
+Named owner composition remains inspection-only; E2-E6 resource/lifecycle/runtime activation
+and operator migration/rebinding are not implemented by E1.
 
 ### `schemas/`
 
