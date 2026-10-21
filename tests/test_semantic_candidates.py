@@ -341,8 +341,8 @@ def test_replaced_storage_cannot_prepare_or_embed(tmp_path, monkeypatch):
     def identity(*a, **k):
         nonlocal calls
         calls += 1
-        directories, file = original(*a, **k)
-        return directories, file if calls == 1 else (file[0], file[1] + 1)
+        directories, file, sidecars = original(*a, **k)
+        return directories, file if calls == 1 else (file[0], file[1] + 1), sidecars
     monkeypatch.setattr(semantic_reads, "_storage_identity", identity)
     with pytest.raises(SemanticSearchUnavailableError):
         prepare(service, ["a.md"])

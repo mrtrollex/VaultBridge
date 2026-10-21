@@ -276,7 +276,7 @@ def test_inspection_and_construction_never_initialize_search_or_load_model(tmp_p
         return connect(database, *args, **kwargs)
     monkeypatch.setattr(sqlite3, "connect", immutable_only)
     result = operations(registry).inspect_index(RESEARCH)
-    expected = {"missing": "missing", "existing": "invalid_metadata", "wal": "inspection_unavailable"}
+    expected = {"missing": "missing", "existing": "storage_unavailable", "wal": "inspection_unavailable"}
     assert result.result == expected[storage]
     assert bool(connections) == (storage == "existing")
     scan = operations(registry).hygiene(RESEARCH, KnowledgeHygieneRequest(inspect_derived_index=True))

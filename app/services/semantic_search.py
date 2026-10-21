@@ -498,6 +498,7 @@ class SemanticSearchService:
     ) -> None:
         self.vault_root = vault_root
         self.repository = repository
+        self._validate_source_root(vault_root)
         self.model_name = model_name
         self._indexing_enabled = indexing_enabled
         self._federation_evidence = compatibility_evidence
@@ -539,6 +540,11 @@ class SemanticSearchService:
     @property
     def db_path(self) -> Path:
         return self.repository.db_path
+
+    def _validate_source_root(self, root):
+        binding = getattr(self.repository, "_expected_binding", None)
+        if binding is not None:
+            binding.check_source_root(root)
 
     @property
     def index_signature(self) -> str:
@@ -585,6 +591,10 @@ class SemanticSearchService:
         )
 
     def _resolve_index_signature(self, *, persist_failure: bool) -> str:
+        self._validate_source_root(self.vault_root)
+        if not self._indexing_enabled:
+            raise SemanticSearchUnavailableError("Semantic index is unavailable")
+        self.repository.validate_expected_binding()
         if self._resolved_index_signature is not None:
             return self._resolved_index_signature
         with self._fingerprint_lock:
@@ -695,6 +705,7 @@ class SemanticSearchService:
             return self._persist_state(IndexState.ERROR if value else IndexState.UNINITIALIZED)
 
     def _initialize_state(self, *, create_storage: bool) -> IndexState:
+        self._validate_source_root(self.vault_root)
         if self._resolved_index_signature is None:
             try:
                 self._resolve_index_signature(persist_failure=create_storage)
@@ -1012,9 +1023,16 @@ class SemanticSearchService:
                 persisted_read_only_basis if persisted_read_only and available else None
             )
 
-    def _embed(self, texts: Sequence[str]) -> list[np.ndarray]:
+    def _embed(self, texts: Sequence[str], *, _session=None) -> list[np.ndarray]:
         """Serialize only calls into one embedder instance; the surrounding pipelines stay concurrent."""
+        if not self._indexing_enabled:
+            raise SemanticSearchUnavailableError("Semantic index is unavailable")
         with self._embed_lock:
+            self._validate_source_root(self.vault_root)
+            if _session is None:
+                self.repository.validate_expected_binding()
+            else:
+                self.repository._validate_transaction_binding(_session)
             return self.embedder.embed(texts)
 
     @staticmethod
@@ -1064,6 +1082,7 @@ class SemanticSearchService:
 
     def reconfigure(self, *, vault_root: Path | None = None, max_note_bytes: int | None = None) -> None:
         with self._configuration_lock:
+            self._validate_source_root(self.vault_root if vault_root is None else vault_root)
             if vault_root is not None:
                 self.vault_root = vault_root
             if max_note_bytes is not None:
@@ -1615,6 +1634,7 @@ class SemanticSearchService:
         cancel_event: threading.Event | None,
         strict_reads: bool = False,
     ) -> tuple[int, int]:
+        self._validate_source_root(vault_root)
         indexed = unchanged = 0
         for file_batch in batched(files, self.index_batch_size):
             self._raise_if_cancelled(cancel_event)
@@ -1670,7 +1690,7 @@ class SemanticSearchService:
                         self._build_embedding_text(path.stem, heading, content)
                         for heading, content in chunks
                     ]
-                    vectors = self._embed(embedding_texts)
+                    vectors = self._embed(embedding_texts, _session=session)
                     if len(vectors) != len(chunks):
                         raise SemanticIndexOperationError(
                             "Embedding model returned an unexpected number of vectors"
@@ -1710,6 +1730,7 @@ class SemanticSearchService:
     ) -> dict[str, int]:
         with self._configuration_lock:
             vault_root = self.vault_root
+            self._validate_source_root(vault_root)
             max_note_bytes = self.max_note_bytes
         files = self._eligible_files(vault_root, max_note_bytes)
         seen = {str(path.relative_to(vault_root)).replace("\\", "/") for path in files}
@@ -1741,6 +1762,7 @@ class SemanticSearchService:
     ) -> dict[str, int]:
         with self._configuration_lock:
             vault_root = self.vault_root
+            self._validate_source_root(vault_root)
             max_note_bytes = self.max_note_bytes
         files, missing_paths = self._target_files(
             vault_root,
@@ -1882,6 +1904,7 @@ class SemanticSearchService:
         cancel_event: threading.Event | None = None,
     ) -> dict[str, int]:
         """Refresh only the supplied vault-relative Markdown paths."""
+        self._validate_source_root(self.vault_root)
         paths = tuple(sorted(set(relative_paths)))
         if not paths:
             return {"indexed": 0, "unchanged": 0, "removed": 0}
@@ -1976,6 +1999,7 @@ class SemanticSearchService:
         The prepared value holds the read snapshot, so scoring never reopens SQLite.
         """
         cancel.check()
+        self._validate_source_root(self.vault_root)
         if not isfinite(min_score) or not 0 <= min_score <= 1:
             raise ValueError("invalid semantic threshold")
         if space_id not in budget.allocations:
@@ -2050,6 +2074,7 @@ class SemanticSearchService:
         retrieval callers retain nonblank validation unless explicitly opted in.
         """
         cancel.check()
+        self._validate_source_root(self.vault_root)
         if (
             not isinstance(text, str) or not text or (not allow_blank_text and not text.strip())
             or len(text.encode("utf-8")) > 4096
