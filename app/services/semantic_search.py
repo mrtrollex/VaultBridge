@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
 import logging
 import re
@@ -9,13 +10,15 @@ import threading
 import time
 import unicodedata
 from collections.abc import Callable, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
+from functools import wraps
 from itertools import batched
 from math import isfinite
 from pathlib import Path, PurePosixPath, PureWindowsPath
-from typing import Literal, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 import numpy as np
 
@@ -58,6 +61,9 @@ RELATIVE_RESULT_FLOOR = 0.78
 
 logger = logging.getLogger("vaultbridge.semantic")
 
+if TYPE_CHECKING:
+    from app.services.semantic_resources import SharedEmbeddingResource
+
 
 class IndexState(str, Enum):
     UNINITIALIZED = "uninitialized"
@@ -84,6 +90,26 @@ class TargetedSynchronizationError(RuntimeError):
 
 class Embedder(Protocol):
     def embed(self, texts: Sequence[str]) -> list[np.ndarray]: ...
+
+
+def _embedding_pipeline(method):
+    """Retain a shared generation, independently of the backend-call lease."""
+    signature = inspect.signature(method)
+
+    @wraps(method)
+    def run(self, *args, **kwargs):
+        if self._shared_resource is None:
+            return method(self, *args, **kwargs)
+        arguments = signature.bind(self, *args, **kwargs).arguments
+        cancel = arguments.get("cancel")
+        event = arguments.get("cancel_event")
+        check = cancel.check if cancel is not None else lambda: self._raise_if_cancelled(event)
+        prepared = arguments.get("prepared")
+        expected = prepared.resource_generation if prepared is not None else None
+        with self._embedding_operation(check, expected=expected):
+            return method(self, *args, **kwargs)
+
+    return run
 
 
 @dataclass(frozen=True, slots=True)
@@ -394,6 +420,7 @@ class _PreparedSemanticSearch:
     budget: ScopedBudget = field(repr=False)
     cancel: CancellationToken = field(repr=False)
     space_id: SpaceId
+    resource_generation: int | None = None
 
 
 @dataclass(frozen=True)
@@ -495,22 +522,42 @@ class SemanticSearchService:
         embedding_fingerprint: str | None = None,
         compatibility_evidence: EmbeddingCompatibilityEvidence | None = None,
         indexing_enabled: bool = True,
+        shared_resource: SharedEmbeddingResource | None = None,
     ) -> None:
+        # The existing embedder seam also accepts the resource, but must never
+        # bypass its generation contract when used that way by trusted callers.
+        from app.services.semantic_resources import SharedEmbeddingResource
+
+        if isinstance(embedder, SharedEmbeddingResource) and shared_resource is None:
+            shared_resource, embedder = embedder, None
         self.vault_root = vault_root
         self.repository = repository
         self._validate_source_root(vault_root)
         self.model_name = model_name
         self._indexing_enabled = indexing_enabled
+        if shared_resource is not None and (
+            embedder is not None or embedding_fingerprint is not None
+            or compatibility_evidence is not None or model_name != shared_resource.model_name
+            or (cache_dir is not None and cache_dir != shared_resource.cache_dir)
+        ):
+            raise ValueError("Shared embedding resource requires its configured model and evidence")
+        self._shared_resource = shared_resource
+        self._resource_generation: int | None = None
         self._federation_evidence = compatibility_evidence
         self._federation_evidence_lock = threading.Lock()
-        self.cache_dir = cache_dir or repository.db_path.parent / "models"
+        self.cache_dir = (
+            shared_resource.cache_dir if shared_resource is not None
+            else cache_dir or repository.db_path.parent / "models"
+        )
         self.max_note_bytes = max_note_bytes
         self.chunk_chars = max(250, chunk_chars)
         self.chunk_overlap = max(0, min(chunk_overlap, self.chunk_chars // 2))
         if index_batch_size <= 0:
             raise ValueError("index_batch_size must be positive")
         self.index_batch_size = index_batch_size
-        if embedder is None:
+        if shared_resource is not None:
+            self.embedder = shared_resource
+        elif embedder is None:
             self.embedder = FastEmbedder(
                 model_name,
                 self.cache_dir,
@@ -530,6 +577,7 @@ class SemanticSearchService:
         self._state_init_lock = threading.Lock()
         self._state_initialized = False
         self._fingerprint_resolution_failed = False
+        self._compatibility_invalidation_pending = False
         self._explicit_index_signature = (
             self._build_index_signature(embedding_fingerprint)
             if embedding_fingerprint is not None
@@ -541,10 +589,78 @@ class SemanticSearchService:
     def db_path(self) -> Path:
         return self.repository.db_path
 
+    @contextmanager
+    def _embedding_operation(self, check=lambda: None, *, expected=None):
+        resource = self._shared_resource
+        if resource is None:
+            yield
+            return
+        if not self._indexing_enabled:
+            raise SemanticSearchUnavailableError("Semantic index is unavailable")
+        self._validate_source_root(self.vault_root)
+        with resource.operation(check, expected=expected) as generation:
+            with self._fingerprint_guard():
+                if self._resource_generation != generation:
+                    with self._owner_guard(self._federation_evidence_lock):
+                        with self._owner_guard(self._availability_lock):
+                            self._federation_evidence = None
+                            self._resolved_index_signature = None
+                            self._fingerprint_resolution_failed = False
+                            self._state_initialized = False
+                            self._search_available = False
+                            self._persisted_read_only_search = False
+                            self._persisted_read_only_basis = None
+                            self._resource_generation = generation
+                            self._compatibility_invalidation_pending = False
+                self._check_compatibility_invalidation()
+            yield
+            self._check_compatibility_invalidation()
+
+    def _check_compatibility_invalidation(self):
+        if self._shared_resource is not None and self._compatibility_invalidation_pending:
+            raise SemanticSearchUnavailableError("Embedding compatibility invalidation is pending")
+
+    @contextmanager
+    def _owner_guard(self, lock):
+        resource = self._shared_resource
+        if resource is None:
+            with lock:
+                yield
+            return
+        resource.check_cancelled()
+        while not lock.acquire(timeout=0.05):
+            resource.check_cancelled()
+        try:
+            resource.check_cancelled()
+            yield
+        finally:
+            lock.release()
+
+    @contextmanager
+    def _fingerprint_guard(self):
+        resource = self._shared_resource
+        if resource is None:
+            # Retain legacy/custom embedder lock behavior.
+            with self._fingerprint_lock:
+                yield
+            return
+        resource.check_cancelled()
+        while not self._fingerprint_lock.acquire(timeout=0.05):
+            resource.check_cancelled()
+        try:
+            resource.check_cancelled()
+            yield
+        finally:
+            self._fingerprint_lock.release()
+
     def _validate_source_root(self, root):
         binding = getattr(self.repository, "_expected_binding", None)
         if binding is not None:
             binding.check_source_root(root)
+
+    def _embedding_evidence_current(self):
+        resource = self._shared_resource
+        return resource is None or resource.is_current(self._resource_generation)
 
     @property
     def index_signature(self) -> str:
@@ -590,6 +706,7 @@ class SemanticSearchService:
             is not None
         )
 
+    @_embedding_pipeline
     def _resolve_index_signature(self, *, persist_failure: bool) -> str:
         self._validate_source_root(self.vault_root)
         if not self._indexing_enabled:
@@ -597,7 +714,7 @@ class SemanticSearchService:
         self.repository.validate_expected_binding()
         if self._resolved_index_signature is not None:
             return self._resolved_index_signature
-        with self._fingerprint_lock:
+        with self._fingerprint_guard():
             if self._resolved_index_signature is not None:
                 return self._resolved_index_signature
             try:
@@ -637,10 +754,16 @@ class SemanticSearchService:
             return resolved_signature
 
     def _invalidate_dynamic_compatibility_cache(self) -> None:
-        with self._fingerprint_lock:
-            with self._federation_evidence_lock:
+        resource = self._shared_resource
+        if resource is not None:
+            # Fence this generation before any cancellable owner-lock wait. The
+            # last pin completes backend invalidation even if local cleanup exits.
+            self._compatibility_invalidation_pending = True
+            resource.invalidate_embedding_compatibility_cache()
+        with self._fingerprint_guard():
+            with self._owner_guard(self._federation_evidence_lock):
                 self._federation_evidence = None
-            if isinstance(self.embedder, EmbeddingCompatibilityCache):
+            if resource is None and isinstance(self.embedder, EmbeddingCompatibilityCache):
                 self.embedder.invalidate_embedding_compatibility_cache()
             self._resolved_index_signature = self._explicit_index_signature
 
@@ -704,6 +827,7 @@ class SemanticSearchService:
         except (TypeError, ValueError):
             return self._persist_state(IndexState.ERROR if value else IndexState.UNINITIALIZED)
 
+    @_embedding_pipeline
     def _initialize_state(self, *, create_storage: bool) -> IndexState:
         self._validate_source_root(self.vault_root)
         if self._resolved_index_signature is None:
@@ -719,7 +843,7 @@ class SemanticSearchService:
         if self._state_initialized:
             return self._read_persisted_state()
 
-        with self._state_init_lock:
+        with self._owner_guard(self._state_init_lock):
             if self._state_initialized:
                 return self._read_persisted_state()
 
@@ -743,6 +867,7 @@ class SemanticSearchService:
                     return IndexState.ERROR
                 return IndexState.ERROR if state is IndexState.INDEXING else state
 
+            self._check_compatibility_invalidation()
             storage = self.repository.prepare_index(self.index_signature)
             if storage.signature_changed:
                 state = IndexState.UNINITIALIZED
@@ -770,20 +895,22 @@ class SemanticSearchService:
     def is_ready(self) -> bool:
         return self.state is IndexState.READY
 
+    @_embedding_pipeline
     def is_search_available(self) -> bool:
-        with self._availability_lock:
+        with self._owner_guard(self._availability_lock):
             available = self._search_available
         if available:
             return True
         if self.state is IndexState.READY:
-            with self._availability_lock:
+            with self._owner_guard(self._availability_lock):
                 self._search_available = True
             return True
         return False
 
+    @_embedding_pipeline
     def query_basis(self) -> SemanticQueryBasis | None:
         """Return the bounded compatible index basis available to a domain query."""
-        with self._availability_lock:
+        with self._owner_guard(self._availability_lock):
             if self._persisted_read_only_search:
                 return self._persisted_read_only_basis
         if not self.is_search_available():
@@ -807,7 +934,8 @@ class SemanticSearchService:
         has_chunks: bool,
     ) -> bool:
         compatible_storage = (
-            storage_initialized
+            self._embedding_evidence_current()
+            and storage_initialized
             and not storage_error
             and self._resolved_index_signature is not None
             and index_signature == self._resolved_index_signature
@@ -836,19 +964,21 @@ class SemanticSearchService:
             has_chunks=has_chunks,
         )
         if not (
-            storage_initialized
+            self._embedding_evidence_current()
+            and storage_initialized
             and not storage_error
             and self._resolved_index_signature is not None
             and index_signature == self._resolved_index_signature
         ):
             return False
-        with self._availability_lock:
+        with self._owner_guard(self._availability_lock):
             search_available = self._search_available
         return search_available or stored_index_available
 
     def _health_status_from_storage(self, storage: SemanticIndexStatus) -> SemanticHealthStatus:
         compatible_storage = (
-            storage.storage_initialized
+            self._embedding_evidence_current()
+            and storage.storage_initialized
             and self._resolved_index_signature is not None
             and storage.index_signature == self._resolved_index_signature
         )
@@ -956,7 +1086,7 @@ class SemanticSearchService:
         if not self._stored_signature_matches_configuration(storage.index_signature):
             return "incompatible"
         # Resolving an uncached model fingerprint may mutate a model cache.
-        if self._resolved_index_signature is None:
+        if not self._embedding_evidence_current() or self._resolved_index_signature is None:
             return "inspection_unavailable"
         if storage.index_signature != self._resolved_index_signature:
             return "incompatible"
@@ -983,6 +1113,7 @@ class SemanticSearchService:
             has_chunks=storage.has_chunks,
         )
 
+    @_embedding_pipeline
     def use_persisted_index_for_read_only_search(self) -> bool:
         """Enable this instance to search a compatible persisted index without lifecycle writes."""
         try:
@@ -1016,18 +1147,34 @@ class SemanticSearchService:
         persisted_read_only: bool = False,
         persisted_read_only_basis: SemanticQueryBasis | None = None,
     ) -> None:
-        with self._availability_lock:
+        with self._owner_guard(self._availability_lock):
             self._search_available = available
             self._persisted_read_only_search = persisted_read_only
             self._persisted_read_only_basis = (
                 persisted_read_only_basis if persisted_read_only and available else None
             )
 
+    @contextmanager
+    def _embed_guard(self):
+        resource = self._shared_resource
+        if resource is None:
+            with self._embed_lock:
+                yield
+            return
+        resource.check_cancelled()
+        while not self._embed_lock.acquire(timeout=0.05):
+            resource.check_cancelled()
+        try:
+            resource.check_cancelled()
+            yield
+        finally:
+            self._embed_lock.release()
+
     def _embed(self, texts: Sequence[str], *, _session=None) -> list[np.ndarray]:
         """Serialize only calls into one embedder instance; the surrounding pipelines stay concurrent."""
         if not self._indexing_enabled:
             raise SemanticSearchUnavailableError("Semantic index is unavailable")
-        with self._embed_lock:
+        with self._embed_guard():
             self._validate_source_root(self.vault_root)
             if _session is None:
                 self.repository.validate_expected_binding()
@@ -1081,7 +1228,7 @@ class SemanticSearchService:
             raise SynchronizationCancelledError("Semantic index synchronization was cancelled")
 
     def reconfigure(self, *, vault_root: Path | None = None, max_note_bytes: int | None = None) -> None:
-        with self._configuration_lock:
+        with self._owner_guard(self._configuration_lock):
             self._validate_source_root(self.vault_root if vault_root is None else vault_root)
             if vault_root is not None:
                 self.vault_root = vault_root
@@ -1724,14 +1871,18 @@ class SemanticSearchService:
                     indexed += 1
         return indexed, unchanged
 
+    def _synchronization_configuration(self):
+        with self._owner_guard(self._configuration_lock):
+            vault_root = self.vault_root
+            self._validate_source_root(vault_root)
+            return vault_root, self.max_note_bytes
+
     def _sync_all_locked(
         self,
         cancel_event: threading.Event | None,
+        configuration: tuple[Path, int] | None = None,
     ) -> dict[str, int]:
-        with self._configuration_lock:
-            vault_root = self.vault_root
-            self._validate_source_root(vault_root)
-            max_note_bytes = self.max_note_bytes
+        vault_root, max_note_bytes = configuration or self._synchronization_configuration()
         files = self._eligible_files(vault_root, max_note_bytes)
         seen = {str(path.relative_to(vault_root)).replace("\\", "/") for path in files}
 
@@ -1759,11 +1910,9 @@ class SemanticSearchService:
         self,
         relative_paths: Sequence[str],
         cancel_event: threading.Event | None,
+        configuration: tuple[Path, int] | None = None,
     ) -> dict[str, int]:
-        with self._configuration_lock:
-            vault_root = self.vault_root
-            self._validate_source_root(vault_root)
-            max_note_bytes = self.max_note_bytes
+        vault_root, max_note_bytes = configuration or self._synchronization_configuration()
         files, missing_paths = self._target_files(
             vault_root,
             max_note_bytes,
@@ -1798,7 +1947,7 @@ class SemanticSearchService:
         record_full_sync: bool = False,
     ) -> dict[str, int]:
         initial_state = self._initialize_state(create_storage=True)
-        with self._availability_lock:
+        with self._owner_guard(self._availability_lock):
             search_available = self._search_available
         self._set_search_available(search_available or initial_state is IndexState.READY)
         self._persist_state(IndexState.INDEXING)
@@ -1872,32 +2021,59 @@ class SemanticSearchService:
         )
         return result
 
+    @contextmanager
+    def _sync_guard(self):
+        resource = self._shared_resource
+        if resource is None:
+            with self._sync_lock:
+                yield
+            return
+        resource.check_cancelled()
+        while not self._sync_lock.acquire(timeout=0.05):
+            resource.check_cancelled()
+        try:
+            resource.check_cancelled()
+            yield
+        finally:
+            self._sync_lock.release()
+
+    @_embedding_pipeline
     def sync(self, cancel_event: threading.Event | None = None) -> dict[str, int]:
         """Index only new/changed notes and remove deleted notes."""
-        with self._sync_lock:
+        with self._sync_guard():
+            configuration = self._synchronization_configuration() if self._shared_resource is not None else None
             self._resolve_index_signature(persist_failure=True)
             self._validate_backend_before_destructive_prepare(persist_failure=True)
             return self._run_synchronization_locked(
-                lambda: self._sync_all_locked(cancel_event),
+                lambda: self._sync_all_locked(cancel_event, configuration),
                 operation_name="full",
                 record_full_sync=True,
             )
 
+    @_embedding_pipeline
     def rebuild(self, cancel_event: threading.Event | None = None) -> dict[str, int]:
         """Discard derived semantic state and rebuild it from the Markdown vault."""
-        with self._sync_lock:
+        with self._sync_guard():
+            configuration = self._synchronization_configuration() if self._shared_resource is not None else None
             self._resolve_index_signature(persist_failure=True)
             self._validate_backend_before_destructive_prepare(persist_failure=True)
-            self._set_search_available(False)
-            self.repository.reset_index(self.index_signature, IndexState.UNINITIALIZED.value)
-            with self._state_init_lock:
+            if self._shared_resource is None:
+                # Keep the established standalone reset/lock order.
+                self._set_search_available(False)
+                self.repository.reset_index(self.index_signature, IndexState.UNINITIALIZED.value)
+            with self._owner_guard(self._state_init_lock):
+                if self._shared_resource is not None:
+                    self._check_compatibility_invalidation()
+                    self._set_search_available(False)
+                    self.repository.reset_index(self.index_signature, IndexState.UNINITIALIZED.value)
                 self._state_initialized = True
             return self._run_synchronization_locked(
-                lambda: self._sync_all_locked(cancel_event),
+                lambda: self._sync_all_locked(cancel_event, configuration),
                 operation_name="full",
                 record_full_sync=True,
             )
 
+    @_embedding_pipeline
     def sync_paths(
         self,
         relative_paths: Sequence[str],
@@ -1909,20 +2085,21 @@ class SemanticSearchService:
         if not paths:
             return {"indexed": 0, "unchanged": 0, "removed": 0}
 
-        with self._sync_lock:
+        with self._sync_guard():
+            configuration = self._synchronization_configuration() if self._shared_resource is not None else None
             self._resolve_index_signature(persist_failure=True)
             self._validate_backend_before_destructive_prepare(persist_failure=True)
             initial_state = self._initialize_state(create_storage=True)
-            with self._availability_lock:
+            with self._owner_guard(self._availability_lock):
                 search_available = self._search_available
             if not search_available and initial_state is not IndexState.READY:
                 return self._run_synchronization_locked(
-                    lambda: self._sync_all_locked(cancel_event),
+                    lambda: self._sync_all_locked(cancel_event, configuration),
                     operation_name="full",
                     record_full_sync=True,
                 )
             return self._run_synchronization_locked(
-                lambda: self._sync_targets_locked(paths, cancel_event),
+                lambda: self._sync_targets_locked(paths, cancel_event, configuration),
                 operation_name="targeted",
             )
 
@@ -1988,6 +2165,7 @@ class SemanticSearchService:
             cancel.check()
         return [(path, ranked) for path, ranked in ordered if not ranked.score < relative_floor]
 
+    @_embedding_pipeline
     def prepare_federation_candidates(
         self, eligible_paths: tuple[str, ...] | frozenset[str], *,
         space_id: SpaceId, budget: ScopedBudget, cancel: CancellationToken,
@@ -2032,6 +2210,7 @@ class SemanticSearchService:
                 cancel.check()
                 if not isinstance(evidence, EmbeddingCompatibilityEvidence):
                     raise SemanticSearchUnavailableError("Embedding compatibility is unavailable")
+                self._check_compatibility_invalidation()
                 self._federation_evidence = evidence
         finally:
             self._federation_evidence_lock.release()
@@ -2045,7 +2224,7 @@ class SemanticSearchService:
         if state == IndexState.READY.value or (state is None and snapshot.has_chunks):
             basis: SemanticQueryBasis = "compatible_ready"
         else:
-            with self._availability_lock:
+            with self._owner_guard(self._availability_lock):
                 completed = self._search_available
             if not completed or state not in {IndexState.INDEXING.value, IndexState.ERROR.value}:
                 raise SemanticSearchUnavailableError("Semantic index is unavailable")
@@ -2058,9 +2237,10 @@ class SemanticSearchService:
             ScoringDescriptor(
                 self.model_name, evidence.embedding_fingerprint, signature,
                 evidence.dimensions, evidence.backend_contract, min_score,
-            ), basis, snapshot, self, budget, cancel, space_id,
+            ), basis, snapshot, self, budget, cancel, space_id, self._resource_generation,
         )
 
+    @_embedding_pipeline
     def search_federation_candidates(
         self, text: str, eligible_paths: tuple[str, ...] | frozenset[str] = (), *,
         space_id: SpaceId, limit: int = 20, min_score: float = 0.28,
@@ -2118,6 +2298,7 @@ class SemanticSearchService:
                 raise ValueError("invalid normalized query vector")
         except (ValueError, TypeError, SemanticIndexOperationError) as exc:
             raise SemanticSearchUnavailableError("Query embedding is unavailable") from exc
+        self._check_compatibility_invalidation()
         ordered = self._rank_chunks(
             text, query, prepared.snapshot.chunks, min_score=min_score,
             strict=True, cancel=cancel,
@@ -2133,6 +2314,7 @@ class SemanticSearchService:
         cancel.check()
         return PreciseSemanticResult(tuple(candidates), prepared.descriptor, prepared.index_basis)
 
+    @_embedding_pipeline
     def search(
         self,
         text: str,
@@ -2152,7 +2334,7 @@ class SemanticSearchService:
         query = self._normalize(embedded_query[0])
         folder = folder.strip().replace("\\", "/").strip("/")
         prefix = f"{folder}/" if folder else ""
-        with self._availability_lock:
+        with self._owner_guard(self._availability_lock):
             persisted_read_only_search = self._persisted_read_only_search
         try:
             chunks = (
@@ -2174,6 +2356,7 @@ class SemanticSearchService:
             raise SemanticSearchUnavailableError(
                 "Persisted semantic index is unavailable for immutable reads"
             ) from exc
+        self._check_compatibility_invalidation()
         ordered = self._rank_chunks(
             text, query,
             (chunk for chunk in chunks

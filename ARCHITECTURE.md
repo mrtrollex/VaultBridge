@@ -250,6 +250,18 @@ Search and synchronization share one embedder instance. A narrow execution lock 
 calls into that embedder; vault scanning, SQLite access, ranking, and response construction remain
 concurrent.
 
+VB-151 E2 adds an internal `SharedEmbeddingResource` for trusted injection into independent
+semantic owners. It owns one lazy FastEmbedder using global settings and the default data
+directory's `models` cache; cache failures have no fallback. A cancellable lease serializes
+backend initialization, inference, fingerprint/evidence resolution, validation and release.
+Separate generation pins let owner pipelines run concurrently while preventing model replacement
+during scoring or destructive preparation. Invalidation drains pinned operations, releases the
+old backend model, then advances the generation; owners discard cached compatibility evidence
+and reject prepared searches from older generations. Shutdown rejects new leases and drains
+active operations before release. The process composer owns shutdown, not individual services.
+Repositories, source/index bindings, synchronization locks and lifecycle state remain per owner.
+This resource has no production named-space startup wiring; E3-E6 remain separate work.
+
 Retrieval quality is guarded by a test-only deterministic evaluation under `tests/eval/`. It builds
 a temporary vault from sanitized Markdown, injects a local concept-vector embedder, and otherwise
 uses the production chunking, embedding-input, repository, scoring, filtering, aggregation and
