@@ -1,7 +1,10 @@
 import json
 from dataclasses import replace
 
+import pytest
+
 from app.services.semantic_search import SemanticSearchService
+from tests.eval import runner
 from tests.eval.runner import (
     README_PATH,
     DeterministicConceptEmbedder,
@@ -25,6 +28,29 @@ def test_fixture_shape_is_multilingual_and_heading_aware():
     assert sum(case.expected.heading is not None for case in cases) >= 6
     assert sum(case.category == "heading-context" for case in cases) >= 2
     assert len({case.case_id for case in cases}) == len(cases)
+
+
+@pytest.mark.parametrize("line_ending", [b"\n", b"\r\n"], ids=["lf", "crlf"])
+def test_evaluation_corpus_is_independent_of_checkout_line_endings(tmp_path, monkeypatch, line_ending):
+    canonical = {
+        source.relative_to(runner.CORPUS_ROOT): source.read_text(encoding="utf-8").encode("utf-8")
+        for source in runner.CORPUS_ROOT.rglob("*.md")
+    }
+    reference, reference_embedder = build_service(tmp_path / "reference")
+    checkout = tmp_path / "checkout"
+    for path, content in canonical.items():
+        target = checkout / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(content.replace(b"\n", line_ending))
+    monkeypatch.setattr(runner, "CORPUS_ROOT", checkout)
+    service, embedder = build_service(tmp_path / "evaluation")
+
+    # Verify input bytes, embedding inputs and SQLite payloads before comparing ranks/scores.
+    assert {path: (service.vault_root / path).read_bytes() for path in canonical} == canonical
+    assert embedder.calls == reference_embedder.calls
+    assert service.repository.load_chunks() == reference.repository.load_chunks()
+    cases = load_cases()
+    assert run_evaluation(service, cases) == run_evaluation(reference, cases)
 
 
 def test_retrieval_cases_meet_relevance_expectations(tmp_path):
