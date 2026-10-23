@@ -178,7 +178,9 @@ def build_service(
         relative_path = source_path.relative_to(CORPUS_ROOT)
         target_path = vault_root / relative_path
         target_path.parent.mkdir(parents=True, exist_ok=True)
-        target_path.write_bytes(source_path.read_bytes())
+        # Git checkout newline conversion must not change source-sized chunks.
+        # read_text normalizes line endings; write bytes to keep LF on Windows too.
+        target_path.write_bytes(source_path.read_text(encoding="utf-8").encode("utf-8"))
 
     embedder = embedder or DeterministicConceptEmbedder()
     service = SemanticSearchService(
