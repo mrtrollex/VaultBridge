@@ -260,7 +260,69 @@ old backend model, then advances the generation; owners discard cached compatibi
 and reject prepared searches from older generations. Shutdown rejects new leases and drains
 active operations before release. The process composer owns shutdown, not individual services.
 Repositories, source/index bindings, synchronization locks and lifecycle state remain per owner.
-This resource has no production named-space startup wiring; E3-E6 remain separate work.
+This resource has no production named-space startup wiring; E4-E6 remain separate work.
+
+VB-151 E3 adds owner-local resumable synchronization through internal `begin_sync`, `sync_step`,
+`cancel_sync` and `close_synchronization` methods. An opaque identity handle reserves exactly one
+owner until completion, cancellation or failure. `SyncStep` returns cumulative durable counts and
+an explicit `incomplete` or `complete` state; exceptions terminalize the handle as `cancelled` or
+`failed`. Foreign, forged, terminal and concurrently executing handles are rejected. The legacy
+`sync`, `sync_paths` and `rebuild` methods drive these turns to genuine completion, retaining their
+count dictionaries and failure behavior. `BackgroundSemanticIndexer` retains its synchronous job
+contract and recovery queue behavior; no shared scheduler or named runtime is activated.
+Legacy synchronous entry points serialize whole operations with an owner-local mutex outside
+per-turn locks and embedding generation admission. Queued shared-resource callers can cancel
+without acquiring a pin or backend lease. Their lifecycle admissions let close fence and drain
+waiters as well as the active operation, without running the remaining synchronization work.
+
+Discovery uses a private temporary SQLite workspace for canonical paths and its directory frontier,
+with a fixed page cache and at most one open `scandir` cursor. Each discovery/admission turn consumes
+at most 256 directory operations/entries or targeted input paths by default (internal override
+1..4096). Rejected and non-Markdown entries count too. The cursor's directory identity and containment
+are rechecked before consumption. After discovery/admission completes, paths are processed in
+`(path.casefold(), path)` order, with exact canonical deduplication. A processing turn commits at most
+`index_batch_size` notes; note metadata uses primary-key lookups. Completed discovery is followed by
+primary-key metadata reconciliation in turns of at most `index_batch_size` rows. Stale deletion
+cannot run against an unfinished scan. Targeted missing-path deletion and replacements in one batch
+share a transaction, so a failed active batch retains all its prior indexed data.
+Discovery inspection errors fail the scan rather than authorizing stale deletion from an incomplete
+inventory. A raced ordinary deletion may be skipped only after safe absence is confirmed. Transient
+failures require a new scan; prior indexed data and durable completed batches remain intact.
+Missing-target admission evidence is provisional: processing revalidates the current path through
+the strict targeted policy before deleting rows, and indexes an eligible reappeared note in that
+same batch. Unsafe or ambiguous current evidence fails the batch without deleting prior rows.
+Missing-target checks inspect every relevant ancestor, including contained directory alias targets,
+and recheck ancestor facts plus the first missing component before treating absence as confirmed.
+Dangling, escaping or inaccessible ancestors cannot authorize a deletion.
+
+Each turn revalidates its source/root identity, repository/database identity, immutable binding,
+configuration and embedding generation/signature. Canonical notes use the existing bounded, pinned
+`VaultService` reader with per-path inode facts before embedding, without sibling enumeration.
+Yield releases owner locks, generation pins, backend leases,
+SQLite connections and transactions; only the scan cursor and bounded control state remain in memory.
+Cancellation is checked during discovery, targeted admission, metadata work, between batches and
+while shared locks/leases are awaited. Shutdown signals active work and waits for its current safe
+boundary, then discards remaining scan work. Failed/cancelled handles cannot resume; a new operation
+rediscovers against durable completed batches. This is process-local continuation, not persisted job
+recovery or cross-process coordination. Temporary path storage grows with the scan on disk, and a
+changing vault remains a cooperating-filesystem scan rather than an atomic filesystem snapshot.
+Preparation is admitted before acquiring a generation pin or invoking backend validation. Close
+atomically fences new admission, signals admitted preparation/turns, and waits for their resource
+contexts to exit before discarding a continuation. Cancellation checks and destructive preparation
+share that fence; an already admitted non-interruptible SQLite boundary may finish before close
+returns. Backend calls and drain waits never hold the admission fence.
+Idempotent reconfiguration still validates the source binding, but changes the continuation revision
+only when effective settings change. Preparation rechecks that revision under the configuration lock
+before reset/initialization and continuation creation; resumed turns validate under the same lock.
+
+Only completed full reconciliation atomically publishes `ready` and `last_successful_sync` and
+clears owner-local full-sync recovery debt. Incomplete steps remain `indexing`; cancellation/failure
+records `error` when the original storage/root can still be validated, otherwise leaves storage
+untouched and the handle terminal. A full retry is required after interrupted full work, including
+when a targeted request arrives first. Previous compatible search availability remains independent
+of this lifecycle. Initial binding/signature preparation and authorized rebuild resets retain their
+existing atomic SQLite/backend validation boundaries; turn budgets bound discovery and note/metadata
+counts, not the wall time of a non-interruptible filesystem, backend or SQLite operation.
 
 Retrieval quality is guarded by a test-only deterministic evaluation under `tests/eval/`. It builds
 a temporary vault from sanitized Markdown, injects a local concept-vector embedder, and otherwise
@@ -603,7 +665,8 @@ coverage, while descriptor mismatch and cancellation fail the whole request. D3b
 relationship authorization. Shared `KnowledgeQueryService.evaluate_supplied_eligibility` evaluates
 live filters on the supplied bounded snapshot before semantic preparation, reusing source reads and
 relationship derivations. The nonsemantic supplied evaluator retains its contract. D1–D3b and E1 are
-internal primitives only; E2–E6 and F–G remain pending and VB-151 is incomplete.
+internal primitives only; E2 shared resources and E3 synchronization are also internal. E4–E6 and
+F–G remain pending and VB-151 is incomplete.
 Existing REST/MCP/CLI composition rejects named configuration before owner construction with
 `invalid_configuration` (internal reason `named_serving_unsupported`). Named serving remains blocked
 until VB-152 integrates every applicable entry point. No public schema, route, operation ID,

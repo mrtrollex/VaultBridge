@@ -99,6 +99,19 @@ class SemanticRepositorySession:
     def delete_note(self, path: str) -> None:
         self._connection.execute("DELETE FROM notes WHERE path=?", (path,))
 
+    def get_note(self, path: str) -> StoredNote | None:
+        """One primary-key metadata lookup, without a whole-index map."""
+        row = self._connection.execute(
+            "SELECT path, mtime_ns, size, sha256, indexed_at FROM notes WHERE path=?", (path,),
+        ).fetchone()
+        return StoredNote(**dict(row)) if row is not None else None
+
+    def note_paths_after(self, after: str, limit: int) -> list[str]:
+        """Bounded primary-key cursor for completed-discovery reconciliation."""
+        return [row[0] for row in self._connection.execute(
+            "SELECT path FROM notes WHERE path > ? ORDER BY path LIMIT ?", (after, limit),
+        ).fetchall()]
+
     def load_notes_and_remove_stale(
         self,
         current_paths: set[str],

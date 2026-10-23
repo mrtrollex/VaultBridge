@@ -291,7 +291,13 @@ def test_owner_pipeline_pins_generation_through_sensitive_boundaries(shared, tmp
         assert not state.calls["invalidate"]
     finally:
         release.set()
-    active.result(3)
+    if phase == "preparation":
+        # E3 releases the preparation pin before its first resumable turn.
+        # Pending invalidation makes that continuation stale, never reusable.
+        with pytest.raises(SemanticSearchUnavailableError, match="generation is stale"):
+            active.result(3)
+    else:
+        active.result(3)
     invalidation.result(3)
     assert resource.generation == generation + 1
 
@@ -842,8 +848,12 @@ def test_legacy_sync_embedding_lock_remains_blocking(tmp_path):
         assert not syncing.done()
     finally:
         observed.lock.release()
-    # Legacy cancellation remains at batch boundaries; the accepted batch finishes.
-    assert syncing.result(3)["indexed"] == 1
+    # The accepted batch finishes durably, but E3 must observe cancellation
+    # before reconciliation and cannot publish full synchronization success.
+    with pytest.raises(SynchronizationCancelledError):
+        syncing.result(3)
+    assert "changed note" in service.repository.load_chunks()[0].content
+    assert service.repository.get_metadata("index_state") == "error"
     assert not observed.lock.locked() and not service._sync_lock.locked()
 
 
@@ -858,8 +868,10 @@ def run_sync_entry(service, entry, event=None):
 def test_sync_lock_wait_cancellation_preserves_active_owner(shared, tmp_path, monkeypatch, entry, finish):
     resource, state = shared
     service = owner(tmp_path, resource)
-    observed = ObservedLock(service._sync_lock)
-    service._sync_lock = observed
+    # Legacy calls now serialize whole operations before acquiring a generation
+    # pin. Cancellation of that wait must not touch the active owner's resources.
+    observed = ObservedLock(service._legacy_sync_lock)
+    service._legacy_sync_lock = observed
     marker = threading.local()
     writes = []
     for name in ("prepare_index", "reset_index", "set_metadata", "transaction", "finalize_full_sync_success"):
@@ -883,6 +895,7 @@ def test_sync_lock_wait_cancellation_preserves_active_owner(shared, tmp_path, mo
     state.block = threading.Event()
     active = launch(service.sync)
     assert state.entered.wait(3)
+    releases_before_wait = observed.releases
     fields = ("_state_initialized", "_search_available", "_fingerprint_resolution_failed",
               "_resolved_index_signature", "_resource_generation")
     owner_state = tuple(getattr(service, name) for name in fields)
@@ -897,14 +910,14 @@ def test_sync_lock_wait_cancellation_preserves_active_owner(shared, tmp_path, mo
     try:
         assert observed.waiting.wait(3)
         with resource._condition:
-            assert resource._pins == 2 and resource._busy
+            assert resource._pins == 1 and resource._busy
         generation = resource.generation
         event.set()
         with pytest.raises(SynchronizationCancelledError):
             waiting.result(1)
         with resource._condition:
             assert resource._pins == 1 and resource._busy
-        assert observed.lock.locked() and observed.releases == 0
+        assert observed.lock.locked() and observed.releases == releases_before_wait
         assert not active.done()
         assert not writes
         assert tuple(getattr(service, name) for name in fields) == owner_state
@@ -916,7 +929,10 @@ def test_sync_lock_wait_cancellation_preserves_active_owner(shared, tmp_path, mo
         assert not active.done() and not maintenance.done()
     finally:
         state.block.set()
-        assert active.result(3)["indexed"] == 1
+        # Active inference finishes its batch; maintenance invalidates the
+        # yielded generation before any remaining discovery/reconciliation.
+        with pytest.raises(SemanticSearchUnavailableError):
+            active.result(3)
         try:
             waiting.result(3)
         except SynchronizationCancelledError:
@@ -924,7 +940,7 @@ def test_sync_lock_wait_cancellation_preserves_active_owner(shared, tmp_path, mo
         if maintenance is not None:
             maintenance.result(3)
     assert not writes
-    assert not observed.lock.locked() and observed.releases == 1
+    assert not observed.lock.locked() and observed.releases > releases_before_wait
     with resource._condition:
         assert resource._pins == 0 and not resource._busy and not resource._cleaning
     assert resource.generation == generation + 1
