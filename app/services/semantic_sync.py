@@ -39,14 +39,20 @@ class SyncStep:
 class SyncContinuation:
     """Opaque identity handle; terminal handles cannot be resumed or reused."""
 
-    __slots__ = ("_state",)
+    __slots__ = ("_state", "_full")
 
-    def __init__(self):
+    def __init__(self, *, full=False):
         self._state = SyncStepState.INCOMPLETE
+        self._full = full
 
     @property
     def state(self):
         return self._state
+
+    @property
+    def full(self):
+        """Actual admitted mode, including owner-required full recovery."""
+        return self._full
 
 
 def directory_identity(path):
@@ -66,7 +72,7 @@ class SyncWork:
     """
 
     def __init__(self, service, *, paths: Iterable[str] | None, full: bool):
-        self.handle = SyncContinuation()
+        self.handle = SyncContinuation(full=full)
         self.started_at = time.perf_counter()
         self.turn_lock = threading.Lock()
         self.cancel_event = threading.Event()

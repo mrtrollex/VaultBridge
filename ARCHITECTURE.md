@@ -260,7 +260,7 @@ old backend model, then advances the generation; owners discard cached compatibi
 and reject prepared searches from older generations. Shutdown rejects new leases and drains
 active operations before release. The process composer owns shutdown, not individual services.
 Repositories, source/index bindings, synchronization locks and lifecycle state remain per owner.
-This resource has no production named-space startup wiring; E4-E6 remain separate work.
+This resource has no production named-space startup wiring; E6 remains separate work.
 
 VB-151 E3 adds owner-local resumable synchronization through internal `begin_sync`, `sync_step`,
 `cancel_sync` and `close_synchronization` methods. An opaque identity handle reserves exactly one
@@ -269,11 +269,34 @@ an explicit `incomplete` or `complete` state; exceptions terminalize the handle 
 `failed`. Foreign, forged, terminal and concurrently executing handles are rejected. The legacy
 `sync`, `sync_paths` and `rebuild` methods drive these turns to genuine completion, retaining their
 count dictionaries and failure behavior. `BackgroundSemanticIndexer` retains its synchronous job
-contract and recovery queue behavior; no shared scheduler or named runtime is activated.
+contract and recovery queue behavior; no named runtime is activated.
 Legacy synchronous entry points serialize whole operations with an owner-local mutex outside
 per-turn locks and embedding generation admission. Queued shared-resource callers can cancel
 without acquiring a pin or backend lease. Their lifecycle admissions let close fence and drain
 waiters as well as the active operation, without running the remaining synchronization work.
+
+VB-151 E4 adds the private `SharedSemanticScheduler` execution primitive for up to eight
+registry-authorized enabled owners injected with the same E2 resource. Construction starts no
+worker or model. Explicit `start()` creates one owned single-thread executor and a dispatcher
+that sleeps on a condition when idle. `start(startup=True)` requests one full sync per enabled
+binding before dispatch. Each sorted-SpaceId round-robin turn executes at most one bounded E3
+step; yielded continuations retain independent progress, cancellation and errors. The internal
+continuation exposes its actual full/targeted mode, including E3's recovery promotion.
+
+Qualified targeted admission validates the original registry token, owner, root and contained
+Markdown path. One lock enforces 2,000 distinct pending identities per owner and 10,000 globally,
+including in-flight targeted identities; submissions admit one path at a time. Overflow retains
+one full-sync-needed flag per binding. Full sync takes priority, absorbs earlier queued work,
+and preserves concurrent writes for follow-up; overflow during a full sync requires another full
+reconciliation. Full failure/cancellation retains recovery debt and pauses that owner until a
+new submission or explicit retry, without a hot retry loop. Healthy owners continue independently.
+Shutdown rejects submissions and signals every owner before discarding queues, draining only the
+active safe boundary, closing E3 continuations/workspaces and stopping the executor. The process
+composer closes the E2 resource afterward. Legacy `BackgroundSemanticIndexer` also accepts a
+process-owned executor without shutting it down; its default behavior still owns its own worker.
+The shared scheduler does not wrap eight legacy whole-sync loops. Disabled owners receive no
+scheduler work, and the existing deferred registry lifecycle remains unchanged. E5 watcher and
+E6 composition/activation are not implemented here.
 
 Discovery uses a private temporary SQLite workspace for canonical paths and its directory frontier,
 with a fixed page cache and at most one open `scandir` cursor. Each discovery/admission turn consumes
@@ -665,7 +688,7 @@ coverage, while descriptor mismatch and cancellation fail the whole request. D3b
 relationship authorization. Shared `KnowledgeQueryService.evaluate_supplied_eligibility` evaluates
 live filters on the supplied bounded snapshot before semantic preparation, reusing source reads and
 relationship derivations. The nonsemantic supplied evaluator retains its contract. D1–D3b and E1 are
-internal primitives only; E2 shared resources and E3 synchronization are also internal. E4–E6 and
+internal primitives only; E2 shared resources, E3 synchronization and E4 scheduling are also internal. E5–E6 and
 F–G remain pending and VB-151 is incomplete.
 Existing REST/MCP/CLI composition rejects named configuration before owner construction with
 `invalid_configuration` (internal reason `named_serving_unsupported`). Named serving remains blocked
