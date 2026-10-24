@@ -22,11 +22,15 @@ class BackgroundSemanticIndexer:
         sync_paths: Callable[[Sequence[str], threading.Event], Any] | None = None,
         *,
         emit_note_paths: bool = True,
+        executor: ThreadPoolExecutor | None = None,
     ) -> None:
         self._sync = sync
         self._sync_paths = sync_paths
         self._emit_note_paths = emit_note_paths
-        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="vaultbridge-index")
+        self._owns_executor = executor is None
+        self._executor = executor if executor is not None else ThreadPoolExecutor(
+            max_workers=1, thread_name_prefix="vaultbridge-index",
+        )
         self._lock = threading.Lock()
         self._cancel_event = threading.Event()
         self._future: Future[Any] | None = None
@@ -267,7 +271,18 @@ class BackgroundSemanticIndexer:
             "semantic_indexer_shutdown_requested",
             "Semantic indexer shutdown was requested",
         )
-        self._executor.shutdown(wait=True, cancel_futures=True)
+        if self._owns_executor:
+            self._executor.shutdown(wait=True, cancel_futures=True)
+        else:
+            # An individual legacy handle may drain only its own active job.
+            # The process owner alone shuts down an injected executor.
+            with self._lock:
+                future = self._future
+            if future is not None and not future.cancel():
+                try:
+                    future.result()
+                except BaseException:
+                    pass
         log_event(
             logger,
             logging.INFO,
