@@ -217,12 +217,14 @@ def test_cli_rest_mcp_fixture_parity(tmp_path, monkeypatch, capsys):
 @pytest.mark.parametrize("persisted", [False, True])
 def test_real_cli_is_read_only_including_construction(tmp_path, monkeypatch, capsys, missing_vault, persisted):
     settings = settings_for(tmp_path)
-    if missing_vault:
-        settings.vault_path.rmdir()
-    else:
+    if not missing_vault:
         (settings.vault_path / "a.md").write_text("---\naliases: [private-alias, private-alias]\n---\nprivate-body")
     if persisted:
         service_for(settings).sync()
+    if missing_vault:
+        # Seed persisted evidence while its source exists. E3 correctly rejects
+        # synchronization of a lost root instead of publishing an empty READY.
+        settings.vault_path.rmdir()
     forbidden = Mock(side_effect=AssertionError("write or ordinary semantic search invoked"))
     for name in ("create_note", "append_note"):
         monkeypatch.setattr(VaultService, name, forbidden)

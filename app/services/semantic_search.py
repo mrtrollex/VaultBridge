@@ -6,11 +6,12 @@ import json
 import logging
 import re
 import sqlite3
+import stat
 import threading
 import time
 import unicodedata
-from collections.abc import Callable, Sequence
-from contextlib import contextmanager
+from collections.abc import Iterable, Sequence
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
@@ -34,7 +35,13 @@ from app.repositories.semantic import (
 from app.repositories.semantic_reads import EligibleSemanticSnapshot, SemanticReadUnavailableError
 from app.services.knowledge_spaces import SpaceId
 from app.services.scoped_budget import CancellationToken, ScopedBudget
-from app.services.vault import SEMANTIC_EXCLUDED_DIRECTORIES, eligible_markdown_files
+from app.services.semantic_sync import SyncContinuation, SyncStep, SyncStepState, SyncWork
+from app.services.vault import (
+    SEMANTIC_EXCLUDED_DIRECTORIES,
+    VaultService,
+    VaultServiceError,
+    eligible_markdown_files,
+)
 
 DEFAULT_MODEL = DEFAULT_SEMANTIC_MODEL
 INDEX_STATE_METADATA_KEY = "index_state"
@@ -567,6 +574,13 @@ class SemanticSearchService:
         else:
             self.embedder = embedder
         self._sync_lock = threading.Lock()
+        self._legacy_sync_lock = threading.Lock()
+        self._sync_admin_lock = threading.Lock()
+        self._sync_operations: dict[threading.Event, threading.Event] = {}
+        self._active_sync: SyncWork | None = None
+        self._sync_closed = False
+        self._full_sync_required = False
+        self._sync_configuration_revision = 0
         self._configuration_lock = threading.Lock()
         self._availability_lock = threading.Lock()
         self._embed_lock = threading.Lock()
@@ -621,17 +635,18 @@ class SemanticSearchService:
             raise SemanticSearchUnavailableError("Embedding compatibility invalidation is pending")
 
     @contextmanager
-    def _owner_guard(self, lock):
+    def _owner_guard(self, lock, check=None):
         resource = self._shared_resource
-        if resource is None:
+        if resource is None and check is None:
             with lock:
                 yield
             return
-        resource.check_cancelled()
+        check = check or resource.check_cancelled
+        check()
         while not lock.acquire(timeout=0.05):
-            resource.check_cancelled()
+            check()
         try:
-            resource.check_cancelled()
+            check()
             yield
         finally:
             lock.release()
@@ -828,7 +843,7 @@ class SemanticSearchService:
             return self._persist_state(IndexState.ERROR if value else IndexState.UNINITIALIZED)
 
     @_embedding_pipeline
-    def _initialize_state(self, *, create_storage: bool) -> IndexState:
+    def _initialize_state(self, *, create_storage: bool, _sync_check=None) -> IndexState:
         self._validate_source_root(self.vault_root)
         if self._resolved_index_signature is None:
             try:
@@ -868,7 +883,9 @@ class SemanticSearchService:
                 return IndexState.ERROR if state is IndexState.INDEXING else state
 
             self._check_compatibility_invalidation()
-            storage = self.repository.prepare_index(self.index_signature)
+            signature = self.index_signature
+            with self._sync_preparation(_sync_check):
+                storage = self.repository.prepare_index(signature)
             if storage.signature_changed:
                 state = IndexState.UNINITIALIZED
             elif storage.index_state is None:
@@ -1229,19 +1246,12 @@ class SemanticSearchService:
 
     def reconfigure(self, *, vault_root: Path | None = None, max_note_bytes: int | None = None) -> None:
         with self._owner_guard(self._configuration_lock):
-            self._validate_source_root(self.vault_root if vault_root is None else vault_root)
-            if vault_root is not None:
-                self.vault_root = vault_root
-            if max_note_bytes is not None:
-                self.max_note_bytes = max_note_bytes
-
-    @staticmethod
-    def _sha256(path: Path) -> str:
-        digest = hashlib.sha256()
-        with path.open("rb") as file:
-            for block in iter(lambda: file.read(1024 * 1024), b""):
-                digest.update(block)
-        return digest.hexdigest()
+            root = self.vault_root if vault_root is None else vault_root
+            size = self.max_note_bytes if max_note_bytes is None else max_note_bytes
+            self._validate_source_root(root)
+            if root != self.vault_root or size != self.max_note_bytes:
+                self._sync_configuration_revision += 1
+                self.vault_root, self.max_note_bytes = root, size
 
     @staticmethod
     def _strip_frontmatter(text: str) -> str:
@@ -1704,6 +1714,48 @@ class SemanticSearchService:
         return eligible_markdown_files(vault_root, max_note_bytes)
 
     @staticmethod
+    def _verify_missing_target(vault_root: Path, relative_path: Path) -> None:
+        """Establish ordinary absence without trusting a dangling ancestor.
+
+        Facts are bounded by this single path's depth. Recheck ancestors and the
+        first missing component before authorizing deletion; no sibling walk.
+        Existing contained directory aliases retain their normal path behavior.
+        """
+        def identity(info):
+            return info.st_dev, info.st_ino, info.st_mode, info.st_ctime_ns
+
+        facts = []
+        current = vault_root
+        components = (None, *relative_path.parts)
+        for index, part in enumerate(components):
+            if part is not None:
+                current = current / part
+            try:
+                info = current.lstat()
+            except FileNotFoundError:
+                if index == 0:
+                    raise TargetedSynchronizationError("Synchronization root is unavailable") from None
+                for observed, expected in facts:
+                    if identity(observed.lstat()) != expected:
+                        raise TargetedSynchronizationError("Targeted ancestor changed")
+                try:
+                    current.lstat()
+                except FileNotFoundError:
+                    return
+                raise TargetedSynchronizationError("Targeted note reappeared during validation")
+            facts.append((current, identity(info)))
+            if stat.S_ISLNK(info.st_mode) or current.is_junction():
+                target = current.resolve(strict=True)
+                target.relative_to(vault_root)
+                target_info = target.stat()
+                facts.append((target, identity(target_info)))
+                info = target_info
+            if index < len(components) - 1 and not stat.S_ISDIR(info.st_mode):
+                raise TargetedSynchronizationError("Targeted ancestor is not a directory")
+        # The target now exists, so the earlier FileNotFoundError is stale too.
+        raise TargetedSynchronizationError("Targeted absence could not be confirmed")
+
+    @staticmethod
     def _target_files(
         vault_root: Path,
         max_note_bytes: int,
@@ -1735,11 +1787,7 @@ class SemanticSearchService:
             try:
                 path = candidate.resolve(strict=True)
                 path.relative_to(resolved_root)
-                try:
-                    stat = path.stat()
-                except FileNotFoundError:
-                    missing_paths.append(normalized)
-                    continue
+                stat = path.stat()
                 if not path.is_file():
                     raise TargetedSynchronizationError(
                         f"Targeted note is unavailable: {normalized}"
@@ -1753,10 +1801,7 @@ class SemanticSearchService:
                 try:
                     unresolved_path = candidate.resolve(strict=False)
                     unresolved_path.relative_to(resolved_root)
-                    if candidate.is_symlink():
-                        raise TargetedSynchronizationError(
-                            f"Targeted note is inaccessible: {normalized}"
-                        )
+                    SemanticSearchService._verify_missing_target(resolved_root, relative_path)
                 except TargetedSynchronizationError:
                     raise
                 except (OSError, ValueError) as exc:
@@ -1777,17 +1822,25 @@ class SemanticSearchService:
         *,
         files: Sequence[Path],
         vault_root: Path,
-        known: dict[str, StoredNote],
+        known: dict[str, StoredNote] | None,
         cancel_event: threading.Event | None,
         strict_reads: bool = False,
+        _session=None,
     ) -> tuple[int, int]:
         self._validate_source_root(vault_root)
+        vault = VaultService(vault_root=vault_root, max_note_bytes=self.max_note_bytes)
         indexed = unchanged = 0
         for file_batch in batched(files, self.index_batch_size):
             self._raise_if_cancelled(cancel_event)
-            with self.repository.transaction() as session:
+            with (nullcontext(_session) if _session is not None else self.repository.transaction()) as session:
                 for path in file_batch:
                     relative_path = str(path.relative_to(vault_root)).replace("\\", "/")
+                    self._raise_if_cancelled(cancel_event)
+                    # A discovered spelling is only scan evidence. Recheck the
+                    # canonical target, containment, exclusion and size on use.
+                    files_now, missing = self._target_files(vault_root, self.max_note_bytes, (relative_path,))
+                    if missing or files_now != [path]:
+                        raise TargetedSynchronizationError("Synchronization note changed")
                     try:
                         stat = path.stat()
                     except OSError as exc:
@@ -1796,7 +1849,7 @@ class SemanticSearchService:
                                 f"Targeted note could not be inspected: {relative_path}"
                             ) from exc
                         raise
-                    previous = known.get(relative_path)
+                    previous = known.get(relative_path) if known is not None else session.get_note(relative_path)
                     if (
                         previous
                         and previous.mtime_ns == stat.st_mtime_ns
@@ -1806,13 +1859,23 @@ class SemanticSearchService:
                         continue
 
                     try:
-                        digest = self._sha256(path)
-                    except OSError as exc:
+                        # Canonical spelling was established at admission and
+                        # rechecked above. Use bounded inode facts rather than
+                        # the reader's default exact-spelling sibling scans.
+                        fact = vault._bounded_path_fact(relative_path)
+                        note_text = vault.read_verified_markdown_snapshot(relative_path, fact=fact).content
+                        current = path.stat()
+                        if (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns) != (
+                            current.st_dev, current.st_ino, current.st_size, current.st_mtime_ns,
+                        ):
+                            raise TargetedSynchronizationError("Synchronization note changed during read")
+                        digest = hashlib.sha256(note_text.encode("utf-8")).hexdigest()
+                    except (UnicodeDecodeError, OSError, VaultServiceError) as exc:
                         if strict_reads:
                             raise TargetedSynchronizationError(
                                 f"Targeted note could not be read: {relative_path}"
                             ) from exc
-                        raise
+                        continue
                     if previous and previous.sha256 == digest:
                         session.update_note_metadata(
                             path=relative_path,
@@ -1820,16 +1883,6 @@ class SemanticSearchService:
                             size=stat.st_size,
                         )
                         unchanged += 1
-                        continue
-
-                    try:
-                        with path.open("r", encoding="utf-8", newline="") as note_file:
-                            note_text = note_file.read()
-                    except (UnicodeDecodeError, OSError) as exc:
-                        if strict_reads:
-                            raise TargetedSynchronizationError(
-                                f"Targeted note could not be read: {relative_path}"
-                            ) from exc
                         continue
 
                     chunks = self._chunk_markdown(path.stem, note_text)
@@ -1875,233 +1928,318 @@ class SemanticSearchService:
         with self._owner_guard(self._configuration_lock):
             vault_root = self.vault_root
             self._validate_source_root(vault_root)
-            return vault_root, self.max_note_bytes
+            return vault_root, self.max_note_bytes, self._sync_configuration_revision
 
-    def _sync_all_locked(
-        self,
-        cancel_event: threading.Event | None,
-        configuration: tuple[Path, int] | None = None,
-    ) -> dict[str, int]:
-        vault_root, max_note_bytes = configuration or self._synchronization_configuration()
-        files = self._eligible_files(vault_root, max_note_bytes)
-        seen = {str(path.relative_to(vault_root)).replace("\\", "/") for path in files}
-
-        with self.repository.transaction() as session:
-            known = session.load_notes()
-
-        removed = 0
-        stale_paths = set(known) - seen
-        for stale_batch in batched(stale_paths, self.index_batch_size):
-            self._raise_if_cancelled(cancel_event)
-            with self.repository.transaction() as session:
-                for stale_path in stale_batch:
-                    session.delete_note(stale_path)
-            removed += len(stale_batch)
-
-        indexed, unchanged = self._index_files(
-            files=files,
-            vault_root=vault_root,
-            known=known,
-            cancel_event=cancel_event,
-        )
-        return {"indexed": indexed, "unchanged": unchanged, "removed": removed}
-
-    def _sync_targets_locked(
-        self,
-        relative_paths: Sequence[str],
-        cancel_event: threading.Event | None,
-        configuration: tuple[Path, int] | None = None,
-    ) -> dict[str, int]:
-        vault_root, max_note_bytes = configuration or self._synchronization_configuration()
-        files, missing_paths = self._target_files(
-            vault_root,
-            max_note_bytes,
-            relative_paths,
-        )
-        with self.repository.transaction() as session:
-            known = session.load_notes()
-        removed = 0
-        for stale_batch in batched(
-            (path for path in missing_paths if path in known),
-            self.index_batch_size,
-        ):
-            self._raise_if_cancelled(cancel_event)
-            with self.repository.transaction() as session:
-                for stale_path in stale_batch:
-                    session.delete_note(stale_path)
-            removed += len(stale_batch)
-        indexed, unchanged = self._index_files(
-            files=files,
-            vault_root=vault_root,
-            known=known,
-            cancel_event=cancel_event,
-            strict_reads=True,
-        )
-        return {"indexed": indexed, "unchanged": unchanged, "removed": removed}
-
-    def _run_synchronization_locked(
-        self,
-        operation: Callable[[], dict[str, int]],
-        *,
-        operation_name: str,
-        record_full_sync: bool = False,
-    ) -> dict[str, int]:
-        initial_state = self._initialize_state(create_storage=True)
-        with self._owner_guard(self._availability_lock):
-            search_available = self._search_available
-        self._set_search_available(search_available or initial_state is IndexState.READY)
-        self._persist_state(IndexState.INDEXING)
-        started_at = time.perf_counter()
-        event_prefix = "semantic_sync" if operation_name == "full" else "targeted_reindex"
+    def _sync_event(self, work, suffix, *, error=None):
+        prefix = "semantic_sync" if work.full else "targeted_reindex"
         log_event(
-            logger,
-            logging.INFO,
-            f"{event_prefix}_started",
-            "Semantic synchronization started",
-            operation=operation_name,
-            index_state=IndexState.INDEXING,
+            logger, logging.ERROR if suffix == "failed" else logging.INFO,
+            f"{prefix}_{suffix}", f"Semantic synchronization {suffix}",
+            operation="full" if work.full else "targeted",
+            index_state=(IndexState.READY if suffix == "completed" else
+                         IndexState.INDEXING if suffix == "started" else IndexState.ERROR),
+            indexed_notes=work.counts["indexed"], unchanged_notes=work.counts["unchanged"],
+            removed_notes=work.counts["removed"],
+            duration_ms=round((time.perf_counter() - work.started_at) * 1000, 3),
+            error_type=type(error).__name__ if error is not None else None,
         )
-        try:
-            result = operation()
-            if record_full_sync:
-                self.repository.finalize_full_sync_success(
-                    last_successful_sync=datetime.now(timezone.utc).isoformat(
-                        timespec="seconds"
-                    ),
-                    ready_state=IndexState.READY.value,
-                )
-            else:
-                self._persist_state(IndexState.READY)
-        except SynchronizationCancelledError as exc:
-            try:
-                self._persist_state(IndexState.ERROR)
-            except Exception:
-                pass
-            log_event(
-                logger,
-                logging.INFO,
-                f"{event_prefix}_cancelled",
-                "Semantic synchronization was cancelled",
-                operation=operation_name,
-                duration_ms=round((time.perf_counter() - started_at) * 1000, 3),
-                index_state=IndexState.ERROR,
-                error_type=type(exc).__name__,
-            )
-            raise
-        except Exception as exc:
-            try:
-                self._persist_state(IndexState.ERROR)
-            except Exception:
-                pass
-            log_event(
-                logger,
-                logging.ERROR,
-                f"{event_prefix}_failed",
-                "Semantic synchronization failed",
-                exc_info=(type(exc), exc, exc.__traceback__),
-                operation=operation_name,
-                duration_ms=round((time.perf_counter() - started_at) * 1000, 3),
-                index_state=IndexState.ERROR,
-                error_type=type(exc).__name__,
-            )
-            raise
-
-        self._set_search_available(True)
-        log_event(
-            logger,
-            logging.INFO,
-            f"{event_prefix}_completed",
-            "Semantic synchronization completed",
-            operation=operation_name,
-            indexed_notes=result["indexed"],
-            unchanged_notes=result["unchanged"],
-            removed_notes=result["removed"],
-            duration_ms=round((time.perf_counter() - started_at) * 1000, 3),
-            index_state=IndexState.READY,
-        )
-        return result
 
     @contextmanager
-    def _sync_guard(self):
+    def _sync_guard(self, check=None):
         resource = self._shared_resource
-        if resource is None:
+        if resource is None and check is None:
             with self._sync_lock:
                 yield
             return
-        resource.check_cancelled()
+        check = check or resource.check_cancelled
+        check()
         while not self._sync_lock.acquire(timeout=0.05):
-            resource.check_cancelled()
+            check()
         try:
-            resource.check_cancelled()
+            check()
             yield
         finally:
             self._sync_lock.release()
 
-    @_embedding_pipeline
-    def sync(self, cancel_event: threading.Event | None = None) -> dict[str, int]:
-        """Index only new/changed notes and remove deleted notes."""
-        with self._sync_guard():
-            configuration = self._synchronization_configuration() if self._shared_resource is not None else None
-            self._resolve_index_signature(persist_failure=True)
-            self._validate_backend_before_destructive_prepare(persist_failure=True)
-            return self._run_synchronization_locked(
-                lambda: self._sync_all_locked(cancel_event, configuration),
-                operation_name="full",
-                record_full_sync=True,
-            )
+    @contextmanager
+    def _sync_admission(self, cancel_event):
+        """Track synchronization until all owned resources have unwound.
 
-    @_embedding_pipeline
-    def rebuild(self, cancel_event: threading.Event | None = None) -> dict[str, int]:
-        """Discard derived semantic state and rebuild it from the Markdown vault."""
-        with self._sync_guard():
-            configuration = self._synchronization_configuration() if self._shared_resource is not None else None
-            self._resolve_index_signature(persist_failure=True)
-            self._validate_backend_before_destructive_prepare(persist_failure=True)
-            if self._shared_resource is None:
-                # Keep the established standalone reset/lock order.
-                self._set_search_available(False)
-                self.repository.reset_index(self.index_signature, IndexState.UNINITIALIZED.value)
-            with self._owner_guard(self._state_init_lock):
-                if self._shared_resource is not None:
-                    self._check_compatibility_invalidation()
-                    self._set_search_available(False)
-                    self.repository.reset_index(self.index_signature, IndexState.UNINITIALIZED.value)
-                self._state_initialized = True
-            return self._run_synchronization_locked(
-                lambda: self._sync_all_locked(cancel_event, configuration),
-                operation_name="full",
-                record_full_sync=True,
-            )
+        Close fences admission and signals these tokens without waiting under
+        an owner/resource lock. A yielded continuation has no admitted operation.
+        """
+        cancelled, done = threading.Event(), threading.Event()
+        with self._sync_admin_lock:
+            if self._sync_closed:
+                raise ValueError("Synchronization owner is closed")
+            self._sync_operations[cancelled] = done
 
-    @_embedding_pipeline
-    def sync_paths(
-        self,
-        relative_paths: Sequence[str],
+        def check():
+            self._raise_if_cancelled(cancel_event)
+            self._raise_if_cancelled(cancelled)
+
+        try:
+            yield check
+        finally:
+            with self._sync_admin_lock:
+                del self._sync_operations[cancelled]
+                done.set()
+
+    @contextmanager
+    def _sync_preparation(self, check):
+        """Linearize a destructive SQLite boundary against owner's close fence.
+
+        Signature/backend work and owner-lock acquisition precede this guard.
+        Only the current non-interruptible storage boundary holds the fence.
+        """
+        if check is None:
+            yield
+            return
+        with self._sync_admin_lock:
+            check()
+            yield
+
+    def begin_sync(
+        self, *, relative_paths: Iterable[str] | None = None, rebuild: bool = False,
         cancel_event: threading.Event | None = None,
-    ) -> dict[str, int]:
-        """Refresh only the supplied vault-relative Markdown paths."""
-        self._validate_source_root(self.vault_root)
-        paths = tuple(sorted(set(relative_paths)))
-        if not paths:
-            return {"indexed": 0, "unchanged": 0, "removed": 0}
+    ) -> SyncContinuation:
+        """Reserve this owner for an internal resumable sync, without scanning.
 
+        Only one continuation may own progress. Call sync_step until complete,
+        or cancel_sync to abandon it. Yielded handles hold no generation pin.
+        Exceptions during a step terminalize its handle and retain committed data.
+        """
+        if not self._indexing_enabled:
+            raise SemanticSearchUnavailableError("Semantic index is unavailable")
+        with self._sync_admission(cancel_event) as check:
+            work = None
+            try:
+                check()
+                with self._embedding_operation(check):
+                    work = self._prepare_sync(relative_paths=relative_paths, rebuild=rebuild, check=check)
+                return work.handle
+            except BaseException as error:
+                if work is not None and self._active_sync is work:
+                    self._fail_sync(work, error)
+                raise
+
+    def _prepare_sync(self, *, relative_paths, rebuild, check):
+        self._validate_source_root(self.vault_root)
         with self._sync_guard():
-            configuration = self._synchronization_configuration() if self._shared_resource is not None else None
+            check()
+            if self._sync_closed or self._active_sync is not None:
+                raise ValueError("Synchronization owner is closed or already reserved")
+            configuration = self._synchronization_configuration()
+            # Root loss must be detected before signature preparation/reset.
+            from app.services.semantic_sync import directory_identity
+
+            root = configuration[0].resolve(strict=True)
+            directory_identity(root)
             self._resolve_index_signature(persist_failure=True)
             self._validate_backend_before_destructive_prepare(persist_failure=True)
-            initial_state = self._initialize_state(create_storage=True)
-            with self._owner_guard(self._availability_lock):
-                search_available = self._search_available
-            if not search_available and initial_state is not IndexState.READY:
-                return self._run_synchronization_locked(
-                    lambda: self._sync_all_locked(cancel_event, configuration),
-                    operation_name="full",
-                    record_full_sync=True,
-                )
-            return self._run_synchronization_locked(
-                lambda: self._sync_targets_locked(paths, cancel_event, configuration),
-                operation_name="targeted",
-            )
+            check()
+            with self._owner_guard(self._configuration_lock):
+                if configuration != (self.vault_root, self.max_note_bytes, self._sync_configuration_revision):
+                    raise ValueError("Synchronization configuration changed during preparation")
+                if rebuild:
+                    signature = self.index_signature
+                    with self._owner_guard(self._state_init_lock):
+                        with self._owner_guard(self._availability_lock):
+                            with self._sync_preparation(check):
+                                self._check_compatibility_invalidation()
+                                self._search_available = False
+                                self._persisted_read_only_search = False
+                                self._persisted_read_only_basis = None
+                                self._full_sync_required = True
+                                self.repository.reset_index(signature, IndexState.UNINITIALIZED.value)
+                                self._state_initialized = True
+                initial_state = self._initialize_state(create_storage=True, _sync_check=check)
+                with self._owner_guard(self._availability_lock):
+                    available = self._search_available
+                self._set_search_available(available or initial_state is IndexState.READY)
+                # On restart ERROR/INDEXING cannot prove full reconciliation. A live
+                # targeted retry may use its preserved searchable previous index.
+                full = (relative_paths is None or rebuild or self._full_sync_required
+                        or (not available and initial_state is not IndexState.READY))
+                check()
+                work = SyncWork(self, paths=relative_paths, full=full)
+                try:
+                    with self._sync_admin_lock:
+                        check()
+                        self._persist_state(IndexState.INDEXING)
+                        self._active_sync = work
+                        if full:
+                            self._full_sync_required = True
+                except BaseException:
+                    work.close()
+                    raise
+                self._sync_event(work, "started")
+                return work
+
+    def _sync_work(self, handle):
+        work = self._active_sync
+        if (self._sync_closed or work is None or handle is not work.handle
+                or handle.state is not SyncStepState.INCOMPLETE):
+            raise ValueError("Invalid or inactive synchronization continuation")
+        return work
+
+    def _end_sync(self, work, state, *, error=None):
+        work.handle._state = state
+        self._active_sync = None
+        try:
+            work.close()
+        finally:
+            self._sync_event(work, "completed" if state is SyncStepState.COMPLETE else
+                             "cancelled" if state is SyncStepState.CANCELLED else "failed",
+                             error=error)
+
+    def _fail_sync(self, work, error):
+        # Never prepare/repair or write a rebound index while reporting failure.
+        try:
+            work.validate_storage(self)
+            self._persist_state(IndexState.ERROR)
+        except Exception:
+            pass
+        self._end_sync(work, SyncStepState.CANCELLED if isinstance(
+            error, SynchronizationCancelledError) else SyncStepState.FAILED, error=error)
+
+    def sync_step(
+        self, handle: SyncContinuation, cancel_event: threading.Event | None = None,
+        *, discovery_budget: int = 256,
+    ) -> SyncStep:
+        """Run one finite phase turn; return cumulative *durable* counts.
+
+        Discovery consumes at most discovery_budget entries/directory operations.
+        Processing and metadata reconciliation each touch at most index_batch_size
+        notes. Only COMPLETE denotes successful synchronization. Cancellation and
+        failure raise their existing exception and terminalize handle.state.
+        """
+        if type(discovery_budget) is not int or not 1 <= discovery_budget <= 4096:
+            raise ValueError("discovery_budget must be an integer in 1..4096")
+        # Identity rejection precedes generation admission and any storage work.
+        work = self._sync_work(handle)
+        with self._sync_admission(cancel_event) as admitted_check:
+            if not work.turn_lock.acquire(blocking=False):
+                raise ValueError("Synchronization continuation is already executing")
+            def check():
+                admitted_check()
+                self._raise_if_cancelled(work.cancel_event)
+            try:
+                check()
+                self._sync_work(handle)
+                with self._embedding_operation(check, expected=work.generation):
+                    with self._sync_guard(check):
+                        self._sync_work(handle)
+                        check()
+                        with self._owner_guard(self._configuration_lock, check):
+                            work.validate(self)
+                            with work.spool() as connection:
+                                if work.phase == "discover":
+                                    work.discover(self, connection, discovery_budget, check)
+                                elif work.phase == "targets":
+                                    work.admit_targets(self, connection, discovery_budget, check)
+                                elif work.phase == "process":
+                                    work.process(self, connection, check, cancel_event)
+                                elif work.phase == "stale":
+                                    work.reconcile(self, connection, check)
+                            check()
+                            if work.phase == "finish":
+                                # Dispose the scan before publishing success. A
+                                # cleanup failure cannot produce a successful sync.
+                                work.close()
+                                # Acquire cancellable owner locks *before* the final
+                                # non-interruptible commit. Late cancellation cannot
+                                # reclassify that completed commit as cancellation.
+                                with self._owner_guard(self._availability_lock, check):
+                                    check()
+                                    self._check_compatibility_invalidation()
+                                    if work.full:
+                                        self.repository.finalize_full_sync_success(
+                                            last_successful_sync=datetime.now(timezone.utc).isoformat(
+                                                timespec="seconds"), ready_state=IndexState.READY.value,
+                                        )
+                                        self._full_sync_required = False
+                                    else:
+                                        self._persist_state(IndexState.READY)
+                                    self._search_available = True
+                                    self._persisted_read_only_search = False
+                                    self._persisted_read_only_basis = None
+                                    self._end_sync(work, SyncStepState.COMPLETE)
+                            return work.result()
+            except BaseException as error:
+                # The turn reservation excludes competing steps and cancellation
+                # cleanup. Do not wait again on the very owner lock just cancelled.
+                if self._active_sync is work:
+                    self._fail_sync(work, error)
+                raise
+            finally:
+                work.turn_lock.release()
+
+    def cancel_sync(self, handle: SyncContinuation) -> None:
+        """Abandon remaining work, waiting only for the active safe boundary."""
+        work = self._sync_work(handle)
+        work.cancel_event.set()
+        with work.turn_lock:
+            if self._active_sync is work:
+                self._fail_sync(work, SynchronizationCancelledError("Synchronization cancelled"))
+
+    def close_synchronization(self) -> None:
+        """Fence admission, drain preparation/active turns, discard remaining work."""
+        with self._sync_admin_lock:
+            self._sync_closed = True
+            operations = tuple(self._sync_operations.items())
+            for cancelled, _ in operations:
+                cancelled.set()
+            work = self._active_sync
+            if work is not None:
+                work.cancel_event.set()
+        # Completion signals follow resource-context exit, including pin/lease
+        # cleanup. No owner/admin lock is held while a backend call drains.
+        for _, done in operations:
+            done.wait()
+        work = self._active_sync
+        if work is not None:
+            with work.turn_lock:
+                if self._active_sync is work:
+                    self._fail_sync(work, SynchronizationCancelledError("Owner closed"))
+
+    def _drive_sync(self, *, relative_paths=None, rebuild=False, cancel_event=None):
+        if not self._indexing_enabled:
+            raise SemanticSearchUnavailableError("Semantic index is unavailable")
+        # Whole-operation legacy serialization is outside generation/turn locks.
+        # A queued shared caller owns no pin or backend lease while it waits.
+        with self._sync_admission(cancel_event) as check:
+            try:
+                check()
+                with self._owner_guard(self._legacy_sync_lock, check if self._shared_resource is not None else None):
+                    check()
+                    handle = self.begin_sync(relative_paths=relative_paths, rebuild=rebuild, cancel_event=cancel_event)
+                    while True:
+                        result = self.sync_step(handle, cancel_event)
+                        if result.state is SyncStepState.COMPLETE:
+                            return result.counts()
+            except ValueError:
+                # Close may fence a nested turn between the yielded turns.
+                check()
+                raise
+
+    def sync(self, cancel_event: threading.Event | None = None) -> dict[str, int]:
+        """Drive bounded full synchronization to genuine completion."""
+        return self._drive_sync(cancel_event=cancel_event)
+
+    def rebuild(self, cancel_event: threading.Event | None = None) -> dict[str, int]:
+        """Discard derived state and drive the production full-sync path."""
+        return self._drive_sync(rebuild=True, cancel_event=cancel_event)
+
+    def sync_paths(
+        self, relative_paths: Sequence[str], cancel_event: threading.Event | None = None,
+    ) -> dict[str, int]:
+        """Drive bounded targeted work (or required full recovery) to completion."""
+        if self._indexing_enabled:
+            self._validate_source_root(self.vault_root)
+        if not relative_paths:
+            return {"indexed": 0, "unchanged": 0, "removed": 0}
+        return self._drive_sync(relative_paths=relative_paths, cancel_event=cancel_event)
 
     def _rank_chunks(
         self, text: str, query: np.ndarray, chunks, *, min_score: float,

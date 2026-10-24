@@ -22,6 +22,7 @@ from app.services.semantic_search import (
     TargetedSynchronizationError,
     build_embedding_fingerprint,
 )
+from app.services.vault import VaultService
 
 TEST_EMBEDDING_FINGERPRINT = "embedding-v1:" + ("0" * 64)
 
@@ -708,15 +709,14 @@ def test_targeted_read_oserror_requeues_and_preserves_previous_index(tmp_path, m
     original_chunks = service.repository.load_chunks()
     note.write_text("Navidrome replacement content.", encoding="utf-8")
 
-    original_open = Path.open
+    original_read = VaultService.read_verified_markdown_snapshot
 
-    def fail_note_read(path, *args, **kwargs):
-        mode = args[0] if args else kwargs.get("mode", "r")
-        if path == note and mode == "r":
+    def fail_note_read(vault, path, **kwargs):
+        if vault.vault_root / path == note:
             raise OSError("simulated targeted read failure")
-        return original_open(path, *args, **kwargs)
+        return original_read(vault, path, **kwargs)
 
-    monkeypatch.setattr(Path, "open", fail_note_read)
+    monkeypatch.setattr(VaultService, "read_verified_markdown_snapshot", fail_note_read)
     indexer = BackgroundSemanticIndexer(service.sync, service.sync_paths)
     try:
         assert indexer.enqueue("note.md") is True
@@ -727,7 +727,7 @@ def test_targeted_read_oserror_requeues_and_preserves_previous_index(tmp_path, m
         assert service.search("TrueNAS", min_score=0.0)
         assert indexer.queued_paths == ("note.md",)
 
-        monkeypatch.setattr(Path, "open", original_open)
+        monkeypatch.setattr(VaultService, "read_verified_markdown_snapshot", original_read)
         assert indexer.enqueue("note.md") is False
         assert indexer.wait(timeout=2) == {"indexed": 1, "unchanged": 0, "removed": 0}
         assert service.repository.load_chunks()[0].content == "Navidrome replacement content."
