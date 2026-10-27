@@ -39,6 +39,8 @@ class _Observer(Protocol):
 
     def is_alive(self) -> bool: ...
 
+    def unschedule_all(self) -> None: ...
+
 
 class FilesystemEventInterpreter:
     """Translate watchdog events into safe vault-relative Markdown paths."""
