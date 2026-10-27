@@ -248,10 +248,36 @@ def test_original_runtime_thread_death_cannot_remain_healthy(tmp_path, monkeypat
     monkeypatch.setattr(module, "ROOT_VALIDATION_INTERVAL_SECONDS", 0.05)
     resource, _ = shared
     with rig(tmp_path, 2, real=True, resource=resource) as r:
+        peer = r.bindings["space-1"]
+        peer_owner = r.owners["space-1"]
+        (peer_owner.vault_root / "existing.md").write_text("healthy peer", encoding="utf-8")
         r.scheduler.start(startup=True)
         r.scheduler.wait(15)
         use_production_observer(r)
         r.watcher.start()
+        # Scheduler startup preceded native coverage. Establish the generation's
+        # actual post-attachment reconciliation before injecting runtime death.
+        r.complete_native_startup()
+        peer_entry = r.scheduler._owners[peer.space_id]
+
+        def peer_revisions():
+            return (peer_entry.monitoring_revision, peer_entry.monitoring_failure_revision,
+                    peer_entry.coverage_revision, peer_entry.coverage_restored,
+                    peer_entry.coverage_reconciled, peer_entry.watcher_verified)
+
+        with r.scheduler._condition:
+            baseline = peer_revisions()
+            assert not r.scheduler.status(peer).requires_full_sync
+            assert not r.scheduler.status(peer).running
+            assert peer_entry.coverage_reconciled == peer_entry.coverage_revision
+        peer_begin, peer_fulls = peer_owner.begin_sync, [0]
+
+        def counted_peer_begin(*, relative_paths, cancel_event):
+            if relative_paths is None:
+                peer_fulls[0] += 1
+            return peer_begin(relative_paths=relative_paths, cancel_event=cancel_event)
+
+        monkeypatch.setattr(peer_owner, "begin_sync", counted_peer_begin)
         owner, binding = r.owners["default"], r.bindings["default"]
         observer = r.watcher._observer
         emitter = next(e for e in observer.emitters if e.watch.path == str(owner.vault_root))
@@ -285,10 +311,19 @@ def test_original_runtime_thread_death_cannot_remain_healthy(tmp_path, monkeypat
         assert detected and status.monitoring_recovering and status.requires_full_sync
         assert status.monitoring_error_type == ("NativeProducerUnavailable" if component == "emitter"
                                                 else "NativeObserverUnavailable")
-        peer = r.bindings["space-1"]
         if component == "emitter":
-            assert not r.scheduler.status(peer).requires_full_sync
+            with r.scheduler._condition:
+                assert peer_revisions() == baseline
+                assert not r.scheduler.status(peer).requires_full_sync
+                assert not r.scheduler.status(peer).monitoring_failed
+            assert peer_fulls[0] == 0  # Catch even a spurious full that already completed.
             native_write_after_dispatch(r, "space-1", "peer.md", monkeypatch)
+            r.advance(10)
+            r.delivered()
+            r.scheduler.wait(15)
+            assert {c.path for c in peer_owner.repository.load_chunks()} == {"existing.md", "peer.md"}
+            assert peer_fulls[0] == 0
+            print(f"peer isolated: revisions={baseline[:5]}, full_starts=0, SQLite=existing.md,peer.md")
         else:
             assert r.scheduler.status(peer).monitoring_failed
         revision = r.scheduler._owners[binding.space_id].monitoring_revision
@@ -301,7 +336,7 @@ def test_original_runtime_thread_death_cannot_remain_healthy(tmp_path, monkeypat
         assert not reader.is_alive() and reader._inotify._resources_closed
         use_production_observer(r)
         r.watcher.start()
-        r.scheduler.wait(15)
+        r.complete_native_startup()
         assert not r.scheduler.status(binding).requires_full_sync
         assert not r.scheduler.status(peer).requires_full_sync
 

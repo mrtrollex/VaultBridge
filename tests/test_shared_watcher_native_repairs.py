@@ -4,6 +4,8 @@ import errno
 import importlib
 import sys
 import threading
+import time
+from collections import deque
 from pathlib import Path
 
 import pytest
@@ -74,6 +76,49 @@ def test_original_idle_9000_directory_registration_converges(tmp_path, monkeypat
     observed = threading.Condition()
     parse = _BoundedInotify._parse_event_buffer
     inject, injected, restored = threading.Event(), threading.Event(), threading.Event()
+    progress = dict(received=False, retiring=False, retired=False, walking=False, walked=False,
+                    registered=0, submitted=False, fenced=False, callback=False)
+    trace = deque(maxlen=12)
+    epoch = time.monotonic()
+
+    def mark(stage):
+        with observed:
+            progress[stage] = True
+            trace.append((stage, round(time.monotonic() - epoch, 3)))
+            observed.notify_all()
+
+    add, walk = _BoundedInotify._add_watch, _BoundedInotify._add_dir_watch
+    retire, fence = _BoundedInotify._retire_coverage, _BoundedInotify._queue_coverage_fence
+
+    def registered(reader, *args):
+        result = add(reader, *args)
+        if injected.is_set():
+            progress["registered"] += 1
+            if progress["registered"] % 256 == 0:
+                with observed:
+                    observed.notify_all()
+        return result
+
+    def walked(reader, *args, **kwargs):
+        recovering = injected.is_set()
+        if recovering:
+            mark("walking")
+        result = walk(reader, *args, **kwargs)
+        if recovering:
+            mark("walked")
+        return result
+
+    def retired(reader):
+        mark("retiring")
+        result = retire(reader)
+        mark("retired")
+        return result
+
+    def submitted(reader):
+        result = fence(reader)
+        if injected.is_set():
+            mark("submitted")
+        return result
 
     def counted(reader, data):
         nonlocal overflows
@@ -83,12 +128,20 @@ def test_original_idle_9000_directory_registration_converges(tmp_path, monkeypat
                     overflows += 1
                     observed.notify_all()
             if inject.is_set() and not injected.is_set() and record[3] == b"restore":
+                mark("received")
                 injected.set()
                 yield -1, InotifyConstants.IN_Q_OVERFLOW, 0, b""
                 continue
+            if (injected.is_set() and record[0] == reader._fence_wd
+                    and record[1] & InotifyConstants.IN_IGNORED):
+                mark("fenced")
             yield record
 
     monkeypatch.setattr(_BoundedInotify, "_parse_event_buffer", counted)
+    monkeypatch.setattr(_BoundedInotify, "_add_watch", registered)
+    monkeypatch.setattr(_BoundedInotify, "_add_dir_watch", walked)
+    monkeypatch.setattr(_BoundedInotify, "_retire_coverage", retired)
+    monkeypatch.setattr(_BoundedInotify, "_queue_coverage_fence", submitted)
     resource, _ = shared
     with rig(tmp_path, 1, real=True, resource=resource) as r:
         begin = r.owners["default"].begin_sync
@@ -115,19 +168,63 @@ def test_original_idle_9000_directory_registration_converges(tmp_path, monkeypat
         assert overflows == 0
         assert full_starts == 1  # Matching first-attachment reconciliation is now mandatory.
         assert not r.scheduler.status(r.bindings["default"]).requires_full_sync
-        native = next(iter(r.watcher._observer.emitters))._inotify._inotify
+        emitter = next(iter(r.watcher._observer.emitters))
+        native = emitter._inotify._inotify
         assert not native.event_mask & (InotifyConstants.IN_OPEN | InotifyConstants.IN_CLOSE_NOWRITE)
         callback = native._restored
 
         def covered(ticket):
             callback(ticket)
+            mark("callback")
             restored.set()
 
         native._restored = covered
         startup_starts = full_starts
         inject.set()
         (root / "restore").mkdir()  # Lose its actual native directory-create record.
-        assert restored.wait(15) and injected.is_set()
+        reader = emitter._inotify
+        entry = r.scheduler._owners[r.bindings["default"].space_id]
+
+        def diagnostics():
+            import array
+            import fcntl
+            import termios
+
+            pending = array.array("i", [0])
+            try:
+                fcntl.ioctl(native._inotify_fd, termios.FIONREAD, pending, True)
+                pending_bytes = pending[0]
+            except OSError as error:
+                pending_bytes = f"errno={error.errno}"
+            return dict(progress, injected=injected.is_set(), kernel_pending_bytes=pending_bytes,
+                        reader_alive=reader.is_alive(), reader_failure=reader.failure_type,
+                        emitter_alive=emitter.is_alive(), observer_alive=r.watcher._observer.is_alive(),
+                        reading=native._is_reading, sync_error=entry.error_type,
+                        monitoring_error=entry.monitoring_error_type,
+                        watches=len(native._path_for_wd), pending=native._coverage_pending,
+                        revisions=(entry.coverage_revision, entry.coverage_restored, entry.coverage_reconciled),
+                        trace=list(trace))
+
+        # The 9,002 real registrations compete with E3's full traversal. A fixed
+        # end-to-end 15s deadline confuses slow progress with missing coverage.
+        # Keep that strict no-progress limit (including a missing event/fence/
+        # callback), plus a hard 60s convergence ceiling. E4 activity alone is
+        # never progress and neither progress nor elapsed time certifies coverage.
+        deadline = time.monotonic() + 60
+        last_progress, previous = time.monotonic(), None
+        with observed:
+            while not (restored.is_set() and not native._coverage_pending):
+                now = time.monotonic()
+                current = (*progress.values(), injected.is_set(), len(native._path_for_wd))
+                if current != previous:
+                    last_progress, previous = now, current
+                assert reader.is_alive() and reader.failure_type is None, diagnostics()
+                assert now < deadline and now - last_progress < 15, diagnostics()
+                observed.wait(0.05)
+        assert injected.is_set() and all(progress[k] for k in progress if k != "registered"), diagnostics()
+        assert progress["registered"] == 9002, diagnostics()
+        assert entry.coverage_restored == entry.coverage_revision, diagnostics()
+        print(f"native restoration: {diagnostics()}")
         r.scheduler.wait(30)
         starts = full_starts
         with observed:
@@ -137,6 +234,9 @@ def test_original_idle_9000_directory_registration_converges(tmp_path, monkeypat
         assert 1 <= starts - startup_starts <= 2  # Preserve the bounded recovery-turn allowance.
         assert not r.scheduler.status(r.bindings["default"]).requires_full_sync
         assert bytes(root / "restore") in native._wd_for_path
+        assert sum(line.startswith("inotify wd:") for line in
+                   Path(f"/proc/self/fdinfo/{native._inotify_fd}").read_text().splitlines()) == 9002
+        assert entry.coverage_reconciled == entry.coverage_revision
         print(f"after forced restoration: native_overflows={overflows}, full_starts={starts}, recovered=True")
 
 
