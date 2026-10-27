@@ -39,6 +39,13 @@ class SchedulerStatus:
     paused: bool
     error_type: str | None
     progress: SyncStep | None
+    monitoring_error_type: str | None = None
+    active_watcher_callbacks: int = 0
+    monitoring_recovering: bool = False
+
+    @property
+    def monitoring_failed(self) -> bool:
+        return self.monitoring_error_type is not None
 
 
 @dataclass
@@ -50,6 +57,8 @@ class _Owner:
     cancel: threading.Event = field(default_factory=threading.Event)
     pending: set[str] = field(default_factory=set)
     inflight: set[str] = field(default_factory=set)
+    deferred: dict[str, float] = field(default_factory=dict)
+    debounce_revision: int = 0
     continuation: SyncContinuation | None = None
     full_needed: bool = False
     full_again: bool = False
@@ -59,6 +68,15 @@ class _Owner:
     wake_pending: bool = False
     error_type: str | None = None
     progress: SyncStep | None = None
+    monitoring_error_type: str | None = None
+    monitoring_revision: int = 0
+    monitoring_failure_revision: int = 0
+    watcher_verified: tuple[object, int] | None = None
+    watcher_callbacks: int = 0
+    coverage_revision: int = 0
+    coverage_restored: int = 0
+    coverage_reconciled: int = 0
+    full_coverage: tuple[object, int] | None = None
 
 
 class SharedSemanticScheduler:
@@ -78,6 +96,9 @@ class SharedSemanticScheduler:
         self._total = 0
         self._last_id = None
         self._closed = False
+        self._shutdown_started = False
+        self._watcher_token = None
+        self._watcher_accepting = False
         self._stopped = threading.Event()
         self._executor = None
         self._future = None
@@ -150,12 +171,7 @@ class SharedSemanticScheduler:
             self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="vaultbridge-shared-sync")
             self._future = self._executor.submit(self._run)
 
-    def enqueue(self, binding: AuthorizedSpaceBinding, path: QualifiedPath) -> bool:
-        """Admit one qualified identity; overflow is acknowledged as full debt.
-
-        False means duplicate, overflow, or closed admission. Full debt is visible
-        through status(). No iterable is copied before applying the hard limits.
-        """
+    def _canonical_entry(self, binding, path):
         entry = self._entry(binding)  # Authorization precedes path/owner access.
         if type(path) is not QualifiedPath or path.space_id != binding.space_id:
             raise SpaceError("invalid_scope")
@@ -165,7 +181,7 @@ class SharedSemanticScheduler:
             raise SpaceError("invalid_scope")
         with self._condition:
             if self._closed:
-                return False
+                return entry, None
         # Filesystem probes never hold the dispatcher/queue lock. E3 revalidates
         # containment, ordinary absence, size and identities before any mutation.
         self._validate_owner(entry)
@@ -175,24 +191,147 @@ class SharedSemanticScheduler:
         if (PurePosixPath(canonical).suffix.lower() != ".md"
                 or any(p in SEMANTIC_EXCLUDED_DIRECTORIES for p in PurePosixPath(canonical).parts)):
             raise SpaceError("invalid_scope")
+        return entry, canonical
+
+    @staticmethod
+    def _identities(entry):
+        return entry.pending | entry.inflight | entry.deferred.keys()
+
+    def _admit(self, entry, canonical):
+        # All three stages share ONE reservation under the scheduler condition.
+        if canonical not in self._identities(entry):
+            if self._total >= GLOBAL_TARGET_LIMIT or len(self._identities(entry)) >= SPACE_TARGET_LIMIT:
+                self._request_full(entry)
+                self._wake(entry)
+                return False
+            self._total += 1
+        return True
+
+    def enqueue(self, binding: AuthorizedSpaceBinding, path: QualifiedPath) -> bool:
+        """Admit one identity; False denotes duplicate, overflow or closed admission."""
+        entry, canonical = self._canonical_entry(binding, path)
         with self._condition:
             if self._closed:
                 return False
             if canonical in entry.pending:
                 self._wake(entry)
                 return False
-            # In-flight targets remain charged until completion. A concurrent
-            # write to that identity needs follow-up but does not consume a new
-            # distinct-identity slot.
-            if canonical not in entry.inflight:
-                if self._total >= GLOBAL_TARGET_LIMIT or len(entry.pending | entry.inflight) >= SPACE_TARGET_LIMIT:
-                    self._request_full(entry)
-                    self._wake(entry)
-                    return False
-                self._total += 1
+            if not self._admit(entry, canonical):
+                return False
             entry.pending.add(canonical)
+            if entry.deferred.pop(canonical, None) is not None:
+                entry.debounce_revision += 1
             self._wake(entry)
             return True
+
+    def _attach_watcher(self, token):
+        with self._condition:
+            if (self._closed or self._watcher_token is not None
+                    or any(entry.watcher_callbacks for entry in self._owners.values())):
+                raise RuntimeError("Semantic watcher admission is unavailable")
+            self._watcher_token = token
+            self._watcher_accepting = True
+
+    def _debounce(self, token, binding, path, *, deadline):
+        entry = self._entry(binding)
+        with self._condition:
+            revision = entry.debounce_revision
+        entry, canonical = self._canonical_entry(binding, path)
+        with self._condition:
+            if (self._closed or self._watcher_token is not token or not self._watcher_accepting
+                    or entry.monitoring_error_type is not None):
+                return False
+            if canonical not in entry.deferred and revision != entry.debounce_revision:
+                # Validation crossed expiry, direct transfer, cancellation or
+                # full absorption. Do not resurrect an old targeted reservation.
+                # An unrelated identity may have changed the owner revision;
+                # conservative full debt preserves that event without a second
+                # per-path history map. Existing duplicates remain wakeups.
+                self._request_full(entry)
+                self._wake(entry)
+                return False
+            if not self._admit(entry, canonical):
+                return False
+            entry.deferred[canonical] = max(entry.deferred.get(canonical, deadline), deadline)
+            # A duplicate is an explicit recovery trigger, including while a
+            # failed/cancelled turn is publishing its terminal state.
+            self._wake(entry)
+            return True
+
+    def _deliver_debounced(self, token, binding, path, deadline):
+        # No condition held while rechecking root identity and containment.
+        entry, canonical = self._canonical_entry(binding, path)
+        with self._condition:
+            if self._closed or self._watcher_token is not token:
+                return
+            if entry.deferred.get(path.relative_path) != deadline:
+                return  # Updated, directly submitted, cancelled or absorbed.
+            if canonical != path.relative_path:
+                raise SpaceError("unavailable_space")
+            if entry.monitoring_error_type is not None:
+                self._debounce_failed(binding, path, deadline)
+                return
+            entry.pending.add(canonical)
+            del entry.deferred[canonical]  # Atomic transfer; count is unchanged.
+            entry.debounce_revision += 1
+            self._wake(entry)
+
+    def _debounce_failed(self, binding, path, deadline):
+        # Bookkeeping for an already accepted reservation must still complete
+        # if the registry was invalidated. Never access a revoked filesystem or
+        # let one invalid owner kill the other owners' dispatcher.
+        entry = self._owners.get(binding.space_id)
+        if (entry is None or entry.binding._owners is not binding._owners
+                or entry.binding._registry_token is not binding._registry_token):
+            return
+        with self._condition:
+            if entry.deferred.get(path.relative_path) == deadline:
+                before = len(self._identities(entry))
+                del entry.deferred[path.relative_path]
+                entry.debounce_revision += 1
+                self._total += len(self._identities(entry)) - before
+                self._request_full(entry)
+                if not self._closed:
+                    self._wake(entry)
+
+    def _fence_watcher(self, token, bindings=()):
+        with self._condition:
+            if self._watcher_token is token:
+                if self._watcher_accepting:
+                    # Coverage ends BEFORE any producer is stopped. This is
+                    # evidence, not an automatic sync/retry trigger: only a
+                    # verified reconstruction can restore this revision.
+                    for binding in bindings:
+                        entry = self._owners[binding.space_id]
+                        entry.coverage_revision += 1
+                        entry.monitoring_revision += 1
+                        entry.watcher_verified = None
+                self._watcher_accepting = False
+                self._condition.notify_all()
+
+    def _retire_watcher_work(self, token):
+        with self._condition:
+            if self._watcher_token is not token:
+                return
+            for entry in self._owners.values():
+                if entry.deferred:
+                    before = len(self._identities(entry))
+                    entry.deferred.clear()
+                    entry.debounce_revision += 1
+                    self._total += len(self._identities(entry)) - before
+                    self._request_full(entry)
+            self._condition.notify_all()
+
+    def _detach_watcher(self, token):
+        # Caller must have verified native AND dispatcher cleanup. Fencing or
+        # retiring work alone never relinquishes exclusive generation ownership.
+        with self._condition:
+            if self._watcher_token is not token:
+                return
+            self._retire_watcher_work(token)
+            self._watcher_accepting = False
+            self._watcher_token = None
+            self._condition.notify_all()
 
     @staticmethod
     def _request_full(entry):
@@ -226,6 +365,114 @@ class SharedSemanticScheduler:
             self._wake(entry)
             return True
 
+    def _watcher_loss(self, binding, *, token=None):
+        # Ingress callbacks have no filesystem work and retain no event data.
+        # Repeated loss only updates existing E4 flags, including full_again
+        # during an active turn. It cannot hot-retry a paused failed owner.
+        try:
+            entry = self._entry(binding)
+        except SpaceError:
+            return  # Revoked/foreign bindings authorize no work.
+        with self._condition:
+            if token is not None and self._watcher_token is not token:
+                return
+            already_needed = entry.full_needed
+            self._request_full(entry)
+            if not already_needed:
+                self._wake(entry)
+
+    def _watcher_failed(self, binding, error_type, *, token=None):
+        try:
+            entry = self._entry(binding)
+        except SpaceError:
+            return
+        with self._condition:
+            if token is not None and self._watcher_token is not token:
+                return
+            first = entry.monitoring_error_type is None
+            entry.monitoring_error_type = error_type
+            entry.monitoring_revision += 1
+            entry.monitoring_failure_revision = entry.monitoring_revision
+            entry.watcher_verified = None
+            if first:
+                entry.coverage_revision += 1  # Fatal monitoring invalidates coverage, too.
+                self._watcher_loss(binding)
+            self._condition.notify_all()
+
+    def _watcher_gap(self, token, binding, *, reconcile=True):
+        try:
+            entry = self._entry(binding)
+        except SpaceError:
+            return None
+        with self._condition:
+            if self._closed or self._watcher_token is not token or not self._watcher_accepting:
+                return None
+            entry.coverage_revision += 1
+            entry.monitoring_revision += 1
+            if reconcile and self._can_reconcile_coverage(entry):
+                self._watcher_loss(binding)
+            self._condition.notify_all()
+            return entry.coverage_revision, entry.monitoring_failure_revision
+
+    def _watcher_restored(self, token, binding, ticket):
+        try:
+            entry = self._entry(binding)
+        except SpaceError:
+            return
+        if not isinstance(ticket, tuple) or len(ticket) != 2:
+            return
+        revision, failure_revision = ticket
+        with self._condition:
+            if (revision is None or self._closed or self._watcher_token is not token
+                    or not self._watcher_accepting or entry.coverage_revision != revision
+                    or entry.coverage_restored >= revision
+                    or entry.monitoring_failure_revision != failure_revision):
+                return
+            entry.coverage_restored = revision
+            if not self._can_reconcile_coverage(entry):
+                return  # Retain native proof until this generation is verified.
+            # This trigger is ordered AFTER native registration and validation.
+            # If a full turn already began, full_again forces a later full turn;
+            # only that later turn can capture the restored coverage revision.
+            self._request_full(entry)
+            self._wake(entry)
+
+    def _can_reconcile_coverage(self, entry):
+        # Verification is distinct from coverage. A receipt survives legitimate
+        # subtree gaps, but any new fatal failure or shutdown invalidates it.
+        if self._watcher_token is None:
+            return entry.monitoring_error_type is None
+        return entry.watcher_verified == (self._watcher_token, entry.monitoring_failure_revision)
+
+    def _watcher_reconstructed(self, token, binding, snapshot):
+        # Called only after a fresh native Observer and its required producer
+        # are alive. A concurrent failure invalidates that liveness observation.
+        entry = self._entry(binding)
+        with self._condition:
+            revision, failure_revision, coverage_revision = snapshot
+            if (self._closed or self._watcher_token is not token or not self._watcher_accepting
+                    or entry.monitoring_revision < revision
+                    or entry.monitoring_failure_revision != failure_revision):
+                return
+            if entry.watcher_verified == (token, failure_revision):
+                return  # Repeated readiness is not another recovery trigger.
+            entry.watcher_verified = (token, failure_revision)
+            if (entry.monitoring_error_type is not None
+                    or entry.coverage_reconciled != entry.coverage_revision):
+                if entry.coverage_revision == coverage_revision:
+                    # No subtree work in this startup: verified recursive setup
+                    # restores the stopped interval. Otherwise only its matching
+                    # native fence may establish the newer coverage revision.
+                    entry.coverage_revision += 1
+                    entry.monitoring_revision += 1
+                    entry.coverage_restored = entry.coverage_revision
+                if entry.coverage_restored != entry.coverage_revision:
+                    return
+                # Reconstruction is one explicit recovery trigger even when
+                # earlier gap work failed or was cancelled and remains paused.
+                self._request_full(entry)
+                self._wake(entry)
+
     def retry(self, binding: AuthorizedSpaceBinding) -> bool:
         entry = self._entry(binding)
         with self._condition:
@@ -241,10 +488,12 @@ class SharedSemanticScheduler:
             entry.paused = True
             entry.wake_pending = False  # This cancellation supersedes older triggers.
             # Cancelled accepted targets become full debt, never silent loss.
-            if entry.pending or entry.inflight or entry.continuation is not None or entry.running:
+            if self._identities(entry) or entry.continuation is not None or entry.running:
                 entry.full_needed = True
-            self._total -= len(entry.pending - entry.inflight)
+            self._total -= len(self._identities(entry) - entry.inflight)
             entry.pending.clear()
+            entry.deferred.clear()
+            entry.debounce_revision += 1
             self._condition.notify_all()
 
     @staticmethod
@@ -264,7 +513,7 @@ class SharedSemanticScheduler:
         return entry
 
     def _release_inflight(self, entry):
-        self._total -= len(entry.inflight - entry.pending)
+        self._total -= len(entry.inflight - (entry.pending | entry.deferred.keys()))
         entry.inflight.clear()
 
     def _turn(self, entry):
@@ -292,12 +541,20 @@ class SharedSemanticScheduler:
                     full = entry.full_needed
                     paths = None if full else tuple(sorted(entry.pending))
                     if full:
-                        self._total -= len(entry.pending)
+                        self._total -= len(self._identities(entry))
+                        entry.deferred.clear()
+                        entry.debounce_revision += 1
                     else:
                         entry.inflight = entry.pending
                     entry.pending = set()
                     entry.full_active = full
                     entry.full_again = False
+                    # Capture BEFORE begin_sync: discovery may start there.
+                    entry.full_coverage = (
+                        (self._watcher_token, entry.coverage_revision)
+                        if entry.coverage_restored == entry.coverage_revision
+                        and self._can_reconcile_coverage(entry) else None
+                    )
                 handle = service.begin_sync(relative_paths=paths, cancel_event=entry.cancel)
                 with self._condition:
                     entry.continuation = handle
@@ -311,6 +568,13 @@ class SharedSemanticScheduler:
                 if result.state is SyncStepState.COMPLETE:
                     if entry.full_active and not entry.cancel.is_set():
                         entry.full_needed = entry.full_again
+                        if (not self._closed and self._watcher_accepting
+                                and self._can_reconcile_coverage(entry)
+                                and entry.full_coverage == (self._watcher_token, entry.coverage_revision)
+                                and entry.coverage_restored == entry.coverage_revision):
+                            entry.coverage_reconciled = entry.coverage_revision
+                            entry.monitoring_error_type = None
+                    entry.full_coverage = None
                     self._release_inflight(entry)
                     entry.continuation = None
                     entry.full_active = False
@@ -333,6 +597,7 @@ class SharedSemanticScheduler:
                 self._release_inflight(entry)
                 entry.continuation = None
                 entry.full_active = False
+                entry.full_coverage = None
         finally:
             with self._condition:
                 entry.running = False
@@ -382,12 +647,19 @@ class SharedSemanticScheduler:
     def status(self, binding: AuthorizedSpaceBinding) -> SchedulerStatus:
         entry = self._entry(binding)
         with self._condition:
-            return SchedulerStatus(tuple(sorted(entry.pending | entry.inflight)), entry.full_needed,
+            return SchedulerStatus(tuple(sorted(self._identities(entry))),
+                                   entry.full_needed or entry.monitoring_error_type is not None
+                                   or entry.coverage_reconciled != entry.coverage_revision
+                                   or (bool(entry.watcher_callbacks)
+                                       and (self._closed or not self._watcher_accepting)),
                                    entry.running or entry.continuation is not None, entry.paused,
-                                   entry.error_type, entry.progress)
+                                   entry.error_type, entry.progress, entry.monitoring_error_type,
+                                   entry.watcher_callbacks,
+                                   entry.coverage_reconciled != entry.coverage_revision)
 
     @property
     def pending_count(self) -> int:
+        """Distinct reservations across debounce, queued and in-flight stages."""
         with self._condition:
             return self._total
 
@@ -399,7 +671,11 @@ class SharedSemanticScheduler:
             ), timeout):
                 raise TimeoutError("Semantic scheduler did not become idle")
 
-    def shutdown(self) -> None:
+    def begin_shutdown(self) -> None:
+        """Fence and signal all owners before E6 stops observer/debounce delivery.
+
+        Does not drain. Call shutdown() after stopping the process-owned watcher.
+        """
         with self._condition:
             first = not self._closed
             self._closed = True  # Fence submissions before signalling every owner.
@@ -407,11 +683,19 @@ class SharedSemanticScheduler:
                 for entry in self._owners.values():
                     entry.cancel.set()
                     entry.paused = True
-                    if entry.pending or entry.inflight or entry.continuation is not None or entry.running:
+                    if self._identities(entry) or entry.continuation is not None or entry.running:
                         entry.full_needed = True
-                    self._total -= len(entry.pending - entry.inflight)
+                    self._total -= len(self._identities(entry) - entry.inflight)
                     entry.pending.clear()
+                    entry.deferred.clear()
+                    entry.debounce_revision += 1
                 self._condition.notify_all()
+
+    def shutdown(self) -> None:
+        self.begin_shutdown()
+        with self._condition:
+            first = not self._shutdown_started
+            self._shutdown_started = True
         if not first:
             self._stopped.wait()
             return

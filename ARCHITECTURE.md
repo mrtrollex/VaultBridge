@@ -295,8 +295,8 @@ active safe boundary, closing E3 continuations/workspaces and stopping the execu
 composer closes the E2 resource afterward. Legacy `BackgroundSemanticIndexer` also accepts a
 process-owned executor without shutting it down; its default behavior still owns its own worker.
 The shared scheduler does not wrap eight legacy whole-sync loops. Disabled owners receive no
-scheduler work, and the existing deferred registry lifecycle remains unchanged. E5 watcher and
-E6 composition/activation are not implemented here.
+scheduler work, and the existing deferred registry lifecycle remains unchanged. E5 supplies the
+private shared watcher described below; E6 composition/activation remains deferred.
 
 Discovery uses a private temporary SQLite workspace for canonical paths and its directory frontier,
 with a fixed page cache and at most one open `scandir` cursor. Each discovery/admission turn consumes
@@ -813,6 +813,272 @@ Batching, lifecycle-state transitions and index contents remain owned by
 - safe create/modify/delete/move interpretation through vault containment rules
 - one monotonic debounce dispatcher feeding the existing indexer queue
 - watcher-first shutdown with accepted-path flush before indexer shutdown
+
+### `services/shared_filesystem_watcher.py` (private VB-151 E5)
+
+- inert construction; validates exact registry/owner/root bindings before starting
+  one process-owned Observer with one handler per enabled root (at most eight)
+- installs a nonblocking 256-event `EventQueue` before native emitters exist;
+  adjacent duplicates retain watchdog semantics, while rejected events retain
+  no alternate backlog. The separate qualified reservation limit remains 2,000
+  per owner / 10,000 globally across debounce, pending and in-flight work
+- the watchdog 6.0.0 adapter is private to E5 and supports the verified native
+  Windows and Linux observers; other versions/platforms fail before monitoring.
+  Windows reads have a fixed native byte-buffer size. Linux additionally bounds
+  each native read batch, move-pairing queue and move-cookie cache to 256 entries;
+  grouped batches contain at most 256 entries (each with at most two events).
+  Recursive native event synthesis streams into the bounded batch. Native watch
+  metadata and directory enumeration still scale with the watched filesystem,
+  rather than the number of incoming events
+- ingress loss uses the exact registered watch object to select its authorized
+  binding, independent of either rename path. Unknown watch identity marks all
+  potentially affected enabled bindings. Windows empty native reads and Linux
+  `IN_Q_OVERFLOW` also create owner-local E4 full-sync debt. Repeated loss updates
+  existing E4 flags without waking an already indebted paused failure or adding
+  automatic retries; reconciliation still runs exclusively in E4/E3. Linux OS
+  loss also refreshes native recursive watch registrations so a lost directory
+  creation cannot silently remove future event coverage after reconciliation
+- Windows FILE_ACTION_REMOVED has no former-object type and watchdog converts
+  directory departures to FileDeletedEvent with is_directory=False. E5 records
+  owner-local full debt before passing removals/moves to the unchanged Markdown
+  interpreter. Only established excluded subtrees/semantic storage are filtered
+  lexically; filename extensions, temporary-looking names and replacement path
+  existence never prove an ambiguous removal irrelevant. Directory entries also
+  reconcile descendants. Native OLD_NAME records retain one coalesced owner-local
+  trigger per bounded batch even when watchdog cannot pair a later NEW_NAME.
+  Existing E4 full_needed/full_again flags preserve departures during an older
+  full without another event backlog, directory cache, crawler or retry worker
+- Linux runtime reader/registration errors, invalid permission-denied watch
+  descriptors and root loss latch an owner-local `monitoring_error_type` in the
+  process-owned scheduler. Reader exit closes descriptors and the delayed queue;
+  its dependent emitter wakes and stops, while independent owners keep watching.
+  Failure notification is synchronous and bounded, with no notification queue
+  or replacement monitoring thread. Repeated notifications do not retry syncs
+- `SchedulerStatus.monitoring_failed` distinguishes failed monitoring from E3
+  progress/error state. Effective `requires_full_sync` stays true while the
+  monitoring latch is set, even after successful full indexing; readiness uses
+  ordinary E4 work flags, so the latch cannot cause an automatic retry loop.
+  Stop, cancellation and reconciliation do not clear it. Explicit recovery means
+  stop/join the old watcher, construct/start a fresh watcher on the same bindings,
+  verify all native producers are alive, then reconcile the unmonitored interval.
+  Latch clearing uses a revision fence so a concurrent new failure is preserved;
+  an existing watcher instance never restarts itself or allocates a replacement
+- native callbacks carry the watcher's exact source token. Notifications from a
+  detached generation cannot change a reconstructed watcher's failure or recovery
+  state. Windows unexpected emitter/read exceptions latch failure once and release
+  the native handle; intentional cancellation remains a normal stop. Handle
+  retirement waits for the active read to acknowledge cancellation, repeating
+  CancelIoEx across the read-entry race with a five-second checked boundary
+- E5 Windows handle disposal uses checked CloseHandle, retaining the directory
+  handle on failure rather than watchdog's exception-suppressing close helper.
+  The handle lock serializes cancellation, completed I/O/event disposal and
+  directory closure; only successful closure clears the owned reference. Failed
+  cleanup retains generation ownership and can be explicitly retried, including
+  a failed emitter removed by watchdog during startup. ERROR_INVALID_HANDLE makes
+  ownership uncertain and forbids blind retry of a potentially reused HANDLE
+- shared Windows emitters use FILE_FLAG_OVERLAPPED and one fixed 64,000-byte
+  buffer/manual-reset event per native directory handle. Readiness is signaled
+  only AFTER ReadDirectoryChangesW acknowledges native request submission, never
+  before the call or from thread/handle liveness. Startup waits at most five
+  seconds per required producer, with cancellation/shutdown/token checks, then
+  revalidates roots and producer/dispatcher liveness before publishing restored
+  coverage. Reconciliation for that revision starts only after this boundary.
+  GetOverlappedResult consumes completion on the same emitter thread; cancellation
+  drains native ownership before buffer/event/handle disposal. No probe file,
+  additional worker or unbounded request collection is used
+- Linux masks explicitly include `IN_MOVE_SELF` and `IN_UNMOUNT` alongside existing
+  delete/ignored signals. Root invalidation terminates the affected producer, even
+  if the path has been recreated or the original inode moved back. Native batches
+  and recursive registration reuse E1/E3 directory identity and exact owner/root
+  validation; a replacement path or symlink cannot authorize a new binding
+- the existing shared dispatcher independently checks every enabled root once per
+  second, even while ingress and debounce are idle. After verified native startup,
+  the same check verifies the Observer dispatch, each exact watch's emitter and
+  its required native reader/readiness. A dead shared Observer invalidates all
+  served owners; a dead emitter/reader invalidates only its registered owner.
+  Startup still arming and requested shutdown are not unexpected runtime failure.
+  Checks run outside scheduler
+  locks and reuse E1 ordinary ancestor-directory identity and E3 owner/root
+  identity validation; no vault scan or extra worker is added. Detection latency
+  includes filesystem and dispatcher scheduling time. Failed checks publish only
+  against the still-current source token/monitoring revision, latch owner-local
+  failure and invalidate coverage. That owner stops accepting targeted events;
+  healthy owners continue. Full sync alone cannot clear the failure
+- Linux recursive registration tolerates only a proven absent child beneath a
+  revalidated authorized root. It retires any partial subtree watches and maps,
+  requests coalesced index reconciliation and keeps the native reader running.
+  Existing replacements, symlinks, permission/resource errors and root loss remain
+  fatal. Native registration uses directory-only/no-follow flags; there are no
+  registration retry loops or additional event buffers
+- the shared Linux native mask explicitly retains MODIFY, ATTRIB, CLOSE_WRITE,
+  CREATE, MOVED_FROM/TO, DELETE, DELETE_SELF, MOVE_SELF and UNMOUNT. Read-only OPEN
+  and CLOSE_NOWRITE are excluded: recursive traversal must not overflow its own
+  kernel queue. The same mutation mask applies to initial registration, new
+  children and overflow restoration. Kernel OVERFLOW and IGNORED records remain
+  handled independently of requested notification bits; the legacy watcher is
+  unaffected
+- incomplete Linux overflow restoration is a distinct coverage revision, exposed
+  as `SchedulerStatus.monitoring_recovering`. Detection marks degradation BEFORE
+  requesting E4 debt. Registration and root validation run outside the scheduler
+  condition; only their successful completion marks that revision restored and
+  requests its post-restoration full sync. A full turn captures the watcher token
+  and restored coverage revision BEFORE E3 begin/discovery. Completion can publish
+  reconciled coverage only if both still match, coverage remains restored, the
+  current native generation is verified against its failure revision, and
+  admission remains open. Earlier or unrelated
+  syncs cannot clear a newer gap. Overlapping revisions and duplicate restoration
+  notifications coalesce; a failed restoration stays visibly failed/degraded.
+  Readiness still uses ordinary E4 work flags, so unresolved coverage cannot spin
+  automatic retries or create another synchronization worker
+- first native attachment records coverage debt before scheduling/starting native
+  producers, even if E4 already finished its startup sync. Initial Linux recursive
+  registration uses the same native FIFO fence as restoration, including queued
+  subtree work. Verified readiness and matching post-coverage full reconciliation
+  are both required; initial zero counters are not proof. Repeated readiness for
+  an already verified generation is idempotent. Pre-verification callbacks retain
+  coalesced debt rather than normal targeted admission
+- reconstruction snapshots monitoring, fatal-failure and coverage revisions
+  separately. Legitimate startup subtree gaps may advance monitoring/coverage
+  without invalidating verified native startup. Native fence tickets also carry
+  the fatal-failure revision, so a newer failure invalidates older proof. A fence
+  may be recorded before startup verification, but cannot authorize healthy
+  completion alone. Pending subtree work still needs its matching fence; no
+  reconstruction call fabricates coverage for a newer gap. The historical failure
+  remains latched until matching full reconciliation succeeds. Writes during that
+  recovery retain coalesced debt; a new fatal failure or shutdown invalidates the
+  verified-generation receipt. No new worker or automatic retry loop is added
+- Linux restoration walks do not themselves publish coverage. The reader adds
+  and immediately removes a private inotify watch on its existing kill-pipe inode
+  through `/proc/self/fd`, producing an IN_IGNORED fence on the same ordered kernel
+  stream. Earlier directory-create/move records must be processed first. Subtree
+  registration advances a native registration revision; work after a fence was
+  queued invalidates it and requires one replacement fence after that work. Only
+  a matching fence, after the whole current batch, may publish restored coverage
+  and admit its authoritative full reconciliation. Later subtree gaps start a new
+  owner-local coverage revision, even after an earlier full sync completed
+- native fence state is scalar and has at most one current marker, with no extra
+  fd, thread or deferred registration queue. The reader never waits for its own
+  marker while holding its read lock. Overflow restarts the fence revision;
+  failure to establish a fence (including unavailable procfs/watch resources)
+  fails monitoring visibly. An empty Python queue is never coverage evidence
+- initial recursive registration and create synthesis share directory-symlink
+  exclusion: only an explicitly observed, unregistered child link below validated
+  ordinary parents is skipped. A previously watched ordinary directory replaced
+  by a link, a substitution after exclusion checks, unsafe parents or root changes
+  still fail closed. Exclusions never register or traverse an external target
+- both native recursive registration paths share strict streaming scandir traversal;
+  os.walk is not used because it hides DirEntry classification errors. Opening and
+  advancing iterators, no-follow stat, is_symlink and is_dir errors propagate.
+  Classified directory identity is checked again before descent; active iterators
+  close on traversal or native-registration failure. Only one iterator per depth
+  and singleton entry batches are retained, with no copied tree or work queue. EACCES,
+  EPERM, EIO and uncertain coverage fail monitoring before a fence can publish
+  restoration. Only ENOENT for an unregistered, proven absent child beneath the
+  same validated parent may be skipped; no parent-identity evidence means failure.
+  Explicit validated reconstruction and matching reconciliation are required
+  after enumeration failure, just as after native registration failure
+- Linux native initialization mirrors the version-checked watchdog 6.0.0 fd,
+  kill-pipe, poll/select and move state, but replaces its unchecked isdir/file
+  decision with strict no-follow root stat/identity validation and unconditional
+  directory registration. Root metadata errors cannot select root-only coverage.
+  Failed allocation/registration closes partial resources before startup rollback
+- native parsing rechecks closed state while holding the same per-reader lock
+  that owns descriptor closure. A buffered batch abandoned before parsing cannot
+  register against closed descriptors; parsing already in progress retains that
+  lock until registration completes. Expected close-related EBADF is ignored only
+  after verified closure; active native errors remain fatal. Clean stop still
+  records its coverage interruption before surrendering monitoring
+- Linux overflow recovery retires every prior kernel watch before strict
+  registration of the current authorized tree, including the root watch. A
+  same-path lookup never certifies an old descriptor's filesystem identity.
+  Retirement removes both map directions and discards retained events in the
+  native batch. A scalar high-water check for newly allocated watches AND private
+  fences prevents pending retired records from acquiring a new path/fence meaning;
+  descriptor wrap/reuse fails closed and requires explicit reconstruction.
+  One prior path map is retained only during the walk for ordinary-to-symlink
+  exclusion checks, then released. Required registrations and retirements precede
+  the ordered native fence and matching E4 full; no obsolete watch history grows
+- Linux directory moves/deletions immediately retire old subtree watches and
+  discard buffered events under those old names, then reuse strict root coverage
+  restoration and the existing native fence/full protocol. This does not assume
+  a MOVED_TO is in the same read buffer. Late/missing/interleaved cookies and
+  internal/moved-in subtrees rebuild current authorized path mappings; watchdog's
+  bounded delayed queue still pairs presentation events. No directory-cookie
+  history or expected-IGNORED collection is retained. Retired unknown IGNORED
+  records cannot complete the separately identified private fence. A proven
+  concurrent departure under an unchanged parent may be retired during that known
+  move/delete restoration; ordinary registration and overflow enumeration retain
+  their fail-closed classification policy
+- Linux cleanup tracks each inotify/kill-pipe descriptor's disposition separately.
+  Complete means all owned resources are closed, verified absent, or verified
+  displaced from their original slot. Independent descriptors are processed even
+  after an error. One original inotify duplicate and at most two additional
+  close-time guards preserve identity evidence across uncertain closes (at most
+  six owned fd records per root). On verified x86-64 kernels, optional self-kcmp
+  proves a safe retry's open-file-description identity; unavailable/uncertain
+  proof retains ownership instead of guessing. Normal successful cleanup does
+  not require kcmp. Partial native construction remains reachable even when
+  watchdog removes the failed emitter. Native resources/threads must all resolve
+  before generation ownership is released; retries cannot close reused slots
+- reuses `FilesystemEventInterpreter`; create/modify/delete/move events preserve
+  their exact authorized space, including both eligible rename paths
+- one monotonic dispatcher, no semantic executor or eager model loading; disabled
+  owners receive no watcher work; public named composition remains deferred to E6
+- E4 owns debounce deadlines as reservations under its existing condition lock;
+  debounce, queued and in-flight paths share the same 2,000-per-space and
+  10,000-global distinct-identity caps, including concurrent direct submissions
+- expiry transfers one reservation atomically into E4 pending work; duplicates
+  take the maximum existing/candidate monotonic deadline under E4's condition
+  and trigger recovery without consuming another slot. Validation crossing an
+  owner reservation-removal revision falls back to full debt instead of reviving
+  a removed target; this can conservatively reconcile an unrelated concurrent
+  event in the same owner, without retaining per-path timestamp history;
+  filesystem/root revalidation runs outside the coordination condition
+- overflow retains no additional path and requests coalesced full-sync debt;
+  delivery failures convert the affected accepted reservation into that owner's
+  debt, with no automatic retry loop; full reconciliation absorbs prior pending
+  and debounced work, retaining later writes and clearing debt only on success
+- stop fences admission, stops/joins the observer, stops/joins the dispatcher and
+  converts residual debounce reservations to full debt without flushing syncs;
+  startup failure rolls back registrations and threads, and stop is idempotent
+- admission fencing records a new coverage revision for every binding whose
+  monitoring is surrendered, including a clean watcher-only stop with no queued
+  events. This evidence does not itself schedule retries. A full sync while
+  stopped cannot reconcile that revision; explicit reconstruction verifies both
+  the dispatcher and native producers before requesting a post-restoration full
+  sync. Reconstruction is one explicit wakeup for paused recovery work
+- unexpected shared dispatcher termination latches monitoring failure for all
+  bindings it serves before fencing admission and retiring reservations. It
+  retains native generation ownership; ordinary reconciliation cannot clear the
+  latch. No replacement thread or automatic restart is created
+- shutdown requested and cleanup completed are separate boundaries. The generation
+  token is released only after the Observer, dispatcher and original bounded set
+  of native emitters/readers are joined and native resources closed. A timeout or
+  cleanup error keeps the token and lifecycle references for explicit stop retry;
+  replacement activation remains rejected until verified cleanup succeeds
+- before stopping native producers, stop seals and drains ingress into exact
+  owner debt. Producers never wait for queue capacity, including during shutdown;
+  watchdog's stop sentinel can still wake an empty queue. Stop waits for active
+  interpreter/native operations at their existing safe boundaries, with the
+  existing five-second observer/dispatcher join checks; it cannot interrupt a
+  blocked filesystem call or arbitrary handler, and does not claim a hard
+  wall-clock deadline for such operations
+- callbacks record bounded per-owner counters before interpreter or filesystem
+  validation. Admission fencing marks active callbacks as owner-local debt;
+  rejection/completion across the fence resolves debt before decrementing the
+  counter. Effective recovery stays true for unresolved fenced callbacks even
+  if E4 finishes a full sync meanwhile. A new watcher cannot attach while an old
+  callback is unresolved. Queued events, active callbacks, debounce and E4
+  transfers therefore retain owner-local accounting during watcher-only stop;
+  process shutdown stays terminal and none of these notifications can reopen it
+- process shutdown calls `SharedSemanticScheduler.begin_shutdown()` first to
+  reject work and signal every owner, then watcher `stop()`, then scheduler
+  `shutdown()` to drain only the active safe boundary; E6 owns production wiring
+
+The legacy watcher, application construction/lifespan, public adapters, storage
+schema and semantic scoring contracts are unchanged. Both watcher paths retain
+the existing cooperating-filesystem guarantees; events are hints and never an
+authorization to delete indexed rows without E3's final validation.
 
 ### `services/semantic_search.py`
 
