@@ -10,10 +10,10 @@ from __future__ import annotations
 
 import sqlite3
 import stat
-from contextlib import closing
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from app.core.resource_cleanup import retained_exit_stack
 from app.repositories.semantic import StoredChunk
 from app.repositories.semantic_binding import IndexBindingUnavailableError, validate_binding
 from app.services.knowledge_spaces import SpaceId
@@ -73,7 +73,7 @@ def _storage_identity(path, *, budget, space_id, cancel):
 def read_eligible_snapshot(
     db_path: Path, eligible_paths: tuple[str, ...] | frozenset[str], *,
     budget: ScopedBudget, space_id: SpaceId, cancel: CancellationToken,
-    expected_binding=None, storage_guard=None,
+    expected_binding=None, storage_guard=None, allow_legacy_binding=False, connection_owner,
 ) -> EligibleSemanticSnapshot:
     """Return all admitted rows or fail; never return an incomplete contribution.
 
@@ -83,170 +83,180 @@ def read_eligible_snapshot(
     Python sorting avoids any SQLite temporary sort of unrestricted path rows.
     VM callbacks run every instruction, including BEGIN/compatibility/EOF work.
     """
-    cancel.check()
-    # Supplied owner snapshots are already bounded; reject unbounded iterables.
-    if not isinstance(eligible_paths, (tuple, frozenset)):
-        raise ValueError("expected bounded eligible paths")
-    if len(eligible_paths) > budget.allocations[space_id]["paths"]:
-        raise BudgetExhausted("paths")
-    for path in eligible_paths:
+    with retained_exit_stack() as connections:
         cancel.check()
-        if not isinstance(path, str) or not path or len(path.encode("utf-8")) > 1024:
-            raise ValueError("invalid eligible path")
-    paths = sorted(set(eligible_paths), key=lambda path: (path.casefold(), path))
-    connection = None
-    interrupted = None
+        # Supplied owner snapshots are already bounded; reject unbounded iterables.
+        if not isinstance(eligible_paths, (tuple, frozenset)):
+            raise ValueError("expected bounded eligible paths")
+        if len(eligible_paths) > budget.allocations[space_id]["paths"]:
+            raise BudgetExhausted("paths")
+        for path in eligible_paths:
+            cancel.check()
+            if not isinstance(path, str) or not path or len(path.encode("utf-8")) > 1024:
+                raise ValueError("invalid eligible path")
+        paths = sorted(set(eligible_paths), key=lambda path: (path.casefold(), path))
+        connection = None
+        interrupted = None
 
-    def progress():
-        nonlocal interrupted
+        def progress():
+            nonlocal interrupted
+            try:
+                cancel.check()
+                budget.charge(space_id, "sqlite_steps")
+            except BaseException as error:
+                interrupted = error
+                return 1
+            return 0
+
+        def one(sql, parameters=()):
+            cancel.check()
+            with connection_owner.cursor(connection) as cursor:
+                cursor.execute(sql, parameters)
+                result = cursor.fetchone()
+                cancel.check()
+                return result
+
+        primary_failed = False
         try:
-            cancel.check()
-            budget.charge(space_id, "sqlite_steps")
-        except BaseException as error:
-            interrupted = error
-            return 1
-        return 0
-
-    def one(sql, parameters=()):
-        cancel.check()
-        with closing(connection.cursor()) as cursor:
-            cursor.execute(sql, parameters)
-            result = cursor.fetchone()
-            cancel.check()
-            return result
-
-    try:
-        # Do not resolve symlinks into a different index. Recheck observed native
-        # identities before accepting results, including replacement while open.
-        target = Path(db_path).absolute()
-        if storage_guard is not None:
-            storage_guard(budget=budget, space_id=space_id, cancel=cancel)
-        before = _storage_identity(target, budget=budget, space_id=space_id, cancel=cancel)
-        if expected_binding is not None and all(item is None for item in before[2]):
-            # Rejection-only screening avoids creating WAL/SHM for invalid stopped
-            # storage. This unpinned inspection NEVER authorizes a returned snapshot:
-            # independently revalidate everything under normal read locking below.
-            cancel.check()
-            budget.charge(space_id, "probes")
-            connection = sqlite3.connect(
-                f"{target.as_uri()}?mode=ro&immutable=1", uri=True, timeout=0,
-            )
-            connection.set_progress_handler(progress, 1)
-            one("BEGIN")
-            validate_binding(
-                one, expected_binding,
-                charge_bytes=lambda size: budget.charge(space_id, "semantic_bytes", size),
-            )
-            connection.set_progress_handler(None, 0)
-            connection.close()
-            connection = None
-        cancel.check()
-        budget.charge(space_id, "probes")  # Explicit database descriptor open.
-        # Sidecar absence does not prove stopped storage. Normal read locking
-        # pins the snapshot at the first schema read, before binding metadata,
-        # and retains it through chunk materialization in both DELETE and WAL.
-        connection = sqlite3.connect(f"{target.as_uri()}?mode=ro", uri=True, timeout=0)
-        connection.set_progress_handler(progress, 1)
-        one("BEGIN")
-        if expected_binding is not None:
-            if expected_binding.space_id != space_id.value:
-                raise SemanticReadUnavailableError
-            validate_binding(
-                one, expected_binding,
-                charge_bytes=lambda size: budget.charge(space_id, "semantic_bytes", size),
-            )
-        # Only real existing tables, not views executing unexpected SQL.
-        tables = one(
-            "SELECT count(*) FROM sqlite_master WHERE type='table' "
-            "AND name IN ('meta','notes','chunks')"
-        )
-        if tables != (3,):
-            raise SemanticReadUnavailableError
-        # Force the existing indexed path access and verify its leading column.
-        if one("SELECT name FROM pragma_index_info('idx_chunks_path') WHERE seqno=0") != ("path",):
-            raise SemanticReadUnavailableError
-        metadata = []
-        for key in ("index_signature", "index_state"):
-            size = one("SELECT length(CAST(value AS BLOB)) FROM meta WHERE key=?", (key,))
-            if size is None:
-                metadata.append(None)
-            else:
-                if type(size[0]) is not int or size[0] < 0:
-                    raise SemanticReadUnavailableError
-                budget.charge(space_id, "semantic_bytes", size[0])
-                value = one("SELECT value FROM meta WHERE key=?", (key,))[0]
-                if not isinstance(value, str):
-                    raise SemanticReadUnavailableError
-                metadata.append(value)
-        has_chunks = one("SELECT EXISTS(SELECT 1 FROM chunks LIMIT 1)") == (1,)
-        chunks = []
-        for path in paths:
-            cancel.check()
-            descriptors = []
-            with closing(connection.cursor()) as cursor:
-                cursor.execute(
-                    "SELECT CASE WHEN typeof(id)='integer' THEN id END, "
-                    "CASE WHEN typeof(chunk_index)='integer' THEN chunk_index END, "
-                    "length(CAST(path AS BLOB)), coalesce(length(CAST(heading AS BLOB)),0), "
-                    "length(CAST(content AS BLOB)), length(CAST(embedding AS BLOB)), "
-                    "CASE WHEN typeof(dimensions)='integer' THEN dimensions END "
-                    "FROM chunks INDEXED BY idx_chunks_path WHERE path=?", (path,),
-                )
-                while True:
+            try:
+                # Do not resolve symlinks into a different index. Recheck observed native
+                # identities before accepting results, including replacement while open.
+                target = Path(db_path).absolute()
+                if storage_guard is not None:
+                    storage_guard(budget=budget, space_id=space_id, cancel=cancel)
+                before = _storage_identity(target, budget=budget, space_id=space_id, cancel=cancel)
+                if expected_binding is not None and all(item is None for item in before[2]):
+                    # Rejection-only screening avoids creating WAL/SHM for invalid stopped
+                    # storage. This unpinned inspection NEVER authorizes a returned snapshot:
+                    # independently revalidate everything under normal read locking below.
                     cancel.check()
-                    row = cursor.fetchone()
-                    if row is None:
-                        break
-                    cancel.check()
-                    budget.charge(space_id, "semantic_rows")
-                    if (
-                        any(type(value) is not int for value in row)
-                        or any(value < 0 for value in row[2:6]) or row[6] <= 0
-                    ):
+                    budget.charge(space_id, "probes")
+                    connection = connections.enter_context(connection_owner.connection(
+                        f"{target.as_uri()}?mode=ro&immutable=1", uri=True, timeout=0,
+                    ))
+                    connection.set_progress_handler(progress, 1)
+                    one("BEGIN")
+                    validate_binding(
+                        one, expected_binding,
+                        charge_bytes=lambda size: budget.charge(space_id, "semantic_bytes", size),
+                        allow_legacy=allow_legacy_binding,
+                    )
+                    connection.set_progress_handler(None, 0)
+                    connection_owner.close(connection)
+                    connection = None
+                cancel.check()
+                budget.charge(space_id, "probes")  # Explicit database descriptor open.
+                # Sidecar absence does not prove stopped storage. Normal read locking
+                # pins the snapshot at the first schema read, before binding metadata,
+                # and retains it through chunk materialization in both DELETE and WAL.
+                connection = connections.enter_context(connection_owner.connection(
+                    f"{target.as_uri()}?mode=ro", uri=True, timeout=0,
+                ))
+                connection.set_progress_handler(progress, 1)
+                one("BEGIN")
+                if expected_binding is not None:
+                    if expected_binding.space_id != space_id.value:
                         raise SemanticReadUnavailableError
-                    budget.charge(space_id, "semantic_bytes", sum(row[2:6]))
-                    descriptors.append((row[1], row[0]))
-            # At most the admitted row quota, never unrestricted SQL ORDER BY.
-            descriptors.sort()
-            for _, row_id in descriptors:
-                row = one(
-                    "SELECT path, chunk_index, heading, content, embedding, dimensions "
-                    "FROM chunks WHERE rowid=? AND id=?", (row_id, row_id),
+                    validate_binding(
+                        one, expected_binding,
+                        charge_bytes=lambda size: budget.charge(space_id, "semantic_bytes", size),
+                        allow_legacy=allow_legacy_binding,
+                    )
+                # Only real existing tables, not views executing unexpected SQL.
+                tables = one(
+                    "SELECT count(*) FROM sqlite_master WHERE type='table' "
+                    "AND name IN ('meta','notes','chunks')"
                 )
-                if (
-                    row is None or row[0] != path or type(row[1]) is not int
-                    or (row[2] is not None and not isinstance(row[2], str))
-                    or not isinstance(row[3], str) or not isinstance(row[4], bytes)
-                    or type(row[5]) is not int or row[5] <= 0
+                if tables != (3,):
+                    raise SemanticReadUnavailableError
+                # Force the existing indexed path access and verify its leading column.
+                if one("SELECT name FROM pragma_index_info('idx_chunks_path') WHERE seqno=0") != ("path",):
+                    raise SemanticReadUnavailableError
+                metadata = []
+                for key in ("index_signature", "index_state"):
+                    size = one("SELECT length(CAST(value AS BLOB)) FROM meta WHERE key=?", (key,))
+                    if size is None:
+                        metadata.append(None)
+                    else:
+                        if type(size[0]) is not int or size[0] < 0:
+                            raise SemanticReadUnavailableError
+                        budget.charge(space_id, "semantic_bytes", size[0])
+                        value = one("SELECT value FROM meta WHERE key=?", (key,))[0]
+                        if not isinstance(value, str):
+                            raise SemanticReadUnavailableError
+                        metadata.append(value)
+                has_chunks = one("SELECT EXISTS(SELECT 1 FROM chunks LIMIT 1)") == (1,)
+                chunks = []
+                for path in paths:
+                    cancel.check()
+                    descriptors = []
+                    with connection_owner.cursor(connection) as cursor:
+                        cursor.execute(
+                            "SELECT CASE WHEN typeof(id)='integer' THEN id END, "
+                            "CASE WHEN typeof(chunk_index)='integer' THEN chunk_index END, "
+                            "length(CAST(path AS BLOB)), coalesce(length(CAST(heading AS BLOB)),0), "
+                            "length(CAST(content AS BLOB)), length(CAST(embedding AS BLOB)), "
+                            "CASE WHEN typeof(dimensions)='integer' THEN dimensions END "
+                            "FROM chunks INDEXED BY idx_chunks_path WHERE path=?", (path,),
+                        )
+                        while True:
+                            cancel.check()
+                            row = cursor.fetchone()
+                            if row is None:
+                                break
+                            cancel.check()
+                            budget.charge(space_id, "semantic_rows")
+                            if (
+                                any(type(value) is not int for value in row)
+                                or any(value < 0 for value in row[2:6]) or row[6] <= 0
+                            ):
+                                raise SemanticReadUnavailableError
+                            budget.charge(space_id, "semantic_bytes", sum(row[2:6]))
+                            descriptors.append((row[1], row[0]))
+                    # At most the admitted row quota, never unrestricted SQL ORDER BY.
+                    descriptors.sort()
+                    for _, row_id in descriptors:
+                        row = one(
+                            "SELECT path, chunk_index, heading, content, embedding, dimensions "
+                            "FROM chunks WHERE rowid=? AND id=?", (row_id, row_id),
+                        )
+                        if (
+                            row is None or row[0] != path or type(row[1]) is not int
+                            or (row[2] is not None and not isinstance(row[2], str))
+                            or not isinstance(row[3], str) or not isinstance(row[4], bytes)
+                            or type(row[5]) is not int or row[5] <= 0
+                        ):
+                            raise SemanticReadUnavailableError
+                        chunks.append(StoredChunk(*row))
+                after = _storage_identity(target, budget=budget, space_id=space_id, cancel=cancel)
+                if after[:2] != before[:2] or any(
+                    previous is not None and previous != current
+                    for previous, current in zip(before[2], after[2])
                 ):
                     raise SemanticReadUnavailableError
-                chunks.append(StoredChunk(*row))
-        after = _storage_identity(target, budget=budget, space_id=space_id, cancel=cancel)
-        if after[:2] != before[:2] or any(
-            previous is not None and previous != current
-            for previous, current in zip(before[2], after[2])
-        ):
-            raise SemanticReadUnavailableError
-        if storage_guard is not None:
-            storage_guard(budget=budget, space_id=space_id, cancel=cancel)
-        cancel.check()
-        return EligibleSemanticSnapshot(metadata[0], metadata[1], tuple(chunks), has_chunks)
-    except sqlite3.ProgrammingError:
-        raise
-    except sqlite3.DatabaseError:
-        if interrupted is not None:
-            raise interrupted from None
-        raise SemanticReadUnavailableError from None
-    except OSError:
-        raise SemanticReadUnavailableError from None
-    except IndexBindingUnavailableError:
-        raise SemanticReadUnavailableError from None
-    finally:
-        if connection is not None:
-            # Disable an exhausted/cancelled callback before rollback itself.
+                if storage_guard is not None:
+                    storage_guard(budget=budget, space_id=space_id, cancel=cancel)
+                cancel.check()
+                return EligibleSemanticSnapshot(metadata[0], metadata[1], tuple(chunks), has_chunks)
+            except sqlite3.ProgrammingError:
+                raise
+            except sqlite3.DatabaseError:
+                if interrupted is not None:
+                    raise interrupted from None
+                raise SemanticReadUnavailableError from None
+            except OSError:
+                raise SemanticReadUnavailableError from None
+            except IndexBindingUnavailableError:
+                raise SemanticReadUnavailableError from None
+        except BaseException:
+            primary_failed = True
+            raise
+        finally:
             try:
-                connection.set_progress_handler(None, 0)
-                if connection.in_transaction:
-                    connection.rollback()
-            finally:
-                connection.close()
+                if connection is not None:
+                    connection.set_progress_handler(None, 0)
+                    if connection.in_transaction:
+                        connection.rollback()
+            except BaseException:
+                if not primary_failed:
+                    raise

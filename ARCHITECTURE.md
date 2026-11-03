@@ -260,7 +260,7 @@ old backend model, then advances the generation; owners discard cached compatibi
 and reject prepared searches from older generations. Shutdown rejects new leases and drains
 active operations before release. The process composer owns shutdown, not individual services.
 Repositories, source/index bindings, synchronization locks and lifecycle state remain per owner.
-This resource has no production named-space startup wiring; E6 remains separate work.
+E6 supplies explicit private runtime composition; public named-space startup remains blocked.
 
 VB-151 E3 adds owner-local resumable synchronization through internal `begin_sync`, `sync_step`,
 `cancel_sync` and `close_synchronization` methods. An opaque identity handle reserves exactly one
@@ -269,7 +269,7 @@ an explicit `incomplete` or `complete` state; exceptions terminalize the handle 
 `failed`. Foreign, forged, terminal and concurrently executing handles are rejected. The legacy
 `sync`, `sync_paths` and `rebuild` methods drive these turns to genuine completion, retaining their
 count dictionaries and failure behavior. `BackgroundSemanticIndexer` retains its synchronous job
-contract and recovery queue behavior; no named runtime is activated.
+contract and recovery queue behavior; explicit named runtime activation belongs to E6 below.
 Legacy synchronous entry points serialize whole operations with an owner-local mutex outside
 per-turn locks and embedding generation admission. Queued shared-resource callers can cancel
 without acquiring a pin or backend lease. Their lifecycle admissions let close fence and drain
@@ -296,7 +296,7 @@ composer closes the E2 resource afterward. Legacy `BackgroundSemanticIndexer` al
 process-owned executor without shutting it down; its default behavior still owns its own worker.
 The shared scheduler does not wrap eight legacy whole-sync loops. Disabled owners receive no
 scheduler work, and the existing deferred registry lifecycle remains unchanged. E5 supplies the
-private shared watcher described below; E6 composition/activation remains deferred.
+private shared watcher described below; E6 now composes these primitives explicitly and privately.
 
 Discovery uses a private temporary SQLite workspace for canonical paths and its directory frontier,
 with a fixed page cache and at most one open `scandir` cursor. Each discovery/admission turn consumes
@@ -687,9 +687,9 @@ coverage, while descriptor mismatch and cancellation fail the whole request. D3b
 `scoped_query` through this same pipeline after whole-selection Query, semantic/indexing and applicable
 relationship authorization. Shared `KnowledgeQueryService.evaluate_supplied_eligibility` evaluates
 live filters on the supplied bounded snapshot before semantic preparation, reusing source reads and
-relationship derivations. The nonsemantic supplied evaluator retains its contract. D1–D3b and E1 are
-internal primitives only; E2 shared resources, E3 synchronization and E4 scheduling are also internal. E5–E6 and
-F–G remain pending and VB-151 is incomplete.
+relationship derivations. The nonsemantic supplied evaluator retains its contract. D1–D3b and
+E1–E5 are implemented internal primitives. E6 now activates these through explicit private runtime
+composition. F–G remain pending and VB-151 is incomplete.
 Existing REST/MCP/CLI composition rejects named configuration before owner construction with
 `invalid_configuration` (internal reason `named_serving_unsupported`). Named serving remains blocked
 until VB-152 integrates every applicable entry point. No public schema, route, operation ID,
@@ -1013,17 +1013,19 @@ Batching, lifecycle-state transitions and index contents remain owned by
   Complete means all owned resources are closed, verified absent, or verified
   displaced from their original slot. Independent descriptors are processed even
   after an error. One original inotify duplicate and at most two additional
-  close-time guards preserve identity evidence across uncertain closes (at most
-  six owned fd records per root). On verified x86-64 kernels, optional self-kcmp
-  proves a safe retry's open-file-description identity; unavailable/uncertain
-  proof retains ownership instead of guessing. Normal successful cleanup does
-  not require kcmp. Partial native construction remains reachable even when
+  close-time guards retain bounded resource evidence (at most six owned fd records
+  per root). ADR 0010 release evidence is published before native dispatch, including
+  final guards. BaseException cannot restore numeric ownership; neither kcmp nor
+  equal file metadata authorizes retry. Certified pre-dispatch failures retry;
+  ambiguous outcomes retain ownership and prevent terminal cleanup. Explicit
+  no-allocation receipts do not create phantom cleanup debt. Partial native
+  construction remains reachable even when
   watchdog removes the failed emitter. Native resources/threads must all resolve
   before generation ownership is released; retries cannot close reused slots
 - reuses `FilesystemEventInterpreter`; create/modify/delete/move events preserve
   their exact authorized space, including both eligible rename paths
 - one monotonic dispatcher, no semantic executor or eager model loading; disabled
-  owners receive no watcher work; public named composition remains deferred to E6
+  owners receive no watcher work; E6 private activation does not enable public named composition
 - E4 owns debounce deadlines as reservations under its existing condition lock;
   debounce, queued and in-flight paths share the same 2,000-per-space and
   10,000-global distinct-identity caps, including concurrent direct submissions
@@ -1073,7 +1075,7 @@ Batching, lifecycle-state transitions and index contents remain owned by
   process shutdown stays terminal and none of these notifications can reopen it
 - process shutdown calls `SharedSemanticScheduler.begin_shutdown()` first to
   reject work and signal every owner, then watcher `stop()`, then scheduler
-  `shutdown()` to drain only the active safe boundary; E6 owns production wiring
+  `shutdown()` to drain only the active safe boundary; E6 supplies explicit private wiring
 
 The legacy watcher, application construction/lifespan, public adapters, storage
 schema and semantic scoring contracts are unchanged. Both watcher paths retain
@@ -1166,8 +1168,82 @@ Immutable reads remain limited to rejection-only screening and explicit stopped-
 Schema preflight also requires the existing single-column primary keys (including the chunks integer
 rowid key) and the chunks.path-to-notes.path foreign key with ON DELETE CASCADE. Incompatible storage,
 including constraint-free CREATE TABLE AS SELECT replacements, is rejected without repair or migration.
-Named owner composition remains inspection-only; E2-E6 resource/lifecycle/runtime activation
-and operator migration/rebinding are not implemented by E1.
+The original compose_space_registry factory remains inspection-only; E6 separately composes
+the E2–E5 resource/lifecycle primitives. Operator migration/rebinding remains unimplemented.
+
+### `services/space_runtime.py` (private VB-151 E6)
+
+`compose_space_runtime(settings)` validates all definitions before composing one
+immutable registry and exact immutable owner bundles. It starts no threads or
+model. One inert E2 resource shell supplies the shared reference required by
+enabled semantic constructors; its private cache uses validated default storage's
+`models` directory. Disabled owners retain immutable inspection and no lifecycle
+handle. With no enabled owners, no E2, E4 or E5 object is allocated.
+
+The composed default repository also pins ordinary storage ancestry and SQLite
+file identity for this process, without requiring or writing non-default binding
+metadata. Initialization, resumed work, reads, mutations and recovery reject
+replacement directories/files and redirected sidecars. The shared cache pins
+the same storage ancestry and its model directory before allocation/reloading;
+already loaded model state remains independent of an unavailable owner index.
+These checks retain E1's cooperating-filesystem model, not hostile-writer isolation.
+Legacy default indexes may omit all three namespace binding keys. If any is
+present, E1's version, exact `default` ID and configured-root digest must all
+match; malformed/partial/foreign metadata is rejected without rewriting it.
+The same validation precedes writable preparation and runs inside live reads
+and write transactions; valid filesystem identity alone never authorizes namespace adoption.
+
+Inert `RuntimeSpaceIndexLifecycle` handles break the owner/binding/scheduler
+construction cycle. The final owner map is installed before the first grant;
+neither map nor bundle is replaced afterward. Each handle attaches exactly once
+to its final registry-issued binding and E4 scheduler. Registry and scheduler
+token/owner validation remain unchanged. The cheap `compose_space_registry`
+inspection factory and direct legacy owners retain their existing behavior.
+
+Explicit `start()` first starts E5 and waits for native readiness/initial coverage
+debt, then starts E4 once with startup reconciliation, then opens private operation
+admission. Index readiness remains owner-local and asynchronous. Structural/path
+validation and semantic/repository constructor failures abort composition with
+sanitized configuration errors; E4
+cannot isolate errors that happen before it exists. Index content/binding/sync
+failures after owner construction retain E1–E4's fail-closed owner-local handling.
+Native startup failure rolls back on the same watcher, retaining unresolved
+generation resources if cleanup fails; a stopped runtime cannot restart.
+E3 work becomes service-owned before temporary SQLite spool initialization.
+Failed disposal retains that one terminal work object; an explicit retry disposes
+it before reserving new synchronization, so the same retry can complete recovery.
+
+Runtime-injected `SpaceOperations` authorizes the complete selection, including
+supplementary Query/hygiene requirements, before entering one admission gate.
+It allows one active operation and at most 64 waiting callers, retaining no
+request queue; excess callers receive private `unavailable_space`. Waiters poll
+caller cancellation every 50 ms and wake immediately on shutdown. The active
+token combines caller and runtime cancellation without changing request budgets.
+Semantic Query delegates before admission so the semantic pipeline enters once.
+Reentry fails immediately. No scheduler code takes admission, and its condition
+is never held across owner/resource work. Lifecycle control handles dispatch
+directly to E4 without acquiring operation admission. Uninterruptible local owner,
+OS and backend calls drain to their existing safe boundary.
+
+Shutdown fences operations and signals their tokens, calls E4 `begin_shutdown`,
+stops E5, drains E4's active boundary, drains scoped operations, and closes E2
+after all consumers release leases. It retries recorded E3 cleanup before E2
+release and checks E2 cleanup success. Repeated/concurrent shutdown is serialized;
+executor shutdown attempts retain the same executor until disposal, dispatcher
+completion and worker joins are verified. Semantic completion is signaled only
+after that and owner cleanup succeed; interruption leaves shutdown retryable.
+Failed native cleanup retains the original observer, producer references and
+scheduler generation, even after semantic resources have drained.
+It never creates a replacement watcher or drains eight queued full syncs.
+Under accepted [ADR 0010](docs/adr/0010-safety-first-e6-cleanup-outcomes.md),
+cleanup retries require certified continuing allocation ownership. Read-only
+pre-dispatch failures remain retryable. Verified primitive release completes the
+allocation's obligation; an opaque close exception or return cannot certify it.
+Ambiguous original or final-guard release retains bounded ownership and can keep
+the runtime permanently stopping. Numeric validity, matching metadata and even
+same-object equality cannot authorize another close. Process termination may be
+the only reclamation mechanism; it is not successful in-process shutdown.
+Public REST/MCP/CLI guards remain intact; F/G and VB-152 activation are outstanding.
 
 ### `schemas/`
 

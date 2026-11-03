@@ -9,12 +9,14 @@ import re
 import stat
 import uuid
 from contextlib import ExitStack, contextmanager, suppress
+from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import wraps
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Literal
 
+from app.core.resource_cleanup import retained_exit_stack
 from app.services._vault_writes import (
     UnsafeWritePathError,
     coordinated_write,
@@ -22,6 +24,18 @@ from app.services._vault_writes import (
     open_windows_staged_file,
     windows_pinned_path,
 )
+
+_PRIVATE_NOTE_READS = ContextVar("private_owned_note_reads", default=False)
+
+
+@contextmanager
+def _owned_note_reads():
+    """Private runtime calls, including legacy service delegates, own readers."""
+    token = _PRIVATE_NOTE_READS.set(True)
+    try:
+        yield
+    finally:
+        _PRIVATE_NOTE_READS.reset(token)
 
 
 def _coordinated(method):
@@ -275,6 +289,13 @@ class VaultService:
             raise ValueError("max_note_bytes must be positive")
         self.vault_root = Path(vault_root).expanduser().resolve()
         self.max_note_bytes = max_note_bytes
+        from app.core.resource_cleanup import VaultResources
+
+        self._scoped_resources = VaultResources()
+
+    def close_scoped_resources(self):
+        """Private lifecycle drain after accepted scoped operations complete."""
+        self._scoped_resources.drain()
 
     def vault_exists(self) -> bool:
         return self.vault_root.exists()
@@ -1026,11 +1047,26 @@ class VaultService:
         except (OSError, NoteUnavailableError):
             return False
 
+    @contextmanager
+    def _pinned_posix_root(self):
+        with retained_exit_stack() as stack:
+            descriptor = None
+            for component in (self.vault_root.anchor, *self.vault_root.parts[1:]):
+                lease = self._scoped_resources.open_descriptor(
+                    os.open, component, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                    dir_fd=descriptor,
+                )
+                stack.callback(self._scoped_resources.release, lease)
+                descriptor = lease.resource.descriptor
+            yield descriptor
+
     def _sorted_markdown_discoveries(self):
         """Stream each pinned directory once; canonical ordering is selected later."""
 
         def walk(directory: Path, prefix: str, directory_fd: int | None):
-            with os.scandir(directory if directory_fd is None else directory_fd) as listing:
+            with self._scoped_resources.context(
+                os.scandir, directory if directory_fd is None else directory_fd,
+            ) as listing:
                 for entry in listing:
                     is_directory = entry.is_dir(follow_symlinks=False)
                     if is_directory:
@@ -1045,31 +1081,25 @@ class VaultService:
                     relative = f"{prefix}{name}"
                     if is_directory:
                         if directory_fd is None:
-                            with windows_pinned_path(directory / name):
+                            with windows_pinned_path(directory / name, _cleanup_owner=self._scoped_resources):
                                 yield from walk(directory / name, relative + "/", None)
                         else:
-                            child_fd = os.open(
-                                name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                            with self._scoped_resources.descriptor(
+                                os.open, name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
                                 dir_fd=directory_fd,
-                            )
-                            try:
-                                yield from walk(directory / name, relative + "/", child_fd)
-                            finally:
-                                os.close(child_fd)
+                            ) as lease:
+                                yield from walk(directory / name, relative + "/", lease.resource.descriptor)
                     else:
                         yield relative, entry.is_symlink()
 
         if os.name == "nt":
-            with ExitStack() as stack:
+            with retained_exit_stack() as stack:
                 for ancestor in reversed((self.vault_root, *self.vault_root.parents)):
-                    stack.enter_context(windows_pinned_path(ancestor))
+                    stack.enter_context(windows_pinned_path(ancestor, _cleanup_owner=self._scoped_resources))
                 yield from walk(self.vault_root, "", None)
         else:
-            root_fd = open_root_directory(self.vault_root)
-            try:
+            with self._pinned_posix_root() as root_fd:
                 yield from walk(self.vault_root, "", root_fd)
-            finally:
-                os.close(root_fd)
 
     def read_verified_markdown_snapshot(
         self, path: str, *, fact: BoundedMarkdownPathFact | None = None,
@@ -1083,21 +1113,20 @@ class VaultService:
             raise NoteUnavailableError("note_unavailable")
         parts = PurePosixPath(path).parts
         try:
-            with ExitStack() as stack:
+            with retained_exit_stack() as stack:
                 if os.name == "nt":
                     for ancestor in reversed((self.vault_root, *self.vault_root.parents)):
-                        stack.enter_context(windows_pinned_path(ancestor))
+                        stack.enter_context(windows_pinned_path(ancestor, _cleanup_owner=self._scoped_resources))
                     current = self.vault_root
                     for part in parts[:-1]:
                         current /= part
-                        stack.enter_context(windows_pinned_path(current))
-                    stack.enter_context(windows_pinned_path(current / parts[-1]))
+                        stack.enter_context(windows_pinned_path(current, _cleanup_owner=self._scoped_resources))
+                    stack.enter_context(windows_pinned_path(current / parts[-1], _cleanup_owner=self._scoped_resources))
                     if fact is not None and not self.verify_bounded_markdown_path(fact):
                         raise NoteUnavailableError("note_unavailable")
-                    fd = os.open(current / parts[-1], os.O_RDONLY | os.O_BINARY)
+                    factory, arguments, options = os.open, (current / parts[-1], os.O_RDONLY | os.O_BINARY), {}
                 else:
-                    directory_fd = open_root_directory(self.vault_root)
-                    stack.callback(os.close, directory_fd)
+                    directory_fd = stack.enter_context(self._pinned_posix_root())
                     expected_directories = dict(fact.directories) if fact is not None else None
                     if expected_directories is not None and self._bounded_directory_identity(
                         os.fstat(directory_fd)
@@ -1105,22 +1134,21 @@ class VaultService:
                         raise NoteUnavailableError("note_unavailable")
                     prefix: list[str] = []
                     for part in parts[:-1]:
-                        next_fd = os.open(
-                            part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                        lease = self._scoped_resources.open_descriptor(
+                            os.open, part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
                             dir_fd=directory_fd,
                         )
-                        stack.callback(os.close, next_fd)
-                        directory_fd = next_fd
+                        stack.callback(self._scoped_resources.release, lease)
+                        directory_fd = lease.resource.descriptor
                         prefix.append(part)
                         if expected_directories is not None and self._bounded_directory_identity(
                             os.fstat(directory_fd)
                         ) != expected_directories["/".join(prefix)]:
                             raise NoteUnavailableError("note_unavailable")
-                    fd = os.open(
-                        parts[-1], os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
-                        dir_fd=directory_fd,
-                    )
-                with os.fdopen(fd, "rb") as stream:
+                    factory = os.open
+                    arguments = (parts[-1], os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+                    options = {"dir_fd": directory_fd}
+                with self._scoped_resources.stream(factory, *arguments, **options) as stream:
                     before = os.fstat(stream.fileno())
                     if not stat.S_ISREG(before.st_mode):
                         raise NoteUnavailableError("note_unavailable")
@@ -1218,7 +1246,7 @@ class VaultService:
             if os.name == "nt":
                 # Pin ancestors too: denying deletion of only the leaf is insufficient.
                 for ancestor in reversed((path, *path.parents)):
-                    stack.enter_context(windows_pinned_path(ancestor))
+                    stack.enter_context(windows_pinned_path(ancestor, _cleanup_owner=self._scoped_resources))
             else:
                 directory_fd = open_root_directory(path)
                 stack.callback(os.close, directory_fd)
@@ -1237,7 +1265,7 @@ class VaultService:
                         pass
                 path /= name
                 if directory_fd is None:
-                    stack.enter_context(windows_pinned_path(path))
+                    stack.enter_context(windows_pinned_path(path, _cleanup_owner=self._scoped_resources))
                     if not path.is_dir():
                         raise AtomicCaptureError("unsafe_destination")
                 else:
@@ -1288,7 +1316,9 @@ class VaultService:
                     verify()
                     with ExitStack() as stack:
                         if fd is None:
-                            stack.enter_context(windows_pinned_path(parent / name))
+                            stack.enter_context(windows_pinned_path(
+                                parent / name, _cleanup_owner=self._scoped_resources,
+                            ))
                             if not (parent / name).is_file():
                                 raise AtomicCaptureError("unsafe_destination")
                             read_fd = os.open(parent / name, os.O_RDONLY | os.O_BINARY)
@@ -1312,7 +1342,9 @@ class VaultService:
                     verify()
                     with ExitStack() as stack:
                         if fd is None:
-                            stack.enter_context(windows_pinned_path(parent / name))
+                            stack.enter_context(windows_pinned_path(
+                                parent / name, _cleanup_owner=self._scoped_resources,
+                            ))
                             read_fd = os.open(parent / name, os.O_RDONLY | os.O_BINARY)
                         else:
                             read_fd = os.open(
@@ -1405,7 +1437,7 @@ class VaultService:
             parent = self.vault_root
             if os.name == "nt":
                 for ancestor in reversed((parent, *parent.parents)):
-                    stack.enter_context(windows_pinned_path(ancestor))
+                    stack.enter_context(windows_pinned_path(ancestor, _cleanup_owner=self._scoped_resources))
                 fd = None
             else:
                 fd = open_root_directory(parent)
@@ -1420,7 +1452,7 @@ class VaultService:
                     raise PromotionWriteError(category)
                 parent /= component
                 if fd is None:
-                    stack.enter_context(windows_pinned_path(parent))
+                    stack.enter_context(windows_pinned_path(parent, _cleanup_owner=self._scoped_resources))
                     if not parent.is_dir():
                         raise PromotionWriteError("unsafe_destination")
                 else:
@@ -1454,7 +1486,9 @@ class VaultService:
     def _promotion_read_open(self, parent, fd, name, verify):
         with ExitStack() as stack:
             if fd is None:
-                stack.enter_context(windows_pinned_path(parent / name))
+                stack.enter_context(windows_pinned_path(
+                                parent / name, _cleanup_owner=self._scoped_resources,
+                            ))
                 opened = os.open(parent / name, os.O_RDONLY | os.O_BINARY)
             else:
                 opened = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=fd)
@@ -1623,7 +1657,9 @@ class VaultService:
                     raise PromotionWriteError("size_limit")
                 with ExitStack() as stack:
                     if fd is None:
-                        stack.enter_context(windows_pinned_path(parent / name))
+                        stack.enter_context(windows_pinned_path(
+                                parent / name, _cleanup_owner=self._scoped_resources,
+                            ))
                         opened = os.open(parent / name, os.O_WRONLY | os.O_APPEND | os.O_BINARY)
                     else:
                         opened = os.open(name, os.O_WRONLY | os.O_APPEND | os.O_NOFOLLOW, dir_fd=fd)
@@ -1681,9 +1717,26 @@ class VaultService:
         return data.count(opening) == data.count(closing) == data.count(block) == 1
 
     def read_note(self, path: str) -> NoteReadResult:
+        if _PRIVATE_NOTE_READS.get():
+            return self._read_owned_note(path)
         note_path = self.resolve_path(path)
         self._ensure_markdown(note_path)
         return NoteReadResult(path=self._relative_path(note_path), content=self._read_text(note_path))
+
+    def _read_owned_note(self, path: str) -> NoteReadResult:
+        """Qualified read through this vault's retained descriptor/stream owner."""
+        note_path = self.resolve_path(path)
+        self._ensure_markdown(note_path)
+        if not note_path.exists() or not note_path.is_file():
+            raise NoteNotFoundError("Note not found")
+        relative = self._relative_path(note_path)
+        try:
+            result = self.read_verified_markdown_snapshot(relative.replace("\\", "/"))
+        except NoteUnavailableError as error:
+            raise OSError("Note unavailable") from error
+        # Preserve Path.read_text's universal-newline semantics for qualified
+        # read_note, while synchronization snapshots continue to preserve bytes.
+        return NoteReadResult(relative, result.content.replace("\r\n", "\n").replace("\r", "\n"))
 
     def search_notes(self, *, query: str, folder: str = "", limit: int = 10) -> list[NoteSearchResult]:
         root = self.resolve_path(folder) if folder else self.vault_root

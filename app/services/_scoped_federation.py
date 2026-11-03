@@ -78,6 +78,11 @@ def federate_semantic(operations, text, *, scope=None, folder=None, limit=5,
         if (not operations._resolver._registry._accepts(binding)
                 or type(binding._owners) is not SpaceOwners):
             raise SpaceError("invalid_scope")
+    with operations._admit(cancel) as cancel:
+        return _semantic_authorized(bindings, text, folder, limit, min_score, cancel, limits, _query, _validated)
+
+
+def _semantic_authorized(bindings, text, folder, limit, min_score, cancel, limits, _query, _validated):
     ids = tuple(binding.space_id for binding in bindings)
     cancel = CancellationToken() if cancel is None else cancel
     cancel.check()
@@ -321,6 +326,13 @@ def federate(operations, *, mode, scope=None, limit=None, folder=None, text=None
             operations, request.query.semantic_text, folder=folder, limit=limit,
             cancel=cancel, limits=limits, _query=request, _validated=validated, _bindings=bindings,
         )
+    with operations._admit(cancel) as cancel:
+        return _markdown_authorized(operations, bindings, selected_ids, predicates, paths, mode,
+                                    request, validated, folder, limit, text, cancel, limits)
+
+
+def _markdown_authorized(operations, bindings, selected_ids, predicates, paths, mode,
+                         request, validated, folder, limit, text, cancel, limits):
     for binding in bindings:
         if (not operations._resolver._registry._accepts(binding)
                 or type(binding._owners) is not SpaceOwners):

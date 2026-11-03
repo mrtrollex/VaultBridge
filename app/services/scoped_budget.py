@@ -62,6 +62,7 @@ class ScopedBudget:
         }
         self.total = dict.fromkeys(CEILINGS, 0)
         self.used = {sid: dict.fromkeys(CEILINGS, 0) for sid in ids}
+        self.reserved = {sid: 0 for sid in ids}
         self.reads = 0
         self.candidate_reads = {sid: 0 for sid in ids}
         self.incoming_reads = set()
@@ -71,8 +72,16 @@ class ScopedBudget:
         self.source_bytes = dict.fromkeys(ids, 0)
 
     def remaining(self, sid, name):
-        return min(self.ceilings[name][0] - self.total[name],
-                   self.allocations[sid][name] - self.used[sid][name])
+        held = sum(self.reserved.values()) if name == "probes" else 0
+        local = self.reserved[sid] if name == "probes" else 0
+        return min(self.ceilings[name][0] - self.total[name] - held,
+                   self.allocations[sid][name] - self.used[sid][name] - local)
+
+    def reserve_cleanup(self, sid):
+        if self.remaining(sid, "probes") < 8:
+            raise BudgetExhausted("probes")
+        self.reserved[sid] += 8
+        return CleanupCredit(self, sid)
 
     def charge(self, sid, name, count=1):
         if type(count) is not int or count < 0:
@@ -98,6 +107,26 @@ class ScopedBudget:
 
     def relationships(self, sid, cancel):
         return RelationshipBudgetView(self, sid, cancel)
+
+
+class CleanupCredit:
+    """Pre-admitted metadata work for one initial resource disposal attempt."""
+    def __init__(self, budget, sid):
+        self.budget, self.sid, self.left = budget, sid, 8
+
+    def probe(self):
+        if self.budget is None:
+            return  # Explicit lifecycle retry is outside the returned request.
+        if self.left == 0:
+            raise RuntimeError("Cleanup exceeded its admitted primitive bound")
+        self.left -= 1
+        self.budget.reserved[self.sid] -= 1
+        self.budget.charge(self.sid, "probes")
+
+    def finish(self):
+        if self.budget is not None:
+            self.budget.reserved[self.sid] -= self.left
+            self.budget = None
 
 
 class RelationshipBudgetView:

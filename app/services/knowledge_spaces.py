@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from app.services.relationships import RelationshipService
     from app.services.semantic_search import SemanticSearchService
     from app.services.space_owners import DeferredSpaceIndexLifecycle, ImmutableSpaceInspection
+    from app.services.space_runtime import RuntimeSpaceIndexLifecycle
     from app.services.vault import VaultService
 
 
@@ -268,7 +269,7 @@ class SpaceOwners(_PrivateImmutable):
     promotion: PromotionService
     hygiene: KnowledgeHygieneService
     semantic: ImmutableSpaceInspection | SemanticSearchService
-    scheduler: DeferredSpaceIndexLifecycle | None
+    scheduler: DeferredSpaceIndexLifecycle | RuntimeSpaceIndexLifecycle | None
 
     def __init__(self, *, definition, root_identity, vault, relationships, query, duplicates, capture, promotion,
                  hygiene, semantic, scheduler):

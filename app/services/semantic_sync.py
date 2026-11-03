@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
+from app.core.resource_cleanup import SQLiteConnections
 from app.repositories.semantic_binding import ordinary_identity
 from app.services.vault import SEMANTIC_EXCLUDED_DIRECTORIES, _markdown_discovery_name
 
@@ -75,6 +76,12 @@ class SyncWork:
         self.handle = SyncContinuation(full=full)
         self.started_at = time.perf_counter()
         self.turn_lock = threading.Lock()
+        self.disposing = False
+        self._cleanup_condition = threading.Condition()
+        self._cleaning = False
+        self._closed = False
+        self._cleanup_revision = 0
+        self._cleanup_failed = False
         self.cancel_event = threading.Event()
         self.configuration = self.configuration_of(service)
         self.repository = service.repository
@@ -93,7 +100,12 @@ class SyncWork:
         self.after = ("", "")
         self.stale_after = ""
         self.counts = {"indexed": 0, "unchanged": 0, "removed": 0}
+        self._spool_connections = SQLiteConnections()
         self.temporary = tempfile.TemporaryDirectory(prefix="vaultbridge-sync-")
+        # All disposal fields now exist. Publish the one bounded cleanup owner
+        # BEFORE initializing SQLite, which can fail after allocating the path.
+        with service._sync_admin_lock:
+            service._active_sync = self
         try:
             with self.spool() as connection:
                 connection.executescript(
@@ -105,7 +117,9 @@ class SyncWork:
                 if full:
                     connection.execute("INSERT INTO directories VALUES('')")
         except BaseException:
-            self.temporary.cleanup()
+            # The service disposes this terminal work after preparation's locks
+            # and generation context unwind, retaining it if removal fails.
+            self.handle._state = SyncStepState.FAILED
             raise
 
     @staticmethod
@@ -136,14 +150,13 @@ class SyncWork:
 
     @contextmanager
     def spool(self):
-        connection = sqlite3.connect(Path(self.temporary.name) / "scan.sqlite3")
-        try:
+        with self._spool_connections.connection(
+            Path(self.temporary.name) / "scan.sqlite3", _factory=sqlite3.connect,
+        ) as connection:
             # Keep SQLite's page cache fixed as the frontier grows on disk.
             connection.execute("PRAGMA cache_size=-256")
             with connection:
                 yield connection
-        finally:
-            connection.close()
 
     def _remember(self, connection, path, *, missing=False):
         connection.execute("INSERT OR IGNORE INTO files VALUES(?, ?, ?)",
@@ -283,11 +296,37 @@ class SyncWork:
             self.phase = "finish"
 
     def close(self):
-        if self.cursor is not None:
-            self.cursor.close()
-            self.cursor = None
-        self.targets = None
-        self.temporary.cleanup()
+        # Own the exact TemporaryDirectory even after cleanup detaches its
+        # finalizer and removal fails. Explicit cleanup retries the same path.
+        with self._cleanup_condition:
+            self._cleanup_condition.wait_for(lambda: not self._cleaning)
+            if self._closed:
+                return
+            self._cleaning = True
+        completed = False
+        try:
+            # A workspace containing a live spool connection is still owned,
+            # even on POSIX where unlink would otherwise succeed. Retry the
+            # original connection before touching the original workspace.
+            self._spool_connections.drain(retry=self._cleanup_failed)
+            if self.cursor is not None:
+                self.cursor.close()
+                self.cursor = None
+            self.targets = None
+            self.temporary.cleanup()
+            try:
+                os.lstat(self.temporary.name)
+            except FileNotFoundError:
+                completed = True
+            else:
+                raise OSError("Synchronization workspace cleanup is incomplete")
+        finally:
+            with self._cleanup_condition:
+                self._closed = completed
+                self._cleanup_failed = not completed
+                self._cleanup_revision += 1
+                self._cleaning = False
+                self._cleanup_condition.notify_all()
 
     def result(self):
         return SyncStep(self.handle.state, **self.counts)

@@ -6,6 +6,7 @@ import hashlib
 import os
 import re
 import stat
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -34,6 +35,48 @@ def ordinary_identity(path: Path, *, directory=False):
     return info.st_dev, info.st_ino
 
 
+class StorageDirectoryIdentity:
+    """Process-lifetime ordinary ancestry without persisted binding metadata.
+
+    Missing suffixes may be created once. Pin existing/new directories without
+    adopting replacements or Windows reparse points (E1's cooperative boundary).
+    """
+
+    def __init__(self, path: Path):
+        self.path = path.absolute()
+        self._lock = threading.Lock()
+        self._identities = {}
+        for parent in reversed((self.path, *self.path.parents)):
+            try:
+                self._identities[parent] = ordinary_identity(parent, directory=True)
+            except FileNotFoundError:
+                self._identities[parent] = None
+
+    def check(self, *, probe=lambda: None):
+        for parent in self._identities:
+            probe()
+            with self._lock:
+                previous = self._identities[parent]
+            try:
+                current = ordinary_identity(parent, directory=True)
+            except FileNotFoundError:
+                if previous is not None:
+                    raise IndexBindingUnavailableError from None
+                return False
+            with self._lock:
+                previous = self._identities[parent]
+                if previous is not None and current != previous:
+                    raise IndexBindingUnavailableError
+                self._identities[parent] = current
+        return True
+
+    def prepare(self):
+        self.check()
+        self.path.mkdir(parents=True, exist_ok=True)
+        if not self.check():
+            raise IndexBindingUnavailableError
+
+
 @dataclass(frozen=True, slots=True, repr=False)
 class ExpectedIndexBinding:
     """Issued internally from an already validated non-default definition."""
@@ -50,6 +93,21 @@ class ExpectedIndexBinding:
             or self.space_id == "default"
         ):
             raise ValueError("expected non-default space")
+        self._bind_root()
+
+    @classmethod
+    def _for_default(cls, root: Path):
+        """Optional explicit metadata expectation; legacy absence stays valid.
+
+        Keep the ordinary E1 constructor's non-default-only contract intact.
+        """
+        result = object.__new__(cls)
+        object.__setattr__(result, "space_id", "default")
+        object.__setattr__(result, "_root", root)
+        result._bind_root()
+        return result
+
+    def _bind_root(self):
         root = self._root.resolve(strict=True)
         object.__setattr__(self, "_root", root)
         object.__setattr__(self, "_root_directories", tuple(
@@ -82,13 +140,27 @@ class ExpectedIndexBinding:
 
 
 def validate_binding(one, expected: ExpectedIndexBinding, *, charge_bytes=lambda size: None,
-                     allow_empty=False):
+                     allow_empty=False, allow_legacy=False):
     """Validate in the caller's transaction, with preflight before each payload.
 
     `one` owns cursor work, cancellation and optional VM accounting. Return True
     only for a completely unbound, recognized empty store eligible to initialize.
     Missing tables/columns and duplicate meta keys fail closed.
     """
+    values = None
+    if allow_legacy:
+        if expected.space_id != "default":
+            raise IndexBindingUnavailableError
+        table = one("SELECT type FROM sqlite_master WHERE name='meta'")
+        if table is None:
+            return False  # Legacy initialization has no namespace metadata yet.
+        if table[0] != "table":
+            raise IndexBindingUnavailableError
+        values = _binding_values(one, expected, charge_bytes)
+        if values == [None, None, None]:
+            return False  # Do not impose new namespace/schema requirements on legacy.
+        if tuple(values) != expected.values:
+            raise IndexBindingUnavailableError
     if one(
         "SELECT count(*) FROM sqlite_master WHERE type='table' "
         "AND name IN ('meta','notes','chunks')"
@@ -145,6 +217,18 @@ def validate_binding(one, expected: ExpectedIndexBinding, *, charge_bytes=lambda
         "SELECT id,path,chunk_index,heading,content,embedding,dimensions FROM chunks LIMIT 0",
     ):
         one(sql)
+    if values is None:
+        values = _binding_values(one, expected, charge_bytes)
+    if tuple(values) == expected.values:
+        return False
+    if allow_empty and values == [None, None, None] and one(
+        "SELECT EXISTS(SELECT 1 FROM notes) OR EXISTS(SELECT 1 FROM chunks)"
+    )[0] == 0:
+        return True
+    raise IndexBindingUnavailableError
+
+
+def _binding_values(one, expected, charge_bytes):
     values = []
     for key in BINDING_KEYS:
         descriptor = one(
@@ -163,10 +247,4 @@ def validate_binding(one, expected: ExpectedIndexBinding, *, charge_bytes=lambda
         if not isinstance(value, str):
             raise IndexBindingUnavailableError
         values.append(value)
-    if tuple(values) == expected.values:
-        return False
-    if allow_empty and values == [None, None, None] and one(
-        "SELECT EXISTS(SELECT 1 FROM notes) OR EXISTS(SELECT 1 FROM chunks)"
-    )[0] == 0:
-        return True
-    raise IndexBindingUnavailableError
+    return values

@@ -7,6 +7,7 @@ from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
+from app.core.resource_cleanup import retained_exit_stack
 from app.services._vault_writes import UnsafeWritePathError, windows_pinned_path
 from app.services.scoped_budget import BudgetExhausted
 from app.services.vault import (
@@ -71,26 +72,44 @@ class ScopedVaultSession:
         self.resolution_snapshot = None
         self._root_stack = None
         self._root_handle = None
+        self._resources = vault._scoped_resources
 
     def __enter__(self):
+        self._resources.check()
         self._root_stack = ExitStack()
         try:
             self._root_handle = self._root_stack.enter_context(self.pinned())
         except BaseException:
-            self._root_stack.close()
+            try:
+                self._root_stack.close()
+            except BaseException:
+                pass
             self._root_stack = None
             raise
         return self
 
     def __exit__(self, *args):
-        if self._root_stack is not None:
-            self._root_stack.close()
-        self._root_stack = self._root_handle = None
+        try:
+            if self._root_stack is not None:
+                self._root_stack.close()
+        except BaseException:
+            if not args or args[0] is None:
+                raise
+        finally:
+            self._root_stack = self._root_handle = None
 
     def probe(self):
         self.budget.charge(self.sid, "probes")
 
     def call(self, function, *args, **kwargs):
+        if function in (self._resources.open_descriptor, self._resources.stream):
+            credit = self.budget.reserve_cleanup(self.sid)
+            try:
+                self.probe()
+                return function(*args, _credit=credit, **kwargs)
+            except BaseException:
+                credit.finish()
+                raise
         self.probe()
         return function(*args, **kwargs)
 
@@ -117,12 +136,13 @@ class ScopedVaultSession:
             chain = tuple(self.root.joinpath(*parts[:index]) for index in range(1, len(parts) + 1))
         else:
             chain = tuple(reversed(target.parents)) + (target,)
-        with ExitStack() as stack:
+        with retained_exit_stack() as stack:
             if os.name == "nt":
                 for path in chain:
                     if path != target or not file:
                         self.budget.charge(self.sid, "directories")
-                    stack.enter_context(windows_pinned_path(path, probe=self.probe))
+                    stack.enter_context(windows_pinned_path(path, probe=self.probe, _cleanup_owner=self._resources,
+                                                           _cleanup_budget=(self.budget, self.sid)))
                     info = self.call(os.lstat, path)
                     if path == self.root:
                         self._check_root(info)
@@ -134,10 +154,15 @@ class ScopedVaultSession:
                     if index != len(chain) - 1 or not file:
                         flags |= os.O_DIRECTORY
                         self.budget.charge(self.sid, "directories")
-                    descriptor = self.call(os.open, path if index == 0 and not reuse_root else path.name,
-                                           flags, dir_fd=descriptor)
-                    stack.callback(os.close, descriptor)
+                    # Charge before entering the allocation owner's shell.
+                    lease = self.call(self._resources.open_descriptor,
+                        os.open, path if index == 0 and not reuse_root else path.name,
+                        flags, dir_fd=descriptor,
+                    )
+                    descriptor = lease.resource.descriptor
+                    stack.callback(self._resources.release, lease)
                     info = self.call(os.fstat, descriptor)
+                    lease.resource.created = info
                     if path == self.root:
                         self._check_root(info)
                 yield descriptor
@@ -180,7 +205,7 @@ class ScopedVaultSession:
                     # that proof under the same entry/open/probe budgets.
                     self.budget.charge(self.sid, "directories")
                     self.probe()
-                    with os.scandir(self.root.joinpath(*done)) as entries:
+                    with self._resources.context(os.scandir, self.root.joinpath(*done)) as entries:
                         while True:
                             self.cancel.check()
                             self.budget.charge(self.sid, "entries")
@@ -278,7 +303,7 @@ class ScopedVaultSession:
             with directory_context as directory:
                 # scandir's descriptor open is a primitive, as well as a directory open.
                 self.probe()
-                with os.scandir(directory) as entries:
+                with self._resources.context(os.scandir, directory) as entries:
                     while True:
                         self.cancel.check()
                         self.budget.charge(self.sid, "entries")
@@ -354,13 +379,11 @@ class ScopedVaultSession:
             raise BudgetExhausted("bytes")
         self.budget.admit_read(self.sid, fact.path, incoming=incoming)
         with self.pinned(fact.path, file=True) as handle:
-            if os.name == "nt":
-                fd = self.call(os.open, handle, os.O_RDONLY | os.O_BINARY)
-            else:
-                fd = self.call(os.dup, handle)
-            # BufferedReader may read ahead past the byte admission. FileIO issues
-            # exactly the bounded read and returns its actual transferred bytes.
-            with os.fdopen(fd, "rb", buffering=0) as stream:
+            factory = os.open if os.name == "nt" else os.dup
+            options = (handle, os.O_RDONLY | os.O_BINARY) if os.name == "nt" else (handle,)
+            with self.call(self._resources.stream, factory, *options) as stream:
+                # BufferedReader may read ahead past the byte admission. FileIO issues
+                # exactly the bounded read and returns its actual transferred bytes.
                 before = self.call(os.fstat, stream.fileno())
                 if not stat.S_ISREG(before.st_mode) or self.identity(before) != fact.identity:
                     raise NoteUnavailableError("note_unavailable")

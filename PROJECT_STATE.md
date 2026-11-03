@@ -351,11 +351,14 @@ Current post-v1 planning position:
   authorization-before-work tests. Existing direct-owner REST/MCP/CLI composition rejects named
   configuration before owner work; legacy startup remains unchanged. Slice B adds explicit private
   local owner bundles, qualified one-space note/relationship/duplicate-advice/hygiene/inspection
-  orchestration and a disabled-index immutable facade. Semantic execution/scheduling and scoped
-  capture/promotion remain deferred seams. Slice C adds budgeted sequential Markdown-only scoped
+  orchestration and a disabled-index immutable facade. Its inspection-only factory stays inert;
+  scoped capture/promotion remains deferred. Slice C adds budgeted sequential Markdown-only scoped
   list/literal/nonsemantic Query, qualified predicates, supplied snapshots, incremental relationship
-  admission, cancellation and finite coverage. Slices A–C are implemented; D–G remain pending;
-  VB-151 is not complete. Semantic federation is not implemented.
+  admission, cancellation and finite coverage. D1–D3b implement precise bounded semantic
+  federation and semantic Query. E1–E5 supply independent index bindings, shared lazy embedding,
+  resumable sync, bounded scheduling and native monitoring. E6 now adds explicit private runtime
+  composition, exact immutable ownership, cancellable operation admission and coordinated
+  startup/rollback/shutdown. Slices A–E are implemented; F–G remain pending; VB-151 is not complete.
   VB-152 adapters remain future/unscoped and need a separate contract; named serving remains blocked.
   Milestone 16 remains PLANNED; multi-space serving and index-format changes are not implemented
 - VB-032 and VB-033 remain deferred optional future work

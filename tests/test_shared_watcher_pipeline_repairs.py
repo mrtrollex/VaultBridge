@@ -73,15 +73,17 @@ class Scan:
 @pytest.mark.parametrize("number", [errno.EACCES, errno.EPERM, errno.EIO])
 @pytest.mark.parametrize("method", ["is_dir", "is_symlink", "stat", "next"])
 def test_original_startup_classification_error_is_fatal(tmp_path, monkeypatch, number, method):
-    scan, counts = os.scandir, [0, 0]
+    counts = [0, 0]
     with rig(tmp_path, 1) as r:
         root = r.owners["default"].vault_root
         (root / "ordinary" / "deep").mkdir(parents=True)
 
-        def faulty(path):
-            return Scan(scan(path), "deep", method, number, counts)
+        def faulty(native, path, iterator):
+            return Scan(iterator, "deep", method, number, counts)
 
-        monkeypatch.setattr(os, "scandir", faulty)
+        from app.services.watcher_ingress_linux import _BoundedInotify
+
+        monkeypatch.setattr(_BoundedInotify, "_registration_view", faulty)
         use_production_observer(r)
         with pytest.raises(OSError) as failure:
             r.watcher.start()
@@ -98,7 +100,7 @@ def test_runtime_entry_and_iterator_errors_close_partial_traversal(tmp_path, mon
 
     from app.services.watcher_ingress_linux import _BoundedInotify
 
-    scan, parse, counts = os.scandir, _BoundedInotify._parse_event_buffer, [0, 0]
+    parse, counts = _BoundedInotify._parse_event_buffer, [0, 0]
     entered, release = threading.Event(), threading.Event()
     with rig(tmp_path, 2) as r:
         root = r.owners["default"].vault_root
@@ -110,8 +112,7 @@ def test_runtime_entry_and_iterator_errors_close_partial_traversal(tmp_path, mon
         emitter = next(e for e in r.watcher._observer.emitters if e.watch.path == str(root))
         reader = emitter._inotify
 
-        def faulty(path):
-            iterator = scan(path)
+        def faulty(native, path, iterator):
             if threading.current_thread() is reader and os.fsdecode(path) == str(ordinary):
                 return Scan(iterator, "deep", method, errno.EIO, counts)
             return iterator
@@ -128,7 +129,9 @@ def test_runtime_entry_and_iterator_errors_close_partial_traversal(tmp_path, mon
                         assert release.wait(10)
                     yield record
 
-        monkeypatch.setattr(os, "scandir", faulty)
+        from app.services.watcher_ingress_linux import _BoundedInotify
+
+        monkeypatch.setattr(_BoundedInotify, "_registration_view", faulty)
         monkeypatch.setattr(_BoundedInotify, "_parse_event_buffer", events)
         try:
             if stage == "create":
@@ -156,7 +159,7 @@ def test_original_overflow_classification_cannot_certify_missing_watch(tmp_path,
 
     from app.services.watcher_ingress_linux import BoundedInotifyBuffer, _BoundedInotify
 
-    parse, scan, report = _BoundedInotify._parse_event_buffer, os.scandir, BoundedInotifyBuffer._report_failure
+    parse, report = _BoundedInotify._parse_event_buffer, BoundedInotifyBuffer._report_failure
     entered, release, outcome, fence, drained = (threading.Event() for _ in range(5))
     armed, injected, counts = threading.Event(), threading.Event(), [0, 0]
     resource, _ = shared
@@ -183,8 +186,7 @@ def test_original_overflow_classification_cannot_certify_missing_watch(tmp_path,
                 if record[3] == b"ordered.txt":
                     drained.set()
 
-        def faulty(path):
-            iterator = scan(path)
+        def faulty(native, path, iterator):
             if armed.is_set() and threading.current_thread() is reader and os.fsdecode(path) == str(ordinary):
                 return Scan(iterator, "deep", "is_dir", errno.EIO, counts)
             return iterator
@@ -201,7 +203,9 @@ def test_original_overflow_classification_cannot_certify_missing_watch(tmp_path,
 
         monkeypatch.setattr(_BoundedInotify, "_parse_event_buffer", events)
         monkeypatch.setattr(BoundedInotifyBuffer, "_report_failure", failed)
-        monkeypatch.setattr(os, "scandir", faulty)
+        from app.services.watcher_ingress_linux import _BoundedInotify
+
+        monkeypatch.setattr(_BoundedInotify, "_registration_view", faulty)
         reader._inotify._restored = established
         deep = ordinary / "deep"
         deep.mkdir()
@@ -452,7 +456,7 @@ def test_classification_enoent_requires_proven_unregistered_child(tmp_path, monk
 
     from app.services.watcher_ingress_linux import _BoundedInotify
 
-    scan, parse, add, counts = os.scandir, _BoundedInotify._parse_event_buffer, _BoundedInotify._add_watch, [0, 0]
+    parse, add, counts = _BoundedInotify._parse_event_buffer, _BoundedInotify._add_watch, [0, 0]
     removed = threading.Event()
     with rig(tmp_path, 1) as r:
         root = r.owners["default"].vault_root
@@ -466,8 +470,7 @@ def test_classification_enoent_requires_proven_unregistered_child(tmp_path, monk
         emitter = next(iter(r.watcher._producers))
         reader = emitter._inotify
 
-        def faulty(path):
-            iterator = scan(path)
+        def faulty(native, path, iterator):
             if threading.current_thread() is reader and os.fsdecode(path) == str(ordinary):
                 return Scan(iterator, "deep", "vanish" if boundary == "classification" else "normal",
                             errno.ENOENT, counts)
@@ -486,7 +489,9 @@ def test_classification_enoent_requires_proven_unregistered_child(tmp_path, monk
                 else:
                     yield record
 
-        monkeypatch.setattr(os, "scandir", faulty)
+        from app.services.watcher_ingress_linux import _BoundedInotify
+
+        monkeypatch.setattr(_BoundedInotify, "_registration_view", faulty)
         monkeypatch.setattr(_BoundedInotify, "_add_watch", vanished)
         monkeypatch.setattr(_BoundedInotify, "_parse_event_buffer", overflow)
         if previously_watched:

@@ -162,7 +162,9 @@ def test_actual_discovery_work_exhaustion_discards_no_retry(tmp_path, monkeypatc
     budgets = capture_budget(monkeypatch)
     with pytest.raises(SpaceError, match="unavailable_space"):
         operations(registry).scoped_list(limits={resource: (1, 1)})
-    assert budgets[0].total[resource] == 1
+    # A one-probe request cannot fund allocation plus mandatory disposal, so
+    # reserve admission rejects it before the first filesystem primitive.
+    assert budgets[0].total[resource] == (0 if resource == "probes" else 1)
 
 
 def test_bytes_fixed_division_canonical_prefix_and_invalid_utf8(tmp_path, monkeypatch):
@@ -399,6 +401,15 @@ def test_real_primitive_calls_are_precharged(tmp_path, monkeypatch):
     budgets = capture_budget(monkeypatch)
     original = ScopedVaultSession.call
     calls = []
+    opened = os.open
+    last_open_charge = 0
+
+    def open_precharged(*args, **kwargs):
+        nonlocal last_open_charge
+        charged = budgets[0].total["probes"]
+        assert charged > last_open_charge
+        last_open_charge = charged
+        return opened(*args, **kwargs)
 
     def call(session, function, *args, **kwargs):
         before = session.budget.total["probes"]
@@ -409,8 +420,11 @@ def test_real_primitive_calls_are_precharged(tmp_path, monkeypatch):
             return function(*a, **kw)
         return original(session, primitive, *args, **kwargs)
     monkeypatch.setattr(ScopedVaultSession, "call", call)
+    # Allocations are charged before publishing their persistent cleanup shell.
+    monkeypatch.setattr(os, "open", open_precharged)
     assert operations(registry).scoped_literal_search("hit").items
-    assert {"open", "fstat"} <= set(calls)
+    assert {"stream", "fstat"} <= set(calls)
+    assert last_open_charge > 0  # A real precharged os.open was observed too.
     assert len(calls) <= budgets[0].total["probes"] <= 500_000
 
 
@@ -422,7 +436,7 @@ def test_authored_read_uses_one_bounded_size_plus_one_request(tmp_path, monkeypa
 
     class Stream:
         def __init__(self, fd, mode, **kwargs):
-            assert kwargs == {"buffering": 0}
+            assert kwargs == {"buffering": 0, "closefd": False}
             self.inner = original(fd, mode, **kwargs)
 
         def __enter__(self):
@@ -907,6 +921,15 @@ def test_posix_terminal_directory_alias_metadata_and_scoped_list(tmp_path, monke
     calls = []
     original = session.call
 
+    from app.core import resource_cleanup
+    cleanup = resource_cleanup.cleanup_probe
+
+    def cleanup_call():
+        calls.append("cleanup")
+        return cleanup()
+
+    monkeypatch.setattr(resource_cleanup, "cleanup_probe", cleanup_call)
+
     def call(function, *args, **kwargs):
         before = budget.total["probes"]
         result = original(function, *args, **kwargs)
@@ -917,20 +940,23 @@ def test_posix_terminal_directory_alias_metadata_and_scoped_list(tmp_path, monke
     monkeypatch.setattr(session, "call", call)
     with session:
         path, info = session.resolve("Notes/Alias")
+        last_authored = next(call for call in reversed(calls) if call != "cleanup")
     expected = (tmp_path / "default" / canonical).stat()
     assert path == canonical and stat.S_ISDIR(info.st_mode)
     assert (info.st_dev, info.st_ino) == (expected.st_dev, expected.st_ino)
     assert calls.count(os.readlink) == 1
-    assert calls[-1] is os.fstat  # final canonical refresh, charged once
+    assert last_authored is os.fstat  # final canonical refresh, charged once
     assert budget.total["probes"] == len(calls) <= 500_000
     # Deny the final metadata refresh: no uncharged primitive can sneak past
     # the same fixed probe ceiling used by discovery and later phases.
-    limited = ScopedBudget((DEFAULT_SPACE_ID,), limits={"probes": (len(calls) - 1, len(calls) - 1)})
+    ceiling = len(calls) - 1
+    limited = ScopedBudget((DEFAULT_SPACE_ID,), limits={"probes": (ceiling, ceiling)})
     bounded = vault.scoped_session(space_id=DEFAULT_SPACE_ID, budget=limited, cancel=CancellationToken(),
                                    root_identity=vault.root_binding_identity())
     with pytest.raises(BudgetExhausted, match="probes"), bounded:
         bounded.resolve("Notes/Alias")
-    assert limited.total["probes"] == len(calls) - 1
+    assert limited.total["probes"] <= ceiling
+    assert not any(limited.reserved.values())
     result = operations(registry).scoped_list(folder="Notes/Alias")
     assert identities(result) == [("default", "Notes/A.md")]
     assert result.state == "complete"

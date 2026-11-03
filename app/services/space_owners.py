@@ -11,6 +11,7 @@ import stat
 from types import MappingProxyType
 
 from app.core.config import Settings
+from app.core.resource_cleanup import SQLiteConnections
 from app.repositories.semantic import ImmutableIndexInspectionUnavailableError, SemanticRepository
 from app.repositories.semantic_binding import ExpectedIndexBinding
 from app.services.capture import CaptureService
@@ -43,9 +44,10 @@ class _NoSemanticExecution:
 
 
 class _ImmutableRepository:
-    __slots__ = ("_path", "_named", "_directories", "_binding")
+    __slots__ = ("_path", "_named", "_directories", "_binding", "_readers")
 
     def __init__(self, path, *, named, binding=None):
+        self._readers = SQLiteConnections()
         self._path = path
         self._named = named
         self._binding = binding
@@ -116,9 +118,22 @@ class _ImmutableRepository:
             raise ImmutableIndexInspectionUnavailableError
         return target
 
+    def close_resources(self, *, retry=True):
+        self._readers.drain(retry=retry)
+
+    def _repository(self, path):
+        options = ({"_inspection_binding": self._binding}
+                   if self._binding is not None and self._binding.space_id == "default" else
+                   {"_expected_binding": self._binding})
+        return SemanticRepository(path, _reader_connections=self._readers, **options)
+
     def read_immutable_status(self):
+        if self._readers.failed:
+            return SemanticRepository._storage_error_status(
+                storage_exists=None, error_kind="storage_unavailable",
+            )
         if not self._named:
-            return SemanticRepository(self._path).read_immutable_status()
+            return self._repository(self._path).read_immutable_status()
         try:
             target = self._validated_target()
         except (OSError, RuntimeError, ValueError):
@@ -128,7 +143,7 @@ class _ImmutableRepository:
             return SemanticRepository._missing_status()
         # Preserve the validated canonical target; no independent second resolve.
         # This is cooperative-filesystem validation, not hostile-writer pinning.
-        return SemanticRepository(target, _expected_binding=self._binding)._read_immutable_status(validated_path=target)
+        return self._repository(target)._read_immutable_status(validated_path=target)
 
 
 class ImmutableSpaceInspection(_PrivateImmutable):
@@ -139,16 +154,18 @@ class ImmutableSpaceInspection(_PrivateImmutable):
     inspection never resolves it or claims compatibility from model name alone.
     """
 
-    __slots__ = ("_inspect",)
+    __slots__ = ("_inspect", "_cleanup")
 
-    def __init__(self, definition: KnowledgeSpaceDefinition, settings: Settings):
+    def __init__(self, definition: KnowledgeSpaceDefinition, settings: Settings, *, _runtime=False):
         inspector = SemanticSearchService(
             vault_root=definition.root_binding,
             repository=_ImmutableRepository(
                 definition.semantic_data_binding / "semantic-index.sqlite3",
                 named=settings.knowledge_spaces_json is not None,
                 binding=(ExpectedIndexBinding(definition.space_id.value, definition.root_binding)
-                         if definition.space_id.value != "default" else None),
+                         if definition.space_id.value != "default" else
+                         (ExpectedIndexBinding._for_default(definition.root_binding)
+                          if _runtime or settings.knowledge_spaces_json is not None else None)),
             ),
             cache_dir=definition.semantic_data_binding / "models",
             model_name=settings.semantic_model,
@@ -159,6 +176,10 @@ class ImmutableSpaceInspection(_PrivateImmutable):
             embedder=_NoSemanticExecution(),
         )
         object.__setattr__(self, "_inspect", inspector.inspect_hygiene_index)
+        object.__setattr__(self, "_cleanup", inspector.repository.close_resources)
+
+    def close_resources(self, *, retry=True):
+        self._cleanup(retry=retry)
 
     def inspect_hygiene_index(self) -> str:
         return self._inspect()

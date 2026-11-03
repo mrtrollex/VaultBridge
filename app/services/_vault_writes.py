@@ -96,9 +96,11 @@ def coordinated_write(root: Path):
 
 
 @contextmanager
-def windows_pinned_path(path: Path, *, probe=None):
+def windows_pinned_path(path: Path, *, probe=None, _cleanup_owner, _cleanup_budget=None):
     """Reject reparse points and deny rename/delete while a path is in use."""
     from ctypes import wintypes
+
+    from app.core.resource_cleanup import reserve_cleanup, windows_file_allocation_failure
 
     kernel = ctypes.WinDLL("kernel32", use_last_error=True)
     kernel.CreateFileW.argtypes = [
@@ -115,20 +117,27 @@ def windows_pinned_path(path: Path, *, probe=None):
     kernel.GetFileInformationByHandle.argtypes = [wintypes.HANDLE, ctypes.c_void_p]
     # GENERIC_READ; attribute-only handles do not prevent directory renames.
     # Share read/write, but deliberately not delete.
-    if probe is not None:
-        probe()
-    handle = kernel.CreateFileW(str(path), 0x80000000, 3, None, 3, 0x02200000, None)
-    if handle == ctypes.c_void_p(-1).value:
-        raise ctypes.WinError(ctypes.get_last_error())
+    def allocate():
+        handle = kernel.CreateFileW(str(path), 0x80000000, 3, None, 3, 0x02200000, None)
+        if handle == ctypes.c_void_p(-1).value:
+            return windows_file_allocation_failure(kernel.CreateFileW, ctypes.WinError(ctypes.get_last_error()))
+        return handle
+
+    credit = (reserve_cleanup() if _cleanup_budget is None else
+              _cleanup_budget[0].reserve_cleanup(_cleanup_budget[1]))
     try:
-        information = (ctypes.c_byte * 52)()
         if probe is not None:
             probe()
-        if not kernel.GetFileInformationByHandle(handle, information):
-            raise ctypes.WinError(ctypes.get_last_error())
-        attributes = ctypes.cast(information, ctypes.POINTER(wintypes.DWORD))[0]
-        if attributes & 0x400:  # FILE_ATTRIBUTE_REPARSE_POINT
-            raise UnsafeWritePathError("unsafe_destination")
-        yield
+        with _cleanup_owner.handle(allocate, closer=kernel.CloseHandle, _credit=credit) as handle:
+            information = (ctypes.c_byte * 52)()
+            if probe is not None:
+                probe()
+            if not kernel.GetFileInformationByHandle(handle, information):
+                raise ctypes.WinError(ctypes.get_last_error())
+            attributes = ctypes.cast(information, ctypes.POINTER(wintypes.DWORD))[0]
+            if attributes & 0x400:  # FILE_ATTRIBUTE_REPARSE_POINT
+                raise UnsafeWritePathError("unsafe_destination")
+            yield
     finally:
-        kernel.CloseHandle(handle)
+        if credit is not None:
+            credit.finish()

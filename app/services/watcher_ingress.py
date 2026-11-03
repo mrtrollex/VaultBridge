@@ -110,6 +110,7 @@ def install_bounded_ingress(observer, loss, failure=None, *, validate=None, gap=
             _parse_event_buffer,
         )
 
+        from app.core.resource_cleanup import NativeHandles
         from app.services.watcher_ingress_windows import (
             NativeDirectoryRead,
             close_directory_handle,
@@ -128,14 +129,28 @@ def install_bounded_ingress(observer, loss, failure=None, *, validate=None, gap=
                 self.failure_type = None
                 self._native_read = None
                 self._directory_close_uncertain = False
+                self._directory_resources = NativeHandles()
 
             def on_thread_start(self):
-                self._native_read = NativeDirectoryRead()
+                # Publish before __init__: event/OVERLAPPED failure must not
+                # orphan a partial native allocation before assignment returns.
+                self._native_read = NativeDirectoryRead.__new__(NativeDirectoryRead)
                 try:
-                    self._whandle = get_directory_handle(self.watch.path)
+                    self._native_read.__init__()
+                    lease = self._directory_resources.acquire_handle(
+                        get_directory_handle, self.watch.path, closer=close_directory_handle,
+                    )
+                    self._whandle = lease.resource.number
                 except BaseException:
-                    self._native_read.close(None, time.monotonic() + 5.0)
+                    try:
+                        self.on_thread_stop()
+                    except BaseException:
+                        pass
                     raise
+
+            @property
+            def cleanup_pending(self):
+                return self._directory_resources.pending
 
             def on_thread_stop(self):
                 # A read can enter the OS after an earlier CancelIoEx returned.
@@ -155,20 +170,28 @@ def install_bounded_ingress(observer, loss, failure=None, *, validate=None, gap=
                             if remaining <= 0:
                                 raise RuntimeError("Native filesystem read did not stop")
                             self._read_done.wait(min(0.05, remaining))
+                    error = None
                     if self._native_read is not None:
-                        self._native_read.close(handle, deadline)
-                    if handle is not None:
-                        if self._directory_close_uncertain:
-                            raise RuntimeError("Native directory handle ownership is uncertain")
                         try:
-                            close_directory_handle(handle)
-                        except OSError as error:
-                            if getattr(error, "winerror", None) == 6:
-                                # An invalid handle may already have been closed
-                                # outside this owner. Never retry that numeric slot.
+                            self._native_read.close(handle, deadline)
+                        except BaseException as exc:
+                            error = exc
+                    # Event failure cannot skip independent directory cleanup,
+                    # but a still-pending kernel request keeps BOTH resources.
+                    if self._native_read is None or not self._native_read.pending:
+                        try:
+                            if self._directory_close_uncertain:
+                                raise RuntimeError("Native directory handle ownership is uncertain")
+                            self._directory_resources.drain(retire_active=True)
+                            self._whandle = None
+                        except BaseException as exc:
+                            if getattr(exc, "winerror", None) == 6:
+                                # Preserve E5's stronger invalid-handle fence.
+                                # A numeric slot is never authorization to retry.
                                 self._directory_close_uncertain = True
-                            raise
-                        self._whandle = None  # Transfer ownership only after checked native disposal.
+                            error = error or exc
+                    if error is not None:
+                        raise error
 
             def run(self):
                 try:

@@ -6,12 +6,14 @@ from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from threading import get_ident
+from threading import Lock, get_ident
 
+from app.core.resource_cleanup import DescriptorDisposal, DescriptorState, SQLiteConnections
 from app.repositories.semantic_binding import (
     BINDING_KEYS,
     ExpectedIndexBinding,
     IndexBindingUnavailableError,
+    StorageDirectoryIdentity,
     ordinary_identity,
     validate_binding,
 )
@@ -97,6 +99,7 @@ class SemanticRepositorySession:
         }
 
     def delete_note(self, path: str) -> None:
+        self._check_runtime_storage()
         self._connection.execute("DELETE FROM notes WHERE path=?", (path,))
 
     def get_note(self, path: str) -> StoredNote | None:
@@ -123,12 +126,14 @@ class SemanticRepositorySession:
         return notes, len(stale_paths)
 
     def update_note_metadata(self, *, path: str, mtime_ns: int, size: int) -> None:
+        self._check_runtime_storage()
         self._connection.execute(
             "UPDATE notes SET mtime_ns=?, size=? WHERE path=?",
             (mtime_ns, size, path),
         )
 
     def replace_note(self, note: StoredNote, chunks: Sequence[StoredChunk]) -> None:
+        self._check_runtime_storage()
         self._connection.execute("DELETE FROM chunks WHERE path=?", (note.path,))
         self._connection.execute(
             "INSERT INTO notes(path, mtime_ns, size, sha256, indexed_at) VALUES(?, ?, ?, ?, ?) "
@@ -151,6 +156,10 @@ class SemanticRepositorySession:
                 for chunk in chunks
             ],
         )
+
+    def _check_runtime_storage(self):
+        if self._repository is not None and self._repository._storage_directory is not None:
+            self._repository._validate_transaction_binding(self)
 
 
 _SCHEMA = """
@@ -179,20 +188,58 @@ _SCHEMA = """
                 """
 
 
-class SemanticRepository:
+class RepositoryCleanupIncompleteError(RuntimeError):
+    def __init__(self):
+        super().__init__("Semantic repository cleanup is incomplete")
+
+
+@dataclass(eq=False)
+class _InitializationOwnership(DescriptorState):
+    connection: sqlite3.Connection | None = None
+    connection_closed: bool = False
+    connection_failed: bool = False
+    committed: bool = False
+
+
+class SemanticRepository(DescriptorDisposal):
     """Own SQLite schema management and semantic index persistence."""
 
-    def __init__(self, db_path: Path, *, _expected_binding: ExpectedIndexBinding | None = None) -> None:
+    _cleanup_error = RepositoryCleanupIncompleteError
+
+    def __init__(self, db_path: Path, *, _expected_binding: ExpectedIndexBinding | None = None,
+                 _storage_directory: StorageDirectoryIdentity | None = None,
+                 _default_binding: ExpectedIndexBinding | None = None, _reader_connections=None,
+                 _inspection_binding: ExpectedIndexBinding | None = None) -> None:
+        if _default_binding is not None and (
+            _default_binding.space_id != "default" or _expected_binding is not None or _storage_directory is None
+        ):
+            raise ValueError("invalid default namespace expectation")
+        if _inspection_binding is not None and (
+            _inspection_binding.space_id != "default" or _expected_binding is not None
+            or _default_binding is not None or _storage_directory is not None
+        ):
+            raise ValueError("invalid immutable namespace expectation")
+        self.__inspection_binding = _inspection_binding
+        self.__default_binding = _default_binding
+        self._storage_directory = _storage_directory
+        self._storage_protected = _expected_binding is not None or _storage_directory is not None
         self.db_path = db_path if _expected_binding is None else db_path.absolute()
         self.__expected_binding = _expected_binding
         self._bound_directories = ()
         self._bound_database_identity = None
         self._initializations = {}
+        self._initialization_lock = Lock()
+        self._reader_connections = _reader_connections if _reader_connections is not None else SQLiteConnections()
         self._sessions = {}
-        if _expected_binding is not None:
-            _expected_binding.check_root()
+        if self._storage_protected:
+            if self._namespace_binding is not None:
+                self._namespace_binding.check_root()
+            if _storage_directory is not None:
+                if self.db_path.absolute().parent != _storage_directory.path:
+                    raise IndexBindingUnavailableError
+                _storage_directory.check()
             directories = []
-            for parent in reversed(self.db_path.parents):
+            for parent in reversed(self.db_path.absolute().parents):
                 try:
                     identity = ordinary_identity(parent, directory=True)
                 except FileNotFoundError:
@@ -208,11 +255,28 @@ class SemanticRepository:
     def _expected_binding(self):
         return self.__expected_binding
 
+    @property
+    def _namespace_binding(self):
+        return self._expected_binding or self.__default_binding or self.__inspection_binding
+
+    def _validate_namespace(self, one, *, allow_empty=False):
+        if self._namespace_binding is None:
+            return False
+        return validate_binding(
+            one, self._namespace_binding, allow_empty=allow_empty,
+            allow_legacy=(self.__default_binding is not None or self.__inspection_binding is not None),
+        )
+
     def _binding_storage_identity(self, *, immutable=True):
-        expected = self._expected_binding
-        if expected is None:
+        expected = self._namespace_binding
+        if not self._storage_protected:
             return None
-        expected.check_root()
+        if expected is not None:
+            expected.check_root()
+        if self._storage_directory is not None:
+            if self.db_path.absolute().parent != self._storage_directory.path:
+                raise IndexBindingUnavailableError
+            self._storage_directory.check()
         for parent, previous in self._bound_directories:
             try:
                 current = ordinary_identity(parent, directory=True)
@@ -247,83 +311,175 @@ class SemanticRepository:
         Bound lifecycle preflight requires stopped storage (no sidecars). D1's
         live reader validates binding in its own WAL-aware bounded transaction.
         """
-        if self._expected_binding is None:
+        if self._namespace_binding is None:
+            if self._storage_protected:
+                identity = self._binding_storage_identity(immutable=False)
+                if identity is None and not allow_initialization:
+                    raise IndexBindingUnavailableError
             return
         try:
-            before = self._binding_storage_identity()
+            legacy = self.__default_binding is not None
+            before = self._binding_storage_identity(immutable=not legacy)
             if before is None:
                 if allow_initialization:
                     return
                 raise IndexBindingUnavailableError
-            connection = sqlite3.connect(
-                f"{self.db_path.as_uri()}?mode=ro&immutable=1", uri=True, timeout=0,
-            )
-            try:
+            uri = f"{self.db_path.absolute().as_uri()}?mode=ro"
+            if not legacy or not any(Path(f"{self.db_path}{suffix}").exists()
+                                     for suffix in ("-wal", "-shm", "-journal")):
+                uri += "&immutable=1"
+            with self._reader_connections.connection(uri, uri=True, timeout=0) as connection:
                 connection.execute("BEGIN")
-                validate_binding(
+                self._validate_namespace(
                     lambda sql, args=(): connection.execute(sql, args).fetchone(),
-                    self._expected_binding, allow_empty=allow_initialization,
+                    allow_empty=allow_initialization,
                 )
-                if self._binding_storage_identity() != before:
+                if self._binding_storage_identity(immutable=not legacy) != before:
                     raise IndexBindingUnavailableError
-            finally:
-                connection.close()
         except (OSError, sqlite3.DatabaseError, IndexBindingUnavailableError):
             raise IndexBindingUnavailableError from None
 
     def _connect_bound(self) -> sqlite3.Connection:
+        self._check_cleanup_available()
         self.validate_expected_binding()
-        before = self._binding_storage_identity()
+        immutable = self._expected_binding is not None
+        before = self._binding_storage_identity(immutable=immutable)
+        if self._storage_directory is not None:
+            self._storage_directory.prepare()
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._binding_storage_identity()
+        self._binding_storage_identity(immutable=immutable)
         self._bound_directories = tuple(
             (parent, ordinary_identity(parent, directory=True))
             for parent, _ in self._bound_directories
         )
         created = before is None
-        attempt = None
+        attempt = _InitializationOwnership(self.db_path)
         connection = None
-        if created:
-            # Exclusive creation prevents adopting a file arriving after preflight.
-            descriptor = os.open(self.db_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-            info = os.fstat(descriptor)
-            before = info.st_dev, info.st_ino
-            attempt = self.db_path, descriptor, info
-            self._bound_database_identity = before
         try:
-            connection = sqlite3.connect(f"{self.db_path.as_uri()}?mode=rw", uri=True, timeout=30)
-            if attempt is not None:
-                self._initializations[connection] = attempt
+            if created:
+                # Register before allocation; even interrupted fstat/connect has
+                # an exact reachable owner. No registry lock spans SQLite/I/O.
+                self._remember_initialization(attempt)
+                self._allocate_descriptor(attempt)
+                attempt.created = os.fstat(attempt.descriptor)
+                before = attempt.created.st_dev, attempt.created.st_ino
+                self._bound_database_identity = before
+            connection = sqlite3.connect(f"{self.db_path.absolute().as_uri()}?mode=rw", uri=True, timeout=30,
+                                         check_same_thread=False)
+            attempt.connection = connection
+            if created:
+                self._remember_initialization(attempt)
             connection.row_factory = sqlite3.Row
+            if self._binding_storage_identity(immutable=False) != before:
+                raise IndexBindingUnavailableError
+            if self._expected_binding is None:
+                # Default keeps its schema/WAL behavior and has no binding keys.
+                connection.execute("PRAGMA journal_mode=WAL")
+                connection.execute("PRAGMA synchronous=NORMAL")
             connection.execute("PRAGMA foreign_keys=ON")
             # Acquire the writer transaction BEFORE revalidation/schema/key writes.
             connection.execute("BEGIN IMMEDIATE")
             if self._binding_storage_identity(immutable=False) != before:
                 raise IndexBindingUnavailableError
-            if created:
-                if connection.execute("SELECT count(*) FROM sqlite_master").fetchone()[0]:
+            if not created and self.__default_binding is not None:
+                self._validate_namespace(lambda sql, args=(): connection.execute(sql, args).fetchone())
+            if created or self._expected_binding is None:
+                if created and connection.execute("SELECT count(*) FROM sqlite_master").fetchone()[0]:
                     raise IndexBindingUnavailableError
                 for statement in _SCHEMA.split(";"):
                     if statement.strip():
                         connection.execute(statement)
-            initialize = validate_binding(
+            initialize = self._validate_namespace(
                 lambda sql, args=(): connection.execute(sql, args).fetchone(),
-                self._expected_binding, allow_empty=True,
+                allow_empty=True,
             )
             if initialize:
                 connection.executemany("INSERT INTO meta(key,value) VALUES(?,?)",
                                        zip(BINDING_KEYS, self._expected_binding.values))
             self._bound_database_identity = before
             return connection
-        except Exception:
+        except BaseException:
             if connection is not None:
+                attempt.connection = connection
                 try:
                     connection.rollback()
-                finally:
-                    self._close_connection(connection)
-            elif attempt is not None:
-                self._cleanup_initialization(attempt)
+                except BaseException:
+                    pass
+                try:
+                    self._dispose_initialization(attempt)
+                except BaseException:
+                    pass  # The close helper retains any unresolved ownership.
+            else:
+                try:
+                    self._dispose_initialization(attempt)
+                except BaseException:
+                    pass
             raise
+
+    def _remember_initialization(self, attempt):
+        with self._initialization_lock:
+            key = attempt.connection if attempt.connection is not None else attempt
+            self._initializations[key] = attempt
+            if key is not attempt:
+                self._initializations.pop(attempt, None)
+
+
+    def _allocate_descriptor(self, attempt):
+        from app.core.resource_cleanup import CleanupState, NoAllocation, descriptor_allocation
+
+        if os.name != "nt":
+            attempt.descriptor_release.state = CleanupState.AMBIGUOUS
+            result = descriptor_allocation(os.open, attempt.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY,
+                                           0o600, _exclusive=True)
+            if isinstance(result, NoAllocation):
+                attempt.descriptor_release.state = CleanupState.VERIFIED_RELEASED
+                raise result.error
+            attempt.descriptor = result
+            attempt.descriptor_release.state = CleanupState.OWNED_OPEN
+            return
+        import ctypes
+        import msvcrt
+
+        # CREATE_NEW preserves exclusive creation. Sharing delete permits the
+        # existing post-close replacement validation even while its proof handle
+        # briefly retains the original file object. Identity checks stay intact.
+        kernel = self._windows_kernel()
+        attempt.native_release.state = CleanupState.AMBIGUOUS
+        handle = kernel.CreateFileW(str(attempt.path), 0x40000000, 0x7, None, 1, 0x80, None)
+        if handle == ctypes.c_void_p(-1).value:
+            attempt.native_release.state = CleanupState.VERIFIED_RELEASED
+            raise ctypes.WinError(ctypes.get_last_error())
+        attempt.native_handle = handle
+        # Opaque conversion may transfer ownership before an exception escapes.
+        attempt.native_transfer_ambiguous = True
+        attempt.native_release.state = CleanupState.AMBIGUOUS
+        attempt.descriptor = msvcrt.open_osfhandle(handle, os.O_WRONLY | os.O_NOINHERIT)
+        attempt.native_transfer_ambiguous = False
+        attempt.native_release.state = CleanupState.VERIFIED_RELEASED  # Handoff, not a second native close.
+        attempt.native_handle = None  # The CRT descriptor now owns this handle.
+
+    def _forget_initialization(self, attempt):
+        with self._initialization_lock:
+            key = attempt.connection if attempt.connection is not None else attempt
+            if self._initializations.get(key) is attempt:
+                del self._initializations[key]
+            if self._initializations.get(attempt) is attempt:
+                del self._initializations[attempt]
+
+    @property
+    def cleanup_failed(self):
+        with self._initialization_lock:
+            failed = any(item.retired or item.descriptor_failed or item.connection_failed
+                         for item in self._initializations.values())
+        return failed or self._reader_connections.failed
+
+    def _check_cleanup_available(self):
+        if self.cleanup_failed:
+            raise RepositoryCleanupIncompleteError
+
+
+
+
 
     def _cleanup_initialization(self, attempt):
         """After SQLite closes, remove only our still-empty exclusively created file.
@@ -333,8 +489,11 @@ class SemanticRepository:
         retains the cooperating-filesystem contract, not cross-process locking.
         """
         path, descriptor, created = attempt
-        identity = created.st_dev, created.st_ino
+        remove_empty = False
         try:
+            if created is None or attempt.preserve_storage:
+                return
+            identity = created.st_dev, created.st_ino
             if self.db_path != path or self._binding_storage_identity() != identity:
                 return
             held = os.fstat(descriptor)
@@ -347,9 +506,17 @@ class SemanticRepository:
                 or held.st_size != 0 or current.st_size != 0
             ):
                 return
+            remove_empty = True
+        except (OSError, IndexBindingUnavailableError):
+            pass
+        finally:
+            # Release failure propagates and remains owned; it is not an
+            # uncertain-file-deletion error to suppress or retry in this pass.
+            self._release_descriptor(attempt)
+        if not remove_empty or attempt.preserve_storage:
+            return
+        try:
             # Windows requires closing our creation descriptor before unlink.
-            os.close(descriptor)
-            descriptor = None
             if self._binding_storage_identity() != identity:
                 return
             current = path.lstat()
@@ -362,25 +529,101 @@ class SemanticRepository:
             # Uncertain cleanup must leave storage in place and fail closed on
             # subsequent lifecycle validation; preserve the original failure.
             pass
-        finally:
-            if descriptor is not None:
-                os.close(descriptor)
 
     def _close_connection(self, connection):
-        attempt = self._initializations.pop(connection, None)
-        closed = False
+        with self._initialization_lock:
+            attempt = self._initializations.get(connection)
+        if attempt is None:
+            attempt = _InitializationOwnership(self.db_path, connection=connection)
+        self._dispose_initialization(attempt)
+
+    @staticmethod
+    def _connection_closed(connection):
         try:
-            connection.close()
-            closed = True
-        finally:
-            if attempt is not None:
-                if closed:
-                    self._cleanup_initialization(attempt)
-                else:
-                    os.close(attempt[1])
+            if isinstance(connection, sqlite3.Connection):
+                connection.in_transaction
+            else:
+                # Preserve the existing repository connection-wrapper seam.
+                # This literal probe reads no semantic rows and writes nothing.
+                connection.execute("SELECT 1")
+        except sqlite3.ProgrammingError:
+            return True
+        return False
+
+    def _dispose_initialization(self, attempt, *, retry=False):
+        # This dedicated per-attempt disposal lock never guards normal SQLite
+        # work. Registry, semantic owner, scheduler and resource locks are absent.
+        with attempt.lock:
+            attempt.retired = True
+            error = None
+            connection = attempt.connection
+            if connection is None:
+                attempt.connection_closed = True
+            elif not attempt.connection_closed and (retry or not attempt.connection_failed):
+                try:
+                    connection.close()
+                    if not self._connection_closed(connection):
+                        raise RepositoryCleanupIncompleteError
+                    attempt.connection_closed = True
+                    attempt.connection_failed = False
+                except BaseException as exc:
+                    try:
+                        attempt.connection_closed = self._connection_closed(connection)
+                    except BaseException:
+                        attempt.connection_closed = False
+                    attempt.connection_failed = not attempt.connection_closed
+                    error = exc
+            try:
+                if not attempt.descriptor_released or not attempt.guard_released:
+                    if attempt.descriptor_failed and not retry:
+                        raise RepositoryCleanupIncompleteError
+                    if attempt.descriptor is not None and attempt.connection_closed and not attempt.committed:
+                        self._cleanup_initialization(attempt)
+                    else:
+                        self._release_descriptor(attempt)
+            except BaseException as exc:
+                error = error or exc
+            if attempt.connection_closed and attempt.descriptor_released and attempt.guard_released:
+                self._forget_initialization(attempt)
+            else:
+                self._remember_initialization(attempt)
+            if error is not None:
+                raise error
+            if not attempt.connection_closed or not attempt.descriptor_released or not attempt.guard_released:
+                raise RepositoryCleanupIncompleteError
+
+    def close_initializations(self, *, retry=True, _defer_readers=False):
+        """Drain retained failed disposal, never steal an active connection.
+
+        New writable work stays fenced while failed ownership is retained. The
+        exact records are bounded by already accepted work, not a cleanup queue.
+        """
+        with self._initialization_lock:
+            attempts = tuple(dict.fromkeys(self._initializations.values()))
+        failed = False
+        error = None
+        for attempt in attempts:
+            if not attempt.retired:
+                failed = True
+                continue
+            try:
+                self._dispose_initialization(attempt, retry=retry)
+            except BaseException as exc:
+                failed = True
+                error = error or exc
+        with self._initialization_lock:
+            failed = failed or bool(self._initializations)
+        try:
+            self._reader_connections.drain(retry=retry, defer_active=_defer_readers)
+        except BaseException as exc:
+            error = error or exc
+        if error is not None:
+            raise error
+        if failed:
+            raise RepositoryCleanupIncompleteError
 
     def _validate_transaction_binding(self, session):
-        if self._expected_binding is None:
+        if not self._storage_protected:
             return
         if (
             type(session) is not SemanticRepositorySession
@@ -391,38 +634,44 @@ class SemanticRepository:
             or self._binding_storage_identity(immutable=False) != session._database_identity
         ):
             raise IndexBindingUnavailableError
-        validate_binding(
-            lambda sql, args=(): session._connection.execute(sql, args).fetchone(),
-            self._expected_binding,
-        )
+        self._validate_namespace(lambda sql, args=(): session._connection.execute(sql, args).fetchone())
 
     def _connect(self) -> sqlite3.Connection:
-        if self._expected_binding is not None:
+        if self.__inspection_binding is not None:
+            raise ImmutableIndexInspectionUnavailableError  # No writable surface for this expectation.
+        self._check_cleanup_available()
+        if self._storage_protected:
             return self._connect_bound()
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        connection = sqlite3.connect(self.db_path, timeout=30)
+        connection = sqlite3.connect(self.db_path, timeout=30, check_same_thread=False)
         try:
             connection.row_factory = sqlite3.Row
             connection.execute("PRAGMA journal_mode=WAL")
             connection.execute("PRAGMA synchronous=NORMAL")
             connection.execute("PRAGMA foreign_keys=ON")
             connection.executescript(_SCHEMA)
-        except Exception:
-            connection.close()
+        except BaseException:
+            try:
+                connection.rollback()
+            except BaseException:
+                pass
+            try:
+                self._close_connection(connection)
+            except BaseException:
+                pass
             raise
         return connection
 
     def _commit(self, connection):
-        if self._expected_binding is not None:
+        if self._storage_protected:
             self._binding_storage_identity(immutable=False)
-            validate_binding(
-                lambda sql, args=(): connection.execute(sql, args).fetchone(),
-                self._expected_binding,
-            )
+        self._validate_namespace(lambda sql, args=(): connection.execute(sql, args).fetchone())
         connection.commit()
-        attempt = self._initializations.pop(connection, None)
+        with self._initialization_lock:
+            attempt = self._initializations.get(connection)
         if attempt is not None:
-            os.close(attempt[1])
+            attempt.committed = True
+            self._release_descriptor(attempt)
 
     @staticmethod
     def _write_metadata(
@@ -512,7 +761,7 @@ class SemanticRepository:
         except sqlite3.ProgrammingError:
             raise
         except sqlite3.DatabaseError as exc:
-            if self._expected_binding is not None:
+            if self._storage_protected:
                 raise IndexBindingUnavailableError from None
             corrupt_codes = {
                 getattr(sqlite3, "SQLITE_CORRUPT", 11),
@@ -547,13 +796,13 @@ class SemanticRepository:
             self._close_connection(connection)
 
     def load_chunks(self) -> list[StoredChunk]:
-        if self._expected_binding is not None:
+        if self._storage_protected:
             return self.load_chunks_read_only()
         connection = self._connect()
         try:
             return self._load_chunks_connection(connection)
         finally:
-            connection.close()
+            self._close_connection(connection)
 
     def read_eligible_snapshot(self, eligible_paths, *, budget, space_id, cancel):
         """Internal bounded live reader; no preparation, scoring or binding writes.
@@ -565,16 +814,20 @@ class SemanticRepository:
 
         return read_eligible_snapshot(
             self.db_path, eligible_paths, budget=budget, space_id=space_id, cancel=cancel,
-            expected_binding=self._expected_binding, storage_guard=self._bounded_binding_guard,
+            expected_binding=self._namespace_binding, storage_guard=self._bounded_binding_guard,
+            allow_legacy_binding=self.__default_binding is not None, connection_owner=self._reader_connections,
         )
 
     def _bounded_binding_guard(self, *, budget, space_id, cancel):
-        if self._expected_binding is None:
+        if not self._storage_protected:
             return
         def probe():
             cancel.check()
             budget.charge(space_id, "probes")
-        self._expected_binding.check_root(probe=probe)
+        if self._namespace_binding is not None:
+            self._namespace_binding.check_root(probe=probe)
+        if self._storage_directory is not None:
+            self._storage_directory.check(probe=probe)
         for parent, previous in self._bound_directories:
             probe()
             current = ordinary_identity(parent, directory=True)
@@ -630,30 +883,26 @@ class SemanticRepository:
                     pass
             if not sidecars:
                 self.validate_expected_binding(allow_initialization=allow_empty)
-            uri = f"{self.db_path.as_uri()}?mode=ro"
+            uri = f"{self.db_path.absolute().as_uri()}?mode=ro"
             if immutable:
                 uri += "&immutable=1"
-            connection = sqlite3.connect(uri, uri=True, timeout=0)
-            connection.execute("BEGIN")
-            validate_binding(
-                lambda sql, args=(): connection.execute(sql, args).fetchone(),
-                self._expected_binding, allow_empty=allow_empty,
-            )
-            yield connection
-            if self._binding_storage_identity(immutable=immutable) != before:
-                raise IndexBindingUnavailableError
-            for path, identity in sidecars.items():
-                if ordinary_identity(path) != identity:
+            with self._reader_connections.connection(uri, uri=True, timeout=0) as connection:
+                connection.execute("BEGIN")
+                self._validate_namespace(lambda sql, args=(): connection.execute(sql, args).fetchone(),
+                                         allow_empty=allow_empty)
+                yield connection
+                if self._binding_storage_identity(immutable=immutable) != before:
                     raise IndexBindingUnavailableError
+                for path, identity in sidecars.items():
+                    if ordinary_identity(path) != identity:
+                        raise IndexBindingUnavailableError
         except (OSError, sqlite3.DatabaseError, IndexBindingUnavailableError):
             raise IndexBindingUnavailableError from None
-        finally:
-            if connection is not None:
-                connection.close()
+
 
     def load_chunks_read_only(self) -> list[StoredChunk]:
         """Read bound live chunks; preserve legacy immutable offline inspection."""
-        if self._expected_binding is not None:
+        if self._storage_protected:
             with self._bound_read_connection() as connection:
                 return self._load_chunks_connection(connection)
         sidecars = (Path(f"{self.db_path}-wal"), Path(f"{self.db_path}-shm"))
@@ -661,11 +910,8 @@ class SemanticRepository:
             raise ImmutableIndexInspectionUnavailableError
         target = self.db_path.resolve()
         database_uri = f"{target.as_uri()}?mode=ro&immutable=1"
-        connection = sqlite3.connect(database_uri, uri=True, timeout=1)
-        try:
+        with self._reader_connections.connection(database_uri, uri=True, timeout=1) as connection:
             chunks = self._load_chunks_connection(connection)
-        finally:
-            connection.close()
         if any(path.exists() for path in sidecars):
             raise ImmutableIndexInspectionUnavailableError
         return chunks
@@ -680,10 +926,10 @@ class SemanticRepository:
             row = connection.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
             return row["value"] if row else None
         finally:
-            connection.close()
+            self._close_connection(connection)
 
     def set_metadata(self, key: str, value: str) -> None:
-        if self._expected_binding is not None and key in BINDING_KEYS:
+        if self._namespace_binding is not None and key in BINDING_KEYS:
             raise IndexBindingUnavailableError
         connection = self._connect()
         try:
@@ -711,20 +957,17 @@ class SemanticRepository:
             self._close_connection(connection)
 
     def storage_initialized(self) -> bool:
-        if self._expected_binding is not None:
+        if self._storage_protected:
             return self.read_status().storage_initialized
         try:
             if not self.db_path.exists():
                 return False
-            connection = sqlite3.connect(self.db_path, timeout=3)
-            try:
+            with self._reader_connections.connection(self.db_path, timeout=3) as connection:
                 rows = connection.execute(
                     "SELECT name FROM sqlite_master "
                     "WHERE type='table' AND name IN ('meta', 'notes', 'chunks')"
                 ).fetchall()
                 return {row[0] for row in rows} == {"meta", "notes", "chunks"}
-            finally:
-                connection.close()
         except sqlite3.Error:
             return False
 
@@ -761,11 +1004,7 @@ class SemanticRepository:
         connection.row_factory = sqlite3.Row
         if not connection.in_transaction:
             connection.execute("BEGIN")
-        if self._expected_binding is not None:
-            validate_binding(
-                lambda sql, args=(): connection.execute(sql, args).fetchone(),
-                self._expected_binding, allow_empty=True,
-            )
+        self._validate_namespace(lambda sql, args=(): connection.execute(sql, args).fetchone(), allow_empty=True)
         rows = connection.execute(
             "SELECT name FROM sqlite_master "
             "WHERE type='table' AND name IN ('meta', 'notes', 'chunks')"
@@ -803,29 +1042,22 @@ class SemanticRepository:
         )
 
     def _read_status_uri(self, database_uri: str) -> SemanticIndexStatus:
-        if self._expected_binding is not None:
+        if self._storage_protected:
             with self._bound_read_connection(
                 allow_empty=True, immutable="immutable=1" in database_uri,
             ) as connection:
                 return self._read_status_connection(connection)
-        connection = sqlite3.connect(database_uri, uri=True, timeout=1)
-        try:
-            status = self._read_status_connection(connection)
-            return status
-        finally:
-            try:
-                if connection.in_transaction:
-                    connection.rollback()
-            finally:
-                connection.close()
+        with self._reader_connections.connection(database_uri, uri=True, timeout=1) as connection:
+            return self._read_status_connection(connection)
+
 
     def read_status(self) -> SemanticIndexStatus:
         """Read live-compatible index metadata and counts without changing lifecycle state."""
-        if self._expected_binding is not None:
+        if self._storage_protected:
             try:
                 if self._binding_storage_identity(immutable=False) is None:
                     return self._missing_status()
-                return self._read_status_uri(f"{self.db_path.as_uri()}?mode=ro")
+                return self._read_status_uri(f"{self.db_path.absolute().as_uri()}?mode=ro")
             except sqlite3.ProgrammingError:
                 raise
             except (OSError, sqlite3.DatabaseError, IndexBindingUnavailableError):
@@ -856,10 +1088,10 @@ class SemanticRepository:
         concurrent hostile mutation; ordinary callers keep their existing path.
         """
         try:
-            if self._expected_binding is not None:
+            if self._storage_protected:
                 if self._binding_storage_identity() is None:
                     return self._missing_status()
-                return self._read_status_uri(f"{self.db_path.as_uri()}?mode=ro&immutable=1")
+                return self._read_status_uri(f"{self.db_path.absolute().as_uri()}?mode=ro&immutable=1")
             sidecars = (Path(f"{self.db_path}-wal"), Path(f"{self.db_path}-shm"))
             if any(path.exists() for path in sidecars):
                 raise ImmutableIndexInspectionUnavailableError
@@ -892,7 +1124,7 @@ class SemanticRepository:
 
     def read_availability_status(self) -> SemanticAvailabilityStatus:
         """Read only the storage metadata needed to decide search availability."""
-        if self._expected_binding is not None:
+        if self._storage_protected:
             storage = self.read_status()
             return SemanticAvailabilityStatus(
                 storage.storage_initialized, storage.storage_error,
@@ -909,9 +1141,8 @@ class SemanticRepository:
                 )
 
             database_uri = f"{self.db_path.resolve().as_uri()}?mode=ro"
-            connection = sqlite3.connect(database_uri, uri=True, timeout=1)
-            connection.row_factory = sqlite3.Row
-            try:
+            with self._reader_connections.connection(database_uri, uri=True, timeout=1) as connection:
+                connection.row_factory = sqlite3.Row
                 connection.execute("BEGIN")
                 rows = connection.execute(
                     "SELECT name FROM sqlite_master "
@@ -943,10 +1174,6 @@ class SemanticRepository:
                     index_state=metadata.get("index_state"),
                     has_chunks=has_chunks,
                 )
-            finally:
-                if connection.in_transaction:
-                    connection.rollback()
-                connection.close()
         except sqlite3.ProgrammingError:
             raise
         except (OSError, sqlite3.DatabaseError, IndexBindingUnavailableError):
