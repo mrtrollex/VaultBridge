@@ -357,17 +357,33 @@ def test_partial_close_retains_owner_and_retry_does_not_close_reused_slots(tmp_p
             candidate.start()
         failing.clear()
         extra = None
+        resolved = False
         try:
             if reuse != "none":
                 extra = (inotify_init() if reuse == "inotify"
                          else os.open(tmp_path / "unrelated", os.O_RDWR | os.O_CREAT, 0o600))
                 os.dup2(extra, target)
                 before = os.fstat(target)
+            if reuse == "none" or (reuse == "inotify" and name == "_inotify_fd"):
+                # ADR 0010: equality (including the SAME OFD) cannot restore
+                # allocation ownership after an opaque close failure.
+                for _ in range(2):
+                    with pytest.raises(OSError):
+                        watcher.stop()
+                    os.fstat(target)
+                    assert not native._resources_closed and r.scheduler._watcher_token is watcher._token
+                if extra is not None:
+                    after = os.fstat(target)
+                    assert (before.st_dev, before.st_ino, before.st_mode) == (
+                        after.st_dev, after.st_ino, after.st_mode,
+                    )
+                close(target)  # Fixture's explicit disposition, not an unsafe retry.
+                resolved = True
             watcher.stop()
             watcher.stop()
             assert native._resources_closed and r.scheduler._watcher_token is None
             assert all(d.state in ("closed", "absent", "replaced") for d in native._descriptors.values())
-            if extra is not None:
+            if extra is not None and not resolved:
                 after = os.fstat(target)
                 assert (before.st_dev, before.st_ino, before.st_mode) == (after.st_dev, after.st_ino, after.st_mode)
                 os.fstat(extra)
@@ -377,7 +393,7 @@ def test_partial_close_retains_owner_and_retry_does_not_close_reused_slots(tmp_p
         finally:
             if extra is not None:
                 close(extra)
-                if extra != target:
+                if extra != target and not resolved:
                     close(target)
 
 
@@ -410,8 +426,8 @@ def test_unavailable_retry_identity_proof_retains_ownership_until_resolution(tmp
         with pytest.raises(OSError):
             r.watcher.stop()
         armed.clear()
-        monkeypatch.setattr(module, "_same_description", lambda *args: None)
-        with pytest.raises(OSError, match="ownership uncertain"):
+        monkeypatch.setattr(module, "_same_description", lambda *args: pytest.fail("OFD cannot authorize retry"))
+        with pytest.raises(OSError, match="cleanup is incomplete"):
             r.watcher.stop()
         assert r.scheduler._watcher_token is r.watcher._token and not native._resources_closed
         close(fd)  # Explicit resolution of the known original descriptor.
@@ -499,6 +515,10 @@ def test_partial_constructor_cleanup_failure_keeps_failed_emitter_reachable(tmp_
         with pytest.raises(RuntimeError, match="admission is unavailable"):
             candidate.start()
         armed.clear()
+        with pytest.raises(OSError):
+            r.watcher.stop()
+        os.fstat(descriptors[0])
+        close(descriptors[0])  # Only the fixture knows failed() never released it.
         r.watcher.stop()
         assert reader._inotify._resources_closed and r.scheduler._watcher_token is None
         monkeypatch.setattr(module, "inotify_add_watch", add)
@@ -734,7 +754,6 @@ def test_concurrent_stops_dispose_all_descriptors_without_leak(tmp_path):
 
 def test_directory_departure_during_move_restoration_is_reconciled(tmp_path, monkeypatch, shared):
     entered, release = threading.Event(), threading.Event()
-    scan = os.scandir
     resource, _ = shared
     with rig(tmp_path, 1, real=True, resource=resource) as r:
         owner, binding = r.owners["default"], r.bindings["default"]
@@ -774,13 +793,14 @@ def test_directory_departure_during_move_restoration_is_reconciled(tmp_path, mon
             def close(self):
                 self.iterator.close()
 
-        def delayed(path):
-            iterator = scan(path)
+        def delayed(native, path, iterator):
             if threading.current_thread() is reader and os.fsdecode(path) == str(owner.vault_root):
                 return Scan(iterator)
             return iterator
 
-        monkeypatch.setattr(os, "scandir", delayed)
+        from app.services.watcher_ingress_linux import _BoundedInotify
+
+        monkeypatch.setattr(_BoundedInotify, "_registration_view", delayed)
         (owner.vault_root / "first").rename(tmp_path / "outside-first")
         try:
             assert entered.wait(5)

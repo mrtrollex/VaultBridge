@@ -227,7 +227,7 @@ def test_original_directory_close_failure_retains_handle_and_generation(tmp_path
 
         def expected(args):
             if args.thread is producer and isinstance(args.exc_value, OSError):
-                errors.append(args.exc_value.winerror)
+                errors.append(getattr(args.exc_value, "winerror", None))
             else:
                 hook(args)
 
@@ -261,15 +261,20 @@ def test_original_directory_close_failure_retains_handle_and_generation(tmp_path
                 replacement(r).start()
         finally:
             monkeypatch.setattr(winapi, "CloseHandle", close)
-            watcher.stop()
-            # The pre-repair reproduction must not leak its confirmed live handle.
+            with pytest.raises((OSError, RuntimeError)):
+                watcher.stop()
+            assert information(handle, ctypes.byref(flags))
+            assert producer._whandle == handle and r.scheduler._watcher_token is watcher._token
+            # ADR 0010: only the fixture knows denied() never released this handle.
             if information(handle, ctypes.byref(flags)):
                 close(handle)
+            watcher.stop()
         assert not information(handle, ctypes.byref(flags))
         assert ctypes.get_last_error() == 6
         assert not producer.is_alive() and producer._read_done.is_set()
         assert producer._native_read.event is None and not producer._native_read.pending
         assert producer._whandle is None and r.scheduler._watcher_token is None
+        assert all(error in (None, 5) for error in errors)
         watcher.stop()
         r.watcher = replacement(r)
         r.watcher.start()
@@ -510,6 +515,10 @@ def test_windows_failed_emitter_start_retains_directory_handle_for_retry(tmp_pat
         with pytest.raises(RuntimeError, match="admission is unavailable"):
             replacement(r).start()
         armed.clear()
+        with pytest.raises((OSError, RuntimeError)):
+            r.watcher.stop()
+        assert producer._whandle == handles[0] and r.scheduler._watcher_token is r.watcher._token
+        assert close(handles[0])  # Fixture-only proof: denied() did not call CloseHandle.
         r.watcher.stop()
         assert producer._whandle is None and r.scheduler._watcher_token is None
         monkeypatch.setattr(threading.Thread, "start", start)
@@ -556,5 +565,6 @@ def test_invalid_handle_result_never_blindly_retries_its_numeric_slot(tmp_path, 
             # Test-only resolution: the injected call NEVER reached native close.
             # Production cannot assume this proof after a real ERROR_INVALID_HANDLE.
             monkeypatch.setattr(winapi, "CloseHandle", close)
+            assert close(handle)
             producer._directory_close_uncertain = False
             r.watcher.stop()

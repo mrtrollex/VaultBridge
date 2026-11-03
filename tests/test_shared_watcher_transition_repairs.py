@@ -412,6 +412,8 @@ def test_active_parser_retains_descriptor_ownership_until_shutdown_can_close(tmp
 
 @pytest.mark.parametrize("number", [errno.EBADF, errno.EIO, errno.EACCES])
 def test_active_native_read_error_is_not_intentional_shutdown(tmp_path, monkeypatch, number):
+    from app.core.resource_cleanup import CleanupIncompleteError
+
     read = os.read
     with rig(tmp_path, 2) as r:
         use_production_observer(r)
@@ -419,6 +421,15 @@ def test_active_native_read_error_is_not_intentional_shutdown(tmp_path, monkeypa
         r.complete_native_startup()
         emitter = next(e for e in r.watcher._producers if e.watch.path.endswith("default"))
         reader, native = emitter._inotify, emitter._inotify._inotify
+        hook, cleanup_errors = threading.excepthook, []
+
+        def expected(args):
+            if args.thread in (emitter, reader) and isinstance(args.exc_value, CleanupIncompleteError):
+                cleanup_errors.append(args.exc_type)
+            else:
+                hook(args)
+
+        monkeypatch.setattr(threading, "excepthook", expected)
 
         def failed(fd, size):
             if fd == native._inotify_fd:
@@ -433,8 +444,20 @@ def test_active_native_read_error_is_not_intentional_shutdown(tmp_path, monkeypa
         assert not reader.is_alive() and not emitter.is_alive()
         status = r.scheduler.status(r.bindings["default"])
         assert status.monitoring_failed and status.requires_full_sync
-        assert native._resources_closed and reader._queue._closed
         assert not r.scheduler.status(r.bindings["space-1"]).requires_full_sync
+        if number == errno.EBADF:
+            # The pre-existing EBADF ownership fence used OFD equality to allow
+            # close. ADR 0010 forbids that inference, even when the fault fixture
+            # knows this injected read never closed the original allocation.
+            assert not native._resources_closed and reader._queue._closed
+            assert r.scheduler._watcher_token is r.watcher._token
+            os.fstat(native._inotify_fd)
+            with pytest.raises(OSError):
+                r.watcher.stop()
+            os.close(native._inotify_fd)  # Fixture's explicit, known disposition.
+            r.watcher.stop()
+        assert native._resources_closed and reader._queue._closed
+        assert all(issubclass(error, CleanupIncompleteError) for error in cleanup_errors)
 
 
 @pytest.mark.parametrize("action", ["native", "root", "cancel", "stop", "terminal", "old-generation"])
@@ -618,7 +641,9 @@ def test_partial_native_initialization_cleans_allocations(tmp_path, monkeypatch,
 
     def pipes():
         if failure == "pipe":
-            raise OSError(errno.EMFILE, "native pipe allocation failed")
+            from app.core.resource_cleanup import NoAllocation
+
+            return NoAllocation(OSError(errno.EMFILE, "certified pre-dispatch pipe allocation failure"))
         pair = pipe()
         descriptors.extend(pair)
         return pair

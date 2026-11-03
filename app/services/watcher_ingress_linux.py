@@ -13,10 +13,12 @@ import errno
 import os
 import select
 import stat
+import sys
 import threading
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+from types import BuiltinMethodType
 
 from watchdog.observers.inotify_buffer import InotifyBuffer
 from watchdog.observers.inotify_c import (
@@ -31,6 +33,15 @@ from watchdog.observers.inotify_c import (
 from watchdog.utils import BaseThread
 from watchdog.utils.delayed_queue import DelayedQueue
 
+from app.core.resource_cleanup import (
+    CleanupIncompleteError,
+    CleanupState,
+    NoAllocation,
+    OwnedResources,
+    ReleaseEvidence,
+    descriptor_allocation,
+    native_close_result,
+)
 from app.repositories.semantic_binding import ordinary_identity
 from app.services.semantic_sync import directory_identity
 from app.services.watcher_ingress import INGRESS_EVENT_LIMIT
@@ -44,20 +55,22 @@ SEMANTIC_INOTIFY_MASK = (
     | InotifyConstants.IN_UNMOUNT
 )
 
+_INOTIFY_INIT_ADDRESS = ctypes.cast(ctypes.CDLL(None).inotify_init, ctypes.c_void_p).value
+
 
 @dataclass
 class _Descriptor:
-    number: int
+    number: int | None
     identity: tuple | None = None
     state: str = "owned"
     guard: _Descriptor | None = None
+    release: ReleaseEvidence = field(default_factory=ReleaseEvidence)
+    lock: object = field(default_factory=threading.RLock)
 
 
 def _same_description(one, other):
-    # Only needed after a close has an uncertain outcome. kcmp compares open
-    # file descriptions, unlike fstat (all inotify anon inodes can look alike).
-    # The x86-64 syscall is verified on the supported WSL kernel. Where a kernel
-    # or sandbox cannot prove identity, retain ownership rather than guess.
+    # Diagnostic only. Even equality cannot prove allocation ownership and this
+    # function must NEVER participate in release authorization (ADR 0010).
     if os.uname().machine != "x86_64":
         return None
     libc = ctypes.CDLL(None, use_errno=True)
@@ -95,6 +108,7 @@ class _BoundedInotify(Inotify):
         self._is_reading = False
         self._descriptors = {}
         self._resources_closed = False
+        self._registration_iterators = OwnedResources()
         self._path = path
         self._wd_for_path = {}
         self._path_for_wd = {}
@@ -117,7 +131,10 @@ class _BoundedInotify(Inotify):
             self._validate_root()
             self._initialize_native(path, recursive, event_mask)
         except BaseException:
-            self.close_after_reader()
+            try:
+                self.close_after_reader()
+            except BaseException:
+                pass  # The published native owner retains incomplete cleanup.
             raise
 
     def _own(self, name, number):
@@ -136,23 +153,48 @@ class _BoundedInotify(Inotify):
         # E5 accepts only bound ordinary roots; a transient metadata error must
         # never select nonrecursive registration. Keep native poll/close state
         # compatible with the inherited read/stop and move bookkeeping methods.
+        owned = _Descriptor(None)
+        owned.release.state = CleanupState.AMBIGUOUS
+        self._descriptors["_inotify_fd"] = owned
         descriptor = inotify_init()
         if descriptor == -1:
+            if (isinstance(inotify_init, ctypes._CFuncPtr) and getattr(inotify_init, "errcheck", None) is None
+                    and ctypes.cast(inotify_init, ctypes.c_void_p).value == _INOTIFY_INIT_ADDRESS):
+                owned.release.state = CleanupState.VERIFIED_RELEASED
+                owned.state = "absent"
             Inotify._raise_error()
             raise PermissionError(errno.EACCES, "Native initialization denied")
         self._inotify_fd = descriptor
-        owned = self._own("_inotify_fd", descriptor)
-        # Anonymous inotify fstat identities are shared. Keep one original OFD
-        # reference so an unexpected EBADF cannot make a reused slot ours again.
-        number = os.dup(descriptor)
-        owned.guard = _Descriptor(number)
+        owned.number = descriptor
+        owned.release.state = CleanupState.OWNED_OPEN
+        owned.identity = self._descriptor_identity(descriptor)
+        # Keep the existing bounded original reference. OFD equality never
+        # restores allocation ownership after an interrupted release.
+        owned.guard = _Descriptor(None)
+        owned.guard.release.state = CleanupState.AMBIGUOUS
         self._descriptors["guard:_inotify_fd"] = owned.guard
-        owned.guard.identity = self._descriptor_identity(number)
+        result = descriptor_allocation(os.dup, descriptor)
+        if isinstance(result, NoAllocation):
+            owned.guard.release.state = CleanupState.VERIFIED_RELEASED
+            raise result.error
+        owned.guard.number = result
+        owned.guard.release.state = CleanupState.OWNED_OPEN
+        owned.guard.identity = self._descriptor_identity(result)
         self._is_reading = True
-        self._kill_r, self._kill_w = os.pipe()
+        for name in ("_kill_r", "_kill_w"):
+            self._descriptors[name] = _Descriptor(None)
+            self._descriptors[name].release.state = CleanupState.AMBIGUOUS
+        pair = descriptor_allocation(os.pipe)
+        if isinstance(pair, NoAllocation):
+            for name in ("_kill_r", "_kill_w"):
+                self._descriptors[name].release.state = CleanupState.VERIFIED_RELEASED
+                self._descriptors[name].state = "absent"
+            raise pair.error
+        self._kill_r, self._kill_w = pair
         # Record BOTH allocations before an identity probe can fail.
-        self._descriptors["_kill_r"] = _Descriptor(self._kill_r)
-        self._descriptors["_kill_w"] = _Descriptor(self._kill_w)
+        for name, number in zip(("_kill_r", "_kill_w"), pair):
+            self._descriptors[name].number = number
+            self._descriptors[name].release.state = CleanupState.OWNED_OPEN
         for name in ("_kill_r", "_kill_w"):
             self._descriptors[name].identity = self._descriptor_identity(getattr(self, name))
         if hasattr(select, "poll"):
@@ -204,6 +246,56 @@ class _BoundedInotify(Inotify):
                             self._add_watch(full, mask)
         self._validate_root()
 
+    def _prepare_iterator_close(self, iterator):
+        # Owner-controlled pre-dispatch seam: no release/transfer occurs here.
+        pass
+
+    def _registration_view(self, path, iterator):
+        # Iteration-only seam; the actual native iterator remains the cleanup owner.
+        return iterator
+
+    def _own_iterator(self, path):
+        state = [CleanupState.OWNED_OPEN]
+        view = None
+
+        def close(iterator):
+            if state[0] in (CleanupState.AMBIGUOUS, CleanupState.RELEASE_IN_PROGRESS):
+                raise CleanupIncompleteError
+            try:
+                self._prepare_iterator_close(iterator)
+            except BaseException:
+                state[0] = CleanupState.VERIFIED_SAFE_TO_RETRY
+                raise
+            state[0] = CleanupState.RELEASE_IN_PROGRESS
+            try:
+                closer = iterator.close
+                trusted = (isinstance(closer, BuiltinMethodType) and closer.__self__ is iterator
+                           and type(iterator).__name__ == "ScandirIterator"
+                           and type(iterator).__module__ == "posix")
+                closer()  # Bound object API; never dispatch a retained numeric FD.
+                if not trusted:
+                    raise CleanupIncompleteError  # A bare opaque return is not a receipt.
+            except BaseException:
+                state[0] = CleanupState.AMBIGUOUS
+                raise
+            state[0] = CleanupState.VERIFIED_RELEASED
+            if view is not None and view is not iterator:
+                view.close()  # Iteration facade, AFTER verified native resource release.
+
+        lease = self._registration_iterators.acquire(
+            os.scandir, path, closer=close,
+            probe=lambda iterator: state[0] is CleanupState.VERIFIED_RELEASED,
+        )
+        try:
+            view = self._registration_view(path, lease.resource)
+        except BaseException:
+            try:
+                self._registration_iterators.release(lease)
+            except BaseException:
+                pass
+            raise
+        return lease, view
+
     def _registration_walk(self, path):
         # os.walk also hides DirEntry.is_dir errors, even with onerror. Stream
         # checked entries instead: singleton batches and one iterator per depth,
@@ -221,14 +313,14 @@ class _BoundedInotify(Inotify):
                 current = ordinary_identity(Path(os.fsdecode(root)), directory=True)
                 if identity is not None and current != identity:
                     raise OSError(errno.ESTALE, "Native enumeration directory changed")
-                iterator = os.scandir(root)
+                lease, iterator = self._own_iterator(root)
             except OSError as error:
                 self._enumeration_error(error, parent, parent_identity)
                 return
-            stack.append((root, current, iterator))
+            stack.append((root, current, iterator, lease))
 
         def current_frame_valid():
-            root, identity, _ = stack[-1]
+            root, identity, _, _ = stack[-1]
             try:
                 validate(root, identity)
             except FileNotFoundError as error:
@@ -240,16 +332,16 @@ class _BoundedInotify(Inotify):
         try:
             descend(path)
             while stack:
-                root, identity, iterator = stack[-1]
+                root, identity, iterator, lease = stack[-1]
                 if not current_frame_valid():
-                    iterator.close()
+                    self._registration_iterators.release(lease)
                     stack.pop()
                     continue
                 try:
                     entry = next(iterator)  # Iterator errors are never end-of-directory.
                 except StopIteration:
                     current_frame_valid()
-                    iterator.close()
+                    self._registration_iterators.release(lease)
                     stack.pop()
                     continue
                 try:
@@ -262,7 +354,7 @@ class _BoundedInotify(Inotify):
                 if linked != stat.S_ISLNK(info.st_mode) or directory != stat.S_ISDIR(info.st_mode):
                     raise OSError(errno.ESTALE, "Native entry classification changed")
                 if not current_frame_valid():
-                    iterator.close()
+                    self._registration_iterators.release(lease)
                     stack.pop()
                     continue
                 if linked:
@@ -272,15 +364,24 @@ class _BoundedInotify(Inotify):
                 if directory:
                     yield root, (entry.name,), ()  # Caller installs the watch BEFORE descent.
                     if not current_frame_valid():
-                        iterator.close()
+                        self._registration_iterators.release(lease)
                         stack.pop()
                         continue
                     descend(entry.path, root, identity, (info.st_dev, info.st_ino))
                 else:
                     yield root, (), (entry.name,)
         finally:
-            for _, _, iterator in reversed(stack):
-                iterator.close()
+            # A consumed generator callback never owns the last cleanup reference.
+            # Drain all independent iterators even when one disposal fails.
+            unwinding = sys.exc_info()[0] is not None
+            error = None
+            for _, _, _, lease in reversed(stack):
+                try:
+                    self._registration_iterators.release(lease)
+                except BaseException as failure:
+                    error = error or failure
+            if error is not None and not unwinding:
+                raise error
 
     def _enumeration_error(self, error, parent, identity):
         path = os.fsencode(error.filename) if error.filename is not None else None
@@ -382,77 +483,75 @@ class _BoundedInotify(Inotify):
             self._queue_coverage_fence()
 
     def _dispose(self, name, descriptor, *, guarded):
-        if descriptor.state in ("closed", "absent", "replaced"):
-            return
-        try:
-            identity = self._descriptor_identity(descriptor.number)
-        except OSError as error:
-            if error.errno == errno.EBADF:
-                descriptor.state = "absent"
+        # Allocation history, never OFD equality, authorizes dispatch. The final
+        # guard uses exactly the same evidence and disposal lock as its original.
+        with descriptor.lock:
+            if descriptor.state in ("closed", "absent", "replaced"):
                 return
-            raise
-        if descriptor.identity is not None and identity != descriptor.identity:
-            descriptor.state = "replaced"  # Do not close an unrelated reused slot.
-            return
-        if descriptor.state == "uncertain":
-            if descriptor.guard is not None and descriptor.guard.state == "owned":
+            if descriptor.state == "uncertain" and descriptor.release.state is CleanupState.OWNED_OPEN:
+                descriptor.release.state = CleanupState.AMBIGUOUS
+
+            def absent():
+                if descriptor.number is None:
+                    return False  # Unreturned allocation remains an obligation.
                 try:
-                    guard_identity = self._descriptor_identity(descriptor.guard.number)
+                    current = self._descriptor_identity(descriptor.number)
                 except OSError as error:
                     if error.errno != errno.EBADF:
                         raise
-                    descriptor.guard.state = "absent"
-                else:
-                    if guard_identity != descriptor.guard.identity:
-                        descriptor.guard.state = "replaced"
-            same = (_same_description(descriptor.number, descriptor.guard.number)
-                    if descriptor.guard is not None and descriptor.guard.state == "owned" else None)
-            if same is False:
-                descriptor.state = "replaced"
-                return
-            if same is not True:
-                raise OSError(errno.ESTALE, "Native descriptor ownership uncertain")
-        if guarded and descriptor.guard is None:
-            # At most three close-time guards, retained only across an uncertain
-            # close. They prove safe retry even for reused anonymous inotify fds.
-            try:
-                number = os.dup(descriptor.number)
-            except OSError as error:
-                if error.errno not in (errno.EMFILE, errno.ENFILE):
-                    raise
-                # Resource pressure must not prevent the first close of a
-                # known-owned fd. If that close fails, retry will fail closed
-                # without proof instead of blindly closing a possibly reused fd.
-            else:
-                descriptor.guard = _Descriptor(number)
-                self._descriptors["guard:" + name] = descriptor.guard
-                descriptor.guard.identity = self._descriptor_identity(number)
-        try:
-            os.close(descriptor.number)
-        except OSError as error:
-            descriptor.state = "uncertain"
-            try:
-                current = self._descriptor_identity(descriptor.number)
-            except OSError as probe:
-                if probe.errno == errno.EBADF:
                     descriptor.state = "absent"
-            else:
+                    return True
                 if descriptor.identity is not None and current != descriptor.identity:
                     descriptor.state = "replaced"
-            if error.errno != errno.EBADF or descriptor.state == "uncertain":
-                raise
-        else:
-            descriptor.state = "closed"
+                    return True
+                return False
+
+            def prepare():
+                self._descriptor_identity(descriptor.number)  # Read-only, safe to retry.
+                if guarded and descriptor.guard is None:
+                    guard = _Descriptor(None)
+                    guard.release.state = CleanupState.AMBIGUOUS
+                    descriptor.guard = guard
+                    self._descriptors["guard:" + name] = guard
+                    result = descriptor_allocation(os.dup, descriptor.number)
+                    if isinstance(result, NoAllocation):
+                        guard.release.state = CleanupState.VERIFIED_RELEASED
+                        raise result.error
+                    guard.number = result
+                    guard.release.state = CleanupState.OWNED_OPEN
+                    guard.identity = self._descriptor_identity(guard.number)
+
+            returned = False
+
+            def release():
+                nonlocal returned
+                result = native_close_result(os.close, descriptor.number)
+                returned = True
+                return result
+
+            try:
+                descriptor.release.run(release,
+                                       absent, prepare=prepare, number=descriptor.number)
+            finally:
+                if descriptor.release.state is CleanupState.VERIFIED_RELEASED:
+                    if descriptor.state != "replaced" and (returned or descriptor.state != "absent"):
+                        descriptor.state = "closed"
+                elif descriptor.release.state in (CleanupState.AMBIGUOUS, CleanupState.RELEASE_IN_PROGRESS):
+                    descriptor.state = "uncertain"
 
     def _close_resources(self):
         error = None
+        try:
+            self._registration_iterators.drain(retire_active=True)
+        except BaseException as failure:
+            error = failure
         for name in ("_inotify_fd", "_kill_r", "_kill_w"):
             descriptor = self._descriptors.get(name)
             if descriptor is None:
                 continue
             try:
                 self._dispose(name, descriptor, guarded=True)
-            except OSError as failure:
+            except BaseException as failure:
                 error = error or failure
         for name in ("_inotify_fd", "_kill_r", "_kill_w"):
             descriptor = self._descriptors.get(name)
@@ -460,10 +559,11 @@ class _BoundedInotify(Inotify):
                     and descriptor.state in ("closed", "absent", "replaced")):
                 try:
                     self._dispose("guard:" + name, descriptor.guard, guarded=False)
-                except OSError as failure:
+                except BaseException as failure:
                     error = error or failure
-        self._resources_closed = all(d.state in ("closed", "absent", "replaced")
-                                     for d in self._descriptors.values())
+        self._resources_closed = (not self._registration_iterators.pending and
+                                  all(d.state in ("closed", "absent", "replaced")
+                                      for d in self._descriptors.values()))
         if error is not None:
             raise error
 
@@ -586,6 +686,7 @@ class _BoundedInotify(Inotify):
                         if self._closed:
                             return []
                         self._descriptors["_inotify_fd"].state = "uncertain"
+                        self._descriptors["_inotify_fd"].release.state = CleanupState.AMBIGUOUS
                 self._loss()
                 raise
             break

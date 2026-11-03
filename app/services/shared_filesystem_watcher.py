@@ -214,7 +214,10 @@ class SharedFilesystemWatcher:
                                 self._token, binding, health_revisions[binding.space_id],
                             )
             except BaseException:
-                self.stop()
+                try:
+                    self.stop()
+                except BaseException:
+                    pass  # Native generation remains owned; preserve startup's failure.
                 raise
 
     def stop_admission(self) -> None:
@@ -266,8 +269,10 @@ class SharedFilesystemWatcher:
                             reader.close()  # Retry cleanup, including partial startup's queue.
                         if (producer.is_alive() or (reader is not None and reader.is_alive())
                                 or getattr(producer, "_whandle", None) is not None
+                                or getattr(producer, "cleanup_pending", False)
                                 or (native_read is not None
-                                    and (native_read.pending or native_read.event is not None))
+                                    and (native_read.pending or native_read.event is not None
+                                         or getattr(native_read, "cleanup_pending", False)))
                                 or (reader is not None and not reader._inotify._resources_closed)):
                             raise RuntimeError("Shared filesystem producer cleanup is incomplete")
                     observer.unschedule_all()

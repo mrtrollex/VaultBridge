@@ -1,14 +1,15 @@
 """Qualified local operations and bounded Markdown-only read federation.
 
-Named semantic activation waits for E. Writes and scoped
+Named semantic activation uses the explicit private E6 runtime. Writes and scoped
 capture/promotion wait for their bound lifecycle/provenance implementation.
 """
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from functools import wraps
-from typing import Generic, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 from app.services.knowledge_hygiene import KnowledgeHygieneRequest, KnowledgeHygieneService
 from app.services.knowledge_spaces import (
@@ -23,7 +24,10 @@ from app.services.knowledge_spaces import (
     SpaceOwners,
     SpacePolicyResolver,
 )
-from app.services.vault import NoteReadResult, NoteUnavailableError, VaultValidationError
+from app.services.vault import NoteReadResult, NoteUnavailableError, VaultValidationError, _owned_note_reads
+
+if TYPE_CHECKING:
+    from app.services.space_admission import ScopedOperationAdmission
 
 T = TypeVar("T")
 
@@ -59,6 +63,16 @@ class QualifiedNoteRead:
 @dataclass(frozen=True, slots=True)
 class SpaceOperations:
     _resolver: SpacePolicyResolver = field(repr=False)
+    _admission: ScopedOperationAdmission | None = field(default=None, repr=False)
+
+    @contextmanager
+    def _admit(self, cancel=None):
+        # Legacy/directly constructed operations preserve their existing behavior.
+        if self._admission is None:
+            yield cancel
+        else:
+            with self._admission.operation(cancel) as token, _owned_note_reads():
+                yield token
 
     def scoped_list(self, scope=None, *, folder=None, limit=50, cancel=None, limits=None):
         from app.services._scoped_federation import federate
@@ -124,51 +138,55 @@ class SpaceOperations:
         return QualifiedNoteIdentity(binding.space_id, canonical)
 
     @_safe_local_errors
-    def read_note(self, path: QualifiedPath) -> QualifiedNoteRead:
+    def read_note(self, path: QualifiedPath, *, cancel=None) -> QualifiedNoteRead:
         path = self._path(path)
         binding = self._read(path.space_id, Capability.READ_NOTE)
-        note = self._owners(binding).vault.read_note(path.relative_path)
-        return QualifiedNoteRead(self._identity(binding, note.path), note)
+        with self._admit(cancel):
+            note = self._owners(binding).vault.read_note(path.relative_path)
+            return QualifiedNoteRead(self._identity(binding, note.path), note)
 
     @_safe_local_errors
-    def outgoing(self, path: QualifiedPath, *, origin: Dialect | None = None) -> OneSpaceResult:
+    def outgoing(self, path: QualifiedPath, *, origin: Dialect | None = None, cancel=None) -> OneSpaceResult:
         path = self._path(path)
         binding = self._read(path.space_id, Capability.RELATIONSHIPS, self._origin(origin))
-        relationships = self._owners(binding).relationships
-        if origin is Dialect.OBSIDIAN_WIKILINK:
-            result = relationships.outgoing_relationships(path.relative_path)
-        elif origin is Dialect.MARKDOWN_LINK:
-            result = relationships.outgoing_markdown_relationships(path.relative_path)
-        else:
-            result = relationships.normalized_outgoing_relationships(path.relative_path)
-        return OneSpaceResult(binding.space_id, result)
+        with self._admit(cancel):
+            relationships = self._owners(binding).relationships
+            if origin is Dialect.OBSIDIAN_WIKILINK:
+                result = relationships.outgoing_relationships(path.relative_path)
+            elif origin is Dialect.MARKDOWN_LINK:
+                result = relationships.outgoing_markdown_relationships(path.relative_path)
+            else:
+                result = relationships.normalized_outgoing_relationships(path.relative_path)
+            return OneSpaceResult(binding.space_id, result)
 
     @_safe_local_errors
-    def backlinks(self, path: QualifiedPath, *, origin: Dialect | None = None) -> OneSpaceResult:
+    def backlinks(self, path: QualifiedPath, *, origin: Dialect | None = None, cancel=None) -> OneSpaceResult:
         path = self._path(path)
         binding = self._read(path.space_id, Capability.RELATIONSHIPS, self._origin(origin))
-        relationships = self._owners(binding).relationships
-        if origin is Dialect.OBSIDIAN_WIKILINK:
-            result = relationships.backlinks(path.relative_path)
-        elif origin is Dialect.MARKDOWN_LINK:
-            result = relationships.markdown_backlinks(path.relative_path)
-        else:
-            result = relationships.normalized_backlinks(path.relative_path)
-        return OneSpaceResult(binding.space_id, result)
+        with self._admit(cancel):
+            relationships = self._owners(binding).relationships
+            if origin is Dialect.OBSIDIAN_WIKILINK:
+                result = relationships.backlinks(path.relative_path)
+            elif origin is Dialect.MARKDOWN_LINK:
+                result = relationships.markdown_backlinks(path.relative_path)
+            else:
+                result = relationships.normalized_backlinks(path.relative_path)
+            return OneSpaceResult(binding.space_id, result)
 
     @_safe_local_errors
     def duplicates(self, space_id: SpaceId | None = None, *, title: str, text: str = "",
-                   folder: str = "", limit: int = 5) -> OneSpaceResult:
+                   folder: str = "", limit: int = 5, cancel=None) -> OneSpaceResult:
         binding = self._read(space_id, Capability.DUPLICATE_CANDIDATES)
-        # Optional semantic advice is unavailable; do not call search at all.
-        result = self._owners(binding).duplicates.find_candidates(
-            title=title, text=text, folder=folder, limit=limit, semantic_candidates=False,
-        )
-        return OneSpaceResult(binding.space_id, result)
+        with self._admit(cancel):
+            # Optional semantic advice is unavailable; do not call search at all.
+            result = self._owners(binding).duplicates.find_candidates(
+                title=title, text=text, folder=folder, limit=limit, semantic_candidates=False,
+            )
+            return OneSpaceResult(binding.space_id, result)
 
     @_safe_local_errors
     def hygiene(self, space_id: SpaceId | None = None,
-                request: KnowledgeHygieneRequest = KnowledgeHygieneRequest()) -> OneSpaceResult:
+                request: KnowledgeHygieneRequest = KnowledgeHygieneRequest(), *, cancel=None) -> OneSpaceResult:
         binding = self._read(space_id, Capability.HYGIENE)
         # Pure owner validation precedes requirement projection, never discovery.
         KnowledgeHygieneService._validate(request)
@@ -177,12 +195,14 @@ class SpaceOperations:
             self._resolver.authorize_read(scope, Capability.RELATIONSHIPS, frozenset(Dialect))
         if request.duplicate_source_limit:
             self._resolver.authorize_read(scope, Capability.DUPLICATE_CANDIDATES)
-        # Existing bounded hygiene candidates never execute semantic search, and
-        # preserve semantic_unavailable advisory coverage (ADR 0008).
-        result = self._owners(binding).hygiene.scan(request)
-        return OneSpaceResult(binding.space_id, result)
+        with self._admit(cancel):
+            # Existing bounded hygiene candidates never execute semantic search, and
+            # preserve semantic_unavailable advisory coverage (ADR 0008).
+            result = self._owners(binding).hygiene.scan(request)
+            return OneSpaceResult(binding.space_id, result)
 
     @_safe_local_errors
-    def inspect_index(self, space_id: SpaceId | None = None) -> OneSpaceResult[str]:
+    def inspect_index(self, space_id: SpaceId | None = None, *, cancel=None) -> OneSpaceResult[str]:
         binding = self._read(space_id, Capability.HYGIENE)
-        return OneSpaceResult(binding.space_id, self._owners(binding).semantic.inspect_hygiene_index())
+        with self._admit(cancel):
+            return OneSpaceResult(binding.space_id, self._owners(binding).semantic.inspect_hygiene_index())

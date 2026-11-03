@@ -139,7 +139,7 @@ def test_original_windows_native_read_failure_is_not_healthy(tmp_path, monkeypat
     def close_once(handle):
         key = getattr(handle, "value", handle)
         closed[key] = closed.get(key, 0) + 1
-        close(handle)
+        return close(handle)
 
     def broken(reader, handle, path, *, recursive):
         result = read(reader, handle, path, recursive=recursive)

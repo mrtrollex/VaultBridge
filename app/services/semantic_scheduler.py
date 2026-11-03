@@ -67,6 +67,8 @@ class _Owner:
     paused: bool = False
     wake_pending: bool = False
     error_type: str | None = None
+    cleanup_failed: bool = False
+    cleanup_complete: bool = False
     progress: SyncStep | None = None
     monitoring_error_type: str | None = None
     monitoring_revision: int = 0
@@ -97,6 +99,9 @@ class SharedSemanticScheduler:
         self._last_id = None
         self._closed = False
         self._shutdown_started = False
+        self._shutdown_running = False
+        self._shutdown_complete = False
+        self._executor_shutdown_complete = False
         self._watcher_token = None
         self._watcher_accepting = False
         self._stopped = threading.Event()
@@ -557,6 +562,7 @@ class SharedSemanticScheduler:
                     )
                 handle = service.begin_sync(relative_paths=paths, cancel_event=entry.cancel)
                 with self._condition:
+                    entry.cleanup_failed = False
                     entry.continuation = handle
                     entry.full_active = handle.full
                     if handle.full:
@@ -591,6 +597,12 @@ class SharedSemanticScheduler:
                 except BaseException:
                     pass
             with self._condition:
+                work = getattr(service, "_active_sync", None)
+                entry.cleanup_failed = (work is not None and work.handle.state is not SyncStepState.INCOMPLETE
+                                        and not work._closed) or getattr(
+                                            service, "cleanup_failed",
+                                            getattr(service.repository, "cleanup_failed", False),
+                                        )
                 entry.error_type = type(error).__name__
                 entry.full_needed = True
                 entry.paused = True
@@ -625,22 +637,33 @@ class SharedSemanticScheduler:
         finally:
             # All tokens were signalled before this drain. No queue lock is held
             # while E3 closes temporary workspaces or waits for a safe boundary.
-            self._close_owners()
+            self._close_owners(retry_failed=False)
 
-    def _close_owners(self):
+    def _close_owners(self, *, retry_failed=True):
         for entry in self._owners.values():
+            if entry.cleanup_complete:
+                continue
+            failed = entry.cleanup_failed or getattr(
+                entry.service, "cleanup_failed", getattr(entry.service.repository, "cleanup_failed", False),
+            )
+            failed = failed and not retry_failed
             try:
-                if entry.continuation is not None and entry.continuation.state is SyncStepState.INCOMPLETE:
-                    entry.service.cancel_sync(entry.continuation)
+                # Fences/cancels and disposes once. A failed cancellation must
+                # not be silently retried by a second cleanup in this pass.
+                if failed:
+                    entry.service.close_synchronization(_retry_cleanup=False)
+                else:
+                    entry.service.close_synchronization()
             except BaseException:
-                entry.error_type = "SynchronizationCleanupError"
-            try:
-                entry.service.close_synchronization()
-            except BaseException:
-                entry.error_type = "SynchronizationCleanupError"
+                failed = True
             with self._condition:
+                entry.cleanup_failed = failed
+                entry.cleanup_complete = not failed
+                if failed:
+                    entry.error_type = "SynchronizationCleanupError"
                 self._release_inflight(entry)
-                entry.continuation = None
+                if not failed:
+                    entry.continuation = None
                 entry.running = False
                 self._condition.notify_all()
 
@@ -694,18 +717,35 @@ class SharedSemanticScheduler:
     def shutdown(self) -> None:
         self.begin_shutdown()
         with self._condition:
+            self._condition.wait_for(lambda: not self._shutdown_running)
+            if self._shutdown_complete:
+                self._stopped.set()
+                return
+            self._shutdown_running = True
             first = not self._shutdown_started
             self._shutdown_started = True
-        if not first:
-            self._stopped.wait()
-            return
         try:
-            if self._executor is not None:
-                self._executor.shutdown(wait=True, cancel_futures=True)
-                # A dispatcher cancelled before starting has no finally block.
-                if self._future.cancelled():
-                    self._close_owners()
-            else:
-                self._close_owners()
+            if not self._executor_shutdown_complete:
+                if self._executor is not None:
+                    # Attempted shutdown is not disposal. An interrupted call
+                    # retains this exact executor for the next serialized retry.
+                    self._executor.shutdown(wait=True, cancel_futures=True)
+                    if (not self._executor._shutdown or (self._future is not None and not self._future.done())
+                            or any(thread.is_alive() for thread in self._executor._threads)):
+                        raise RuntimeError("Semantic executor shutdown is incomplete")
+                self._executor_shutdown_complete = True
+            # Worker-finally cleanup may already have succeeded or failed. Do
+            # not repeat a failed disposal in the first shutdown attempt, nor
+            # repeat any successfully completed owner cleanup on later retries.
+            self._close_owners(retry_failed=not first)
+            with self._condition:
+                failed = any(not entry.cleanup_complete for entry in self._owners.values())
+                self._shutdown_complete = not failed
+                if self._shutdown_complete:
+                    self._stopped.set()
+            if failed:
+                raise RuntimeError("Semantic synchronization cleanup is incomplete")
         finally:
-            self._stopped.set()
+            with self._condition:
+                self._shutdown_running = False
+                self._condition.notify_all()

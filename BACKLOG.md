@@ -3353,7 +3353,7 @@ roots, multi-tenancy/RBAC/account administration, cross-space automatic moves/re
 implementation, release/deployment, commit or reviewer launch. ADR acceptance must precede a
 separately accepted runtime contract; sequence alone never authorizes implementation.
 
-### VB-151 — Compatibility-safe multi-space domain boundary — P1 (Slices A–C implemented; D–G pending)
+### VB-151 — Compatibility-safe multi-space domain boundary — P1 (Slices A–E implemented; F–G pending)
 
 **Authority / status:** This is the authoritative future implementation contract under
 [Accepted ADR 0009](docs/adr/0009-knowledge-spaces-and-scope-policies.md). VB-150 is complete and
@@ -3362,12 +3362,17 @@ config/types/registry/resolver, strict startup validation and authorization/no-w
 direct-owner composition rejects supplied named configuration. Slice B implements real private
 owner bundles and qualified nonsemantic one-space operations: note read, outgoing/backlinks,
 local title duplicate advice, hygiene and immutable index inspection. Query/capture/promotion
-owners are local structural references, without new scoped execution. Semantic runtime and enabled
-scheduler are deferred behind immutable inspection and a no-worker lifecycle handle; disabled
-spaces have no scheduler. Scoped writes/index callbacks and provenance remain gated on E/F.
+owners are local structural references, without new scoped execution. The inspection-only factory
+retains immutable inspection and a no-worker lifecycle handle; disabled spaces have no scheduler.
+Explicit E6 runtime composition activates enabled semantic owners separately. Scoped writes,
+capture/promotion index callbacks and provenance remain gated on F.
 Slice C adds internal sequential Markdown-only list/literal/nonsemantic Scoped Query federation,
 qualified predicates, supplied snapshots, request-local work admission, incremental mixed-dialect
-relationship derivation, cancellation and finite coverage. Slices A–C are implemented; D–G remain
+relationship derivation, cancellation and finite coverage. D1–D3b add bounded precise semantic
+retrieval and semantic Query. E1–E5 implement binding validation, shared lazy embedding ownership,
+resumable synchronization, bounded scheduling and native monitoring. E6 now composes those
+primitives through private SpaceRuntime with exact final owner identity, single operation
+admission and coordinated startup/rollback/shutdown. Slices A–E are implemented; F–G remain
 pending. VB-151 remains incomplete. Named serving remains blocked. Milestone 16 remains **PLANNED**,
 and VB-152 stays future/unscoped.
 Later explicitly requested implementation must follow this contract and ADRs 0005–0008 without
@@ -4019,7 +4024,7 @@ prefix counters/digests or streamed comparisons. Use small injected remaining cr
 each boundary deterministically, plus production-ceiling cases; do not allocate millions of objects
 or invoke an eager parser to manufacture the bounded path's expected output.
 
-Use separate narrowly reviewable implementation PRs; runtime A–C are implemented, D–G pending:
+Use separate narrowly reviewable implementation PRs; runtime A–E are implemented, F–G pending:
 
 1. **A: immutable config/types/registry/resolver**, strict startup and authorization/no-work tests.
 2. **B: owner bundles/qualified one-space orchestration**, disabled inspection facade, local owners

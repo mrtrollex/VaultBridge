@@ -233,15 +233,23 @@ class FastEmbedder:
         self.batch_size = batch_size
         self.enable_cpu_mem_arena = enable_cpu_mem_arena
         self._model = None
+        self._cache_guard = None
+        self._inference_ready = False
         self._embedding_fingerprint: str | None = None
         self._compatibility_evidence: EmbeddingCompatibilityEvidence | None = None
         self._lock = threading.Lock()
 
     def _get_model(self):
         if self._model is not None:
+            # A lazy wrapper may still read artifacts on its first inference.
+            # Once inference succeeds, its loaded session needs no cache access.
+            if not self._inference_ready and self._cache_guard is not None:
+                self._cache_guard()
             return self._model
         with self._lock:
             if self._model is None:
+                if self._cache_guard is not None:
+                    self._cache_guard()
                 try:
                     from fastembed import TextEmbedding
                 except ImportError as exc:  # pragma: no cover
@@ -292,6 +300,8 @@ class FastEmbedder:
                 raise SemanticIndexOperationError(
                     "FastEmbed did not expose the resolved model artifacts"
                 )
+            if self._cache_guard is not None:
+                self._cache_guard()
             self._embedding_fingerprint = build_embedding_fingerprint(
                 model_dir=model_dir,
                 model_file=model_file,
@@ -317,6 +327,7 @@ class FastEmbedder:
             self._embedding_fingerprint = None
             self._compatibility_evidence = None
             self._model = None
+            self._inference_ready = False
 
     def validate_embedding_backend(self) -> None:
         """Force one real inference before an incompatible persisted index is discarded."""
@@ -347,10 +358,12 @@ class FastEmbedder:
         if not texts:
             return []
         model = self._get_model()
-        return [
+        vectors = [
             np.asarray(vector, dtype=np.float32)
             for vector in model.embed(list(texts), batch_size=self.batch_size)
         ]
+        self._inference_ready = True
+        return vectors
 
 
 @dataclass(frozen=True)
@@ -578,6 +591,7 @@ class SemanticSearchService:
         self._sync_admin_lock = threading.Lock()
         self._sync_operations: dict[threading.Event, threading.Event] = {}
         self._active_sync: SyncWork | None = None
+        self._index_vault: VaultService | None = None
         self._sync_closed = False
         self._full_sync_required = False
         self._sync_configuration_revision = 0
@@ -669,7 +683,9 @@ class SemanticSearchService:
             self._fingerprint_lock.release()
 
     def _validate_source_root(self, root):
-        binding = getattr(self.repository, "_expected_binding", None)
+        binding = getattr(self.repository, "_namespace_binding", None)
+        if binding is None:
+            binding = getattr(self.repository, "_expected_binding", None)
         if binding is not None:
             binding.check_source_root(root)
 
@@ -1828,7 +1844,14 @@ class SemanticSearchService:
         _session=None,
     ) -> tuple[int, int]:
         self._validate_source_root(vault_root)
-        vault = VaultService(vault_root=vault_root, max_note_bytes=self.max_note_bytes)
+        vault = self._index_vault
+        if vault is not None:
+            vault._scoped_resources.check()
+        if vault is None or (vault.vault_root, vault.max_note_bytes) != (vault_root, self.max_note_bytes):
+            if vault is not None and vault._scoped_resources.pending:
+                raise SemanticIndexOperationError("Indexing vault cleanup is incomplete")
+            vault = VaultService(vault_root=vault_root, max_note_bytes=self.max_note_bytes)
+            self._index_vault = vault  # Publish the actual allocator before any note I/O.
         indexed = unchanged = 0
         for file_batch in batched(files, self.index_batch_size):
             self._raise_if_cancelled(cancel_event)
@@ -1871,6 +1894,8 @@ class SemanticSearchService:
                             raise TargetedSynchronizationError("Synchronization note changed during read")
                         digest = hashlib.sha256(note_text.encode("utf-8")).hexdigest()
                     except (UnicodeDecodeError, OSError, VaultServiceError) as exc:
+                        if vault._scoped_resources.failed:
+                            raise SemanticIndexOperationError("Indexing vault cleanup is incomplete") from None
                         if strict_reads:
                             raise TargetedSynchronizationError(
                                 f"Targeted note could not be read: {relative_path}"
@@ -2012,16 +2037,35 @@ class SemanticSearchService:
         if not self._indexing_enabled:
             raise SemanticSearchUnavailableError("Semantic index is unavailable")
         with self._sync_admission(cancel_event) as check:
+            check()
+            # One explicit retry first disposes terminal work, then reserves its
+            # replacement. Failed disposal must not fall into another cleanup
+            # attempt in the preparation finally block below.
+            self._dispose_sync()
+            if self._index_vault is not None and self._index_vault._scoped_resources.failed:
+                self._index_vault._scoped_resources.drain()
+            check()
             work = None
+            preparation_failed = False
             try:
                 check()
                 with self._embedding_operation(check):
                     work = self._prepare_sync(relative_paths=relative_paths, rebuild=rebuild, check=check)
                 return work.handle
             except BaseException as error:
-                if work is not None and self._active_sync is work:
-                    self._fail_sync(work, error)
+                preparation_failed = True
+                try:
+                    if work is not None and self._active_sync is work:
+                        self._fail_sync(work, error)
+                except BaseException:
+                    pass  # Preserve preparation's failure; exact work stays owned.
                 raise
+            finally:
+                try:
+                    self._dispose_sync()
+                except BaseException:
+                    if not preparation_failed:
+                        raise
 
     def _prepare_sync(self, *, relative_paths, rebuild, check):
         self._validate_source_root(self.vault_root)
@@ -2065,13 +2109,14 @@ class SemanticSearchService:
                 work = SyncWork(self, paths=relative_paths, full=full)
                 try:
                     with self._sync_admin_lock:
+                        self._active_sync = work
                         check()
                         self._persist_state(IndexState.INDEXING)
-                        self._active_sync = work
                         if full:
                             self._full_sync_required = True
-                except BaseException:
-                    work.close()
+                except BaseException as error:
+                    # Disposal runs after preparation's locks/pin unwind.
+                    self._end_sync(work, SyncStepState.FAILED, error=error)
                     raise
                 self._sync_event(work, "started")
                 return work
@@ -2085,15 +2130,28 @@ class SemanticSearchService:
 
     def _end_sync(self, work, state, *, error=None):
         work.handle._state = state
-        self._active_sync = None
-        try:
+        if work._closed and self._active_sync is work:
+            self._active_sync = None
+        self._sync_event(work, "completed" if state is SyncStepState.COMPLETE else
+                         "cancelled" if state is SyncStepState.CANCELLED else "failed",
+                         error=error)
+
+    def _dispose_sync(self):
+        """Dispose terminal work without an owner/resource/turn lock held.
+
+        A terminal handle cannot resume, but its work remains owned until every
+        cleanup succeeds. Concurrent disposers serialize inside that exact work.
+        """
+        work = self._active_sync
+        if work is not None and work.handle.state is not SyncStepState.INCOMPLETE:
             work.close()
-        finally:
-            self._sync_event(work, "completed" if state is SyncStepState.COMPLETE else
-                             "cancelled" if state is SyncStepState.CANCELLED else "failed",
-                             error=error)
+            with self._sync_admin_lock:
+                if self._active_sync is work:
+                    self._active_sync = None
 
     def _fail_sync(self, work, error):
+        if work.handle.state is not SyncStepState.INCOMPLETE:
+            return  # Cleanup retry must not repeat SQLite state/batch writes.
         # Never prepare/repair or write a rebound index while reporting failure.
         try:
             work.validate_storage(self)
@@ -2121,6 +2179,10 @@ class SemanticSearchService:
         with self._sync_admission(cancel_event) as admitted_check:
             if not work.turn_lock.acquire(blocking=False):
                 raise ValueError("Synchronization continuation is already executing")
+            if work.disposing:
+                work.turn_lock.release()
+                raise ValueError("Synchronization continuation is already executing")
+            cleanup_revision = work._cleanup_revision
             def check():
                 admitted_check()
                 self._raise_if_cancelled(work.cancel_event)
@@ -2143,10 +2205,22 @@ class SemanticSearchService:
                                 elif work.phase == "stale":
                                     work.reconcile(self, connection, check)
                             check()
-                            if work.phase == "finish":
-                                # Dispose the scan before publishing success. A
-                                # cleanup failure cannot produce a successful sync.
-                                work.close()
+                    if work.phase == "finish":
+                        # Keep the operation/pin, but release all owner and turn
+                        # locks during filesystem disposal. Competing steps still
+                        # reject this reserved turn; cancellation may signal it.
+                        work.disposing = True
+                        work.turn_lock.release()
+                        try:
+                            work.close()
+                        finally:
+                            work.turn_lock.acquire()
+                            work.disposing = False
+                        check()
+                        with self._sync_guard(check):
+                            self._sync_work(handle)
+                            with self._owner_guard(self._configuration_lock, check):
+                                work.validate(self)
                                 # Acquire cancellable owner locks *before* the final
                                 # non-interruptible commit. Late cancellation cannot
                                 # reclassify that completed commit as cancellation.
@@ -2165,7 +2239,7 @@ class SemanticSearchService:
                                     self._persisted_read_only_search = False
                                     self._persisted_read_only_basis = None
                                     self._end_sync(work, SyncStepState.COMPLETE)
-                            return work.result()
+                    return work.result()
             except BaseException as error:
                 # The turn reservation excludes competing steps and cancellation
                 # cleanup. Do not wait again on the very owner lock just cancelled.
@@ -2174,6 +2248,10 @@ class SemanticSearchService:
                 raise
             finally:
                 work.turn_lock.release()
+                # Report this turn's failed disposal once; retain it for an
+                # explicit cleanup retry instead of hiding it with a second try.
+                if work._cleanup_revision == cleanup_revision or not work._cleanup_failed:
+                    self._dispose_sync()
 
     def cancel_sync(self, handle: SyncContinuation) -> None:
         """Abandon remaining work, waiting only for the active safe boundary."""
@@ -2182,8 +2260,14 @@ class SemanticSearchService:
         with work.turn_lock:
             if self._active_sync is work:
                 self._fail_sync(work, SynchronizationCancelledError("Synchronization cancelled"))
+        self._dispose_sync()
 
-    def close_synchronization(self) -> None:
+    @property
+    def cleanup_failed(self):
+        return (getattr(self.repository, "cleanup_failed", False)
+                or (self._index_vault is not None and self._index_vault._scoped_resources.failed))
+
+    def close_synchronization(self, *, _retry_cleanup: bool = True) -> None:
         """Fence admission, drain preparation/active turns, discard remaining work."""
         with self._sync_admin_lock:
             self._sync_closed = True
@@ -2197,11 +2281,33 @@ class SemanticSearchService:
         # cleanup. No owner/admin lock is held while a backend call drains.
         for _, done in operations:
             done.wait()
-        work = self._active_sync
-        if work is not None:
-            with work.turn_lock:
-                if self._active_sync is work:
-                    self._fail_sync(work, SynchronizationCancelledError("Owner closed"))
+        error = None
+        try:
+            work = self._active_sync
+            if work is not None:
+                with work.turn_lock:
+                    if self._active_sync is work:
+                        self._fail_sync(work, SynchronizationCancelledError("Owner closed"))
+            if _retry_cleanup:
+                self._dispose_sync()
+        except BaseException as exc:
+            error = exc
+        vault = self._index_vault
+        if vault is not None:
+            try:
+                vault._scoped_resources.drain(retry=_retry_cleanup)
+            except BaseException as exc:
+                error = error or exc
+        # E3 and repository cleanup are independent, and both must complete.
+        # No owner/scheduler/resource lock spans SQLite or descriptor disposal.
+        cleanup = getattr(self.repository, "close_initializations", None)
+        if cleanup is not None:
+            try:
+                cleanup(retry=_retry_cleanup, _defer_readers=True)
+            except BaseException as exc:
+                error = error or exc
+        if error is not None:
+            raise error
 
     def _drive_sync(self, *, relative_paths=None, rebuild=False, cancel_event=None):
         if not self._indexing_enabled:

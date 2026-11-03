@@ -53,8 +53,9 @@ class SharedEmbeddingResource:
     The composing process owns close(); individual semantic owners do not close it.
     """
 
-    def __init__(self, settings: Settings) -> None:
+    def __init__(self, settings: Settings, *, _cache_guard=None) -> None:
         self.model_name = settings.semantic_model
+        self._cache_guard = _cache_guard
         self.cache_dir = settings.semantic_data_path / "models"
         self._batch_size = settings.semantic_embed_batch_size
         self._cpu_mem_arena = settings.semantic_onnx_cpu_mem_arena
@@ -67,6 +68,7 @@ class SharedEmbeddingResource:
         self._invalidating = False
         self._cleaning = False
         self._cleanup_failed = False
+        self._cleanup_revision = 0
         self._closing = False
         self._closed = False
 
@@ -156,12 +158,13 @@ class SharedEmbeddingResource:
             completed = failure is None
         finally:
             with self._condition:
-                self._cleanup_failed = self._cleanup_failed or not completed
+                self._cleanup_failed = not completed
+                self._cleanup_revision += 1
                 if completed:
                     self._generation += 1
                 self._cleaning = False
                 self._invalidating = False
-                if self._closing:
+                if self._closing and completed:
                     self._closed = True
                 self._condition.notify_all()
         if failure is not None:
@@ -187,6 +190,8 @@ class SharedEmbeddingResource:
         # Called only while leased. Cache failure never chooses another location.
         if self._backend is None:
             try:
+                if self._cache_guard is not None:
+                    self._cache_guard()
                 self.cache_dir.mkdir(parents=True, exist_ok=True)
                 with tempfile.TemporaryFile(dir=self.cache_dir):
                     pass
@@ -196,6 +201,8 @@ class SharedEmbeddingResource:
                 self.model_name, self.cache_dir, batch_size=self._batch_size,
                 enable_cpu_mem_arena=self._cpu_mem_arena,
             )
+            if hasattr(self._backend, "_cache_guard"):
+                self._backend._cache_guard = self._cache_guard
         return self._backend
 
     def _call(self, method: str, *args):
@@ -244,8 +251,13 @@ class SharedEmbeddingResource:
             self._condition.notify_all()
             if self._closed:
                 return
+            revision = self._cleanup_revision
             self._invalidating = True
             while not self._closed:
+                # A caller joining an in-flight failed release observes that
+                # failure. Only a later close call starts an explicit retry.
+                if self._cleanup_revision != revision and self._cleanup_failed:
+                    raise SemanticIndexOperationError("Shared embedding resource cleanup failed")
                 if self._reserve_cleanup():
                     break
                 self._condition.wait(0.05)
