@@ -3353,9 +3353,9 @@ roots, multi-tenancy/RBAC/account administration, cross-space automatic moves/re
 implementation, release/deployment, commit or reviewer launch. ADR acceptance must precede a
 separately accepted runtime contract; sequence alone never authorizes implementation.
 
-### VB-151 — Compatibility-safe multi-space domain boundary — P1 (Slices A–F implemented; G pending)
+### VB-151 — Compatibility-safe multi-space domain boundary — P1 (A–F accepted; G integration implemented, review pending)
 
-**Authority / status:** This is the authoritative future implementation contract under
+**Authority / status:** This is the authoritative implementation contract under
 [Accepted ADR 0009](docs/adr/0009-knowledge-spaces-and-scope-policies.md). VB-150 is complete and
 merged. The original contract was documentation-only. Runtime Slice A now implements immutable
 config/types/registry/resolver, strict startup validation and authorization/no-work tests. Existing
@@ -3372,8 +3372,10 @@ relationship derivation, cancellation and finite coverage. D1–D3b add bounded 
 retrieval and semantic Query. E1–E5 implement binding validation, shared lazy embedding ownership,
 resumable synchronization, bounded scheduling and native monitoring. E6 now composes those
 primitives through private SpaceRuntime with exact final owner identity, single operation
-admission and coordinated startup/rollback/shutdown. Slices A–F are implemented; G remains
-pending. VB-151 remains incomplete. Named serving remains blocked. Milestone 16 remains **PLANNED**,
+admission and coordinated startup/rollback/shutdown. Slices A–F are implemented and accepted.
+Slice G adds cross-component integration and reproducible native regression/parity evidence in
+[VB151_G_VERIFICATION.md](docs/VB151_G_VERIFICATION.md); independent G acceptance remains pending.
+VB-151 awaits that acceptance. Named serving remains blocked. Milestone 16 remains **PLANNED**,
 and VB-152 stays future/unscoped.
 Later explicitly requested implementation must follow this contract and ADRs 0005–0008 without
 reopening their semantics.
@@ -4024,7 +4026,7 @@ prefix counters/digests or streamed comparisons. Use small injected remaining cr
 each boundary deterministically, plus production-ceiling cases; do not allocate millions of objects
 or invoke an eager parser to manufacture the bounded path's expected output.
 
-Use separate narrowly reviewable implementation PRs; runtime A–F are implemented, G pending:
+Use separate narrowly reviewable implementation PRs; runtime A–F are accepted, G review pending:
 
 1. **A: immutable config/types/registry/resolver**, strict startup and authorization/no-work tests.
 2. **B: owner bundles/qualified one-space orchestration**, disabled inspection facade, local owners
@@ -4044,6 +4046,9 @@ Use separate narrowly reviewable implementation PRs; runtime A–F are implement
    Runtime admission retains confirmed/uncertain write outcomes during shutdown; qualified index
    enqueue follows a new durable commit only. Inspection-only composition cannot execute writes.
 7. **G: integration/regression hardening**, full Windows/POSIX work/privacy/compatibility evidence.
+   Implemented through `tests/test_space_integration.py`, the reproducible baseline export and
+   the existing A–F regression matrix; see the verification report above. No public activation
+   or additional production architecture is introduced. Separate fresh acceptance review is pending.
 
 B exposes nonsemantic one-space behavior only; new semantic scope stays gated until D+E pass,
 scoped writes with index callbacks until E+F pass. Existing legacy calls remain valid throughout.

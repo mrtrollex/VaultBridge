@@ -636,10 +636,10 @@ manage arbitrary files, or bypass deferred VB-032/VB-033/VB-034 boundaries.
 
 ---
 
-## Accepted Knowledge Spaces design (VB-150; no current multi-space support)
+## Knowledge Spaces (accepted design and private runtime; public activation blocked)
 
 [ADR 0009: Knowledge Spaces and Scope Policies](docs/adr/0009-knowledge-spaces-and-scope-policies.md)
-is Accepted; VB-150 is complete as design-only work. Current support remains one contained Markdown root.
+is Accepted; VB-150 is complete as design-only work. Public serving remains one contained Markdown root.
 The accepted design separates stable logical `space_id` from the private root binding and extends future
 note identity to `(space_id, canonical_relative_path)`. Existing path-only calls stay default-space
 calls; legacy `VAULT_PATH` remains valid without mandatory migration.
@@ -659,7 +659,7 @@ query, duplicates, capture, promotion, hygiene, immutable semantic inspection an
 enabled-index lifecycle handle (None when disabled). Every local dependency uses that same vault.
 No model, writable repository, worker or bound enqueue callback is created. Immutable inspection
 reuses the existing semantic owner's classifier and repository's immutable reader without loading
-a fingerprint. Named semantic activation/resource scheduling waits for E; scoped
+a fingerprint. Private named semantic activation/resource scheduling uses E6; scoped
 capture/promotion provenance and index callbacks use Slice F's private runtime APIs.
 `SpaceOperations.scoped_capture` requires an explicit WriteScope. Scoped promotion review binds
 same-space QualifiedPaths; decision/apply retain the authorized registry context and exact approved
@@ -695,7 +695,10 @@ relationship authorization. Shared `KnowledgeQueryService.evaluate_supplied_elig
 live filters on the supplied bounded snapshot before semantic preparation, reusing source reads and
 relationship derivations. The nonsemantic supplied evaluator retains its contract. D1–D3b and
 E1–E5 are implemented internal primitives. E6 now activates these through explicit private runtime
-composition. F–G remain pending and VB-151 is incomplete.
+composition. F supplies scoped v2 writes; G adds integration/regression verification without
+changing production architecture. The private runtime is implemented; independent G acceptance
+remains pending. Native evidence and accepted limits are in
+[VB151_G_VERIFICATION.md](docs/VB151_G_VERIFICATION.md).
 Existing REST/MCP/CLI composition rejects named configuration before owner construction with
 `invalid_configuration` (internal reason `named_serving_unsupported`). Named serving remains blocked
 until VB-152 integrates every applicable entry point. No public schema, route, operation ID,
@@ -1249,7 +1252,8 @@ Ambiguous original or final-guard release retains bounded ownership and can keep
 the runtime permanently stopping. Numeric validity, matching metadata and even
 same-object equality cannot authorize another close. Process termination may be
 the only reclamation mechanism; it is not successful in-process shutdown.
-Public REST/MCP/CLI guards remain intact; F/G and VB-152 activation are outstanding.
+Public REST/MCP/CLI guards remain intact. F scoped v2 execution is private; G verifies its
+integration with indexing and federation. VB-152 public activation remains separate and blocked.
 
 ### `schemas/`
 
