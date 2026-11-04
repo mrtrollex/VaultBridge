@@ -339,7 +339,7 @@ Current post-v1 planning position:
   semantic candidate retrieval remain separate future work, not completion dependencies.
   Milestone 16 remains planned. This dashboard implementation does not constitute a v1.4.0 release
 - VB-150 is complete under accepted [ADR 0009: Knowledge Spaces and Scope Policies](docs/adr/0009-knowledge-spaces-and-scope-policies.md)
-  as design-only work after independent design review returned APPROVE. Current runtime still supports one contained
+  as design-only work after independent design review returned APPROVE. Public serving still supports one contained
   authoritative Markdown root. The accepted design defines logical space IDs and qualified note identity,
   legacy default compatibility, one typed scope/policy boundary, bounded multi-space reads and
   one-space writes, independent derived indexes, local links and one-space hygiene.
@@ -359,7 +359,10 @@ Current post-v1 planning position:
   federation and semantic Query. E1–E5 supply independent index bindings, shared lazy embedding,
   resumable sync, bounded scheduling and native monitoring. E6 now adds explicit private runtime
   composition, exact immutable ownership, cancellable operation admission and coordinated
-  startup/rollback/shutdown. Slices A–F are implemented; G remains pending; VB-151 is not complete.
+  startup/rollback/shutdown. Slices A–F are implemented and accepted. Slice G implements final
+  cross-component integration/regression hardening; exact native counts, baseline parity and accepted
+  limits are recorded in [VB151_G_VERIFICATION.md](docs/VB151_G_VERIFICATION.md).
+  VB-151 private runtime implementation is complete; separate fresh G acceptance remains pending.
   VB-152 adapters remain future/unscoped and need a separate contract; named serving remains blocked.
   Milestone 16 remains PLANNED; multi-space serving and index-format changes are not implemented
 - VB-032 and VB-033 remain deferred optional future work

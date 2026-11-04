@@ -1194,7 +1194,7 @@ per-folder access-policy candidates are absorbed here; neither is current behavi
 
 This milestone does not authorize multi-tenancy, account administration, a hosted SaaS control
 plane, or a dashboard user-management system. The current one-root vault configuration remains the
-only supported implementation. The authoritative VB-151 contract is now defined in BACKLOG.md;
+only supported public serving configuration. The authoritative VB-151 contract is defined in BACKLOG.md;
 runtime Slice A implements private immutable config/types/registry/resolver and strict validation.
 Slice B implements private local owner bundles and qualified nonsemantic one-space orchestration,
 with immutable inspection and deferred semantic/lifecycle seams. Named serving is blocked by
@@ -1202,8 +1202,9 @@ startup guards. Slice C adds internal budgeted Markdown-only list/literal/nonsem
 qualified predicates, incremental relationship admission, cancellation and coverage. D1–D3b
 implement bounded precise semantic federation and semantic Query. E1–E5 provide binding and
 resource/lifecycle primitives; E6 now activates them only through explicit private runtime
-composition with single admission and coordinated shutdown. F–G still require separately scoped
-work. Named serving remains blocked.
+composition with single admission and coordinated shutdown. F implements private scoped v2
+capture/promotion. G implements final integration/regression hardening, with separate fresh
+acceptance review pending. Named serving remains blocked.
 
 [Accepted ADR 0009](docs/adr/0009-knowledge-spaces-and-scope-policies.md) defines the VB-150
 accepted design boundary: qualified `(space_id, canonical_relative_path)`
@@ -1217,7 +1218,7 @@ Task states (authoritative scope is in BACKLOG.md):
 ```text
 VB-150 knowledge-space and scope-policy ADR — complete, accepted design
    ↓
-VB-151 compatibility-safe multi-space domain boundary — Slices A–E implemented, F–G pending
+VB-151 compatibility-safe multi-space domain boundary — A–F accepted; G implemented, review pending
    ↓
 VB-152 permission-aware query and write adapter integration — future, unscoped
 ```
@@ -1242,7 +1243,10 @@ and the completed VB-142 thin-adapter contract and implementation are authoritat
 `BACKLOG.md`. Required REST, MCP and CLI adapters are merged; dashboard presentation is now
 implemented separately under v1.4.0 plan P1, without changing their contract.
 VB-150 is complete as design-only work under accepted ADR 0009 and its BACKLOG contract.
-VB-151 has an authoritative contract in BACKLOG.md; runtime Slices A–E are implemented, F–G pending.
+VB-151 has an authoritative contract in BACKLOG.md; runtime A–F are accepted and final Slice G
+integration/regression hardening is implemented, pending separate fresh acceptance review.
+Native verification and baseline parity are recorded in
+[docs/VB151_G_VERIFICATION.md](docs/VB151_G_VERIFICATION.md).
 VB-152 adapters remain future/unscoped and require their own contract after domain runtime exists.
 
 ## Deployment and integration candidates
@@ -1387,7 +1391,9 @@ VB-150 and ADR 0009 are complete / accepted as design only; VB-151 has a defined
 VB-151 runtime Slices A–C implement private configuration/registry/policy resolution, local owner
 bundles and bounded internal nonsemantic read federation. D1–D3b implement semantic federation
 and Query; E1–E5 implement binding/resource/lifecycle primitives; E6 composes and activates them
-privately. F–G remain pending and current adapters reject named configuration. VB-152 remains future/unscoped; Milestone 16 completion state is unchanged.
+privately. F implements scoped v2 capture/promotion; G verifies integration and regression parity.
+The private runtime is implemented, with separate fresh G acceptance pending. Current adapters
+reject named configuration. VB-152 remains future/unscoped; Milestone 16 completion state is unchanged.
 
 ---
 

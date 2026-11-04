@@ -1,0 +1,418 @@
+{
+  "format_version": 1,
+  "legacy_v1": {
+    "append": {
+      "decision_sha256": "4884c101b4eb2f2b1c3f625198e1d8c9ce480fb0ac583661879294d68762c07c",
+      "destination_hex": "4578697374696e670a0a3c212d2d207661756c746272696467652d70726f6d6f74696f6e3a76312069643d61626364656661622d636465662d346162632d386162632d616263646566616263646566207368613235363d34383834633130316234656232663262316333663632353139386531643863396365343830666230616335383336363138373932393464363837363263303763202d2d3e0a6060606a736f6e0a7b22617070726f7665645f6174223a22323032362d31302d30335431333a30303a30305a222c22636170747572655f6465636c617265645f736f75726365223a226465636c617265645c7530303363736f75726365222c22636170747572655f6964223a2231323334353637382d313233342d343132332d383132332d313233343536373839616263222c2263617074757265645f6174223a22323032362d31302d30335431323a30303a30305a222c22736f757263655f70617468223a22496e626f782f43617074757265732f31323334353637382d313233342d343132332d383132332d3132333435363738396162632e6d64222c22736f757263655f736861323536223a2265376565373231663165396438623437323466653964373063646364393235663335613465616332626136613833393765616464346534336266653939333863222c227472616e73666572223a7b22636170747572655f74616773223a5b226f6e65222c226f6e65225d2c22636170747572655f7469746c65223a225469746c65227d7d0a6060600a0a417070726f76656420626f64790a3c212d2d202f7661756c746272696467652d70726f6d6f74696f6e3a76312069643d61626364656661622d636465662d346162632d386162632d616263646566616263646566202d2d3e0a",
+      "destination_sha256": "9c8b86990788350d4f7f37abb8ca50d4ff927f6eef8b28905d80e2a53491f6ea",
+      "markdown_hex": "0a0a3c212d2d207661756c746272696467652d70726f6d6f74696f6e3a76312069643d61626364656661622d636465662d346162632d386162632d616263646566616263646566207368613235363d34383834633130316234656232663262316333663632353139386531643863396365343830666230616335383336363138373932393464363837363263303763202d2d3e0a6060606a736f6e0a7b22617070726f7665645f6174223a22323032362d31302d30335431333a30303a30305a222c22636170747572655f6465636c617265645f736f75726365223a226465636c617265645c7530303363736f75726365222c22636170747572655f6964223a2231323334353637382d313233342d343132332d383132332d313233343536373839616263222c2263617074757265645f6174223a22323032362d31302d30335431323a30303a30305a222c22736f757263655f70617468223a22496e626f782f43617074757265732f31323334353637382d313233342d343132332d383132332d3132333435363738396162632e6d64222c22736f757263655f736861323536223a2265376565373231663165396438623437323466653964373063646364393235663335613465616332626136613833393765616464346534336266653939333863222c227472616e73666572223a7b22636170747572655f74616773223a5b226f6e65222c226f6e65225d2c22636170747572655f7469746c65223a225469746c65227d7d0a6060600a0a417070726f76656420626f64790a3c212d2d202f7661756c746272696467652d70726f6d6f74696f6e3a76312069643d61626364656661622d636465662d346162632d386162632d616263646566616263646566202d2d3e0a"
+    },
+    "capture_hex": "2d2d2d0a7b22636170747572655f6964223a202231323334353637382d313233342d343132332d383132332d313233343536373839616263222c2022636170747572655f7374617465223a20226472616674222c202263617074757265645f6174223a2022323032362d31302d30335431323a30303a30305a222c20227469746c65223a20225469746c65222c2022736f75726365223a20226465636c617265643c736f75726365222c202274616773223a205b226f6e65222c20226f6e65225d7d0a2d2d2d0a0a4f726967696e616c20626f6479",
+    "capture_sha256": "e7ee721f1e9d8b4724fe9d70cdcd925f35a4eac2ba6a8397eadd4e43bfe9938c",
+    "create": {
+      "decision_sha256": "6d4087897213c4daa152cf3231461eee035a22502dc1f544c18a8de842137819",
+      "destination_hex": "2d2d2d0a7b2270726f6d6f74696f6e5f6964223a202261626364656661622d636465662d346162632d386162632d616263646566616263646566222c202270726f6d6f74696f6e5f6465636973696f6e5f736861323536223a202236643430383738393732313363346461613135326366333233313436316565653033356132323530326463316635343463313861386465383432313337383139222c202270726f6d6f74696f6e5f617070726f7665645f6174223a2022323032362d31302d30335431333a30303a30305a222c202270726f6d6f7465645f66726f6d5f636170747572655f6964223a202231323334353637382d313233342d343132332d383132332d313233343536373839616263222c202270726f6d6f7465645f66726f6d5f636170747572655f70617468223a2022496e626f782f43617074757265732f31323334353637382d313233342d343132332d383132332d3132333435363738396162632e6d64222c202270726f6d6f7465645f66726f6d5f736861323536223a202265376565373231663165396438623437323466653964373063646364393235663335613465616332626136613833393765616464346534336266653939333863222c202263617074757265645f6174223a2022323032362d31302d30335431323a30303a30305a222c2022636170747572655f6465636c617265645f736f75726365223a20226465636c617265643c736f75726365222c2022636170747572655f7469746c65223a20225469746c65222c2022636170747572655f74616773223a205b226f6e65222c20226f6e65225d7d0a2d2d2d0a0a417070726f76656420626f6479",
+      "destination_sha256": "97b822f95a5673e42528a6a45badee03b0adb230e9fbd1c132509aaf5b275814",
+      "markdown_hex": "2d2d2d0a7b2270726f6d6f74696f6e5f6964223a202261626364656661622d636465662d346162632d386162632d616263646566616263646566222c202270726f6d6f74696f6e5f6465636973696f6e5f736861323536223a202236643430383738393732313363346461613135326366333233313436316565653033356132323530326463316635343463313861386465383432313337383139222c202270726f6d6f74696f6e5f617070726f7665645f6174223a2022323032362d31302d30335431333a30303a30305a222c202270726f6d6f7465645f66726f6d5f636170747572655f6964223a202231323334353637382d313233342d343132332d383132332d313233343536373839616263222c202270726f6d6f7465645f66726f6d5f636170747572655f70617468223a2022496e626f782f43617074757265732f31323334353637382d313233342d343132332d383132332d3132333435363738396162632e6d64222c202270726f6d6f7465645f66726f6d5f736861323536223a202265376565373231663165396438623437323466653964373063646364393235663335613465616332626136613833393765616464346534336266653939333863222c202263617074757265645f6174223a2022323032362d31302d30335431323a30303a30305a222c2022636170747572655f6465636c617265645f736f75726365223a20226465636c617265643c736f75726365222c2022636170747572655f7469746c65223a20225469746c65222c2022636170747572655f74616773223a205b226f6e65222c20226f6e65225d7d0a2d2d2d0a0a417070726f76656420626f6479"
+    }
+  },
+  "semantic_precise": {
+    "docker-deployment-en": [
+      {
+        "heading": "Container Deployment > Compose Deployment",
+        "lexical_score": "0x1.7333333333334p-2",
+        "path": "Deployment/Docker.md",
+        "score": "0x1.fa64eabababacp-2",
+        "semantic_score": "0x1.2c83dc0000000p-1",
+        "snippet": "# Container Deployment ## Compose Deployment Build the Docker image, configure environment variables, mount persistent volumes, and start the container with Docker Compose. The deployment health check must pass before traffic reaches the service."
+      }
+    ],
+    "english-query-slovak-storage": [
+      {
+        "heading": "TrueNAS Operations > Obnova po zlyhan\u00ed disku",
+        "lexical_score": "0x1.2492492492492p-5",
+        "path": "Storage/TrueNAS.md",
+        "score": "0x1.9842b80000000p-2",
+        "semantic_score": "0x1.4e38b60000000p-1",
+        "snippet": "# TrueNAS Operations ## Obnova po zlyhan\u00ed disku Po zlyhan\u00ed disku obnovte d\u00e1ta zo sie\u0165ov\u00e9ho \u00falo\u017eiska do n\u00e1hradn\u00e9ho zariadenia. Vyberte overen\u00fa sn\u00edmku, skontrolujte opr\u00e1vnenia obnoven\u00fdch s\u00faborov a a\u017e potom spr\u00edstupnite \u00falo\u017eisko pou\u017e\u00edvate\u013eom."
+      },
+      {
+        "heading": "TrueNAS > Scope",
+        "lexical_score": "0x1.d41d41d41d41dp-6",
+        "path": "Runbooks/Recovery Beta.md",
+        "score": "0x1.5076d66666667p-2",
+        "semantic_score": "0x1.13c12c0000000p-1",
+        "snippet": "# TrueNAS ## Scope This operational reference covers ownership, maintenance windows, validation records, escalation contacts, and readiness checks for a managed storage appliance."
+      }
+    ],
+    "fastapi-auth-en": [
+      {
+        "heading": "FastAPI Service > Bearer Authentication",
+        "lexical_score": "0x1.eeeeeeeeeeeefp-3",
+        "path": "Web/FastAPI.md",
+        "score": "0x1.faada38b8b8b9p-2",
+        "semantic_score": "0x1.58102e0000000p-1",
+        "snippet": "# FastAPI Service ## Bearer Authentication The FastAPI dependency reads the Authorization header, validates the Bearer token, and rejects an invalid API key before request-body processing. Overenie tokenu prebieha pred volan\u00edm endpointu."
+      }
+    ],
+    "fastapi-token-sk": [
+      {
+        "heading": "FastAPI Service > Bearer Authentication",
+        "lexical_score": "0x1.7333333333334p-2",
+        "path": "Web/FastAPI.md",
+        "score": "0x1.1416d5d5d5d5ep-1",
+        "semantic_score": "0x1.536e800000000p-1",
+        "snippet": "# FastAPI Service ## Bearer Authentication The FastAPI dependency reads the Authorization header, validates the Bearer token, and rejects an invalid API key before request-body processing. Overenie tokenu prebieha pred volan\u00edm endpointu."
+      }
+    ],
+    "hierarchy-database-recovery": [
+      {
+        "heading": "PostgreSQL > Recovery Procedure",
+        "lexical_score": "0x1.7777777777778p-3",
+        "path": "Runbooks/Recovery Alpha.md",
+        "score": "0x1.dcd2fc5c5c5c6p-2",
+        "semantic_score": "0x1.5398080000000p-1",
+        "snippet": "## Recovery Procedure Retain three protected generations, restore the selected generation into an isolated target, verify every recovered item, and record the recovery result before reopening the service."
+      },
+      {
+        "heading": "TrueNAS > Recovery Procedure",
+        "lexical_score": "0x1.7777777777778p-3",
+        "path": "Runbooks/Recovery Beta.md",
+        "score": "0x1.865a109898989p-2",
+        "semantic_score": "0x1.0a17a60000000p-1",
+        "snippet": "## Recovery Procedure Retain three protected generations, restore the selected generation into an isolated target, verify every recovered item, and record the recovery result before reopening the service."
+      },
+      {
+        "heading": "PostgreSQL Operations > Backups and Restore",
+        "lexical_score": "0x1.c71c71c71c71cp-6",
+        "path": "Database/PostgreSQL.md",
+        "score": "0x1.7b9ca1842ed99p-2",
+        "semantic_score": "0x1.38b6ea0000000p-1",
+        "snippet": "# PostgreSQL Operations ## Backups and Restore"
+      }
+    ],
+    "hierarchy-storage-recovery": [
+      {
+        "heading": "TrueNAS > Recovery Procedure",
+        "lexical_score": "0x1.7777777777778p-3",
+        "path": "Runbooks/Recovery Beta.md",
+        "score": "0x1.c9f3cf2f2f2f3p-2",
+        "semantic_score": "0x1.438d880000000p-1",
+        "snippet": "## Recovery Procedure Retain three protected generations, restore the selected generation into an isolated target, verify every recovered item, and record the recovery result before reopening the service."
+      },
+      {
+        "heading": "PostgreSQL > Recovery Procedure",
+        "lexical_score": "0x1.7777777777778p-3",
+        "path": "Runbooks/Recovery Alpha.md",
+        "score": "0x1.71f08f2f2f2f3p-2",
+        "semantic_score": "0x1.f17bf00000000p-2",
+        "snippet": "## Recovery Procedure Retain three protected generations, restore the selected generation into an isolated target, verify every recovered item, and record the recovery result before reopening the service."
+      }
+    ],
+    "nas-obnova-sk": [
+      {
+        "heading": "TrueNAS Operations > Obnova po zlyhan\u00ed disku",
+        "lexical_score": "0x1.47ae147ae147cp-5",
+        "path": "Storage/TrueNAS.md",
+        "score": "0x1.7c3a8eb3804d2p-2",
+        "semantic_score": "0x1.34dbc20000000p-1",
+        "snippet": "# TrueNAS Operations ## Obnova po zlyhan\u00ed disku Po zlyhan\u00ed disku obnovte d\u00e1ta zo sie\u0165ov\u00e9ho \u00falo\u017eiska do n\u00e1hradn\u00e9ho zariadenia. Vyberte overen\u00fa sn\u00edmku, skontrolujte opr\u00e1vnenia obnoven\u00fdch s\u00faborov a a\u017e potom spr\u00edstupnite \u00falo\u017eisko pou\u017e\u00edvate\u013eom."
+      },
+      {
+        "heading": "TrueNAS > Scope",
+        "lexical_score": "0x0.0p+0",
+        "path": "Runbooks/Recovery Beta.md",
+        "score": "0x1.6dbdb00000000p-2",
+        "semantic_score": "0x1.36e13c0000000p-1",
+        "snippet": "# TrueNAS ## Scope This operational reference covers ownership, maintenance windows, validation records, escalation contacts, and readiness checks for a managed storage appliance."
+      }
+    ],
+    "oracle-apex-rest-en": [
+      {
+        "heading": "Oracle APEX Integration > REST APIs",
+        "lexical_score": "0x1.5f15f15f15f16p-2",
+        "path": "Oracle/APEX.md",
+        "score": "0x1.1ed6257575757p-1",
+        "semantic_score": "0x1.6cbdf80000000p-1",
+        "snippet": "# Oracle APEX Integration ## REST APIs Oracle APEX publishes REST endpoints through ORDS. The API accepts JSON, invokes PL/SQL, checks authentication, and returns database results without exposing internal connection credentials."
+      }
+    ],
+    "oracle-rest-sk": [
+      {
+        "heading": "Oracle APEX Integration > REST APIs",
+        "lexical_score": "0x1.41d41d41d41d4p-2",
+        "path": "Oracle/APEX.md",
+        "score": "0x1.13210c9c9c9cap-1",
+        "semantic_score": "0x1.6314580000000p-1",
+        "snippet": "# Oracle APEX Integration ## REST APIs Oracle APEX publishes REST endpoints through ORDS. The API accepts JSON, invokes PL/SQL, checks authentication, and returns database results without exposing internal connection credentials."
+      }
+    ],
+    "postgres-backup-en": [
+      {
+        "heading": "PostgreSQL Operations > Backups and Restore",
+        "lexical_score": "0x1.0000000000000p-2",
+        "path": "Database/PostgreSQL.md",
+        "score": "0x1.29d6d65a5a5a6p-1",
+        "semantic_score": "0x1.a0ba060000000p-1",
+        "snippet": "# PostgreSQL Operations ## Backups and Restore"
+      }
+    ],
+    "postgres-obnova-sk": [
+      {
+        "heading": "PostgreSQL Operations > Backups and Restore",
+        "lexical_score": "0x1.e666666666666p-3",
+        "path": "Database/PostgreSQL.md",
+        "score": "0x1.069c937b7b7b8p-1",
+        "semantic_score": "0x1.6951dc0000000p-1",
+        "snippet": "# PostgreSQL Operations ## Backups and Restore"
+      },
+      {
+        "heading": "PostgreSQL > Scope",
+        "lexical_score": "0x1.3333333333334p-4",
+        "path": "Runbooks/Recovery Alpha.md",
+        "score": "0x1.a7b4e79f9f9fap-2",
+        "semantic_score": "0x1.4d454a0000000p-1",
+        "snippet": "# PostgreSQL ## Scope This operational reference covers ownership, maintenance windows, validation records, escalation contacts, and readiness checks for a managed relational service."
+      }
+    ],
+    "postgres-replication-en": [
+      {
+        "heading": "PostgreSQL Operations > Streaming Replication",
+        "lexical_score": "0x1.5f15f15f15f17p-3",
+        "path": "Database/PostgreSQL.md",
+        "score": "0x1.9206584848485p-2",
+        "semantic_score": "0x1.1847f40000000p-1",
+        "snippet": "## Streaming Replication Streaming replication sends WAL records from the primary PostgreSQL server to a standby replica. Monitor replication lag, slots, failover readiness, and the replay position before promoting the standby."
+      }
+    ],
+    "truenas-storage-en": [
+      {
+        "heading": "TrueNAS Operations > Storage Pools",
+        "lexical_score": "0x1.eeeeeeeeeeef0p-3",
+        "path": "Storage/TrueNAS.md",
+        "score": "0x1.f3ade93131314p-2",
+        "semantic_score": "0x1.521d360000000p-1",
+        "snippet": "## Storage Pools TrueNAS storage uses mirrored disks, ZFS pools, datasets, quotas, and scheduled scrubs. NAS \u00falo\u017eisko separates application data from media and keeps enough free pool capacity for snapshots."
+      }
+    ]
+  },
+  "semantic_public": {
+    "docker-deployment-en": {
+      "rank": 1,
+      "rows": [
+        {
+          "heading": "Container Deployment > Compose Deployment",
+          "lexical_score": "0x1.7333333333333p-2",
+          "path": "Deployment/Docker.md",
+          "score": "0x1.fa5e353f7ced9p-2",
+          "semantic_score": "0x1.2c7e28240b780p-1",
+          "snippet": "# Container Deployment ## Compose Deployment Build the Docker image, configure environment variables, mount persistent volumes, and start the container with Docker Compose. The deployment health check must pass before traffic reaches the service."
+        }
+      ]
+    },
+    "english-query-slovak-storage": {
+      "rank": 1,
+      "rows": [
+        {
+          "heading": "TrueNAS Operations > Obnova po zlyhan\u00ed disku",
+          "lexical_score": "0x1.2474538ef34d7p-5",
+          "path": "Storage/TrueNAS.md",
+          "score": "0x1.9844d013a92a3p-2",
+          "semantic_score": "0x1.4e3bcd35a8588p-1",
+          "snippet": "# TrueNAS Operations ## Obnova po zlyhan\u00ed disku Po zlyhan\u00ed disku obnovte d\u00e1ta zo sie\u0165ov\u00e9ho \u00falo\u017eiska do n\u00e1hradn\u00e9ho zariadenia. Vyberte overen\u00fa sn\u00edmku, skontrolujte opr\u00e1vnenia obnoven\u00fdch s\u00faborov a a\u017e potom spr\u00edstupnite \u00falo\u017eisko pou\u017e\u00edvate\u013eom."
+        },
+        {
+          "heading": "TrueNAS > Scope",
+          "lexical_score": "0x1.d495182a9930cp-6",
+          "path": "Runbooks/Recovery Beta.md",
+          "score": "0x1.507c84b5dcc64p-2",
+          "semantic_score": "0x1.13c36113404eap-1",
+          "snippet": "# TrueNAS ## Scope This operational reference covers ownership, maintenance windows, validation records, escalation contacts, and readiness checks for a managed storage appliance."
+        }
+      ]
+    },
+    "fastapi-auth-en": {
+      "rank": 1,
+      "rows": [
+        {
+          "heading": "FastAPI Service > Bearer Authentication",
+          "lexical_score": "0x1.ef0068db8bac7p-3",
+          "path": "Web/FastAPI.md",
+          "score": "0x1.faacd9e83e426p-2",
+          "semantic_score": "0x1.5810624dd2f1bp-1",
+          "snippet": "# FastAPI Service ## Bearer Authentication The FastAPI dependency reads the Authorization header, validates the Bearer token, and rejects an invalid API key before request-body processing. Overenie tokenu prebieha pred volan\u00edm endpointu."
+        }
+      ]
+    },
+    "fastapi-token-sk": {
+      "rank": 1,
+      "rows": [
+        {
+          "heading": "FastAPI Service > Bearer Authentication",
+          "lexical_score": "0x1.7333333333333p-2",
+          "path": "Web/FastAPI.md",
+          "score": "0x1.141205bc01a37p-1",
+          "semantic_score": "0x1.5374bc6a7ef9ep-1",
+          "snippet": "# FastAPI Service ## Bearer Authentication The FastAPI dependency reads the Authorization header, validates the Bearer token, and rejects an invalid API key before request-body processing. Overenie tokenu prebieha pred volan\u00edm endpointu."
+        }
+      ]
+    },
+    "hierarchy-database-recovery": {
+      "rank": 1,
+      "rows": [
+        {
+          "heading": "PostgreSQL > Recovery Procedure",
+          "lexical_score": "0x1.7765fd8adab9fp-3",
+          "path": "Runbooks/Recovery Alpha.md",
+          "score": "0x1.dcc63f141205cp-2",
+          "semantic_score": "0x1.539c0ebedfa44p-1",
+          "snippet": "## Recovery Procedure Retain three protected generations, restore the selected generation into an isolated target, verify every recovered item, and record the recovery result before reopening the service."
+        },
+        {
+          "heading": "TrueNAS > Recovery Procedure",
+          "lexical_score": "0x1.7765fd8adab9fp-3",
+          "path": "Runbooks/Recovery Beta.md",
+          "score": "0x1.86594af4f0d84p-2",
+          "semantic_score": "0x1.0a161e4f765fep-1",
+          "snippet": "## Recovery Procedure Retain three protected generations, restore the selected generation into an isolated target, verify every recovered item, and record the recovery result before reopening the service."
+        },
+        {
+          "heading": "PostgreSQL Operations > Backups and Restore",
+          "lexical_score": "0x1.c779a6b50b0f2p-6",
+          "path": "Database/PostgreSQL.md",
+          "score": "0x1.7b98c7e28240bp-2",
+          "semantic_score": "0x1.38bac710cb296p-1",
+          "snippet": "# PostgreSQL Operations ## Backups and Restore"
+        }
+      ]
+    },
+    "hierarchy-storage-recovery": {
+      "rank": 1,
+      "rows": [
+        {
+          "heading": "TrueNAS > Recovery Procedure",
+          "lexical_score": "0x1.7765fd8adab9fp-3",
+          "path": "Runbooks/Recovery Beta.md",
+          "score": "0x1.c9eecbfb15b57p-2",
+          "semantic_score": "0x1.43886594af4f1p-1",
+          "snippet": "## Recovery Procedure Retain three protected generations, restore the selected generation into an isolated target, verify every recovered item, and record the recovery result before reopening the service."
+        },
+        {
+          "heading": "PostgreSQL > Recovery Procedure",
+          "lexical_score": "0x1.7765fd8adab9fp-3",
+          "path": "Runbooks/Recovery Alpha.md",
+          "score": "0x1.71f8a0902de01p-2",
+          "semantic_score": "0x1.f1758e219652cp-2",
+          "snippet": "## Recovery Procedure Retain three protected generations, restore the selected generation into an isolated target, verify every recovered item, and record the recovery result before reopening the service."
+        }
+      ]
+    },
+    "nas-obnova-sk": {
+      "rank": 1,
+      "rows": [
+        {
+          "heading": "TrueNAS Operations > Obnova po zlyhan\u00ed disku",
+          "lexical_score": "0x1.47ae147ae147bp-5",
+          "path": "Storage/TrueNAS.md",
+          "score": "0x1.7c36113404ea5p-2",
+          "semantic_score": "0x1.34d6a161e4f76p-1",
+          "snippet": "# TrueNAS Operations ## Obnova po zlyhan\u00ed disku Po zlyhan\u00ed disku obnovte d\u00e1ta zo sie\u0165ov\u00e9ho \u00falo\u017eiska do n\u00e1hradn\u00e9ho zariadenia. Vyberte overen\u00fa sn\u00edmku, skontrolujte opr\u00e1vnenia obnoven\u00fdch s\u00faborov a a\u017e potom spr\u00edstupnite \u00falo\u017eisko pou\u017e\u00edvate\u013eom."
+        },
+        {
+          "heading": "TrueNAS > Scope",
+          "lexical_score": "0x0.0p+0",
+          "path": "Runbooks/Recovery Beta.md",
+          "score": "0x1.6dc5d63886595p-2",
+          "semantic_score": "0x1.36e2eb1c432cap-1",
+          "snippet": "# TrueNAS ## Scope This operational reference covers ownership, maintenance windows, validation records, escalation contacts, and readiness checks for a managed storage appliance."
+        }
+      ]
+    },
+    "oracle-apex-rest-en": {
+      "rank": 1,
+      "rows": [
+        {
+          "heading": "Oracle APEX Integration > REST APIs",
+          "lexical_score": "0x1.5f212d77318fcp-2",
+          "path": "Oracle/APEX.md",
+          "score": "0x1.1ed288ce703b0p-1",
+          "semantic_score": "0x1.6cbfb15b573ebp-1",
+          "snippet": "# Oracle APEX Integration ## REST APIs Oracle APEX publishes REST endpoints through ORDS. The API accepts JSON, invokes PL/SQL, checks authentication, and returns database results without exposing internal connection credentials."
+        }
+      ]
+    },
+    "oracle-rest-sk": {
+      "rank": 1,
+      "rows": [
+        {
+          "heading": "Oracle APEX Integration > REST APIs",
+          "lexical_score": "0x1.41d7dbf487fccp-2",
+          "path": "Oracle/APEX.md",
+          "score": "0x1.132617c1bda51p-1",
+          "semantic_score": "0x1.63126e978d4fep-1",
+          "snippet": "# Oracle APEX Integration ## REST APIs Oracle APEX publishes REST endpoints through ORDS. The API accepts JSON, invokes PL/SQL, checks authentication, and returns database results without exposing internal connection credentials."
+        }
+      ]
+    },
+    "postgres-backup-en": {
+      "rank": 1,
+      "rows": [
+        {
+          "heading": "PostgreSQL Operations > Backups and Restore",
+          "lexical_score": "0x1.0000000000000p-2",
+          "path": "Database/PostgreSQL.md",
+          "score": "0x1.29d495182a993p-1",
+          "semantic_score": "0x1.a0b780346dc5dp-1",
+          "snippet": "# PostgreSQL Operations ## Backups and Restore"
+        }
+      ]
+    },
+    "postgres-obnova-sk": {
+      "rank": 1,
+      "rows": [
+        {
+          "heading": "PostgreSQL Operations > Backups and Restore",
+          "lexical_score": "0x1.e666666666666p-3",
+          "path": "Database/PostgreSQL.md",
+          "score": "0x1.069ad42c3c9efp-1",
+          "semantic_score": "0x1.695182a9930bep-1",
+          "snippet": "# PostgreSQL Operations ## Backups and Restore"
+        },
+        {
+          "heading": "PostgreSQL > Scope",
+          "lexical_score": "0x1.3333333333333p-4",
+          "path": "Runbooks/Recovery Alpha.md",
+          "score": "0x1.a7bb2fec56d5dp-2",
+          "semantic_score": "0x1.4d42c3c9eecc0p-1",
+          "snippet": "# PostgreSQL ## Scope This operational reference covers ownership, maintenance windows, validation records, escalation contacts, and readiness checks for a managed relational service."
+        }
+      ]
+    },
+    "postgres-replication-en": {
+      "rank": 1,
+      "rows": [
+        {
+          "heading": "PostgreSQL Operations > Streaming Replication",
+          "lexical_score": "0x1.5f06f69446738p-3",
+          "path": "Database/PostgreSQL.md",
+          "score": "0x1.9205bc01a36e3p-2",
+          "semantic_score": "0x1.1844d013a92a3p-1",
+          "snippet": "## Streaming Replication Streaming replication sends WAL records from the primary PostgreSQL server to a standby replica. Monitor replication lag, slots, failover readiness, and the replay position before promoting the standby."
+        }
+      ]
+    },
+    "truenas-storage-en": {
+      "rank": 1,
+      "rows": [
+        {
+          "heading": "TrueNAS Operations > Storage Pools",
+          "lexical_score": "0x1.ef0068db8bac7p-3",
+          "path": "Storage/TrueNAS.md",
+          "score": "0x1.f3b645a1cac08p-2",
+          "semantic_score": "0x1.521ff2e48e8a7p-1",
+          "snippet": "## Storage Pools TrueNAS storage uses mirrored disks, ZFS pools, datasets, quotas, and scheduled scrubs. NAS \u00falo\u017eisko separates application data from media and keeps enough free pool capacity for snapshots."
+        }
+      ]
+    }
+  }
+}

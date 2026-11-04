@@ -236,6 +236,13 @@ def test_early_full_completion_cannot_cover_later_clean_stops(tmp_path, monkeypa
                 r.watcher = replacement(r)
                 r.watcher.start()
                 previous = entry.coverage_revision
+            # Linux startup can return before its native FIFO coverage fence.
+            # Restore the final revision before releasing the old full; otherwise
+            # a second full can start too early and correctly require a third.
+            with r.scheduler._condition:
+                assert r.scheduler._condition.wait_for(
+                    lambda: entry.coverage_restored == entry.coverage_revision, 5,
+                )
             release_first.set()
             assert last.wait(5)
             assert r.scheduler.status(binding).monitoring_recovering
