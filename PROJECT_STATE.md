@@ -362,8 +362,17 @@ Current post-v1 planning position:
   startup/rollback/shutdown. Slices A–F are implemented and accepted. Slice G implements final
   cross-component integration/regression hardening; exact native counts, baseline parity and accepted
   limits are recorded in [VB151_G_VERIFICATION.md](docs/VB151_G_VERIFICATION.md).
-  VB-151 private runtime implementation is complete; separate fresh G acceptance remains pending.
-  VB-152 adapters remain future/unscoped and need a separate contract; named serving remains blocked.
+  The task owner confirms VB-151 A–G complete and merged through PR #145, merge
+  `5d6f0298e8511c3287366e0c7876db20ea2e6287`; the evidence report is retained unchanged.
+  VB-152 now has a proposed authoritative documentation-only contract in
+  [BACKLOG.md](BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-contract-defined-implementation-not-started).
+  It selects existing REST/MCP scope extensions plus one Query route/tool, scoped CLI reads/writes,
+  same-space v2 capture/promotion with default v1 parity, minimal named health and a coordinated
+  activation gate. Named Dashboard/session and maintenance/status are explicitly fenced; registry/
+  label discovery, rebind and migration remain separate. Four implementation slices are defined,
+  but none is started or activated. Contract acceptance and cross-surface Windows/native WSL
+  evidence remain gates; this documentation task reruns no runtime/platform evidence.
+  Named serving remains blocked by current guards.
   Milestone 16 remains PLANNED; multi-space serving and index-format changes are not implemented
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
