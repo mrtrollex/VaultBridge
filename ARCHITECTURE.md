@@ -644,7 +644,7 @@ The accepted design separates stable logical `space_id` from the private root bi
 note identity to `(space_id, canonical_relative_path)`. Existing path-only calls stay default-space
 calls; legacy `VAULT_PATH` remains valid without mandatory migration.
 
-One future domain/policy boundary validates finite selected scopes and read/write/index/capability
+The private domain/policy boundary validates finite selected scopes and read/write/index/capability
 policy before dispatch to existing per-space containment and domain owners. Reads may explicitly
 select up to eight spaces; writes select one destination. Independent derived semantic indexes,
 local-only relationship resolution, same-space promotion and one-space hygiene preserve current
@@ -696,13 +696,59 @@ live filters on the supplied bounded snapshot before semantic preparation, reusi
 relationship derivations. The nonsemantic supplied evaluator retains its contract. D1–D3b and
 E1–E5 are implemented internal primitives. E6 now activates these through explicit private runtime
 composition. F supplies scoped v2 writes; G adds integration/regression verification without
-changing production architecture. The private runtime is implemented; independent G acceptance
-remains pending. Native evidence and accepted limits are in
+changing production architecture. The task owner confirms private runtime A–G complete and merged
+through PR #145 (`5d6f0298e8511c3287366e0c7876db20ea2e6287`). Native evidence and accepted limits are in
 [VB151_G_VERIFICATION.md](docs/VB151_G_VERIFICATION.md).
 Existing REST/MCP/CLI composition rejects named configuration before owner construction with
 `invalid_configuration` (internal reason `named_serving_unsupported`). Named serving remains blocked
 until VB-152 integrates every applicable entry point. No public schema, route, operation ID,
-resource, storage format or legacy response changes.
+resource, storage format or legacy response changes in the current runtime.
+
+### VB-152 adapter contract (proposed; not implemented)
+
+The authoritative [VB-152 contract](BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-contract-defined-implementation-not-started)
+defines exact schemas, error projections, inventory, activation gates and acceptance evidence.
+It extends existing `/api/v1/notes*` and hygiene routes/MCP tools with explicit `space` (one-space
+operations) or `spaces` (bounded federation). It adds one POST `/api/v1/knowledge/query` operation
+and `knowledge_query` MCP tool, using existing ScopedKnowledgeQuery. No second REST family or
+parallel scoped tools are selected. Omitted existing requests stay default-only with unchanged
+wire shapes, bounds and semantics; explicit scope, including default, gets qualified output.
+New Query always uses the scoped contract, with omission still default-only.
+
+Every public operation, including old aliases, resources and CLI calls, must enter SpaceOperations
+and the authoritative resolver before owner work. One immutable registry generation pins owner,
+admission, background jobs and lifecycle; HTTP MCP shares the parent runtime. Named stdio owns its
+runtime and must not run beside another writer to the same derived state. Future compatibility
+dispatch and create/append orchestration belong to SpaceOperations, preserving local owner behavior;
+adapters cannot obtain/authorize owners directly or reconfigure a pinned default from Settings.
+Legacy startup still uses its existing behavior, without named fail-fast checks.
+
+Explicit federation returns items with qualified identity and finite per-selected-space coverage,
+basis and result_limited. One-space results wrap existing payloads with space_id. Domain budgets,
+local semantic floors, no refill, authorization-before-work and cancellation remain unchanged.
+Unknown/denied scope is indistinguishable; mixed denial fails wholly. Availability can be partial
+only after full authorization. New MCP resource identity is
+`vaultbridge://space/{space_id}/note/{path}` with a single canonically encoded path component;
+`vaultbridge://note/{path}` remains default-only. Authentication, optional MCP writes and disabled
+runtime OpenAPI/docs endpoints stay intact.
+
+CLI scope flags extend existing reads and capture/promotion. Capture/promotion remain CLI-only;
+explicit scope uses v2 same-space provenance/approval, omission preserves default v1 bytes/replay.
+No scope is inferred from artifact metadata. Scoped CLI semantic reads need a persisted read-only
+owner profile; no automatic initialization/rebuild/watch. Named maintenance/status commands are
+fenced until separately contracted. Legacy stopped-service maintenance remains unchanged.
+
+Named Dashboard interaction is deferred: all `/ui`/session/assets routes are fenced with static
+404/no-store and old cookies cannot authenticate REST in named composition. The current Dashboard
+is fully retained in legacy mode. Named public health is minimal, with default-only policy-gated
+readiness and no registry/count diagnostics; no registry/label discovery is selected. Rebind,
+old-artifact migration and expanded diagnostics remain separate contracts.
+
+Four slices cover policy-bound existing reads/fences, end-to-end Query, end-to-end authorized
+writes, then coordinated public composition/activation. All current named startup guards remain
+until the final slice passes the complete Windows/native WSL and compatibility matrix and separate
+acceptance. ADR 0010's bounded retained ambiguous ownership/permanent stopping limitation remains;
+activation does not promise universal cleanup liveness. This contract changes no production behavior.
 
 ## Target architecture
 

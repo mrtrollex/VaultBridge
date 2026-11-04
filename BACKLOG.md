@@ -3353,7 +3353,7 @@ roots, multi-tenancy/RBAC/account administration, cross-space automatic moves/re
 implementation, release/deployment, commit or reviewer launch. ADR acceptance must precede a
 separately accepted runtime contract; sequence alone never authorizes implementation.
 
-### VB-151 — Compatibility-safe multi-space domain boundary — P1 (A–F accepted; G integration implemented, review pending)
+### VB-151 — Compatibility-safe multi-space domain boundary — P1 (complete; A–G merged)
 
 **Authority / status:** This is the authoritative implementation contract under
 [Accepted ADR 0009](docs/adr/0009-knowledge-spaces-and-scope-policies.md). VB-150 is complete and
@@ -3374,9 +3374,10 @@ resumable synchronization, bounded scheduling and native monitoring. E6 now comp
 primitives through private SpaceRuntime with exact final owner identity, single operation
 admission and coordinated startup/rollback/shutdown. Slices A–F are implemented and accepted.
 Slice G adds cross-component integration and reproducible native regression/parity evidence in
-[VB151_G_VERIFICATION.md](docs/VB151_G_VERIFICATION.md); independent G acceptance remains pending.
-VB-151 awaits that acceptance. Named serving remains blocked. Milestone 16 remains **PLANNED**,
-and VB-152 stays future/unscoped.
+[VB151_G_VERIFICATION.md](docs/VB151_G_VERIFICATION.md). The task owner confirms A–G complete
+and merged through PR #145 (`5d6f0298e8511c3287366e0c7876db20ea2e6287`). Named serving remains
+blocked. Milestone 16 remains **PLANNED**; VB-152 now has the separate proposed adapter contract below,
+with implementation not started.
 Later explicitly requested implementation must follow this contract and ADRs 0005–0008 without
 reopening their semantics.
 
@@ -4026,7 +4027,7 @@ prefix counters/digests or streamed comparisons. Use small injected remaining cr
 each boundary deterministically, plus production-ceiling cases; do not allocate millions of objects
 or invoke an eager parser to manufacture the bounded path's expected output.
 
-Use separate narrowly reviewable implementation PRs; runtime A–F are accepted, G review pending:
+Completed runtime slices (A–G merged); retained boundaries for traceability:
 
 1. **A: immutable config/types/registry/resolver**, strict startup and authorization/no-work tests.
 2. **B: owner bundles/qualified one-space orchestration**, disabled inspection facade, local owners
@@ -4048,20 +4049,20 @@ Use separate narrowly reviewable implementation PRs; runtime A–F are accepted,
 7. **G: integration/regression hardening**, full Windows/POSIX work/privacy/compatibility evidence.
    Implemented through `tests/test_space_integration.py`, the reproducible baseline export and
    the existing A–F regression matrix; see the verification report above. No public activation
-   or additional production architecture is introduced. Separate fresh acceptance review is pending.
+   or additional production architecture is introduced. A–G completion/merge is confirmed above.
 
 B exposes nonsemantic one-space behavior only; new semantic scope stays gated until D+E pass,
 scoped writes with index callbacks until E+F pass. Existing legacy calls remain valid throughout.
 Failure to meet budgets/owner safety/resource/provenance rules blocks the dependent slice; no
 silent relaxation/ranking change/root adoption. Each later scoped PR uses task/check/finish and
-separate fresh review. VB-152 gets its own authoritative contract after runtime exists.
+separate fresh review. VB-152's separate authoritative adapter contract follows below.
 
 Resolved ADR 0009 gates: exact config/precedence, immutable policy/registry/owners, fixed aggregate
 discovery/probe/chunk/byte/cancellation work, qualified Query, precise local-floor merge, coverage,
 storage/binding/resource lifecycle and portable v2 replay. Remaining **blocking separate contracts**:
-operator-facing root/ID rebind and old-artifact migration tooling; expanded health/discovery exposure;
-final VB-152 endpoints/OpenAPI/MCP tools/resources/CLI/dashboard/error mappings. None authorizes
-runtime improvisation; normally configured new spaces need no migration tooling.
+operator-facing root/ID rebind and old-artifact migration tooling; expanded registry/label/diagnostic
+exposure. VB-152 below defines minimal health, adapter/error contracts and explicit deferral fences;
+it does not authorize those separate tools. Normally configured new spaces need no migration tooling.
 
 **Non-goals:** multi-tenancy/users/groups/RBAC; policy DB/DSL; caller host roots/hot reload;
 cross-space Markdown links/graph/duplicates; automatic note migration/move; cross-space promotion;
@@ -4070,13 +4071,503 @@ VB-152 adapters; Docker/release/deployment. The original contract task was docum
 runtime changes require explicitly scoped slices. Slice B changes no public adapter or accepted
 ADR, commits nothing and launches no reviewer. Milestone 16 is not complete.
 
-### VB-152 — Permission-aware query and write adapter integration — P1 (future; unscoped)
+### VB-152 — Permission-aware query and write adapter integration — P1 (contract defined; implementation not started)
 
-**Status:** Future adapter work. No implementation scope is reserved or authorized.
-Requires accepted domain/runtime contracts and a separate authoritative BACKLOG contract selecting
-exact REST/MCP/CLI surfaces, qualified resources/results, error mapping and compatibility tests.
-It must reuse the common policy boundary and cannot independently authorize scope or infer write
-destinations. No endpoint, tool, URI, CLI flag or dashboard change is authorized here.
+**Authority / status:** This section is the authoritative proposed implementation contract under
+accepted ADRs [0009](docs/adr/0009-knowledge-spaces-and-scope-policies.md) and
+[0010](docs/adr/0010-safety-first-e6-cleanup-outcomes.md). Contract design is documentation-only;
+design acceptance and separately requested slices precede implementation. The starting baseline is
+PR #145, merge `5d6f0298e8511c3287366e0c7876db20ea2e6287`, with VB-151 A–G complete and merged
+(task-owner confirmation; native evidence is recorded in
+[VB151_G_VERIFICATION.md](docs/VB151_G_VERIFICATION.md), not rerun by this contract task).
+No public named mode is enabled here. Milestone 16 remains **PLANNED**.
+
+#### Decisions and compatibility boundary
+
+1. Extend current note/search REST routes and MCP tools; add exactly one Knowledge Query route
+   and tool. Do not introduce `/spaces/{id}/notes`, a v2 API family, duplicate scoped tools, or
+   a second query engine. Existing aliases and operation IDs remain registered from one function.
+2. Omission on every existing operation means **default only**, with its existing wire shape,
+   defaults, limits, ordering, error categories and v1 artifact behavior. Explicit scope, even
+   `default`, selects the scoped contract and qualified output below. A new Query operation has
+   no old wire contract: omitted scope still selects default, but always uses scoped output/budgets.
+3. One startup registry generation, one authoritative resolver, and `SpaceOperations` own all
+   dispatch. Domain owners retain containment, ranking, writes and provenance. Adapters validate
+   transport shapes only; credentials authenticate the deployment, not a tenant or per-user grant.
+4. Capture/promotion remain CLI-only. Extend their existing commands with explicit one-space
+   selection and v2 facts; do not add REST/MCP/dashboard capture or promotion in VB-152.
+5. Defer named Dashboard interaction to a separate later contract. In named mode fence the entire
+   Dashboard/session surface, rather than leave a single-vault UI attached to raw owners.
+6. Do not enumerate the registry or expose labels. Callers obtain configured IDs from their
+   operator and select them explicitly. Expanded discovery/diagnostics, maintenance, rebind and
+   old-artifact migration remain separate contracts; none is a prerequisite for ordinary new spaces.
+
+#### Composition inventory, activation and lifecycle
+
+The following inventory is an acceptance checklist, including compatibility paths, not permission
+to remove current single-vault behavior. All named entry points must be policy-bound or fenced.
+
+| Entry point / current assumption | Required VB-152 disposition |
+| --- | --- |
+| `app/main.py:create_app`, module-level app, lifespan and dependency getters in `app/api/dependencies.py` | Named composition injects one `SpaceRuntime.operations`; no exposed raw default owners, switched-root reconfigure or second registry. Legacy injection/test seams remain compatible only in legacy mode; reject conflicting raw-owner injection in named mode before construction. |
+| `app/api/notes.py` create/append/read/list, `search.py` literal/related/duplicates, versioning aliases | Every operation, including scope-omitted aliases, dispatches through SpaceOperations after resolver authorization; exact paths below. |
+| `relationships.py` links/backlinks and `knowledge_hygiene.py` scan | One-space operations, explicitly projected capabilities/dialects; inherited relative paths belong only to the selected envelope. |
+| New REST/MCP Query | Existing ScopedKnowledgeQuery and scoped_query; complete selection and all supplementary requirements authorized before admission/work. |
+| `app/mcp_server.py:create_mcp_server`, adapter methods, all tools, resource reads, stdio `main` | Same operations/policy boundary for every dispatch, including old default resource template. Named stdio owns one runtime; old standalone default owners cannot survive beside it. |
+| `app/mcp_http.py:create_mcp_http_transport`, mounted `/mcp`, SDK session lifecycle | Inject parent's exact runtime operations and limiter; no child runtime/startup, direct owner fallback or cookie authentication. |
+| `app/cli.py:main`, exported `run_*` functions and lazy persisted readers | Scope-aware read/write paths use SpaceOperations; direct invocation cannot skip policy. Named status/index/rebuild/reindex are fenced below before owner/filesystem work. |
+| `/ui`, `/ui/`, explicit assets, POST/GET/DELETE `/ui/session`, cookie auth branch | Named mode returns static 404 and never serves assets or creates/restores sessions; previously issued cookies grant no API access in named mode. Bearer access remains available. Legacy mode is unchanged. |
+| `/health`, `/health/live`, `/health/ready`, `/privacy` | Named-safe projections below; no dependency resolving a raw default vault or global space enumeration. |
+| Startup full sync, post-commit create/append/capture/promotion enqueue, watcher callbacks/debounce/recovery | Use exact runtime registry-issued bindings, SharedSemanticScheduler and SharedFilesystemWatcher. Jobs retain QualifiedPath/owner binding; no legacy BackgroundSemanticIndexer or SemanticFilesystemWatcher in named mode. |
+| Startup failure, shutdown, MCP disconnect/session end, CLI exit/cancellation | Retain the same runtime and resource owners; fence/drain and propagate incomplete cleanup under ADR 0010. No second generation/replacement watcher or claim of stopped after ambiguous disposal. |
+
+Existing scoped methods are reused. Minimal domain orchestration additions are required for
+`scoped_create_note(WriteScope, request)`, `scoped_append_note(WriteScope, request)` and
+compatibility dispatch for the old operations (including v1 capture/promotion). These are future
+SpaceOperations work, not adapter-side owner lookup: resolve all requirements, verify exact registry
+token/root identity, enter admission once, delegate to the existing local owner, preserve the result,
+and enqueue only after a new durable commit. Compatibility dispatch must preserve old bounds,
+scores, duplicate semantic advice and output; do not project an old request through new tighter
+federation limits. Named owners remain pinned: never `reconfigure` them from legacy Settings.
+V1 compatibility dispatch binds default before review/write, without adding v2 fields or digests.
+The same resolver also gates legacy-mode public domain operations; legacy composition/startup and
+default policy stay unchanged. No filesystem validation is retrofitted into implicit-default startup.
+Add `SpaceOperations.probe_default_readiness()` for named probes: authorize the default semantic
+read/index requirements, then admit once and invoke only the existing minimal owner probes; return
+false for expected denial/unavailability, propagate programming failures to the safe server boundary.
+The runtime-running boolean needs no registry enumeration or owner access.
+
+**Public activation gate:** through slices A–C below, retain `require_legacy_composition()` on
+every production constructor/entry point. Tests may explicitly assemble private named adapters.
+Slice D may replace those guards only after the full inventory, compatibility and native acceptance
+matrix passes. This is one coordinated activation decision, not a new environment toggle per adapter.
+An unsupported enabled surface or incompatible injection is fatal `invalid_configuration` with
+safe internal reason `named_serving_unsupported`, before storage/model/worker construction; never
+ignore KNOWLEDGE_SPACES_JSON or silently drop a surface. Deliberately fenced named UI/maintenance
+are supported exclusions, not unintegrated fallback. MCP HTTP being disabled by its existing setting
+does not bypass integration requirements when enabled later.
+
+Named startup uses existing VB-151 strict configuration/binding validation before allocations;
+start E5 to native readiness, then E4 startup reconciliation, then open operation admission and
+serve requests. Index readiness is asynchronous, not a new startup requirement. All-disabled
+indexing starts no semantic model/scheduler/watcher. No adapter accesses an owner before policy;
+startup's operator-only structural validation retains the accepted exception. On failure roll back
+the same generation; preserve unresolved cleanup and refuse admission. Shutdown first fences new
+requests/operations and indexing, closes MCP ingress/sessions, then follows SpaceRuntime's E5/E4/
+operation drain/E2 order. Never double-shutdown owners independently from adapters.
+
+Runtime admission remains one active operation and at most 64 waiters, with the existing 50 ms
+cancellation polling and fixed work budgets. HTTP disconnect, MCP cancellation and CLI interrupt
+signal the same operation token; waiters release capacity, and cancelled reads fail wholly. Blocking
+OS/model calls drain to their safe boundary. A confirmed or uncertain write outcome takes precedence
+over late cancellation: return/preserve that outcome, never invite an automatic repeat. Cleanup
+failure is a safe operational failure, not permission to replace ownership or declare stopped.
+
+#### Shared scope and result schemas
+
+These are exact proposed wire names, independent of Python dataclass names. JSON objects for new
+requests and explicit scoped branches forbid unknown/duplicate keys, non-finite numbers, coercion,
+invalid Unicode and null for optional fields unless explicitly stated nullable below. Absent means
+omitted; `null`, `[]`, `""`, wildcard, comma-separated IDs and host paths never mean all/default.
+Transport parsers must reject foreign scope spellings rather than silently ignore them (including
+scope fields on existing legacy requests). Preserve other pre-existing legacy validation behavior.
+
+| Schema | Fields / rules |
+| --- | --- |
+| `SpaceId` | Exact ASCII `[a-z][a-z0-9_-]{0,63}`; no normalization or aliases. |
+| `ReadScope` | Wire `spaces: [SpaceId, ...]`, raw length 1..8 before exact dedup/ASCII sort. Single-note/advisory/hygiene operations instead accept only singular `space: SpaceId` and construct a one-ID ReadScope. No singular/plural alternatives on one operation. |
+| `WriteScope` | Wire `space: SpaceId`, exactly one; new explicit writes require it. Existing omitted writes use the default-only compatibility path. Never infer selection from content, portable provenance, result URI, title or approval bytes. |
+| `QualifiedPath` input | `{space_id: SpaceId, path: string}`; path 1..1,024 UTF-8 bytes, owner-validated vault-relative Markdown path. It is not yet canonical. |
+| `QualifiedIdentity` output | `{space_id: SpaceId, path: string}`; path is the selected owner's verified canonical relative path, `/` separators; no host root. Equal paths in different spaces remain different identities. |
+| `OneSpace<T>` output | `{space_id: SpaceId, result: T}`. All primary, related, source and destination relative paths inside T inherit that one ID; pathless findings inherit it too. Never combine envelopes after dropping the ID. |
+| `ScopedRead<T>` output | `{items: T[], coverage: Coverage[], state: "complete"\|"partial", ordering: "canonical_path"\|"modified"\|"semantic", result_limited: boolean}`. <=100 global items; coverage exactly one row per authorized selected ID, ASCII sorted. |
+| `Coverage` | `{space_id, state: "complete"\|"partial"\|"unavailable", reasons: Reason[], semantic_index_basis: Basis, enumerated_paths: int, evaluated_paths: int, returned_candidates: int}`. Counts respectively 0..10,000 / 0..10,016 / 0..10,000, charged domain facts, not hidden-space counts. Reasons sorted/distinct; empty iff complete. |
+| `Reason` | Exactly `root_unavailable`, `index_unavailable`, `discovery_limit`, `path_limit`, `alias_limit`, `content_limit`, `relationship_limit`, `semantic_limit`, `note_unavailable`. |
+| `Basis` | Exactly `none`, `compatible_ready`, `compatible_previous_refresh`, `compatible_previous_error`; never synthesize ready from persisted state alone. |
+| `NoteMatch` | `{identity: QualifiedIdentity, title: string, snippet: string\|null, modified: string\|null}`; list has modified and null snippet, literal has snippet and null modified, nonsemantic Query has both null. |
+| `SemanticMatch` | `{identity: QualifiedIdentity, title: string, score: finite number, semantic_score: finite number, lexical_score: finite number, snippet: string, heading: string\|null}`. Preserve domain full-precision ordering; public numbers may use existing four-decimal serialization only after merge/truncation. |
+
+No response serializes definitions/bindings/owners/dataclasses generically. Explicit allowlists only.
+ScopedRead state is partial iff any coverage row is not complete; result_limited describes final
+global truncation separately, not incomplete authorization or a pagination promise. Preserve exact
+domain availability/discovery discard rules, fixed quotas and local semantic floors/windows. If no
+selected space can execute, fail unavailable; an available empty contribution is successful empty.
+No semantic-to-literal fallback, refill, expanded scope, budget redistribution or hidden-space counts.
+Single explicit-space federation can return partial; direct one-note operations cannot.
+
+#### REST surface and OpenAPI
+
+All paths below are under `/api/v1`; shown paths are complete. Existing seven note/search
+unversioned aliases remain, use the same function as v1, and accept the same explicit scope
+extension. New clients use v1. No new aliases for Query, relationships or hygiene.
+No route changes occur during this documentation task.
+
+| Method / path | Stable operation ID | Proposed input | Explicit-scope response / dispatch |
+| --- | --- | --- | --- |
+| POST `/api/v1/notes` | `createNoteV1` | Existing CreateNoteRequest plus `space` | `OneSpace<NoteResult>`; scoped_create_note. |
+| POST `/api/v1/notes/append` | `appendNoteV1` | Existing AppendNoteRequest plus `space` | `OneSpace<NoteResult>`; scoped_append_note. |
+| GET `/api/v1/notes/read` | `readNoteV1` | `path` and optional singular query `space` | `OneSpace<{path, content}>`; read_note(QualifiedPath). |
+| GET `/api/v1/notes/list` | `listNotesV1` | Optional repeated query `spaces`, folder, limit | `ScopedRead<NoteMatch>`; scoped_list. Example `?spaces=default&spaces=research`. |
+| POST `/api/v1/notes/search` | `searchNotesV1` | `{query, folder?, limit?, spaces?}` | `ScopedRead<NoteMatch>`; scoped_literal_search, case-folded title/body semantics. |
+| POST `/api/v1/notes/related` | `findRelatedNotesV1` | `{text, folder?, limit?, min_score?, spaces?}` | `ScopedRead<SemanticMatch>`; scoped_semantic_search. |
+| POST `/api/v1/notes/duplicates` | `findDuplicateCandidatesV1` | Existing DuplicateCandidatesRequest plus `space` | `OneSpace<DuplicateCandidatesResponse>`; duplicates, local title advice only on explicit scopes. |
+| GET `/api/v1/notes/links` | `listNoteLinksV1` | `path`, optional singular query `space` | `OneSpace<NoteLinksResponse>`; outgoing with explicit obsidian_wikilink origin. |
+| GET `/api/v1/notes/backlinks` | `listNoteBacklinksV1` | `path`, optional singular query `space` | `OneSpace<NoteBacklinksResponse>`; backlinks with explicit obsidian_wikilink origin. |
+| POST `/api/v1/knowledge/hygiene/scan` | `scanKnowledgeHygieneV1` | Existing KnowledgeHygieneScanRequest plus `space` | `OneSpace<KnowledgeHygieneScanResponse>`; hygiene with all supplementary capabilities. |
+| POST `/api/v1/knowledge/query` (new) | `queryKnowledgeV1` | KnowledgeQueryRequest below | Always `ScopedRead<NoteMatch\|SemanticMatch>`; scoped_query. |
+
+Scope fields are optional on existing operations; absent selects the exact legacy payload, without
+new fields. Supplied plural fields on singular operations or vice versa are invalid_scope, including
+when both are present. Repeated singular GET fields are invalid_scope. For explicit scope, preserve
+existing create/append/title/tag/body validation and NoteResult `{success,path,status}`; read path
+uses QualifiedPath's byte bound. Existing schema payloads are defined by `app/api/notes.py`,
+`search.py`, `relationships.py` and `app/knowledge_hygiene_transport.py`; OneSpace wraps those exact
+fields rather than redefining their semantics. Explicit duplicates accepts the old title/text/folder/
+limit bounds (180/4,000/500 characters and 1..20, default 5); it executes no semantic search and
+rejects a supplied min_score as capability_unavailable rather than pretending it was honored.
+Omitted duplicate scope retains existing title-plus-semantic behavior and min_score handling.
+Links/backlinks remain the current wikilink public subset; no origin flag or normalized relationship
+API is added. Scoped Query can use both existing dialects through domain predicates.
+
+Explicit list/literal/related limit is strict integer 1..100 with defaults 50/10/5; folder omission
+means root, explicit empty is invalid, missing folder is empty, <=1,024 UTF-8 bytes. Literal query
+is nonempty <=8,192 UTF-8 bytes; semantic text nonempty <=4,096; scoped min_score finite [0,1],
+default 0.28. Query-string numeric parsing accepts decimal syntax once, then enforces strict bounds;
+reject bool-like words, duplicate numeric/folder fields and non-finite values. Legacy omitted-scope
+list limit 200, search limit 50, related limit 20 and min_score [-1,1] remain unchanged.
+
+**KnowledgeQueryRequest:** object with optional `spaces`, `semantic_text`, `literal_text`, `folder`,
+`paths`, `tags`, `metadata`, `relationships`, `limit`. Default arrays are empty, limit 20 (1..100).
+Text/folder omission maps to the domain None, never explicit null. Semantic/literal byte bounds are
+4,096/8,192; path/folder <=1,024. `paths` is <=64 QualifiedPaths (OR); `tags` <=16 strings (AND),
+each nonblank <=1,024 UTF-8 bytes, with the existing trim/exact-dedup comparison semantics;
+`metadata` <=16 `{key,operator,value?}` predicates (AND), key <=256 bytes, operators `exists`,
+`equals`, `not_equals`, `sequence_contains`. Value is one ADR 0005 portable scalar, strings <=1,024
+bytes, integers signed int64, floats finite, null permitted only as an explicitly supplied scalar;
+exists omits value, other operators require it. Preserve ADR 0006 typed comparison and tag semantics.
+`relationships` <=16 `{direction: "incoming"|"outgoing", other: QualifiedPath, origin?:
+"obsidian_wikilink"|"markdown_link"}` (AND). Omitted origin requires both dialects. Paths/other IDs
+must belong to the selected scope; they never expand it. An edge is local to other's space; it cannot
+select an edge between two spaces. All global collection limits apply before normalization. Reuse
+ScopedKnowledgeQuery validation including empty-request rejection and no bare path/relationship
+predicates; no adapter expression language. Semantic text selects SemanticMatch items; otherwise
+NoteMatch items. Apply exactly the existing domain operation matrix and supplementary requirements.
+
+REST protected operations retain the shared direct-peer limiter, current/previous Bearer verifier,
+headers and request observability once per request. Legacy UI-cookie authentication remains only
+in legacy composition. API keys confer no policy override. Authentication/limiting precedes policy
+and owner access; malformed scoped payloads must be redacted even when validation occurs first.
+Responses for new/scoped content use `Cache-Control: no-store`; no credential or grant in URLs.
+
+OpenAPI generation documents all additions, strict scopes, response alternatives and errors with
+safe examples and stable existing IDs. Existing response models become explicit legacy-or-scoped
+unions selected by scope presence; defaults are documented per branch, never legacy field coercion
+into scoped limits. Query's output union is selected by semantic_text. `/docs`, `/redoc`,
+`/openapi.json` stay disabled; generated schemas are test artifacts. The checked-in external ChatGPT
+Action schema/operation subset stays unchanged; external client migration is not inferred.
+
+#### Domain-to-transport error contract
+
+For new/scoped REST failures return exactly `{detail: code}` (no input echo). MCP tool failures use
+`isError=true` with one static text `code: Operation failed.`; resource failures follow the privacy
+rule below. JSON CLI scope failures use `{category: code}` and the exit below. No raw exceptions,
+validation input arrays, unavailable root names, note existence or registry membership in errors.
+
+| Domain / boundary | Public code | HTTP | CLI exit |
+| --- | --- | --- | --- |
+| invalid_scope; conflicting/oversized/empty/malformed selection | invalid_scope | 422 | 2 |
+| InvalidKnowledgeQuery / strict request validation | invalid_request | 422 | 2 |
+| KnowledgeHygieneError with reason invalid_request | invalid_request | 422 | 2 |
+| KnowledgeHygieneError with reason scan_unavailable | space_unavailable | 503 | 1 |
+| NoteUnavailableError escaping a scoped owner operation | space_unavailable | 503 | 1 |
+| unknown_or_denied_space | scope_not_allowed | 403 | 2 |
+| unsupported_capability / unsupported_dialect / indexing_disabled / incompatible_semantic_configuration | capability_unavailable | 409 | 2 |
+| VaultValidationError / unsafe_scope / containment escape | invalid_path | 400 | 2 |
+| NoteNotFoundError, only after complete authorization | note_not_found | 404 | 1 |
+| NoteConflictError | note_conflict | 409 | 1 |
+| NoteTooLargeError | size_limit | 413 | 1 |
+| unavailable_space (including saturated admission or stopping), semantic_unavailable | space_unavailable / semantic_unavailable respectively | 503 | 1 |
+| operation_cancelled before write outcome | operation_cancelled | 503 if still connected; otherwise no response | 1 |
+| invalid_configuration | invalid_configuration | Startup failure; no serving response | 2 |
+| unexpected programming/serialization failure | internal_error | 500 | 2 |
+
+The three owner-exception rows apply to new/scoped calls, including explicit `default`;
+new Query with omitted scope still uses its scoped contract. REST uses
+`{detail: "invalid_request"}` or `{detail: "space_unavailable"}` with the status above. MCP tools
+on both transports use `isError=true`, exactly one text content item containing respectively
+`invalid_request: Operation failed.` or `space_unavailable: Operation failed.`, and no structured
+success content. JSON CLI uses `{category: "invalid_request"}` (exit 2) or
+`{category: "space_unavailable"}` (exit 1); human CLI uses the same category in its static stderr
+error. These reuse the existing invalid_request and space_unavailable public vocabulary; introduce
+no new code or transport-specific alias. Scan/note availability is operational failure, not invalid
+input, note-not-found, successful empty, or internal_error. MCP resource reads retain the uniform
+note_resource_unavailable representation defined below, rather than exposing tool error details.
+
+On existing operations, omitted scope remains the legacy-default branch, even in named
+composition; do not apply these new owner-exception projections to it. The existing compatibility
+outcomes are:
+
+| Legacy owner failure | REST | MCP tools | CLI |
+| --- | --- | --- | --- |
+| KnowledgeHygieneError(invalid_request) | 422, `{detail: "invalid_request"}` | isError with `validation_error: Tool arguments are invalid.` | Exit 2; stderr `Knowledge hygiene failed: invalid_request.` and empty stdout, including --json. |
+| KnowledgeHygieneError(scan_unavailable) | 503, `{detail: "scan_unavailable"}` | isError with `hygiene_unavailable: A bounded hygiene scan is unavailable.` | Exit 1; stderr `Knowledge hygiene failed: scan_unavailable.` and empty stdout, including --json. |
+| NoteUnavailableError | Preserve current operation-specific handling: no dedicated entry in the legacy vault HTTP handler; a directly escaping instance can reach the existing server-error boundary (hygiene route: 500/internal_error). | A directly escaping instance retains existing internal_error tool handling; resource reads retain note_resource_unavailable. | Preserve command-specific handling: search/related catch VaultServiceError as exit 1; an uncaught instance, including one escaping the hygiene adapter, retains the CLI main failure boundary/exit 2. |
+
+Owner conversions/omissions remain authoritative: for example hygiene converts snapshot
+VaultServiceError (including NoteUnavailableError) to KnowledgeHygieneError(scan_unavailable),
+and federation may consume note unavailability into its existing coverage. Map the exception that
+actually escapes SpaceOperations; do not reinterpret successful partial evidence or inspect raw
+exception messages. Catch KnowledgeHygieneError by its reason and NoteUnavailableError by type
+before generic runtime/vault/programming-error fallbacks. SpaceOperations.hygiene delegates owner
+validation/scan failures unchanged; _safe_local_errors also converts UnicodeError to
+NoteUnavailableError. Its OSError-to-unavailable_space conversion already reaches the same public
+space_unavailable mapping. Thus future scoped transport projections require no change to domain
+exceptions, authorization, owner semantics or legacy failure behavior.
+
+Existing auth/configuration/429 behavior and Retry-After/WWW-Authenticate/request ID headers retain
+their current boundaries. Existing omitted-scope errors retain transport categories; new policy
+denial/unavailability in named mode uses this table because legacy clients cannot bypass default
+policy. Expected operational errors are sanitized at source-facing transport boundaries. Do not
+preserve raw exception interpolation from old semantic HTTP errors when dispatching named owners.
+Cancellation/descriptor mismatch/denial never becomes partial success. No 206/207 status or HTTP
+retry instruction for partial results. Partial successful results use 200 and explicit coverage.
+Capture/promotion keep their existing operational categories/committed/index evidence and 0/1
+outcomes; scope/configuration failures use 2, never claim committed=false proves no possible commit.
+
+#### MCP tools, resource identities and transport parity
+
+Reuse existing `list_notes`, `read_note`, `search_notes`, `related_notes`, `duplicate_candidates`,
+`note_links`, `note_backlinks`, `knowledge_hygiene_scan`, and optional `create_note`, `append_note`.
+Add **only** `knowledge_query`. Tool argument objects are the corresponding REST operation bodies
+or GET query objects above; mappings are `search_notes.query`, `related_notes.text` and the same
+`space` versus `spaces` fields. List accepts JSON `spaces` array, not repeated query syntax.
+Existing omitted arguments/defaults and old structured results remain unchanged. No list_spaces,
+index/health/capture/promotion tool, prompts, registry resource or parallel scoped tool family.
+Explicit result shapes use the same OneSpace/ScopedRead schemas. On explicit list/literal/semantic
+items add `resource_uri: string` beside identity; on explicit read add `resource_uri` and
+`mime_type: "text/markdown"` inside result, matching old MCP metadata semantics. Explicit duplicate
+items also retain resource_uri inside their one-space envelope. New Query items have resource_uri
+as well. Do not emit a legacy default URI for a non-default item.
+
+Preserve `vaultbridge://note/{path}` as a **default-only** resource template, including old URI
+encoding/validation and MIME/text content. Add exactly one template
+`vaultbridge://space/{space_id}/note/{path}`, name `space_note`, MIME `text/markdown`.
+Emit the latter for all explicit scoped results, including explicit default. Space ID is the strict
+ASCII ID; encode the entire canonical relative UTF-8 path as one RFC 3986 percent-encoded component
+(unreserved characters literal, all other bytes uppercase `%HH`, slash encoded `%2F`). Decode once,
+validate path/containment via QualifiedPath/SpaceOperations.read_note, and require canonical URI
+re-encoding equality. Reject malformed escapes, double-encoding aliases, query/fragment/userinfo/
+port, alternate authority, embedded raw slash and noncanonical ID; never interpret encoded roots.
+Old template's path spelling semantics are not retrofitted to this new strict template.
+
+Resource reads always authorize read_note for the selected one ID, then use admission and verified
+owner read. Validly shaped denied/unknown/missing/unavailable resources all return the same static
+`note_resource_unavailable: Note resource is invalid or unavailable.` without echoing URI or path;
+malformed new resource identifiers use that same response. Protocol errors retain existing SDK
+privacy middleware; tool validation and scoped domain failures follow the table. Existing unscoped
+tool error codes and old resource behavior remain compatible. Resource listing/templates never
+enumerate space membership, labels or Markdown; resource_uri is a locator, never an authorization.
+
+Stdio retains local trusted-process access and its existing process-local operation limiter; no
+Bearer requirement is added. Streamable HTTP remains opt-in, stateless `/mcp`, same Host/Origin
+allowlist, current/previous Bearer auth on every request, shared direct-peer HTTP limiter once, no
+UI-cookie substitute or per-tool second HTTP limiter. Both transports use the exact same resolver,
+argument projection and domain execution. `MCP_WRITE_ENABLED=false` still omits create/append tool
+registration; true permits only the selected policy/capability, not broad write access. Read-only/
+write annotations stay accurate; tool availability is not a policy grant.
+
+Named stdio's runtime startup reconciliation is explicit background indexing permitted only by
+read+index policy; disabled owners remain inert even if old rows exist. HTTP shares parent runtime.
+To avoid two processes owning the same writable derived state, named stdio is operated instead of
+the serving application, not beside it. No cross-process lock or new coordination is claimed.
+Legacy stdio's persisted read-only behavior and write opt-in lifecycle remain unchanged.
+
+#### CLI commands, selection and offline boundaries
+
+Keep `python -m app.cli` and existing commands/positional arguments. Add these flags only:
+
+| Command | Proposed additions / behavior |
+| --- | --- |
+| `search QUERY`, `related TEXT` | Repeatable `--space ID` builds ReadScope (1..8 raw); `--json` selects ScopedRead JSON for explicit scopes, matching REST items without resource_uri. Existing folder/limit/min-score flags have scoped bounds only when selection is explicit. |
+| `query` | Repeatable `--space ID`, `--json`; preserve existing semantic/literal/folder/tag/limit flags. Existing `--path PATH` stays valid for default-only omission or exactly one effective explicit space, inheriting it. Add repeatable `--qualified-path JSON` for a QualifiedPath; forbid mixing the two forms. Add `--request-json` to read one full KnowledgeQueryRequest from stdin for typed metadata/relationship predicates. It is mutually exclusive with query-content flags; --space may supply selection only if the JSON omits spaces, otherwise reject conflicting selectors. Always use scoped output for explicit scope or --request-json, legacy output otherwise. |
+| `hygiene scan` | Singular nonrepeatable `--space ID`; preserve all group/candidate/index/json options. Explicit output is `OneSpace<existing hygiene result>`. |
+| `capture` | Singular nonrepeatable `--space ID`; same bounded stdin capture object. Explicit selects v2; omitted selects default v1, including in named composition. Output remains JSON, explicit `OneSpace<CaptureEvidence>`. |
+| `promote review --source-path PATH --capture-id ID` | Singular nonrepeatable `--space ID`; existing --candidate-limit and --destination retained. Explicit scoped review requires --destination (chosen create or append path), returns `OneSpace<ReviewEvidence>` with provenance_version=2. Source and destination inherit the selected ID. |
+| `promote apply` | Singular nonrepeatable `--space ID`; unchanged bounded stdin decision fields below. Explicit selects scoped v2 binding, omitted default v1. Output JSON `OneSpace<PromotionEvidence>` only when explicit. |
+| `status`, `index`, `index check`, `index rebuild`, `reindex` | Legacy mode unchanged, including aliases and 0/1/2 conventions. Named mode is unsupported even for default/omission: fail invalid_configuration (2) before registry root probes, owner construction, DB/model/watcher work. No --space/--all/--force addition. |
+
+No new CLI note CRUD/list/links/discovery command. JSON stdin limits for --request-json, capture
+and promotion apply are 1,048,576 bytes before parsing; reject duplicate keys, non-finite values,
+invalid encoding, trailing objects/data and excessive structural nesting using the existing bounded
+portable/domain validation. --qualified-path parses one object with the same strict QualifiedPath
+schema; count before dedup and never split space/path on punctuation. Bare --path in a multi-space
+selection is invalid_scope even if its text occurs in only one space. Omitted query scope cannot
+be expanded by qualified path or relationship selectors. JSON request mode uses the same new Query
+schema and validation as REST/MCP, including default-only omission and empty-request rejection.
+
+Human output for explicit scopes prefixes every result with JSON-escaped `[space_id] path`, escapes
+terminal controls in all displayed titles/snippets/paths, and prints a coverage line per selected ID
+with state/reasons/basis plus global result_limited. Hygiene keeps the one-space header even for
+pathless findings; Query preserves semantic scores. Never collapse equal relative paths across IDs.
+--json emits exactly one allowlisted JSON result object to stdout, errors as category-only objects;
+static human errors go to stderr. Capture/promotion keep JSON as their existing default. Existing
+omitted-scope human formatting stays unchanged. Without explicit --space, the new --json option
+on search/related serializes the corresponding legacy REST `{query,results}` / `{text,results}`
+payload; on existing CLI query it serializes `{matches:[{canonical_path,final_score,semantic_score,
+lexical_score}],ordering,semantic_index_basis}` from KnowledgeQueryResult, nullable scores included.
+It does not select scoped budgets. --request-json always selects scoped output/budgets, even with
+omitted spaces. Successful partial/empty read or confirmed write
+is exit 0; operational inability/commit_unknown is 1; invalid/denied/capability/config/programming
+failure is 2 as above. Existing legacy command exit classifications remain unchanged.
+
+All CLI commands remain local and require the serving application/stdio runtime stopped when they
+could touch the same derived state; no HTTP client, daemon RPC, new lock or stopped-service detector.
+Named reads use inspection-only composition where sufficient (hygiene, promotion review and
+nonsemantic reads); semantic CLI uses a selected, persisted read-only owner view with shared domain
+federation/admission and **no startup sync**, database initialization, model download or watcher.
+If a required persisted index/model is unavailable, fail/cover unavailable rather than rebuild it.
+Named writes use the existing runtime lifecycle so qualified post-commit enqueue can drain before
+exit; unselected enabled spaces retain runtime's established startup reconciliation semantics, with
+only operator-policy-authorized index work. No command narrows/rebuilds the registry or forges grants.
+These composition profiles must be implemented/tested in SpaceOperations/runtime owners, not by
+CLI loading chunks or inventing an adapter-local authorizer. Maintenance's separate missing contract
+does not permit named use of old direct-owner index functions.
+
+#### Writes, approval and v1/v2 compatibility
+
+Create/append accept exactly one WriteScope; capabilities are respectively create_note/append_note
+plus read+write policy and existing transport enablement. Retain existing title/tags/body size,
+dedupe, conflict and containment checks. No delete, move, overwrite, arbitrary Markdown write or
+backlink insertion is added. A committed write cannot be repeated/failed because enqueue failed.
+
+Capture stdin keeps required `{content,state,capture_id,captured_at}` and optional title/source/
+tags/capture_type/metadata from VB-131; content <=65,536 UTF-8 bytes, canonical UUIDv4 and UTC
+second timestamp, existing metadata and max-note limits unchanged. Portable capture_space_id and
+capture_provenance_version are reserved output facts, never input selectors. CaptureEvidence is
+the existing `{category,committed}` with capture_id/path/index_state on confirmed outcomes; the
+explicit OneSpace adds the bound ID, never content. Explicit default also creates v2. Omitted
+capture remains v1, default only, with unchanged bytes/idempotency.
+Explicit capture delegates to `SpaceOperations.scoped_capture`; explicit review delegates to
+`scoped_promotion_review`, and append destination inspection to `scoped_promotion_destination`.
+
+Scoped promotion review requires read+promotion, and duplicate_candidates only when requested;
+apply reauthorizes read+write+promotion, not an additional create/append capability. ReviewEvidence
+retains existing category/source_path/capture_id/capture_state/metadata/body/source_sha256/
+evidence_state/evidence and optional destination `{destination,markdown,sha256}`; explicit review
+adds provenance_version=2. Optional duplicate evidence remains local nonsemantic advice, never a
+destination selector. The explicit destination string is retained by ScopedPromotionReview even
+when the create target is absent; do not inspect an absent create target as an existing append note.
+
+Apply stdin keeps exactly the existing required source_path, capture_id, expected_source_sha256,
+approved_content, action (`create`|`append`), destination, promotion_id, approved_at, transfer_fields;
+create additionally requires expected_destination=`absent`, append instead requires
+expected_destination_sha256. Preserve UUID/time/hash/content/transfer rules, including <=65,536
+approved-content bytes. The CLI --space supplies the only scope; no source_space/destination_space
+override or serialized AuthorizedSpaceBinding is accepted. Do not trust a client-supplied digest
+as an approval token. In the current process, reconstruct the same-space scoped review with the
+chosen destination, call scoped_promotion_decide with the exact approved request, then
+scoped_promotion_apply on that registry-bound decision. Recheck hashes/bytes/policy immediately
+before commit using existing coordinated primitives. No durable approval cache/session is added.
+Restart requires reconstruction and reauthorization, never reuse of an old registry binding.
+
+PromotionEvidence retains category/committed and confirmed source_path/destination/capture_id/
+promotion_id/index_state, inside OneSpace only when explicit. V2 digest/manifests retain exact
+provenance_version/source_space_id/destination_space_id and portable fields from VB-151 F.
+Source and destination must have the same exact ID; cross-space proposals fail before reads.
+V1 artifacts are accepted only on the unscoped legacy-default flow; v2 only on explicit matching
+scope, including default. No copied artifact establishes authorization, automatic v1-to-v2
+conversion, cross-space retry, root rebind or destination inference. Preserve commit_unknown,
+same-ID conflict/replay rules, exact approved-content binding and cooperating-writer limitations.
+Index callbacks use that exact binding/QualifiedPath only after a new durable commit; indexing
+disabled creates no work, including when old index rows exist. No automatic retry of an uncertain
+write and no successful-shutdown claim from completed futures alone.
+
+#### Dashboard, health, discovery and privacy
+
+**Dashboard deferred:** current UI assumes default-relative result identity, a global overview and
+same-origin session access. A safe named selector/result/session design is a separate vertical UI
+task; adding a visual dropdown here would not establish those contracts. Legacy mode keeps all UI,
+session, search, hygiene and overview behavior. Named mode is API/MCP/CLI-only: `/ui` and everything
+under `/ui/` (including session methods/assets) return static 404 with no-store before session/body/
+owner work. Ignore existing UI cookies for REST auth in named mode; require Bearer. This fence is
+mandatory before named activation and may not be disabled with a cookie, query parameter or proxy
+root_path. Operators choose legacy configuration for the current dashboard. No named UI selection,
+persisted session space, dashboard counts or automatic redirect to another space is implemented.
+
+Public `/health/live` stays dependency-free `{ok:true}`. Named `/health` becomes only `{ok:boolean}`
+(runtime admission running); it exposes no per-space counts/state, labels/IDs or roots. Its generated
+schema distinguishes legacy HealthResponse from this named minimal object; legacy /health rich
+fields/semantics are unchanged. Named `/health/ready` keeps `{ready:boolean}` and 200/503: false
+unless runtime admission is open and default is authorized for read+semantic_retrieval+indexing
+and can execute the existing minimal vault/semantic probe. This default-only readiness does not
+claim all configured spaces are available, and never falls back to another space. Resolve policy
+before any probe; denial/disabled capability returns false without owner work. Keep probes cheap,
+side-effect-free and unversioned, with normal middleware and no extra per-probe events. `/privacy`
+remains static, public and schema-hidden. No scoped health query or public registry listing.
+
+Safe operational information is limited to authorized result identity, exact selected-space coverage
+and existing one-space hygiene index evidence. Health cannot reveal unavailable space membership
+or total hidden-space counts. No public space discovery endpoint/tool/CLI or label exposure is
+selected, even for read-allowed spaces; operator labels have no publication approval mechanism.
+Roots/data paths, configured denied IDs, root hashes/binding tokens, DB locations, raw index metadata,
+worker/native handles and unselected index state never cross the boundary. IDs in caller-supplied
+requests may themselves be private: do not echo them in errors or routine logs. Unknown/denied have
+identical status/body/error timing paths up to inevitable runtime variability; no existence claim.
+Authorized coverage may name an unavailable selected ID, never an unselected or denied one.
+
+Use allowlisted static categories/counts and operation/route names in diagnostics. No note/query/
+capture/approved text, titles/tags/source URLs, scope lists/IDs/labels, relative paths, absolute paths,
+validation input, symlink targets or raw exception messages in new/named routine logs. Preserve
+legacy logging contracts in legacy mode. Host/proxy access logs remain separately operated; client
+documentation must warn that GET path/scope parameters can appear there, without claiming application
+middleware controls external logs. Do not introduce a new logging field or background request context.
+
+#### Security and compatibility acceptance matrix
+
+Each implementation slice must supply executable denial/failure evidence, not only schema checks.
+
+| Area | Required acceptance evidence |
+| --- | --- |
+| Selection / authorization-before-work | Unknown vs denied identical safe results; malformed/empty/>8 raw/duplicate/conflicting selectors; one valid plus one denied rejects whole request before root/DB/model/parser/admission work. Duplicate IDs within raw bound dedup exactly. Default denied/unavailable never falls back. |
+| Capabilities | Supplementary Query/hygiene/promotion requirements on every selected space checked before work; indexing disabled never searches/initializes/enqueues/watches old state; MCP write opt-in adds no authorization. |
+| Containment / identity | Same relative paths across spaces stay distinct; traversal, absolute/UNC/device path, cross-root symlink/junction, encoded URI and replacement-root cases fail closed even when both spaces selected. Local relationships/duplicates never discover another root. |
+| Coverage / ranking | Available-empty success vs all-unavailable failure, one/many partial contributions, unchanged domain reason/count/basis projection and discard rules, fixed quotas, no semantic fallback/refill; deterministic qualified ties and full-precision merge before rounding. |
+| Admission / cancellation / cleanup | Saturation, waiter cancellation/disconnect/interrupt, startup/MCP failure rollback and concurrent shutdown; no read partial success on cancellation; confirmed/uncertain writes survive late cancellation; no false stopped, unsafe numeric close retry or replacement generation. |
+| Background behavior | Watch/startup reconciliation precedes admission, qualified commit enqueue reaches exactly its owner, disabled/denied no work, queue/recovery bounds remain VB-151's, no legacy worker/watcher beside shared runtime. |
+| Writes / artifacts | Exact v1 default bytes/digests/replay parity; explicit default/non-default v2 round trip, stale source/destination and registry rejection, copied v1/v2 and cross-space replay denial, create/append conflict/dedupe, commit_unknown and enqueue failure preserve durable outcome. |
+| REST / MCP / CLI parity | Frozen old route/operation IDs/schema fields/defaults/errors/auth/aliases and tool/resource/CLI outputs; explicit scoped equivalent request gives equivalent domain identities/coverage on both MCP transports and REST/CLI; strict validation cannot leak supplied values. |
+| Dashboard / health | Full existing legacy UI backend/session/browser regression; named /ui prefix/session/cookie fence through root_path and method variations; minimal public health has no registry/label/index-count leak; readiness denial has zero probes. |
+| Platform / baseline | Windows plus actual native WSL/Linux runs (not mocked POSIX) for path/native lifecycle, cancellation, watcher and containment matrix; exact 13-case semantic and v1 reference parity from VB-151 G. Report platform skips and required missing evidence; no CI/browser/deployment claim without execution. |
+
+Retain ADR 0010: certified-safe no-allocation failures are retryable, ambiguous ownership may remain
+permanently stopping with bounded retained records, and process exit is not successful in-process
+shutdown. Native tests cover before/after opaque release, same/different-object numeric reuse, final
+proof disposal and independent safe cleanup. No contract here adds universal cleanup liveness,
+hardlink/hostile-writer isolation, cross-process locking, atomic multi-root snapshots or wall-clock
+latency guarantees. Local CPU embeddings, SQLite and Markdown authority remain unchanged.
+
+#### Independently reviewable implementation slices
+
+All slices use task -> implementation -> agent_finish -> separate fresh review. Each has a complete
+executable vertical path in private tests before production activation; no disconnected public stub.
+
+| Slice | Exact deliverables / dependencies | Activation / acceptance / tests | Compatibility and exclusions |
+| --- | --- | --- | --- |
+| **A — Policy-bound read integration** | Depends on accepted design and merged VB-151. Domain compatibility dispatch, strict shared scope/result/error projection; existing REST and both MCP read tools/resources plus CLI search/related/query/hygiene through operations; named health/UI/maintenance fences and injection validation. Private end-to-end default/explicit read, coverage, URI and denial paths. | Keep all public named startup guards. Windows/WSL owner-spy no-work tests, same-path identities/URI attacks, partial availability, cancellation/saturation; frozen legacy API/MCP/CLI and health/UI regressions. No guard removal to demonstrate endpoints. | Existing omitted behavior unchanged; no new Query REST/tool yet, no scoped writes, no maintenance/discovery/UI support. A's CLI scoped reads must prove read-only persisted composition; otherwise A is incomplete. |
+| **B — End-to-end Knowledge Query** | Depends A. New POST /api/v1/knowledge/query + knowledge_query tool + CLI --request-json/qualified selectors, shared ScopedKnowledgeQuery projection, OpenAPI and full result/error/coverage parity. | Named serving still guarded. End-to-end live eligibility/typed predicates/both dialects/semantic basis/partial discard and denial tests, all bounds, exact 13-case ranking parity on Windows/native WSL. | No legacy query CLI expansion without explicit flags; no graph/cross-space edges/ranking or index schema change. |
+| **C — End-to-end authorized writes** | Depends A+B and VB-151 F. scoped_create_note/append_note and v1 compatibility orchestration; REST/MCP existing create/append; CLI capture/promotion v2 scope/review/decide/apply and bound enqueue/drain. | Named serving still guarded. Both platforms test capability/opt-in/zero-work denial, exact approval/source/destination/replay, v1/v2 parity, races/uncertain commit/cancellation and index callback isolation. | No REST/MCP capture/promotion, destination inference/conversion/move/delete/rebind or new write setting. No one-surface named activation. |
+| **D — Coordinated public composition and activation** | Depends accepted A+B+C and inventory-complete evidence. Replace public guards with runtime-aware composition, parent/shared MCP lifecycle, named stdio ownership, CLI profile dispatch, background wiring, named UI/maintenance fences and operational client docs. | Enable named mode only here, after every row is covered or deliberately fenced. Execute full Windows/native WSL integration, lifecycle fault matrix, all legacy contracts, frozen schemas/IDs, 13-case/v1 exports, browser regression for legacy Dashboard and named fence tests. Run change-aware completion workflow; separate fresh acceptance required. | Legacy startup/defaults stay unchanged. Named dashboard/discovery/maintenance remain unavailable by contract. No deployment/release/packaging, dependencies, DB migrations or accepted ADR change. |
+
+**Unresolved blocking gates:** design acceptance by separate review/task owner is outstanding; no
+implementation is authorized by this documentation session. Before D, all A–C acceptance including
+the currently missing compatibility/create/append orchestration and read-only CLI composition must
+be implemented and independently accepted, and the complete cross-surface native matrix must pass.
+A failed/unavailable required check blocks activation. No unresolved API spelling or policy decision
+is delegated to individual adapters; if existing owner contracts cannot implement this projection,
+stop for a contract amendment, not a fallback. Future named Dashboard, registry/label/diagnostic
+exposure, operator-facing rebind, old-artifact migration and named maintenance tooling require
+separate contracts; none may be smuggled into these slices or interpreted as permission to bypass
+the fences. Accepted ADRs remain unchanged.
 
 ---
 
