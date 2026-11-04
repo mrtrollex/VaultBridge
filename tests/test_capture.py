@@ -439,8 +439,11 @@ def test_partial_temporary_write_failure_is_not_a_markdown_commit(tmp_path, monk
     fdopen = os.fdopen
 
     class PartialWriter:
-        def __init__(self, fd):
-            self.stream = fdopen(fd, "wb")
+        def __init__(self, fd, **kwargs):
+            self.stream = fdopen(fd, "wb", **kwargs)
+
+        def fileno(self):
+            return self.stream.fileno()
 
         def __enter__(self):
             return self
@@ -452,7 +455,8 @@ def test_partial_temporary_write_failure_is_not_a_markdown_commit(tmp_path, monk
             self.stream.write(data[: len(data) // 2])
             raise OSError("private write error")
 
-    monkeypatch.setattr(os, "fdopen", lambda fd, mode: PartialWriter(fd) if mode == "wb" else fdopen(fd, mode))
+    monkeypatch.setattr(os, "fdopen", lambda fd, mode, **kwargs:
+                        PartialWriter(fd, **kwargs) if mode == "wb" else fdopen(fd, mode, **kwargs))
     assert service(tmp_path).capture(REQUEST).category == "write_unavailable"
     assert not list(tmp_path.rglob("*.md"))
     assert not list(tmp_path.rglob("*.tmp"))

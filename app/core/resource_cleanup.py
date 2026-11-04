@@ -735,24 +735,34 @@ class ScopedResources(OwnedResources, DescriptorDisposal):
         # The wrapper NEVER owns the raw descriptor. Its finalizer therefore
         # cannot close a recycled allocation after failed/partial construction.
         with self.descriptor(factory, *args, **kwargs) as lease:
-            stream = os.fdopen(lease.resource.descriptor, "rb", buffering=0, closefd=False)
+            yield self.wrap_stream(lease, "rb", buffering=0)
 
-            def closed():
-                try:
-                    stream.fileno()
-                except (ValueError, OSError):
-                    return True
-                return False
+    def wrap_stream(self, lease, mode, *, buffering=-1):
+        """Borrow a registered descriptor; only its lease may release the allocation.
 
-            def prepare():
-                if not closed():
-                    stream.__exit__(None, None, None)
-                if not closed():
-                    raise CleanupIncompleteError
+        Construction failure leaves the original descriptor closer intact. Once
+        construction returns, disposal closes the wrapper before the descriptor.
+        The enclosing descriptor context owns release, including exception paths.
+        """
+        stream = os.fdopen(lease.resource.descriptor, mode, buffering=buffering, closefd=False)
 
-            lease.closer = lambda state: self._release_descriptor(state, _prepare=prepare)
-            lease.probe = lambda state: closed() and state.descriptor_released and state.guard_released
-            yield stream.__enter__()
+        def closed():
+            try:
+                stream.fileno()
+            except (ValueError, OSError):
+                return True
+            return False
+
+        def prepare():
+            if not closed():
+                stream.__exit__(None, None, None)
+            if not closed():
+                raise CleanupIncompleteError
+
+        lease.closer = lambda state: self._release_descriptor(state, _prepare=prepare)
+        lease.probe = lambda state: closed() and state.descriptor_released and state.guard_released
+        return stream.__enter__()
+
 
 
 

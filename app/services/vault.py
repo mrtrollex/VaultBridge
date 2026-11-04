@@ -1321,10 +1321,14 @@ class VaultService:
                             ))
                             if not (parent / name).is_file():
                                 raise AtomicCaptureError("unsafe_destination")
-                            read_fd = os.open(parent / name, os.O_RDONLY | os.O_BINARY)
+                            read_fd = stack.enter_context(self._scoped_resources.descriptor(
+                                os.open, parent / name, os.O_RDONLY | os.O_BINARY,
+                            ))
                         else:
-                            read_fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=fd)
-                        stream = stack.enter_context(os.fdopen(read_fd, "rb"))
+                            read_fd = stack.enter_context(self._scoped_resources.descriptor(
+                                os.open, name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=fd,
+                            ))
+                        stream = self._scoped_resources.wrap_stream(read_fd, "rb")
                         info = os.fstat(stream.fileno())
                         if not stat.S_ISREG(info.st_mode):
                             raise AtomicCaptureError("unsafe_destination")
@@ -1345,12 +1349,14 @@ class VaultService:
                             stack.enter_context(windows_pinned_path(
                                 parent / name, _cleanup_owner=self._scoped_resources,
                             ))
-                            read_fd = os.open(parent / name, os.O_RDONLY | os.O_BINARY)
+                            read_fd = stack.enter_context(self._scoped_resources.descriptor(
+                                os.open, parent / name, os.O_RDONLY | os.O_BINARY,
+                            ))
                         else:
-                            read_fd = os.open(
+                            read_fd = stack.enter_context(self._scoped_resources.descriptor(os.open,
                                 name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=fd
-                            )
-                        stream = stack.enter_context(os.fdopen(read_fd, "rb"))
+                            ))
+                        stream = self._scoped_resources.wrap_stream(read_fd, "rb")
                         info = os.fstat(stream.fileno())
                         if not stat.S_ISREG(info.st_mode) or (
                             info.st_dev, info.st_ino
@@ -1367,13 +1373,15 @@ class VaultService:
                     return read_existing()
                 temporary = ".vaultbridge-" + uuid.uuid4().hex + ".tmp"
                 temporary_path = parent / temporary
-                write_fd = (
-                    open_windows_staged_file(temporary_path) if fd is None
-                    else os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=fd)
-                )
-                staged_identity = os.fstat(write_fd)
+                staged_identity = None
                 try:
-                    with os.fdopen(write_fd, "wb") as stream:
+                    factory = open_windows_staged_file if fd is None else os.open
+                    arguments = ((temporary_path,) if fd is None else
+                                 (temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600))
+                    options = {} if fd is None else {"dir_fd": fd}
+                    with self._scoped_resources.descriptor(factory, *arguments, **options) as lease:
+                        staged_identity = os.fstat(lease.resource.descriptor)
+                        stream = self._scoped_resources.wrap_stream(lease, "wb")
                         stream.write(markdown)
                         stream.flush()
                         os.fsync(stream.fileno())
@@ -1401,9 +1409,9 @@ class VaultService:
                         return NoteWriteResult(canonical, "created")
                 finally:
                     with suppress(OSError):
-                        if fd is None:
+                        if fd is None and staged_identity is not None:
                             temporary_path.unlink()
-                        else:
+                        elif fd is not None and staged_identity is not None:
                             remaining = os.stat(temporary, dir_fd=fd, follow_symlinks=False)
                             if (remaining.st_dev, remaining.st_ino) == (
                                 staged_identity.st_dev, staged_identity.st_ino
@@ -1489,10 +1497,14 @@ class VaultService:
                 stack.enter_context(windows_pinned_path(
                                 parent / name, _cleanup_owner=self._scoped_resources,
                             ))
-                opened = os.open(parent / name, os.O_RDONLY | os.O_BINARY)
+                opened = stack.enter_context(self._scoped_resources.descriptor(
+                    os.open, parent / name, os.O_RDONLY | os.O_BINARY,
+                ))
             else:
-                opened = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=fd)
-            stream = stack.enter_context(os.fdopen(opened, "rb"))
+                opened = stack.enter_context(self._scoped_resources.descriptor(
+                    os.open, name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=fd,
+                ))
+            stream = self._scoped_resources.wrap_stream(opened, "rb")
             identity = os.fstat(stream.fileno())
             if not stat.S_ISREG(identity.st_mode):
                 raise PromotionWriteError("unsafe_destination")
@@ -1563,13 +1575,16 @@ class VaultService:
                     return "already_applied" if existing == markdown else "conflict"
                 temporary = ".vaultbridge-" + uuid.uuid4().hex + ".tmp"
                 temporary_path = parent / temporary
-                opened = (open_windows_staged_file(temporary_path) if fd is None else os.open(
-                    temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=fd
-                ))
-                identity = os.fstat(opened)
-                target_identity = (identity.st_dev, identity.st_ino)
+                identity = None
                 try:
-                    with os.fdopen(opened, "wb") as stream:
+                    factory = open_windows_staged_file if fd is None else os.open
+                    arguments = ((temporary_path,) if fd is None else
+                                 (temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600))
+                    options = {} if fd is None else {"dir_fd": fd}
+                    with self._scoped_resources.descriptor(factory, *arguments, **options) as lease:
+                        identity = os.fstat(lease.resource.descriptor)
+                        target_identity = (identity.st_dev, identity.st_ino)
+                        stream = self._scoped_resources.wrap_stream(lease, "wb")
                         stream.write(markdown)
                         stream.flush()
                         os.fsync(stream.fileno())
@@ -1596,9 +1611,9 @@ class VaultService:
                         return "created"
                 finally:
                     with suppress(OSError):
-                        if fd is None:
+                        if fd is None and identity is not None:
                             temporary_path.unlink()
-                        else:
+                        elif fd is not None and identity is not None:
                             remaining = os.stat(temporary, dir_fd=fd, follow_symlinks=False)
                             if (remaining.st_dev, remaining.st_ino) == (identity.st_dev, identity.st_ino):
                                 os.unlink(temporary, dir_fd=fd)
@@ -1660,10 +1675,14 @@ class VaultService:
                         stack.enter_context(windows_pinned_path(
                                 parent / name, _cleanup_owner=self._scoped_resources,
                             ))
-                        opened = os.open(parent / name, os.O_WRONLY | os.O_APPEND | os.O_BINARY)
+                        opened = stack.enter_context(self._scoped_resources.descriptor(
+                            os.open, parent / name, os.O_WRONLY | os.O_APPEND | os.O_BINARY,
+                        ))
                     else:
-                        opened = os.open(name, os.O_WRONLY | os.O_APPEND | os.O_NOFOLLOW, dir_fd=fd)
-                    stream = stack.enter_context(os.fdopen(opened, "ab"))
+                        opened = stack.enter_context(self._scoped_resources.descriptor(
+                            os.open, name, os.O_WRONLY | os.O_APPEND | os.O_NOFOLLOW, dir_fd=fd,
+                        ))
+                    stream = self._scoped_resources.wrap_stream(opened, "ab")
                     current = os.fstat(stream.fileno())
                     if (current.st_dev, current.st_ino, current.st_size) != (
                         identity.st_dev, identity.st_ino, len(existing)
