@@ -15,6 +15,7 @@ class _OperationCancellation:
     def __init__(self, caller, stopped):
         self._caller = caller
         self._stopped = stopped
+        self._write_completed = False
 
     def check(self):
         self._caller.check()
@@ -85,7 +86,8 @@ class ScopedOperationAdmission:
         try:
             token.check()
             yield token
-            token.check()
+            if not token._write_completed:
+                token.check()
         finally:
             with self._condition:
                 self._active_thread = None

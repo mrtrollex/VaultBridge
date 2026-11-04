@@ -54,7 +54,7 @@ class CaptureService:
         self.vault_service = vault_service
         self.enqueue = enqueue
 
-    def _compose(self, request):
+    def _compose(self, request, *, _space_id=None):
         if not isinstance(request, Mapping) or not _REQUIRED <= request.keys() or request.keys() - _FIELDS:
             raise CaptureValidationError()
         content = _text(request["content"], 65_536)
@@ -70,6 +70,8 @@ class CaptureService:
         except ValueError:
             raise CaptureValidationError() from None
         metadata = {"capture_id": capture_id, "capture_state": state, "captured_at": timestamp[:19] + "Z"}
+        if _space_id is not None:
+            metadata.update(capture_provenance_version=2, capture_space_id=_space_id.value)
         for field, bound in (("title", 256), ("source", 2048), ("tags", 1024), ("capture_type", 64)):
             if field not in request:
                 continue
@@ -104,9 +106,9 @@ class CaptureService:
             raise CaptureValidationError("size_limit")
         return capture_id, markdown
 
-    def capture(self, request: Mapping[str, object]) -> CaptureResult:
+    def capture(self, request: Mapping[str, object], *, _space_id=None) -> CaptureResult:
         try:
-            capture_id, markdown = self._compose(request)
+            capture_id, markdown = self._compose(request, _space_id=_space_id)
         except CaptureValidationError as exc:
             return CaptureResult(exc.category)
         try:

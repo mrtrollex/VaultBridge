@@ -299,11 +299,12 @@ def test_append_partial_write_is_commit_unknown(tmp_path, monkeypatch):
     original = os.fdopen
 
     class Partial:
-        def __init__(self, opened):
+        def __init__(self, opened, **kwargs):
             self.opened = opened
+            self.options = kwargs
 
         def __enter__(self):
-            self.stream = original(self.opened, "ab")
+            self.stream = original(self.opened, "ab", **self.options)
             return self
 
         def __exit__(self, *_args):
@@ -316,8 +317,8 @@ def test_append_partial_write_is_commit_unknown(tmp_path, monkeypatch):
             self.stream.write(data[:len(data) // 2])
             raise OSError("private content path")
 
-    def partial(opened, mode):
-        return Partial(opened) if mode == "ab" else original(opened, mode)
+    def partial(opened, mode, **kwargs):
+        return Partial(opened, **kwargs) if mode == "ab" else original(opened, mode, **kwargs)
 
     monkeypatch.setattr(os, "fdopen", partial)
     assert service.apply(request).category == "commit_unknown"

@@ -90,9 +90,9 @@ def _json_bytes(value: Mapping[str, object], *, escape_lt: bool = False) -> byte
     return value_json.encode("utf-8")
 
 
-def _markers(promotion_id: str) -> tuple[bytes, bytes]:
-    return (f"<!-- vaultbridge-promotion:v1 id={promotion_id}".encode(),
-            f"<!-- /vaultbridge-promotion:v1 id={promotion_id}".encode())
+def _markers(promotion_id: str, version=1) -> tuple[bytes, bytes]:
+    return (f"<!-- vaultbridge-promotion:v{version} id={promotion_id}".encode(),
+            f"<!-- /vaultbridge-promotion:v{version} id={promotion_id}".encode())
 
 
 def _utc(value: object) -> str:
@@ -124,10 +124,11 @@ def _body(markdown: str) -> str:
 
 class PromotionService:
     def __init__(self, vault_service: VaultService, *, enqueue: Callable[[str], bool] | None = None,
-                 candidates=None):
+                 candidates=None, _space_id=None):
         self.vault_service = vault_service
         self.enqueue = enqueue
         self.candidates = candidates
+        self._space_id = _space_id
 
     def _capture(self, source_path: str, capture_id: str) -> PromotionReview:
         if (type(source_path) is not str or type(capture_id) is not str
@@ -143,6 +144,13 @@ class PromotionService:
         if parsed.state != "valid" or parsed.metadata is None:
             raise PromotionError("unsafe_source")
         metadata = parsed.metadata
+        version = metadata.get("capture_provenance_version")
+        sid = metadata.get("capture_space_id")
+        if self._space_id is None:
+            if "capture_provenance_version" in metadata or "capture_space_id" in metadata:
+                raise PromotionError("unsafe_source")
+        elif type(version) is not int or version != 2 or sid != self._space_id.value:
+            raise PromotionError("unsafe_source")
         if (metadata.get("capture_id") != capture_id
                 or metadata.get("capture_state") not in ("inbox", "draft")
                 or type(metadata.get("captured_at")) is not str):
@@ -231,7 +239,7 @@ class PromotionService:
             raise PromotionError("size_limit")
         if any(character in content for character in ("\r", "\u0085", "\u2028", "\u2029")):
             raise PromotionError()
-        markers = _markers(promotion_id)
+        markers = (*_markers(promotion_id), *_markers(promotion_id, 2))
         if any(prefix in content_bytes for prefix in markers):
             raise PromotionError()
         fields = request["transfer_fields"]
@@ -261,6 +269,9 @@ class PromotionService:
             digest_object["expected_destination"] = "absent"
         else:
             digest_object["expected_destination_sha256"] = expected_sha
+        if self._space_id is not None:
+            digest_object.update(provenance_version=2, source_space_id=self._space_id.value,
+                                 destination_space_id=self._space_id.value)
         digest = hashlib.sha256(_json_bytes(digest_object)).hexdigest()
         if action == "create":
             metadata = {"promotion_id": promotion_id, "promotion_decision_sha256": digest,
@@ -270,6 +281,9 @@ class PromotionService:
                         "captured_at": snapshot.metadata["captured_at"]}
             if "source" in snapshot.metadata:
                 metadata["capture_declared_source"] = snapshot.metadata["source"]
+            if self._space_id is not None:
+                metadata.update(promotion_provenance_version=2, promotion_space_id=self._space_id.value,
+                                promoted_from_capture_space_id=self._space_id.value)
             metadata.update(transfer)
             try:
                 markdown = (serialize_frontmatter(metadata) + "\n" + content).encode("utf-8")
@@ -281,13 +295,17 @@ class PromotionService:
                         "approved_at": approved_at, "transfer": transfer}
             if "source" in snapshot.metadata:
                 manifest["capture_declared_source"] = snapshot.metadata["source"]
+            if self._space_id is not None:
+                manifest.update(provenance_version=2, source_space_id=self._space_id.value,
+                                destination_space_id=self._space_id.value)
+            version = b"1" if self._space_id is None else b"2"
             manifest_bytes = _json_bytes(manifest, escape_lt=True)
             longest = max((len(run) for run in re.findall(rb"`+", manifest_bytes)), default=0)
             fence = b"`" * max(3, longest + 1)
-            markdown = (b"\n\n<!-- vaultbridge-promotion:v1 id=" + promotion_id.encode()
+            markdown = (b"\n\n<!-- vaultbridge-promotion:v" + version + b" id=" + promotion_id.encode()
                         + b" sha256=" + digest.encode() + b" -->\n" + fence + b"json\n"
                         + manifest_bytes + b"\n" + fence + b"\n\n" + content_bytes
-                        + b"\n<!-- /vaultbridge-promotion:v1 id=" + promotion_id.encode() + b" -->\n")
+                        + b"\n<!-- /vaultbridge-promotion:v" + version + b" id=" + promotion_id.encode() + b" -->\n")
         if len(markdown) > self.vault_service.max_note_bytes:
             raise PromotionError("size_limit")
         return PromotionDecision(snapshot.source_path, snapshot.capture_id, snapshot.source_sha256,
@@ -311,6 +329,12 @@ class PromotionService:
                     raise PromotionWriteError("source_changed")
                 self._capture(decision.source_path, decision.capture_id)
 
+            def check_destination(existing):
+                self._check_destination(existing)
+                other = _markers(decision.promotion_id, 2 if self._space_id is None else 1)
+                if any(marker in existing for marker in other):
+                    raise PromotionWriteError("conflict")
+
             if decision.action == "create":
                 category = self.vault_service.create_promotion_if_absent(
                     path=decision.destination, markdown=decision.markdown, check_source=check_source)
@@ -319,8 +343,9 @@ class PromotionService:
                 # is independently checked by VaultService before the preimage comparison.
                 category = self.vault_service.append_promotion_once(
                     path=decision.destination, preimage_sha256=decision.expected_destination_sha256,
-                    block=decision.markdown, marker_prefixes=_markers(decision.promotion_id),
-                    check_source=check_source, check_destination=self._check_destination)
+                    block=decision.markdown,
+                    marker_prefixes=_markers(decision.promotion_id, 1 if self._space_id is None else 2),
+                    check_source=check_source, check_destination=check_destination)
         except (PromotionError, PromotionWriteError) as exc:
             return PromotionResult(exc.category)
         if category not in ("created", "appended", "already_applied"):

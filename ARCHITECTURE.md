@@ -660,7 +660,13 @@ enabled-index lifecycle handle (None when disabled). Every local dependency uses
 No model, writable repository, worker or bound enqueue callback is created. Immutable inspection
 reuses the existing semantic owner's classifier and repository's immutable reader without loading
 a fingerprint. Named semantic activation/resource scheduling waits for E; scoped
-capture/promotion provenance and index callbacks wait for E/F.
+capture/promotion provenance and index callbacks use Slice F's private runtime APIs.
+`SpaceOperations.scoped_capture` requires an explicit WriteScope. Scoped promotion review binds
+same-space QualifiedPaths; decision/apply retain the authorized registry context and exact approved
+request. V2 uses the portable fields, canonical digest additions and replay markers specified in
+BACKLOG.md. Legacy unscoped owners preserve v1. New writes require runtime admission, delegate to
+existing VaultService coordinated primitives and enqueue qualified paths on the bound scheduler
+only after a new durable commit. Disabled indexing stays inert; no public adapters are enabled.
 `services/space_operations.py: SpaceOperations` authorizes through SpacePolicyResolver before
 owner access, verifies the registry token/exact bundle and named root identity, then delegates
 only one-space note reads, outgoing/backlinks, nonsemantic duplicate advice, hygiene or inspection.

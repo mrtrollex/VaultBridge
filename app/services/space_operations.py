@@ -1,7 +1,7 @@
 """Qualified local operations and bounded Markdown-only read federation.
 
-Named semantic activation uses the explicit private E6 runtime. Writes and scoped
-capture/promotion wait for their bound lifecycle/provenance implementation.
+Named semantic activation and scoped v2 writes use the explicit private runtime.
+Public named-serving adapters remain gated on VB-152.
 """
 
 from __future__ import annotations
@@ -23,6 +23,7 @@ from app.services.knowledge_spaces import (
     SpaceId,
     SpaceOwners,
     SpacePolicyResolver,
+    WriteScope,
 )
 from app.services.vault import NoteReadResult, NoteUnavailableError, VaultValidationError, _owned_note_reads
 
@@ -73,6 +74,32 @@ class SpaceOperations:
         else:
             with self._admission.operation(cancel) as token, _owned_note_reads():
                 yield token
+
+    @_safe_local_errors
+    def scoped_capture(self, scope: WriteScope, request, *, cancel=None):
+        from app.services._scoped_promotion import capture
+        return capture(self, scope, request, cancel=cancel)
+
+    @_safe_local_errors
+    def scoped_promotion_review(self, source: QualifiedPath, capture_id, *,
+                                destination: QualifiedPath, candidate_limit=None, cancel=None):
+        from app.services._scoped_promotion import review
+        return review(self, source, capture_id, destination, candidate_limit, cancel=cancel)
+
+    @_safe_local_errors
+    def scoped_promotion_destination(self, destination: QualifiedPath, *, cancel=None):
+        from app.services._scoped_promotion import inspect_destination
+        return inspect_destination(self, destination, cancel=cancel)
+
+    @_safe_local_errors
+    def scoped_promotion_decide(self, snapshot, request, *, cancel=None):
+        from app.services._scoped_promotion import decide
+        return decide(self, snapshot, request, cancel=cancel)
+
+    @_safe_local_errors
+    def scoped_promotion_apply(self, decision, *, cancel=None):
+        from app.services._scoped_promotion import apply
+        return apply(self, decision, cancel=cancel)
 
     def scoped_list(self, scope=None, *, folder=None, limit=50, cancel=None, limits=None):
         from app.services._scoped_federation import federate

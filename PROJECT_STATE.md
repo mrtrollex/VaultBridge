@@ -352,13 +352,14 @@ Current post-v1 planning position:
   configuration before owner work; legacy startup remains unchanged. Slice B adds explicit private
   local owner bundles, qualified one-space note/relationship/duplicate-advice/hygiene/inspection
   orchestration and a disabled-index immutable facade. Its inspection-only factory stays inert;
-  scoped capture/promotion remains deferred. Slice C adds budgeted sequential Markdown-only scoped
+  scoped capture/promotion now executes through the private Slice F runtime boundary. Slice C adds
+  budgeted sequential Markdown-only scoped
   list/literal/nonsemantic Query, qualified predicates, supplied snapshots, incremental relationship
   admission, cancellation and finite coverage. D1–D3b implement precise bounded semantic
   federation and semantic Query. E1–E5 supply independent index bindings, shared lazy embedding,
   resumable sync, bounded scheduling and native monitoring. E6 now adds explicit private runtime
   composition, exact immutable ownership, cancellable operation admission and coordinated
-  startup/rollback/shutdown. Slices A–E are implemented; F–G remain pending; VB-151 is not complete.
+  startup/rollback/shutdown. Slices A–F are implemented; G remains pending; VB-151 is not complete.
   VB-152 adapters remain future/unscoped and need a separate contract; named serving remains blocked.
   Milestone 16 remains PLANNED; multi-space serving and index-format changes are not implemented
 - VB-032 and VB-033 remain deferred optional future work
