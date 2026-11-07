@@ -704,16 +704,40 @@ Existing REST/MCP/CLI composition rejects named configuration before owner const
 until VB-152 integrates every applicable entry point. No public schema, route, operation ID,
 resource, storage format or legacy response changes in the current runtime.
 
-### VB-152 adapter contract (proposed; not implemented)
+### VB-152 adapters (Slice A private; public named activation blocked)
 
-The authoritative [VB-152 contract](BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-contract-defined-implementation-not-started)
+The authoritative [VB-152 contract](BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-slice-a-private-activation-blocked)
 defines exact schemas, error projections, inventory, activation gates and acceptance evidence.
 It extends existing `/api/v1/notes*` and hygiene routes/MCP tools with explicit `space` (one-space
 operations) or `spaces` (bounded federation). It adds one POST `/api/v1/knowledge/query` operation
 and `knowledge_query` MCP tool, using existing ScopedKnowledgeQuery. No second REST family or
 parallel scoped tools are selected. Omitted existing requests stay default-only with unchanged
 wire shapes, bounds and semantics; explicit scope, including default, gets qualified output.
-New Query always uses the scoped contract, with omission still default-only.
+New Query always uses the scoped contract, with omission still default-only; its REST/MCP and
+structured CLI additions remain unimplemented Slice B work.
+
+Slice A integrates existing reads with `SpaceOperations.compatibility_read` and the existing
+qualified operations. Legacy composition binds the exact injected owners once, and mounted MCP
+HTTP shares that exact operations object. Explicit wire validation/projection is shared in
+`space_read_transport.py`; responses use allowlists and never serialize registry/owner objects.
+Both MCP transports reject duplicate scoped JSON keys before SDK coercion. Qualified resource
+URIs encode the entire canonical path as one component and require one-decode/re-encode equality
+after authorized owner read. The default resource template retains its original rules.
+
+`compose_persisted_space_reads` is a private stopped-service profile with one shared lazy model,
+the same federation/admission and retained runtime cleanup, and no scheduler/watcher/startup sync.
+Its bounded immutable SQLite view rejects sidecars, missing/incompatible namespaces and redirected
+storage. Its model wrapper resolves existing artifacts before calling FastEmbed with an explicit
+local path, avoiding download/cache-repair fallback. CLI profile preflight authorizes the complete
+selection and supplementary requirements before owner construction; execution reauthorizes after
+the complete registry's owner map is final. Explicit CLI reads and new JSON options preserve the
+legacy omitted branch and do not add structured Query selectors.
+
+Explicitly private constructors support named integration tests. Every production constructor and
+entry point still enforces `require_legacy_composition()`. Named health uses minimal projections;
+readiness authorizes default before probes, and Dashboard/session/assets/cookie and CLI maintenance
+fences have executable private coverage. There is no named UI, discovery, scoped write, new Query
+route/tool or public named serving. See [Slice A evidence](docs/VB152_A_VERIFICATION.md).
 
 Every public operation, including old aliases, resources and CLI calls, must enter SpaceOperations
 and the authoritative resolver before owner work. One immutable registry generation pins owner,

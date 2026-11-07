@@ -12,6 +12,7 @@ from starlette.types import ASGIApp
 from app.api.health import router as health_router
 from app.api.knowledge_hygiene import router as knowledge_hygiene_router
 from app.api.notes import router as notes_router
+from app.api.read_openapi import install_read_openapi
 from app.api.relationships import router as relationships_router
 from app.api.search import router as search_router
 from app.core.config import Settings
@@ -19,6 +20,7 @@ from app.core.logging import configure_application_logging, log_event
 from app.core.observability import RequestObservabilityMiddleware
 from app.core.ui_session import UISessionNoStoreMiddleware
 from app.mcp_http import create_mcp_http_transport
+from app.services.adapter_composition import legacy_operations
 from app.services.duplicate_candidates import DuplicateCandidateService
 from app.services.filesystem_watcher import SemanticFilesystemWatcher
 from app.services.indexer import BackgroundSemanticIndexer
@@ -37,6 +39,7 @@ from app.services.vault import (
     VaultServiceError,
     VaultValidationError,
 )
+from app.ui.named_fence import NamedUIFence
 from app.ui.router import router as ui_router
 
 APP_TITLE = "VaultBridge"
@@ -253,7 +256,13 @@ def create_app(
     application.state.relationship_service = app_relationship_service
     application.state.vault_service = app_vault_service
     application.state.knowledge_hygiene_service = app_knowledge_hygiene_service
+    application.state.space_operations = legacy_operations(
+        app_settings, vault=app_vault_service, semantic=app_semantic_search_service,
+        relationships=app_relationship_service, duplicates=app_duplicate_candidate_service,
+        hygiene=app_knowledge_hygiene_service,
+    )
     application.state.mcp_server = None
+    application.add_middleware(NamedUIFence, named=app_settings.knowledge_spaces_json is not None)
     application.add_exception_handler(VaultServiceError, handle_vault_service_error)
     application.include_router(health_router)
     application.include_router(notes_router)
@@ -271,9 +280,11 @@ def create_app(
             knowledge_hygiene_service=app_knowledge_hygiene_service,
             semantic_indexer=app_semantic_indexer,
             rate_limiter=app_rate_limiter,
+            space_operations=application.state.space_operations,
         )
         application.state.mcp_server = mcp_server
         application.mount("/", mcp_http_app, name="mcp-http")
+    install_read_openapi(application)
     return application
 
 

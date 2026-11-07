@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import json
 import logging
 import re
 import time
 from collections.abc import Callable
+from contextlib import contextmanager
 from pathlib import PurePosixPath, PureWindowsPath
 from typing import Annotated, Any, Literal, TypeVar
 from urllib.parse import quote
@@ -25,9 +27,13 @@ from app.knowledge_hygiene_transport import (
     KnowledgeHygieneScanResponse,
     serialize_hygiene_result,
 )
+from app.mcp_read_input import HTTP_READ_LIFETIME, INVALID_SCOPED_JSON, StrictScopedLines
+from app.read_execution import run_async_read, run_read
+from app.services.adapter_composition import legacy_operations, validate_legacy_operations, validate_private_operations
 from app.services.duplicate_candidates import DuplicateCandidateService
 from app.services.indexer import BackgroundSemanticIndexer
 from app.services.knowledge_hygiene import KnowledgeHygieneError, KnowledgeHygieneService
+from app.services.knowledge_spaces import SpaceError
 from app.services.note_writes import (
     clean_note_tags,
     clean_note_title,
@@ -41,6 +47,7 @@ from app.services.semantic_search import (
     SemanticSearchUnavailableError,
     semantic_search_service_from_settings,
 )
+from app.services.space_operations import SpaceOperations
 from app.services.vault import (
     NoteConflictError,
     NoteNotFoundError,
@@ -48,12 +55,21 @@ from app.services.vault import (
     VaultService,
     VaultValidationError,
 )
+from app.space_read_transport import (
+    InvalidReadRequest,
+    execute_scoped,
+    has_scope,
+    parse_resource_uri,
+    public_error,
+    scoped_resource_uri,
+)
 
 MCP_SERVER_NAME = "VaultBridge"
 MCP_SERVER_VERSION = "1.4.0"
 MCP_CLIENT_ID = "stdio-process"
 MCPTransport = Literal["stdio", "streamable-http"]
 NOTE_RESOURCE_TEMPLATE = "vaultbridge://note/{path}"
+SPACE_NOTE_RESOURCE_TEMPLATE = "vaultbridge://space/{space_id}/note/{path}"
 NOTE_MIME_TYPE = "text/markdown"
 RELATED_CANDIDATE_OVERFETCH_FACTOR = 3
 RELATED_CANDIDATE_LIMIT = 50
@@ -199,6 +215,27 @@ class SemanticIndexRebuildingError(RuntimeError):
 T = TypeVar("T")
 
 
+class VaultBridgeMCPServer(MCPServer):
+    async def run_stdio_async(self):
+        # Keep the SDK's standard-stream claim/diversion/restore ownership; only
+        # its line iterator gains validation before duplicate keys are dropped.
+        import sys
+
+        import anyio
+        from mcp.server.stdio import _claim_fd, _open_stdin_diversion, _UnownedTextWrapper, stdio_server
+
+        stdin, restore = _claim_fd(0, sys.stdin, "rb", _open_stdin_diversion)
+        try:
+            source = anyio.wrap_file(_UnownedTextWrapper(stdin, encoding="utf-8", errors="replace"))
+            async with stdio_server(stdin=StrictScopedLines(source)) as (read_stream, write_stream):
+                await self._lowlevel_server.run(
+                    read_stream, write_stream, self._lowlevel_server.create_initialization_options(),
+                )
+        finally:
+            if restore is not None:
+                restore()
+
+
 def _canonical_service_path(path: str) -> str:
     normalized = path.strip().replace("\\", "/")
     posix_path = PurePosixPath(normalized)
@@ -220,6 +257,11 @@ def note_resource_uri(path: str) -> str:
 
 
 def _safe_tool_error(text: str) -> str:
+    for code in ("invalid_scope", "invalid_request", "scope_not_allowed", "capability_unavailable",
+                 "invalid_path", "note_not_found", "note_conflict", "size_limit", "space_unavailable",
+                 "semantic_unavailable", "operation_cancelled", "internal_error"):
+        if re.fullmatch(r"(?:Error executing tool [a-z_]+: )?" + code + r": Operation failed\.", text):
+            return f"{code}: Operation failed."
     messages = {
         "hygiene_unavailable": "hygiene_unavailable: A bounded hygiene scan is unavailable.",
         "invalid_path": "invalid_path: Invalid vault-relative path.",
@@ -288,6 +330,64 @@ async def _privacy_error_middleware(
     return result
 
 
+def _scoped_read_middleware(adapter):
+    operations = {"list_notes": "list", "read_note": "read", "search_notes": "literal",
+                  "related_notes": "related", "duplicate_candidates": "duplicates",
+                  "note_links": "links", "note_backlinks": "backlinks", "knowledge_hygiene_scan": "hygiene"}
+
+    @contextmanager
+    def read_lifetime(context):
+        request = context.request
+        lifetime = request.scope.get(HTTP_READ_LIFETIME) if request is not None else None
+        if lifetime is None:
+            yield {}
+        else:
+            with lifetime.read() as token:
+                yield {"cancel": token, "disconnected": lifetime.is_disconnected}
+
+    async def dispatch(context, call_next):
+        params = context.params if isinstance(context.params, dict) else {}
+        if INVALID_SCOPED_JSON in params:
+            raise MCPError(code=INVALID_PARAMS,
+                           message="note_resource_unavailable: Note resource is invalid or unavailable.")
+        arguments = params.get("arguments", {})
+        if context.method == "tools/call" and has_scope(arguments):
+            name = params.get("name")
+            try:
+                if name not in operations:
+                    raise SpaceError("invalid_scope")
+
+                def action(token):
+                    def execute():
+                        # Convert inside the action so _execute never applies a
+                        # legacy exception category to an explicit scoped call.
+                        try:
+                            if INVALID_SCOPED_JSON in arguments:
+                                raise InvalidReadRequest()
+                            return execute_scoped(adapter.operations, operations[name], arguments,
+                                                  resource_uris=True, cancel=token)
+                        except Exception as exc:
+                            code, _, _ = public_error(exc)
+                            raise ToolError(f"{code}: Operation failed.") from None
+                    return adapter._execute(name, execute, result_count=lambda _: 0)
+
+                with read_lifetime(context) as cancellation:
+                    result = await run_read(action, **cancellation)
+                return CallToolResult(content=[TextContent(type="text", text=json.dumps(result))],
+                                      structured_content=result)
+            except Exception as exc:
+                code = str(exc).split(":", 1)[0] if isinstance(exc, ToolError) else public_error(exc)[0]
+                return CallToolResult(
+                    is_error=True, content=[TextContent(type="text", text=f"{code}: Operation failed.")]
+                )
+        if context.method == "resources/read" or (context.method == "tools/call" and params.get("name") in operations):
+            with read_lifetime(context) as cancellation:
+                return await run_async_read(lambda: _privacy_error_middleware(context, call_next), **cancellation)
+        return await _privacy_error_middleware(context, call_next)
+
+    return dispatch
+
+
 class VaultBridgeMCPAdapter:
     def __init__(
         self,
@@ -301,8 +401,14 @@ class VaultBridgeMCPAdapter:
         semantic_indexer: BackgroundSemanticIndexer | None,
         transport: MCPTransport,
         operation_rate_limiter: FixedWindowRateLimiter | None,
+        operations: SpaceOperations,
     ) -> None:
+        if settings.knowledge_spaces_json is not None:
+            validate_private_operations(operations, settings=settings, vault=vault_service,
+                semantic=semantic_search_service, duplicates=duplicate_candidate_service,
+                relationships=relationship_service, hygiene=knowledge_hygiene_service, indexer=semantic_indexer)
         self.settings = settings
+        self.operations = operations
         self.vault_service = vault_service
         self.semantic_search_service = semantic_search_service
         self.duplicate_candidate_service = duplicate_candidate_service
@@ -324,9 +430,14 @@ class VaultBridgeMCPAdapter:
                         f"rate_limited: Operation limit exceeded; retry in {retry_after} seconds."
                     )
             result = action()
-        except ToolError:
-            self._log_failure(operation, request_id, started_at, "rate_limited")
+        except ToolError as exc:
+            code = _safe_tool_error(str(exc)).split(":", 1)[0]
+            self._log_failure(operation, request_id, started_at, code)
             raise
+        except SpaceError as exc:
+            code, _, _ = public_error(exc)
+            self._log_failure(operation, request_id, started_at, code)
+            raise ToolError(f"{code}: Operation failed.") from None
         except KnowledgeHygieneError as exc:
             code = {"invalid_request": "validation_error", "scan_unavailable": "hygiene_unavailable"}.get(
                 exc.reason, "internal_error",
@@ -373,7 +484,9 @@ class VaultBridgeMCPAdapter:
                 started_at,
                 "internal_error",
                 error_type=type(exc).__name__,
-                exc_info=None if operation == "knowledge_hygiene_scan" else (type(exc), exc, exc.__traceback__),
+                exc_info=None
+                if operation == "knowledge_hygiene_scan" or self.settings.knowledge_spaces_json is not None
+                else (type(exc), exc, exc.__traceback__),
             )
             raise ToolError("internal_error: The operation could not be completed.") from exc
 
@@ -414,14 +527,19 @@ class VaultBridgeMCPAdapter:
             exc_info=exc_info,
         )
 
-    def _require_semantic_index(self) -> None:
+    def _require_semantic_index(self, service=None) -> None:
+        semantic = service if service is not None else self.semantic_search_service
         try:
-            if self.transport == "stdio":
-                if self.semantic_search_service.use_persisted_index_for_read_only_search():
+            if self.settings.knowledge_spaces_json is not None:
+                if semantic.probe_search_availability():
                     return
-                inspection = self.semantic_search_service.inspect_persisted_index()
+                raise SemanticSearchUnavailableError()
+            if self.transport == "stdio":
+                if semantic.use_persisted_index_for_read_only_search():
+                    return
+                inspection = semantic.inspect_persisted_index()
             else:
-                inspection = self.semantic_search_service.inspect_index()
+                inspection = semantic.inspect_index()
                 if inspection.search_available:
                     return
         except Exception as exc:
@@ -433,13 +551,15 @@ class VaultBridgeMCPAdapter:
     def knowledge_hygiene_scan(self, request: KnowledgeHygieneScanRequest) -> KnowledgeHygieneScanResponse:
         return self._execute(
             "knowledge_hygiene_scan",
-            lambda: serialize_hygiene_result(self.knowledge_hygiene_service.scan(request.to_domain())),
+            lambda: serialize_hygiene_result(
+                self.operations.compatibility_read("hygiene", request=request.to_domain())
+            ),
             result_count=lambda result: len(result.findings),
         )
 
     def list_notes(self, *, folder: str, limit: int) -> ListNotesResult:
         def action() -> ListNotesResult:
-            notes = self.vault_service.list_notes(folder=folder, limit=limit)
+            notes = self.operations.compatibility_read("list", folder=folder, limit=limit)
             return ListNotesResult(
                 folder=folder,
                 notes=[
@@ -457,7 +577,7 @@ class VaultBridgeMCPAdapter:
 
     def read_note(self, *, path: str) -> ReadNoteResult:
         def action() -> ReadNoteResult:
-            note = self.vault_service.read_note(path)
+            note = self.operations.compatibility_read("read", path=path)
             canonical_path = _canonical_service_path(note.path)
             return ReadNoteResult(
                 path=canonical_path,
@@ -470,7 +590,7 @@ class VaultBridgeMCPAdapter:
 
     def search_notes(self, *, query: str, folder: str, limit: int) -> SearchNotesResult:
         def action() -> SearchNotesResult:
-            results = self.vault_service.search_notes(query=query, folder=folder, limit=limit)
+            results = self.operations.compatibility_read("literal", query=query, folder=folder, limit=limit)
             return SearchNotesResult(
                 query=query,
                 results=[
@@ -495,29 +615,12 @@ class VaultBridgeMCPAdapter:
         min_score: float,
     ) -> RelatedNotesResult:
         def action() -> RelatedNotesResult:
-            canonical_folder = ""
-            if folder:
-                existing_folder = self.vault_service.existing_relative_path(folder)
-                if existing_folder is None:
-                    return RelatedNotesResult(text=text, results=[])
-                canonical_folder = _canonical_service_path(existing_folder)
-
-            self._require_semantic_index()
-            candidate_limit = min(RELATED_CANDIDATE_LIMIT, limit * RELATED_CANDIDATE_OVERFETCH_FACTOR)
-            results = self.semantic_search_service.search(
-                text,
-                folder=canonical_folder,
-                limit=candidate_limit,
-                min_score=min_score,
+            results = self.operations.compatibility_read(
+                "related", text=text, folder=folder, limit=limit, min_score=min_score,
+                prepare=self._require_semantic_index,
             )
             verified: list[RelatedNoteItem] = []
-            for result in results:
-                verified_path = self.vault_service.verify_existing_markdown_path(
-                    result.path,
-                    folder=canonical_folder,
-                )
-                if verified_path is None:
-                    continue
+            for verified_path, result in results:
                 canonical_path = _canonical_service_path(verified_path)
                 verified.append(
                     RelatedNoteItem(
@@ -547,8 +650,8 @@ class VaultBridgeMCPAdapter:
         min_score: float,
     ) -> DuplicateCandidatesResult:
         def action() -> DuplicateCandidatesResult:
-            self._require_semantic_index()
-            candidates = self.duplicate_candidate_service.find_candidates(
+            candidates = self.operations.compatibility_read(
+                "duplicates", prepare=self._require_semantic_index,
                 title=title,
                 text=text,
                 folder=folder,
@@ -581,7 +684,7 @@ class VaultBridgeMCPAdapter:
 
     def note_links(self, *, path: str) -> NoteLinksResult:
         def action() -> NoteLinksResult:
-            relationships = self.relationship_service.outgoing_relationships(path)
+            relationships = self.operations.compatibility_read("links", path=path)
             return NoteLinksResult(
                 links=[
                     NoteLinkItem(
@@ -603,7 +706,7 @@ class VaultBridgeMCPAdapter:
 
     def note_backlinks(self, *, path: str) -> NoteBacklinksResult:
         def action() -> NoteBacklinksResult:
-            backlinks = self.relationship_service.backlinks(path)
+            backlinks = self.operations.compatibility_read("backlinks", path=path)
             return NoteBacklinksResult(
                 backlinks=[
                     NoteBacklinkItem(
@@ -670,7 +773,7 @@ class VaultBridgeMCPAdapter:
         def action() -> str:
             if raw_uri != note_resource_uri(path):
                 raise VaultValidationError
-            return self.vault_service.read_note(path).content
+            return self.operations.compatibility_read("read", path=path).content
 
         try:
             return self._execute("read_note_resource", action, result_count=lambda _result: 1)
@@ -694,6 +797,7 @@ def create_mcp_server(
     semantic_indexer: BackgroundSemanticIndexer | None = None,
     rate_limiter: FixedWindowRateLimiter | None = None,
     transport: MCPTransport = "stdio",
+    space_operations: SpaceOperations | None = None,
 ) -> MCPServer:
     app_settings = settings if settings is not None else Settings.from_env()
     app_settings.require_legacy_composition()
@@ -734,7 +838,35 @@ def create_mcp_server(
         semantic_indexer=semantic_indexer,
         transport=transport,
         operation_rate_limiter=operation_rate_limiter,
+        operations=(validate_legacy_operations(
+            app_settings, space_operations, vault=app_vault_service, semantic=app_semantic_service,
+            relationships=app_relationship_service, duplicates=app_duplicate_service, hygiene=app_hygiene_service,
+        ) if space_operations is not None else legacy_operations(
+            app_settings, vault=app_vault_service, semantic=app_semantic_service,
+            relationships=app_relationship_service, duplicates=app_duplicate_service, hygiene=app_hygiene_service,
+        )),
     )
+    return _read_server(adapter)
+
+
+def create_private_read_server(*, settings, operations, transport="stdio", rate_limiter=None, **raw_owners):
+    validate_private_operations(operations, settings=settings, **raw_owners)
+    if settings.mcp_write_enabled:
+        raise SpaceError("invalid_configuration", reason="named_serving_unsupported")
+    limiter = rate_limiter
+    if transport == "stdio" and limiter is None:
+        limiter = FixedWindowRateLimiter(requests=settings.rate_limit_requests,
+                                        window_seconds=settings.rate_limit_window_seconds, max_clients=1)
+    adapter = VaultBridgeMCPAdapter(
+        settings=settings, operations=operations, vault_service=None, semantic_search_service=None,
+        duplicate_candidate_service=None, relationship_service=None, knowledge_hygiene_service=None,
+        semantic_indexer=None, transport=transport, operation_rate_limiter=limiter,
+    )
+    return _read_server(adapter)
+
+
+def _read_server(adapter):
+    app_settings = adapter.settings
     defaults = KnowledgeHygieneScanRequest()
 
     def knowledge_hygiene_scan(
@@ -759,7 +891,7 @@ def create_mcp_server(
         knowledge_hygiene_scan, annotations=READ_ONLY_ANNOTATIONS, structured_output=True,
     )
     hygiene_tool.parameters = KnowledgeHygieneScanRequest.model_json_schema()
-    server = MCPServer(
+    server = VaultBridgeMCPServer(
         MCP_SERVER_NAME,
         description=(
             "Contained read/write access to an Obsidian Markdown vault."
@@ -768,7 +900,7 @@ def create_mcp_server(
         ),
         version=MCP_SERVER_VERSION,
         log_level="CRITICAL",
-        middleware=[_privacy_error_middleware],
+        middleware=[_scoped_read_middleware(adapter)],
         tools=[hygiene_tool],
     )
 
@@ -863,6 +995,50 @@ def create_mcp_server(
                 "note_resource_unavailable: Note resource is invalid or unavailable."
             )
         return adapter.read_note_resource(path=path, raw_uri=raw_uri)
+
+    @server.resource(
+        SPACE_NOTE_RESOURCE_TEMPLATE, name="space_note", mime_type=NOTE_MIME_TYPE,
+        description="Read one policy-authorized qualified Markdown note.",
+    )
+    def read_space_note_resource(space_id: str, path: str, ctx: Context) -> str:
+        uri = (ctx.request_context.params or {}).get("uri")
+        def action():
+            qualified = parse_resource_uri(uri)
+            result = adapter.operations.read_note(qualified)
+            if scoped_resource_uri(
+                result.identity.space_id.value, result.identity.canonical_relative_path
+            ) != uri:
+                raise VaultValidationError()
+            return result.note.content
+        try:
+            return adapter._execute("read_note_resource", action, result_count=lambda _: 1)
+        except Exception:
+            raise ResourceNotFoundError(
+                "note_resource_unavailable: Note resource is invalid or unavailable."
+            ) from None
+
+    from app.space_read_transport import (
+        MCPNoteMatchOutput,
+        MCPSemanticMatchOutput,
+        OneSpaceOutput,
+        ScopedReadOutput,
+        schema_union,
+        scoped_request_schema,
+    )
+    schemas = {
+        "list_notes": ("list", ScopedReadOutput[MCPNoteMatchOutput]),
+        "search_notes": ("literal", ScopedReadOutput[MCPNoteMatchOutput]),
+        "related_notes": ("related", ScopedReadOutput[MCPSemanticMatchOutput]),
+        "read_note": ("read", OneSpaceOutput[ReadNoteResult]),
+        "duplicate_candidates": ("duplicates", OneSpaceOutput[DuplicateCandidatesResult]),
+        "note_links": ("links", OneSpaceOutput[NoteLinksResult]),
+        "note_backlinks": ("backlinks", OneSpaceOutput[NoteBacklinksResult]),
+        "knowledge_hygiene_scan": ("hygiene", OneSpaceOutput[KnowledgeHygieneScanResponse]),
+    }
+    for name, (operation, model) in schemas.items():
+        tool = server._tool_manager.get_tool(name)
+        tool.parameters = scoped_request_schema(operation, tool.parameters)
+        tool.fn_metadata.output_schema = schema_union(tool.fn_metadata.output_schema, model.model_json_schema())
 
     return server
 

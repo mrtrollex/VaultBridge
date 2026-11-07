@@ -2,14 +2,11 @@ from __future__ import annotations
 
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Request, Response, status
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
 from app.api.dependencies import get_semantic_indexer, get_semantic_search_service, get_vault_service
-from app.services.indexer import BackgroundSemanticIndexer
-from app.services.semantic_search import SemanticSearchService
-from app.services.vault import VaultService
 
 router = APIRouter()
 
@@ -26,6 +23,10 @@ class HealthResponse(BaseModel):
     semantic_chunks: int
     vault_notes: int
     last_successful_sync: str | None
+
+
+class NamedHealthResponse(BaseModel):
+    ok: bool
 
 
 class LivenessResponse(BaseModel):
@@ -55,10 +56,17 @@ def liveness() -> LivenessResponse:
 )
 def readiness(
     response: Response,
-    semantic_search_service: SemanticSearchService = Depends(get_semantic_search_service),
-    vault_service: VaultService = Depends(get_vault_service),
+    request: Request,
 ) -> ReadinessResponse:
-    ready = vault_service.vault_available() and semantic_search_service.probe_search_availability()
+    if request.app.state.settings.knowledge_spaces_json is not None:
+        operations = request.app.state.space_operations
+        ready = (operations._admission is not None and operations._admission.running
+                 and operations.probe_default_readiness())
+    else:
+        ready = (
+            get_vault_service(request).vault_available()
+            and get_semantic_search_service(request).probe_search_availability()
+        )
     if not ready:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     return ReadinessResponse(ready=ready)
@@ -68,13 +76,17 @@ def readiness(
     "/health",
     operation_id="healthCheck",
     tags=["system"],
-    response_model=HealthResponse,
+    response_model=HealthResponse | NamedHealthResponse,
 )
 def health(
-    semantic_search_service: SemanticSearchService = Depends(get_semantic_search_service),
-    semantic_indexer: BackgroundSemanticIndexer = Depends(get_semantic_indexer),
-    vault_service: VaultService = Depends(get_vault_service),
-) -> HealthResponse:
+    request: Request,
+) -> HealthResponse | NamedHealthResponse:
+    if request.app.state.settings.knowledge_spaces_json is not None:
+        admission = request.app.state.space_operations._admission
+        return NamedHealthResponse(ok=admission is not None and admission.running)
+    semantic_search_service = get_semantic_search_service(request)
+    semantic_indexer = get_semantic_indexer(request)
+    vault_service = get_vault_service(request)
     semantic_status = semantic_search_service.health_status()
     return HealthResponse(
         ok=True,

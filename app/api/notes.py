@@ -9,8 +9,10 @@ from pydantic import BaseModel, Field, field_validator
 from app.api.dependencies import (
     PROTECTED_ROUTE_DEPENDENCIES,
     get_semantic_indexer,
+    get_space_operations,
     get_vault_service,
 )
+from app.api.space_reads import SpaceReadRoute
 from app.api.versioning import versioned_api_route
 from app.core.logging import log_event
 from app.services.indexer import BackgroundSemanticIndexer
@@ -19,9 +21,10 @@ from app.services.note_writes import (
     clean_note_title,
     enqueue_after_committed_write,
 )
+from app.services.space_operations import SpaceOperations
 from app.services.vault import VaultService
 
-router = APIRouter()
+router = APIRouter(route_class=SpaceReadRoute)
 logger = logging.getLogger("vaultbridge.api.notes")
 
 
@@ -136,9 +139,9 @@ def append_note(
 )
 def read_note(
     path: str = Query(description="Vault-relative .md path"),
-    vault_service: VaultService = Depends(get_vault_service),
+    operations: SpaceOperations = Depends(get_space_operations),
 ) -> dict:
-    result = vault_service.read_note(path)
+    result = operations.compatibility_read("read", path=path)
     return {"path": result.path, "content": result.content}
 
 
@@ -154,9 +157,9 @@ def read_note(
 def list_notes(
     folder: str = Query(default="", description="Vault-relative folder; empty means whole vault"),
     limit: int = Query(default=50, ge=1, le=200),
-    vault_service: VaultService = Depends(get_vault_service),
+    operations: SpaceOperations = Depends(get_space_operations),
 ) -> dict:
-    notes = vault_service.list_notes(folder=folder, limit=limit)
+    notes = operations.compatibility_read("list", folder=folder, limit=limit)
     return {
         "folder": folder,
         "notes": [

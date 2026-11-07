@@ -74,6 +74,7 @@ def read_eligible_snapshot(
     db_path: Path, eligible_paths: tuple[str, ...] | frozenset[str], *,
     budget: ScopedBudget, space_id: SpaceId, cancel: CancellationToken,
     expected_binding=None, storage_guard=None, allow_legacy_binding=False, connection_owner,
+    immutable=False,
 ) -> EligibleSemanticSnapshot:
     """Return all admitted rows or fail; never return an incomplete contribution.
 
@@ -125,6 +126,10 @@ def read_eligible_snapshot(
                 if storage_guard is not None:
                     storage_guard(budget=budget, space_id=space_id, cancel=cancel)
                 before = _storage_identity(target, budget=budget, space_id=space_id, cancel=cancel)
+                if immutable and any(item is not None for item in before[2]):
+                    # Offline callers require stopped, sidecar-free storage. Never
+                    # open a live WAL or initialize SQLite coordination files.
+                    raise SemanticReadUnavailableError
                 if expected_binding is not None and all(item is None for item in before[2]):
                     # Rejection-only screening avoids creating WAL/SHM for invalid stopped
                     # storage. This unpinned inspection NEVER authorizes a returned snapshot:
@@ -150,7 +155,7 @@ def read_eligible_snapshot(
                 # pins the snapshot at the first schema read, before binding metadata,
                 # and retains it through chunk materialization in both DELETE and WAL.
                 connection = connections.enter_context(connection_owner.connection(
-                    f"{target.as_uri()}?mode=ro", uri=True, timeout=0,
+                    f"{target.as_uri()}?mode=ro" + ("&immutable=1" if immutable else ""), uri=True, timeout=0,
                 ))
                 connection.set_progress_handler(progress, 1)
                 one("BEGIN")

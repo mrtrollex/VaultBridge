@@ -12,9 +12,11 @@ from app.core.ui_session import (
 from app.services.duplicate_candidates import DuplicateCandidateService
 from app.services.indexer import BackgroundSemanticIndexer
 from app.services.knowledge_hygiene import KnowledgeHygieneService
+from app.services.knowledge_spaces import SpaceError
 from app.services.rate_limiter import FixedWindowRateLimiter
 from app.services.relationships import RelationshipService
 from app.services.semantic_search import SemanticSearchService
+from app.services.space_operations import SpaceOperations
 from app.services.vault import VaultService
 
 
@@ -23,31 +25,48 @@ def get_settings(request: Request) -> Settings:
 
 
 def get_vault_service(request: Request) -> VaultService:
+    if request.app.state.settings.knowledge_spaces_json is not None:
+        raise SpaceError("invalid_configuration", reason="named_serving_unsupported")
     return request.app.state.vault_service
 
 
+def get_space_operations(request: Request) -> SpaceOperations:
+    return request.app.state.space_operations
+
+
 def get_semantic_search_service(request: Request) -> SemanticSearchService:
+    _require_legacy_owner(request)
     return request.app.state.semantic_search_service
 
 
 def get_semantic_indexer(request: Request) -> BackgroundSemanticIndexer:
+    _require_legacy_owner(request)
     return request.app.state.semantic_indexer
 
 
 def get_duplicate_candidate_service(request: Request) -> DuplicateCandidateService:
+    _require_legacy_owner(request)
     return request.app.state.duplicate_candidate_service
 
 
 def get_relationship_service(request: Request) -> RelationshipService:
+    _require_legacy_owner(request)
     return request.app.state.relationship_service
 
 
 def get_knowledge_hygiene_service(request: Request) -> KnowledgeHygieneService:
+    if request.app.state.settings.knowledge_spaces_json is not None:
+        return None
     return request.app.state.knowledge_hygiene_service
 
 
 def get_rate_limiter(request: Request) -> FixedWindowRateLimiter:
     return request.app.state.rate_limiter
+
+
+def _require_legacy_owner(request):
+    if request.app.state.settings.knowledge_spaces_json is not None:
+        raise SpaceError("invalid_configuration", reason="named_serving_unsupported")
 
 
 def enforce_rate_limit(
@@ -65,7 +84,8 @@ def require_auth(
     request: Request = None,
     ui_request: str | None = Header(default=None, alias="X-VaultBridge-UI-Request"),
 ) -> None:
-    if request is not None and authorization is None and ui_request == UI_REQUEST_HEADER_VALUE:
+    if (settings.knowledge_spaces_json is None and request is not None
+            and authorization is None and ui_request == UI_REQUEST_HEADER_VALUE):
         token = request.cookies.get(UI_SESSION_COOKIE_NAME)
         if validate_ui_session_token(token, settings):
             return

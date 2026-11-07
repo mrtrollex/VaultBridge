@@ -66,8 +66,54 @@ class SpaceOperations:
     _resolver: SpacePolicyResolver = field(repr=False)
     _admission: ScopedOperationAdmission | None = field(default=None, repr=False)
 
+    def compatibility_read(self, operation, *, cancel=None, **arguments):
+        """Default-only legacy dispatch, without federation's new bounds."""
+        from app.services._space_compatibility import read
+
+        return read(self, operation, arguments, cancel=cancel)
+
+    def authorize_read_requirements(self, operation, scope, *, request=None):
+        """Pure profile preflight, before composing any operational owner.
+
+        No grant escapes this check: execution reauthorizes against the finalized
+        owner map. The full registry, policies and default binding are retained.
+        """
+        capability = {"list": Capability.LIST_NOTES, "literal": Capability.LITERAL_SEARCH,
+                      "related": Capability.SEMANTIC_RETRIEVAL, "query": Capability.KNOWLEDGE_QUERY,
+                      "hygiene": Capability.HYGIENE}[operation]
+        bindings = self._resolver.authorize_read(scope, capability)
+        if operation == "query":
+            from app.services._scoped_federation import validate_scoped_query
+            validate_scoped_query(request)
+            if request.query.semantic_text is not None:
+                self._resolver.authorize_read(scope, Capability.SEMANTIC_RETRIEVAL)
+        if operation == "hygiene":
+            KnowledgeHygieneService._validate(request)
+            if request.groups & {"relationships", "isolation"}:
+                self._resolver.authorize_read(scope, Capability.RELATIONSHIPS, frozenset(Dialect))
+            if request.duplicate_source_limit:
+                self._resolver.authorize_read(scope, Capability.DUPLICATE_CANDIDATES)
+        return tuple(binding.space_id for binding in bindings)
+
+    def probe_default_readiness(self):
+        try:
+            binding = self._read(None, Capability.SEMANTIC_RETRIEVAL)
+            with self._admit():
+                owners = self._owners(binding)
+                return owners.vault.vault_available() and owners.semantic.probe_search_availability()
+        except (OSError, UnicodeError, NoteUnavailableError):
+            return False
+        except SpaceError as exc:
+            if exc.category in {"unknown_or_denied_space", "unsupported_capability", "unsupported_dialect",
+                                "indexing_disabled", "unavailable_space", "operation_cancelled"}:
+                return False
+            raise
+
     @contextmanager
     def _admit(self, cancel=None):
+        if cancel is None:
+            from app.read_execution import current_read_cancellation
+            cancel = current_read_cancellation.get()
         # Legacy/directly constructed operations preserve their existing behavior.
         if self._admission is None:
             yield cancel
@@ -139,8 +185,15 @@ class SpaceOperations:
         if type(binding._owners) is not SpaceOwners:
             raise SpaceError("unavailable_space")
         owners = binding._owners
-        if owners._root_identity is not None and owners.vault.root_binding_identity() != owners._root_identity:
-            raise SpaceError("unavailable_space")
+        if owners._root_identity is not None:
+            try:
+                identity = owners.vault.root_binding_identity()
+            except (OSError, NoteUnavailableError):
+                # Named binding validation is an operational availability check.
+                # Do not translate legacy owner errors or arbitrary failures.
+                raise SpaceError("unavailable_space") from None
+            if identity != owners._root_identity:
+                raise SpaceError("unavailable_space")
         return owners
 
     @staticmethod

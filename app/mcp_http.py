@@ -11,7 +11,8 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.core.config import Settings
 from app.core.http_security import enforce_peer_rate_limit, verify_bearer_authorization
-from app.mcp_server import create_mcp_server
+from app.mcp_read_input import StrictScopedHTTPInput
+from app.mcp_server import create_mcp_server, create_private_read_server
 from app.services.duplicate_candidates import DuplicateCandidateService
 from app.services.indexer import BackgroundSemanticIndexer
 from app.services.knowledge_hygiene import KnowledgeHygieneService
@@ -73,6 +74,7 @@ def create_mcp_http_transport(
     knowledge_hygiene_service: KnowledgeHygieneService,
     semantic_indexer: BackgroundSemanticIndexer,
     rate_limiter: FixedWindowRateLimiter,
+    space_operations=None,
 ) -> tuple[MCPServer, ASGIApp]:
     """Create the mounted SDK app over the live application's service objects."""
     settings.require_legacy_composition()
@@ -85,7 +87,18 @@ def create_mcp_http_transport(
         knowledge_hygiene_service=knowledge_hygiene_service,
         semantic_indexer=semantic_indexer,
         transport="streamable-http",
+        space_operations=space_operations,
     )
+    return server, _protected_http_app(server, settings, rate_limiter)
+
+
+def create_private_read_http_transport(*, settings, operations, rate_limiter, **raw_owners):
+    server = create_private_read_server(settings=settings, operations=operations, transport="streamable-http",
+                                        **raw_owners)
+    return server, _protected_http_app(server, settings, rate_limiter)
+
+
+def _protected_http_app(server, settings, rate_limiter):
     security = TransportSecuritySettings(
         allowed_hosts=list(settings.mcp_http_allowed_hosts),
         allowed_origins=list(settings.mcp_http_allowed_origins),
@@ -102,8 +115,8 @@ def create_mcp_http_transport(
         transport_security=security,
     )
     protected_app = MCPHTTPAccessMiddleware(
-        sdk_app,
+        StrictScopedHTTPInput(sdk_app),
         settings=settings,
         rate_limiter=rate_limiter,
     )
-    return server, protected_app
+    return protected_app

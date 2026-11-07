@@ -47,6 +47,11 @@ class ScopedOperationAdmission:
             self._open = True
             self._condition.notify_all()
 
+    @property
+    def running(self):
+        with self._condition:
+            return self._open and not self._stopped.is_set()
+
     def begin_shutdown(self):
         with self._condition:
             self._open = False

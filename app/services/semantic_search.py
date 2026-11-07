@@ -4,6 +4,7 @@ import hashlib
 import inspect
 import json
 import logging
+import os
 import re
 import sqlite3
 import stat
@@ -25,6 +26,7 @@ import numpy as np
 
 from app.core.config import DEFAULT_SEMANTIC_MODEL, Settings
 from app.core.logging import log_event
+from app.core.resource_cleanup import ScopedResources
 from app.repositories.semantic import (
     ImmutableIndexInspectionUnavailableError,
     SemanticIndexStatus,
@@ -225,6 +227,7 @@ class FastEmbedder:
         *,
         batch_size: int = 4,
         enable_cpu_mem_arena: bool = True,
+        _read_only: bool = False,
     ) -> None:
         if batch_size <= 0:
             raise ValueError("batch_size must be positive")
@@ -232,12 +235,51 @@ class FastEmbedder:
         self.cache_dir = cache_dir
         self.batch_size = batch_size
         self.enable_cpu_mem_arena = enable_cpu_mem_arena
+        self._read_only = _read_only
+        self._persisted_resources = ScopedResources() if _read_only else None
         self._model = None
         self._cache_guard = None
         self._inference_ready = False
         self._embedding_fingerprint: str | None = None
         self._compatibility_evidence: EmbeddingCompatibilityEvidence | None = None
         self._lock = threading.Lock()
+
+    def _persisted_model_path(self, embedding_type):
+        """Resolve existing cache layout without entering download/cache repair.
+
+        FastEmbed's local_files_only fallback can remove temporary cache entries.
+        A specific existing directory bypasses that fallback entirely. Signature
+        verification still hashes the actual resolved artifacts before scoring.
+        """
+        descriptions = embedding_type.list_supported_models()
+        description = next((item for item in descriptions
+                            if item["model"].casefold() == self.model_name.casefold()), None)
+        if description is None:
+            raise SemanticIndexOperationError("Persisted model is unavailable")
+        candidates = []
+        source = description.get("sources", {}).get("hf")
+        if source:
+            repository = self.cache_dir / ("models--" + source.replace("/", "--"))
+            reference = repository / "refs" / "main"
+            if reference.is_file() and reference.resolve().is_relative_to(self.cache_dir):
+                with self._persisted_resources.descriptor(os.open, reference, os.O_RDONLY) as lease:
+                    revision = os.read(lease.resource.descriptor, 129).decode("ascii").strip()
+                if re.fullmatch(r"[a-f0-9]{40,64}", revision):
+                    candidates.append(repository / "snapshots" / revision)
+            candidates.append(repository)
+        prefix = "fast-" if description.get("sources", {}).get("deprecated_tar_struct") else ""
+        candidates.append(self.cache_dir / (prefix + description["model"].rsplit("/", 1)[-1]))
+        for candidate in candidates:
+            if not candidate.is_dir():
+                continue
+            resolved = candidate.resolve(strict=True)
+            if not resolved.is_relative_to(self.cache_dir):
+                continue
+            required = [description["model_file"], *description.get("additional_files", [])]
+            if all((resolved / name).is_file() and (resolved / name).resolve().is_relative_to(self.cache_dir)
+                   for name in required):
+                return resolved
+        raise SemanticIndexOperationError("Persisted model is unavailable")
 
     def _get_model(self):
         if self._model is not None:
@@ -254,13 +296,21 @@ class FastEmbedder:
                     from fastembed import TextEmbedding
                 except ImportError as exc:  # pragma: no cover
                     raise SemanticIndexOperationError("fastembed is not installed") from exc
-                self.cache_dir.mkdir(parents=True, exist_ok=True)
+                if self._read_only:
+                    if not self.cache_dir.is_dir() or self.cache_dir.resolve() != self.cache_dir:
+                        raise SemanticIndexOperationError("Persisted model cache is unavailable")
+                else:
+                    self.cache_dir.mkdir(parents=True, exist_ok=True)
+                offline_options = ({"local_files_only": True,
+                                    "specific_model_path": str(self._persisted_model_path(TextEmbedding))}
+                                   if self._read_only else {})
                 self._model = TextEmbedding(
                     model_name=self.model_name,
                     cache_dir=str(self.cache_dir),
                     providers=["CPUExecutionProvider"],
                     enable_cpu_mem_arena=self.enable_cpu_mem_arena,
                     lazy_load=True,
+                    **offline_options,
                 )
         return self._model
 
@@ -328,6 +378,8 @@ class FastEmbedder:
             self._compatibility_evidence = None
             self._model = None
             self._inference_ready = False
+        if self._persisted_resources is not None:
+            self._persisted_resources.drain()
 
     def validate_embedding_backend(self) -> None:
         """Force one real inference before an incompatible persisted index is discarded."""

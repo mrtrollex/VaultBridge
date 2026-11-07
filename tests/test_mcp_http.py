@@ -251,7 +251,8 @@ def test_official_client_modern_http_lists_and_calls_read_only_surface(tmp_path)
         "note_backlinks",
     ]
     assert [template.uri_template for template in templates.resource_templates] == [
-        NOTE_RESOURCE_TEMPLATE
+        NOTE_RESOURCE_TEMPLATE,
+        "vaultbridge://space/{space_id}/note/{path}",
     ]
     assert listed.structured_content["notes"][0]["path"] == "Smoke.md"
     assert read.structured_content["content"].endswith("protocol round trip")
