@@ -364,14 +364,16 @@ Current post-v1 planning position:
   limits are recorded in [VB151_G_VERIFICATION.md](docs/VB151_G_VERIFICATION.md).
   The task owner confirms VB-151 A–G complete and merged through PR #145, merge
   `5d6f0298e8511c3287366e0c7876db20ea2e6287`; the evidence report is retained unchanged.
-  VB-152 now has a proposed authoritative documentation-only contract in
-  [BACKLOG.md](BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-contract-defined-implementation-not-started).
+  VB-152's authoritative contract was approved and merged through PR #146,
+  `3653b1644ad9041b6c073370fd761bf0116edf82`; see
+  [BACKLOG.md](BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-slice-a-private-activation-blocked).
   It selects existing REST/MCP scope extensions plus one Query route/tool, scoped CLI reads/writes,
   same-space v2 capture/promotion with default v1 parity, minimal named health and a coordinated
   activation gate. Named Dashboard/session and maintenance/status are explicitly fenced; registry/
-  label discovery, rebind and migration remain separate. Four implementation slices are defined,
-  but none is started or activated. Contract acceptance and cross-surface Windows/native WSL
-  evidence remain gates; this documentation task reruns no runtime/platform evidence.
+  label discovery, rebind and migration remain separate. Slice A implements existing policy-bound
+  reads, qualified resources, a persisted read-only CLI profile and named exclusion fences privately.
+  Slices B–D remain unimplemented, and separate fresh acceptance is pending. Current evidence and
+  its exact platform/workflow boundaries are in [VB152_A_VERIFICATION.md](docs/VB152_A_VERIFICATION.md).
   Named serving remains blocked by current guards.
   Milestone 16 remains PLANNED; multi-space serving and index-format changes are not implemented
 - VB-032 and VB-033 remain deferred optional future work

@@ -100,7 +100,9 @@ def _runtime_owners(definition, settings, resource, default_storage):
         chunk_overlap=settings.semantic_chunk_overlap,
         index_batch_size=settings.semantic_index_batch_size,
     ) if enabled else ImmutableSpaceInspection(definition, settings, _runtime=True))
-    advice = _NoSemanticExecution()
+    # Explicit duplicates disable semantic advice at SpaceOperations. Legacy
+    # default dispatch retains its existing optional semantic owner behavior.
+    advice = semantic if enabled else _NoSemanticExecution()
     duplicates = DuplicateCandidateService(vault_service=vault, semantic_search_service=advice)
     return SpaceOwners(
         definition=definition, root_identity=vault.root_binding_identity(), vault=vault,

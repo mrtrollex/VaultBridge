@@ -8,10 +8,10 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from fastapi.routing import APIRoute
 from starlette.exceptions import HTTPException
 
-from app.api.dependencies import PROTECTED_ROUTE_DEPENDENCIES, get_knowledge_hygiene_service
+from app.api.dependencies import PROTECTED_ROUTE_DEPENDENCIES, get_knowledge_hygiene_service, get_space_operations
+from app.api.space_reads import SpaceReadRoute
 from app.knowledge_hygiene_transport import (
     KnowledgeHygieneScanRequest,
     KnowledgeHygieneScanResponse,
@@ -19,9 +19,10 @@ from app.knowledge_hygiene_transport import (
     serialize_hygiene_result,
 )
 from app.services import knowledge_hygiene as domain
+from app.services.space_operations import SpaceOperations
 
 
-class HygieneRoute(APIRoute):
+class HygieneRoute(SpaceReadRoute):
     """Sanitize this operation, including parsing, dependency and serialization failures."""
 
     def get_route_handler(self) -> Callable[[Request], Coroutine[Any, Any, Response]]:
@@ -81,6 +82,7 @@ class HygieneErrorResponse(TransportModel):
 def scan_knowledge_hygiene(
     request: KnowledgeHygieneScanRequest,
     service: domain.KnowledgeHygieneService = Depends(get_knowledge_hygiene_service),
+    operations: SpaceOperations = Depends(get_space_operations),
 ) -> KnowledgeHygieneScanResponse:
-    result = service.scan(request.to_domain())
+    result = operations.compatibility_read("hygiene", request=request.to_domain(), _legacy_service=service)
     return serialize_hygiene_result(result)

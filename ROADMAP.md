@@ -1221,7 +1221,7 @@ VB-150 knowledge-space and scope-policy ADR — complete, accepted design
    ↓
 VB-151 compatibility-safe multi-space domain boundary — complete; A–G merged
    ↓
-VB-152 permission-aware query and write adapter integration — contract defined; implementation not started
+VB-152 permission-aware query and write adapter integration — Slice A private; B–D unimplemented
 ```
 
 ---
@@ -1247,14 +1247,14 @@ VB-150 is complete as design-only work under accepted ADR 0009 and its BACKLOG c
 VB-151 has an authoritative contract in BACKLOG.md; runtime A–G are complete and merged.
 Native verification and baseline parity are recorded in
 [docs/VB151_G_VERIFICATION.md](docs/VB151_G_VERIFICATION.md).
-VB-152's proposed authoritative adapter contract is now defined in
-[BACKLOG.md](BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-contract-defined-implementation-not-started).
+VB-152's accepted authoritative adapter contract is defined in
+[BACKLOG.md](BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-slice-a-private-activation-blocked).
 Its four independently reviewable slices are: policy-bound existing reads and exclusion fences;
 end-to-end Knowledge Query; authorized writes and scoped CLI capture/promotion; coordinated public
 composition and activation. Existing routes/tools gain explicit scopes; one Query route/tool is new.
 Default omission remains compatible. Named Dashboard/session, maintenance and registry/label
-discovery are excluded and fenced. Implementation has not started; contract acceptance and complete
-Windows/native WSL adapter/lifecycle evidence precede public named serving. Rebind/old-artifact
+discovery are excluded and fenced. Slice A is implemented privately, with separate acceptance
+pending; B–D and complete cross-surface acceptance precede public named serving. Rebind/old-artifact
 migration remain separate contracts; Milestone 16 remains PLANNED.
 
 ## Deployment and integration candidates
@@ -1401,7 +1401,7 @@ bundles and bounded internal nonsemantic read federation. D1–D3b implement sem
 and Query; E1–E5 implement binding/resource/lifecycle primitives; E6 composes and activates them
 privately. F implements scoped v2 capture/promotion; G verifies integration and regression parity.
 The private runtime A–G is complete and merged. Current adapters reject named configuration.
-VB-152 has a proposed authoritative contract but no implementation or public activation;
+VB-152 has an accepted contract and private Slice A implementation, with no public named activation;
 Milestone 16 completion state is unchanged.
 
 ---

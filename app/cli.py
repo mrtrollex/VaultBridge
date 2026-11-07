@@ -16,6 +16,8 @@ from app.core.config import Settings
 from app.core.logging import configure_application_logging
 from app.knowledge_hygiene_transport import serialize_hygiene_result
 from app.repositories.semantic import ImmutableIndexInspectionUnavailableError
+from app.services._space_compatibility import LegacyReadUnavailable
+from app.services.adapter_composition import legacy_operations, validate_private_operations
 from app.services.capture import CaptureService
 from app.services.duplicate_candidates import DuplicateCandidateService
 from app.services.indexer import BackgroundSemanticIndexer
@@ -35,8 +37,11 @@ from app.services.knowledge_query import (
     KnowledgeQueryResult,
     KnowledgeQueryService,
 )
+from app.services.knowledge_spaces import QualifiedPath, ReadScope, SpaceError, SpaceId
+from app.services.persisted_space_reads import compose_persisted_space_reads
 from app.services.promotion import PromotionError, PromotionService
 from app.services.relationships import RelationshipService
+from app.services.scoped_reads import ScopedKnowledgeQuery
 from app.services.semantic_search import (
     Embedder,
     IndexState,
@@ -49,6 +54,7 @@ from app.services.semantic_search import (
     semantic_search_service_from_settings,
 )
 from app.services.vault import NoteSearchResult, VaultService, VaultServiceError, VaultValidationError
+from app.space_read_transport import execute_scoped, parse_scoped, project_scoped, public_error, selection
 
 EXIT_SUCCESS = 0
 EXIT_INTEGRITY_PROBLEM = 1
@@ -128,8 +134,17 @@ class _HygieneParser(argparse.ArgumentParser):
         self.exit(EXIT_CLI_FAILURE, "Knowledge hygiene failed: invalid_request.\n")
 
 
-def _parser(*, hygiene: bool = False) -> argparse.ArgumentParser:
+def _parser(*, hygiene: bool = False, scoped: bool = False, json_mode: bool = False) -> argparse.ArgumentParser:
     parser_class = _HygieneParser if hygiene else argparse.ArgumentParser
+    if scoped:
+        class ScopedParser(argparse.ArgumentParser):
+            def error(self, message):
+                code = "invalid_scope" if "--space" in message else "invalid_request"
+                if json_mode:
+                    print(json.dumps({"category": code}))
+                    self.exit(EXIT_CLI_FAILURE)
+                self.exit(EXIT_CLI_FAILURE, f"{code}: Operation failed.\n")
+        parser_class = ScopedParser
     parser = parser_class(description="Local VaultBridge vault and semantic-index operations")
     commands = parser.add_subparsers(dest="command", required=True)
 
@@ -210,17 +225,17 @@ def _parser(*, hygiene: bool = False) -> argparse.ArgumentParser:
 
     search = commands.add_parser("search", help="search Markdown titles and content literally")
     search.add_argument("query", type=_non_empty_text, help="literal text to find")
-    search.add_argument("--folder", default="", help="vault-relative folder")
-    search.add_argument("--limit", type=_search_limit, default=10, help="results from 1 to 50")
+    search.add_argument("--folder", default=None if scoped else "", help="vault-relative folder")
+    search.add_argument("--limit", type=int if scoped else _search_limit, default=10, help="results from 1 to 50")
     search.set_defaults(action="search")
 
     related = commands.add_parser("related", help="find semantically related live Markdown notes")
     related.add_argument("text", type=_non_empty_text, help="text or concept to compare")
-    related.add_argument("--folder", default="", help="vault-relative folder")
-    related.add_argument("--limit", type=_related_limit, default=5, help="results from 1 to 20")
+    related.add_argument("--folder", default=None if scoped else "", help="vault-relative folder")
+    related.add_argument("--limit", type=int if scoped else _related_limit, default=5, help="results from 1 to 20")
     related.add_argument(
         "--min-score",
-        type=_minimum_score,
+        type=float if scoped else _minimum_score,
         default=0.28,
         help="minimum semantic cosine score from -1.0 to 1.0",
     )
@@ -249,6 +264,12 @@ def _parser(*, hygiene: bool = False) -> argparse.ArgumentParser:
         help="visible result limit; the domain accepts 1 to 100",
     )
     query.set_defaults(action="query")
+    for command in (search, related, query):
+        command.add_argument(
+            "--space", action="append", default=None, help="explicit readable space ID; repeat up to eight"
+        )
+        command.add_argument("--json", action="store_true", help="emit one JSON result object")
+    scan.add_argument("--space", action="append", default=None, help="exactly one readable space ID")
     return parser
 
 
@@ -615,28 +636,31 @@ def run_search(
     settings: Settings,
     query: str,
     *,
-    folder: str = "",
+    folder: str | None = None,
     limit: int = 10,
+    spaces: Sequence[str] | None = None,
+    json_output: bool = False,
     output: TextIO | None = None,
     error_output: TextIO | None = None,
     vault_service: VaultService | None = None,
 ) -> int:
     """Run the existing literal vault search and print bounded relative-path results."""
     settings.require_legacy_composition()
+    if spaces is not None:
+        return _run_scoped_cli(settings, "literal", {"spaces": list(spaces), "query": query,
+            **({"folder": folder} if folder is not None else {}), "limit": limit}, json_output=json_output,
+            output=output, error_output=error_output, vault_service=vault_service)
+    folder = "" if folder is None else folder
     stream = output or sys.stdout
     error_stream = error_output or sys.stderr
     service = vault_service or _vault_service(settings)
-    if not service.vault_available():
+    operations = legacy_operations(settings, vault=service)
+    try:
+        results = operations.compatibility_read("literal", query=query, folder=folder,
+                                               limit=sys.maxsize, cli=True)
+    except LegacyReadUnavailable:
         print("Search not started: configured vault is unavailable.", file=error_stream)
         return EXIT_INTEGRITY_PROBLEM
-
-    try:
-        relative_folder = _validated_folder(service, folder)
-        results = service.search_notes(
-            query=query,
-            folder=relative_folder,
-            limit=sys.maxsize,
-        )
     except (OSError, UnicodeError, VaultServiceError):
         print("Search failed: folder or vault input is invalid or unavailable.", file=error_stream)
         return EXIT_INTEGRITY_PROBLEM
@@ -648,6 +672,10 @@ def run_search(
             result.path.replace("\\", "/"),
         ),
     )[:limit]
+    if json_output:
+        print(json.dumps({"query": query, "results": [{"path": row.path, "title": row.title,
+              "snippet": row.snippet} for row in ordered]}, ensure_ascii=True), file=stream)
+        return EXIT_SUCCESS
     _print_literal_results(
         ordered,
         stream,
@@ -660,9 +688,11 @@ def run_related(
     settings: Settings,
     text: str,
     *,
-    folder: str = "",
+    folder: str | None = None,
     limit: int = 5,
     min_score: float = 0.28,
+    spaces: Sequence[str] | None = None,
+    json_output: bool = False,
     output: TextIO | None = None,
     error_output: TextIO | None = None,
     service: SemanticSearchService | None = None,
@@ -670,32 +700,28 @@ def run_related(
 ) -> int:
     """Search an existing compatible semantic index and display only verified live notes."""
     settings.require_legacy_composition()
+    if spaces is not None:
+        return _run_scoped_cli(settings, "related", {"spaces": list(spaces), "text": text,
+            **({"folder": folder} if folder is not None else {}), "limit": limit, "min_score": min_score},
+            json_output=json_output, output=output, error_output=error_output,
+            vault_service=vault_service, service=service)
+    folder = "" if folder is None else folder
     stream = output or sys.stdout
     error_stream = error_output or sys.stderr
     live_vault = vault_service or _vault_service(settings)
-    if not live_vault.vault_available():
-        print("Related search not started: configured vault is unavailable.", file=error_stream)
-        return EXIT_INTEGRITY_PROBLEM
-
+    semantic_service = service or semantic_search_service_from_settings(settings)
+    operations = legacy_operations(settings, vault=live_vault, semantic=semantic_service)
+    def prepare(owner):
+        if not owner.use_persisted_index_for_read_only_search():
+            raise LegacyReadUnavailable("index")
     try:
-        relative_folder = _validated_folder(live_vault, folder)
-        semantic_service = service or semantic_search_service_from_settings(settings)
-        if not semantic_service.use_persisted_index_for_read_only_search():
-            print(
-                "Related search unavailable: no compatible searchable semantic index.",
-                file=error_stream,
-            )
-            return EXIT_INTEGRITY_PROBLEM
-        candidate_limit = min(
-            RELATED_CANDIDATE_LIMIT,
-            limit * RELATED_CANDIDATE_OVERFETCH_FACTOR,
-        )
-        candidates = semantic_service.search(
-            text,
-            folder=relative_folder,
-            limit=candidate_limit,
-            min_score=min_score,
-        )
+        verified_results = operations.compatibility_read(
+            "related", text=text, folder=folder, limit=limit, min_score=min_score, cli=True, prepare=prepare)
+    except LegacyReadUnavailable as exc:
+        message = ("Related search not started: configured vault is unavailable." if exc.kind == "vault" else
+                   "Related search unavailable: no compatible searchable semantic index.")
+        print(message, file=error_stream)
+        return EXIT_INTEGRITY_PROBLEM
     except sqlite3.ProgrammingError:
         raise
     except (
@@ -709,18 +735,13 @@ def run_related(
         print(f"Related search failed ({type(exc).__name__}).", file=error_stream)
         return EXIT_INTEGRITY_PROBLEM
 
-    verified_results: list[tuple[str, SemanticResult]] = []
-    for result in candidates:
-        verified_path = live_vault.verify_existing_markdown_path(
-            result.path,
-            folder=relative_folder,
-        )
-        if verified_path is None:
-            continue
-        verified_results.append((verified_path, result))
-        if len(verified_results) >= limit:
-            break
-
+    if json_output:
+        rows = [{"path": path, "title": PurePosixPath(path).stem,
+                 **{name: getattr(row, name) for name in
+                    ("score", "semantic_score", "lexical_score", "snippet", "heading")}}
+                for path, row in verified_results]
+        print(json.dumps({"text": text, "results": rows}, ensure_ascii=True), file=stream)
+        return EXIT_SUCCESS
     _print_related_results(
         verified_results,
         stream,
@@ -738,12 +759,18 @@ def run_knowledge_query(
     paths: Sequence[str] = (),
     tags: Sequence[str] = (),
     limit: int = KNOWLEDGE_QUERY_DEFAULT_LIMIT,
+    spaces: Sequence[str] | None = None,
+    json_output: bool = False,
     output: TextIO | None = None,
     error_output: TextIO | None = None,
     service: KnowledgeQueryService | None = None,
 ) -> int:
     """Run the existing bounded domain query and print only its safe result evidence."""
     settings.require_legacy_composition()
+    if spaces is not None:
+        return _run_scoped_cli(settings, "query", {"spaces": list(spaces), "semantic_text": semantic_text,
+            "literal_text": literal_text, "folder": folder, "paths": tuple(paths), "tags": tuple(tags), "limit": limit},
+            json_output=json_output, output=output, error_output=error_output, service=service)
     stream = output or sys.stdout
     error_stream = error_output or sys.stderr
     query_service = service
@@ -765,12 +792,35 @@ def run_knowledge_query(
         limit=limit,
     )
     try:
-        result = query_service.query(request)
+        result = legacy_operations(settings, vault=None, query=query_service).compatibility_read(
+            "query", request=request
+        )
     except KnowledgeQueryError as exc:
         print(f"Knowledge query failed: {exc.reason}.", file=error_stream)
         return EXIT_INTEGRITY_PROBLEM
 
-    _print_knowledge_query_results(result, stream)
+    if json_output:
+        print(
+            json.dumps(
+                {
+                    "matches": [
+                        {
+                            "canonical_path": row.canonical_path,
+                            "final_score": row.final_score,
+                            "semantic_score": row.semantic_score,
+                            "lexical_score": row.lexical_score,
+                        }
+                        for row in result.matches
+                    ],
+                    "ordering": result.ordering,
+                    "semantic_index_basis": result.semantic_index_basis,
+                },
+                ensure_ascii=True,
+            ),
+            file=stream,
+        )
+    else:
+        _print_knowledge_query_results(result, stream)
     return EXIT_SUCCESS
 
 
@@ -779,12 +829,24 @@ def run_hygiene_scan(
     *,
     request: KnowledgeHygieneRequest = KnowledgeHygieneRequest(),
     json_output: bool = False,
+    spaces: Sequence[str] | None = None,
     output: TextIO | None = None,
     error_output: TextIO | None = None,
     service: KnowledgeHygieneService | None = None,
 ) -> int:
     """Map a validated request to one read-only domain scan, preserving its evidence."""
     settings.require_legacy_composition()
+    if spaces is not None:
+        data = {"space": spaces[0]} if len(spaces) == 1 else {"spaces": list(spaces)}
+        data.update(
+            groups=sorted(request.groups),
+            finding_limit=request.finding_limit,
+            duplicate_source_limit=request.duplicate_source_limit,
+            semantic_candidates=request.semantic_candidates,
+            inspect_derived_index=request.inspect_derived_index,
+        )
+        return _run_scoped_cli(settings, "hygiene", data, json_output=json_output,
+                               output=output, error_output=error_output, service=service)
     stream = output or sys.stdout
     error_stream = error_output or sys.stderr
     try:
@@ -801,7 +863,7 @@ def run_hygiene_scan(
                 ),
                 semantic_search_service=semantic,
             )
-        result = service.scan(request)
+        result = legacy_operations(settings, vault=None, hygiene=service).compatibility_read("hygiene", request=request)
     except KnowledgeHygieneError as exc:
         if exc.reason not in {"invalid_request", "scan_unavailable"}:
             raise
@@ -978,9 +1040,83 @@ def run_promote_apply(settings: Settings, *, input_stream: BinaryIO | None = Non
     return EXIT_SUCCESS if result.committed else EXIT_INTEGRITY_PROBLEM
 
 
+def _print_scoped_result(result, stream):
+    if "items" not in result:
+        print(f"[{json.dumps(result['space_id'])}]", file=stream)
+        print(json.dumps(result["result"], ensure_ascii=True), file=stream)
+        return
+    for row in result["items"]:
+        identity = row["identity"]
+        print(f"[{json.dumps(identity['space_id'])}] {json.dumps(identity['path'], ensure_ascii=True)}", file=stream)
+        print(
+            json.dumps({key: value for key, value in row.items() if key != "identity"}, ensure_ascii=True), file=stream
+        )
+    for row in result["coverage"]:
+        print("coverage: " + json.dumps(row, ensure_ascii=True), file=stream)
+    print("result_limited: " + json.dumps(result["result_limited"]), file=stream)
+
+
+def _run_scoped_cli(settings, operation, data, *, operations=None, json_output=False,
+                    output=None, error_output=None, **raw_owners):
+    """Private vertical seam; public exported commands still enforce activation guards."""
+    stream, error_stream = output or sys.stdout, error_output or sys.stderr
+    profile = None
+    try:
+        if any(value is not None for value in raw_owners.values()):
+            raise SpaceError("invalid_configuration", reason="named_serving_unsupported")
+        if operation == "query":
+            scope = selection("literal", {"spaces": data["spaces"]})
+            if data["paths"] and len(scope.space_ids) != 1:
+                raise SpaceError("invalid_scope")
+            paths = tuple(QualifiedPath(scope.space_ids[0], path) for path in data["paths"])
+            request = ScopedKnowledgeQuery(scope, KnowledgeQuery(
+                semantic_text=data["semantic_text"], literal_text=data["literal_text"], folder=data["folder"],
+                tags=data["tags"], limit=data["limit"],
+            ), paths=paths)
+        else:
+            selected, arguments = parse_scoped(operation, data)
+            scope = ReadScope((selected,)) if type(selected) is SpaceId else selected
+            request = arguments.get("request")
+        if operations is None:
+            profile = compose_persisted_space_reads(settings, operation=operation, scope=scope, request=request)
+            operations = profile.start().operations
+        else:
+            validate_private_operations(operations, settings=settings)
+        if operation == "query":
+            result = project_scoped(operations.scoped_query(request))
+        else:
+            result = execute_scoped(operations, operation, data)
+        if profile is not None:
+            profile.shutdown()
+        if json_output:
+            print(json.dumps(result, ensure_ascii=True, allow_nan=False), file=stream)
+        else:
+            _print_scoped_result(result, stream)
+        return EXIT_SUCCESS
+    except (Exception, KeyboardInterrupt) as error:
+        failure = error
+        if profile is not None:
+            try:
+                profile.shutdown()
+            except BaseException:
+                failure = SpaceError("unavailable_space")
+        code, _, exit_code = public_error(failure)
+        if isinstance(failure, KeyboardInterrupt):
+            code, exit_code = "operation_cancelled", 1
+        if json_output:
+            print(json.dumps({"category": code}), file=stream)
+        else:
+            print(f"{code}: Operation failed.", file=error_stream)
+        return exit_code
+
+
 def main(argv: Sequence[str] | None = None, *, settings: Settings | None = None) -> int:
     tokens = list(argv) if argv is not None else sys.argv[1:]
-    args = _parser(hygiene=bool(tokens and tokens[0] == "hygiene")).parse_args(tokens)
+    args = _parser(
+        hygiene=bool(tokens and tokens[0] == "hygiene"),
+        json_mode="--json" in tokens,
+        scoped=any(token == "--space" or token.startswith("--space=") for token in tokens),
+    ).parse_args(tokens)
     configured = False
     try:
         configure_application_logging()
@@ -999,7 +1135,7 @@ def main(argv: Sequence[str] | None = None, *, settings: Settings | None = None)
                     semantic_candidates=args.semantic_candidates,
                     inspect_derived_index=args.inspect_derived_index,
                 ),
-                json_output=args.json,
+                json_output=args.json, **({"spaces": args.space} if args.space is not None else {}),
             )
         if args.action == "capture":
             return run_capture(app_settings)
@@ -1023,12 +1159,14 @@ def main(argv: Sequence[str] | None = None, *, settings: Settings | None = None)
             return run_search(
                 app_settings,
                 args.query,
+                **({"spaces": args.space, "json_output": args.json} if args.space is not None or args.json else {}),
                 folder=args.folder,
                 limit=args.limit,
             )
         if args.action == "query":
             return run_knowledge_query(
                 app_settings,
+                **({"spaces": args.space, "json_output": args.json} if args.space is not None or args.json else {}),
                 semantic_text=args.semantic_text,
                 literal_text=args.literal_text,
                 folder=args.folder,
@@ -1039,10 +1177,18 @@ def main(argv: Sequence[str] | None = None, *, settings: Settings | None = None)
         return run_related(
             app_settings,
             args.text,
+            **({"spaces": args.space, "json_output": args.json} if args.space is not None or args.json else {}),
             folder=args.folder,
             limit=args.limit,
             min_score=args.min_score,
         )
+    except SpaceError as exc:
+        code, _, exit_code = public_error(exc)
+        if getattr(args, "json", False):
+            print(json.dumps({"category": code}))
+        else:
+            print(f"{code}: Operation failed.", file=sys.stderr)
+        return exit_code
     except ValidationError:
         message = ("VaultBridge CLI failed (ValidationError)."
                    if args.action == "hygiene_scan" and configured

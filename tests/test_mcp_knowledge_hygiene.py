@@ -123,9 +123,13 @@ def test_schema_registration_and_read_only_metadata(tmp_path, writes):
     tools = run_client(server, lambda client: client.list_tools()).tools
     assert sum(tool.name == TOOL for tool in tools) == 1
     tool = next(tool for tool in tools if tool.name == TOOL)
-    assert tool.input_schema == KnowledgeHygieneScanRequest.model_json_schema()
-    assert tool.input_schema["additionalProperties"] is False
-    assert tool.output_schema == KnowledgeHygieneScanResponse.model_json_schema()
+    legacy_input = dict(tool.input_schema["anyOf"][0])
+    legacy_input.pop("not")
+    assert legacy_input == KnowledgeHygieneScanRequest.model_json_schema()
+    assert tool.input_schema["anyOf"][0]["additionalProperties"] is False
+    assert tool.output_schema["anyOf"][0] == {
+        key: value for key, value in KnowledgeHygieneScanResponse.model_json_schema().items() if key != "$defs"
+    }
     assert tool.annotations.read_only_hint is True
     assert tool.annotations.destructive_hint is False
     assert tool.annotations.idempotent_hint is True
@@ -240,7 +244,10 @@ def test_official_http_hygiene_round_trip_and_invalid_input(tmp_path, writes):
                 async with Client(transport, mode="2026-07-28") as client:
                     tools = (await client.list_tools()).tools
                     assert sum(tool.name == TOOL for tool in tools) == 1
-                    assert next(t for t in tools if t.name == TOOL).input_schema["additionalProperties"] is False
+                    assert (
+                        next(t for t in tools if t.name == TOOL).input_schema["anyOf"][0]["additionalProperties"]
+                        is False
+                    )
                     invalid = await client.call_tool(TOOL, {"finding_limit": True})
                     assert invalid.is_error is True
                     assert invalid.content[0].text == "validation_error: Tool arguments are invalid."

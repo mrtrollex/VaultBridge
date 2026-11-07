@@ -1,0 +1,2 @@
+# Preserve the accepted cross-platform evidence bytes from the Git blob.
+tests/fixtures/vb151_g_reference.json text eol=lf

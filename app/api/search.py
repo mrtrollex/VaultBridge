@@ -8,18 +8,17 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.api.dependencies import (
     PROTECTED_ROUTE_DEPENDENCIES,
-    get_duplicate_candidate_service,
-    get_semantic_search_service,
     get_settings,
-    get_vault_service,
+    get_space_operations,
 )
+from app.api.space_reads import SpaceReadRoute
 from app.api.versioning import versioned_api_route
 from app.core.config import Settings
-from app.services.duplicate_candidates import DuplicateCandidateService
-from app.services.semantic_search import SemanticSearchService, SemanticSearchUnavailableError
-from app.services.vault import VaultService
+from app.services._space_compatibility import LegacySemanticFailure
+from app.services.semantic_search import SemanticSearchUnavailableError
+from app.services.space_operations import SpaceOperations
 
-router = APIRouter()
+router = APIRouter(route_class=SpaceReadRoute)
 
 RELATED_CANDIDATE_OVERFETCH_FACTOR = 3
 RELATED_CANDIDATE_LIMIT = 50
@@ -88,9 +87,9 @@ class DuplicateCandidatesResponse(BaseModel):
 )
 def search_notes(
     req: SearchRequest,
-    vault_service: VaultService = Depends(get_vault_service),
+    operations: SpaceOperations = Depends(get_space_operations),
 ) -> dict:
-    results = vault_service.search_notes(query=req.query, folder=req.folder, limit=req.limit)
+    results = operations.compatibility_read("literal", query=req.query, folder=req.folder, limit=req.limit)
     return {
         "query": req.query,
         "results": [
@@ -111,41 +110,20 @@ def search_notes(
 def find_related_notes(
     req: RelatedNotesRequest,
     settings: Settings = Depends(get_settings),
-    semantic_search_service: SemanticSearchService = Depends(get_semantic_search_service),
-    vault_service: VaultService = Depends(get_vault_service),
+    operations: SpaceOperations = Depends(get_space_operations),
 ) -> dict:
-    folder = ""
-    if req.folder:
-        existing_folder = vault_service.existing_relative_path(req.folder)
-        if existing_folder is None:
-            return {"text": req.text, "results": []}
-        folder = existing_folder
-
-    semantic_search_service.reconfigure(
-        vault_root=settings.vault_path,
-        max_note_bytes=settings.max_note_bytes,
-    )
-    # Keep backfill bounded while allowing a small stale prefix to be filtered without
-    # needlessly shortening the caller-visible result list.
-    candidate_limit = min(
-        RELATED_CANDIDATE_LIMIT,
-        req.limit * RELATED_CANDIDATE_OVERFETCH_FACTOR,
-    )
     try:
-        results = semantic_search_service.search(
-            req.text,
-            folder=folder,
-            limit=candidate_limit,
-            min_score=req.min_score,
+        results = operations.compatibility_read(
+            "related", text=req.text, folder=req.folder, limit=req.limit,
+            min_score=req.min_score, settings=settings,
         )
-    except Exception as exc:
-        raise HTTPException(status_code=503, detail=f"Semantic search unavailable: {exc}") from exc
+    except LegacySemanticFailure as exc:
+        if settings.knowledge_spaces_json is not None:
+            raise HTTPException(status_code=503, detail="semantic_unavailable") from None
+        raise HTTPException(status_code=503, detail=f"Semantic search unavailable: {exc.error}") from exc.error
 
     verified_results = []
-    for result in results:
-        verified_path = vault_service.verify_existing_markdown_path(result.path, folder=folder)
-        if verified_path is None:
-            continue
+    for verified_path, result in results:
         verified_results.append(
             {
                 "path": verified_path,
@@ -175,12 +153,12 @@ def find_related_notes(
 )
 def find_duplicate_candidates(
     req: DuplicateCandidatesRequest,
-    duplicate_candidate_service: DuplicateCandidateService = Depends(
-        get_duplicate_candidate_service
-    ),
+    operations: SpaceOperations = Depends(get_space_operations),
+    settings: Settings = Depends(get_settings),
 ) -> dict:
     try:
-        candidates = duplicate_candidate_service.find_candidates(
+        candidates = operations.compatibility_read(
+            "duplicates",
             title=req.title,
             text=req.text,
             folder=req.folder,
@@ -188,5 +166,7 @@ def find_duplicate_candidates(
             min_score=req.min_score,
         )
     except SemanticSearchUnavailableError as exc:
+        if settings.knowledge_spaces_json is not None:
+            raise HTTPException(status_code=503, detail="semantic_unavailable") from None
         raise HTTPException(status_code=503, detail=f"Semantic search unavailable: {exc}") from exc
     return {"title": req.title, "results": candidates}

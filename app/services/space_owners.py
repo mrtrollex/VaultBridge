@@ -82,35 +82,42 @@ class _ImmutableRepository:
         except FileNotFoundError:
             return None
 
-    def _validated_target(self):
+    def _validated_target(self, *, probe=lambda: None):
         if self._directories is None:
             raise ImmutableIndexInspectionUnavailableError
         # Validate ancestors first, so probing a child cannot traverse a redirect.
         for directory, expected in self._directories:
+            probe()
             current = self._directory_identity(directory)
             if current is None:
                 return None
             if expected is not None and current != expected:
                 raise ImmutableIndexInspectionUnavailableError
+            probe()
             if not os.access(directory, os.R_OK | os.X_OK):
                 raise ImmutableIndexInspectionUnavailableError
         directory = self._path.parent
+        probe()
         if directory.resolve(strict=True) != directory:
             raise ImmutableIndexInspectionUnavailableError
         # Immutable SQLite must not consume active or redirected sidecars. A
         # regular rollback journal retains the existing immutable-reader behavior.
         for suffix in ("-wal", "-shm", "-journal"):
             try:
+                probe()
                 self._ordinary_entry(self._path.with_name(self._path.name + suffix), directory=False)
             except FileNotFoundError:
                 continue
             if suffix != "-journal":
                 raise ImmutableIndexInspectionUnavailableError
         try:
+            probe()
             identity = self._ordinary_entry(self._path, directory=False)
         except FileNotFoundError:
             return None
+        probe()
         target = self._path.resolve(strict=True)
+        probe()
         if (
             target != self._path or target.parent != directory
             or self._ordinary_entry(target, directory=False) != identity

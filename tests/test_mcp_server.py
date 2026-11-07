@@ -221,7 +221,8 @@ def test_sdk_v2_server_advertises_exact_read_only_surface_and_no_prompts(tmp_pat
     assert all(tool.annotations.read_only_hint is True for tool in tools.tools)
     assert resources.resources == []
     assert [(template.uri_template, template.mime_type) for template in templates.resource_templates] == [
-        (NOTE_RESOURCE_TEMPLATE, "text/markdown")
+        (NOTE_RESOURCE_TEMPLATE, "text/markdown"),
+        ("vaultbridge://space/{space_id}/note/{path}", "text/markdown"),
     ]
     assert prompts.prompts == []
 
@@ -383,7 +384,9 @@ def test_write_tools_sanitize_expected_failures_and_queue_degradation(tmp_path):
 def test_tool_schemas_keep_adr_defaults_and_bounds(tmp_path):
     server, _vault, _semantic = server_for(tmp_path)
     tools = run_client(server, lambda client: client.list_tools()).tools
-    by_name = {tool.name: tool.input_schema for tool in tools}
+    # Omitted-scope schemas are the first complete alternative. Explicit reads
+    # intentionally have different bounds; the frozen legacy branch is intact.
+    by_name = {tool.name: tool.input_schema["anyOf"][0] for tool in tools}
 
     assert by_name["list_notes"]["properties"]["limit"] | {} == {
         "default": 50,
@@ -921,7 +924,8 @@ def test_official_client_stdio_round_trip_and_clean_eof_shutdown(tmp_path):
     ]
     assert prompts.prompts == []
     assert [template.uri_template for template in templates.resource_templates] == [
-        NOTE_RESOURCE_TEMPLATE
+        NOTE_RESOURCE_TEMPLATE,
+        "vaultbridge://space/{space_id}/note/{path}",
     ]
     assert listed.structured_content["notes"][0]["path"] == "Smoke.md"
     assert read.structured_content["content"].endswith("protocol round trip")
