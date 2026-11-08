@@ -5,7 +5,7 @@ import logging
 import re
 import time
 from collections.abc import Callable
-from contextlib import contextmanager
+from contextlib import asynccontextmanager, contextmanager
 from pathlib import PurePosixPath, PureWindowsPath
 from typing import Annotated, Any, Literal, TypeVar
 from urllib.parse import quote
@@ -47,6 +47,7 @@ from app.services.semantic_search import (
     semantic_search_service_from_settings,
 )
 from app.services.space_operations import SpaceOperations
+from app.services.space_runtime import compose_space_runtime
 from app.services.vault import (
     NoteConflictError,
     NoteNotFoundError,
@@ -808,7 +809,44 @@ def create_mcp_server(
     space_operations: SpaceOperations | None = None,
 ) -> MCPServer:
     app_settings = settings if settings is not None else Settings.from_env()
-    app_settings.require_legacy_composition()
+    if app_settings.knowledge_spaces_json is not None:
+        if any(owner is not None for owner in (
+            vault_service, semantic_search_service, duplicate_candidate_service,
+            relationship_service, knowledge_hygiene_service, semantic_indexer,
+        )) or transport not in {"stdio", "streamable-http"} or (
+            (space_operations is None) != (transport == "stdio")
+        ):
+            raise SpaceError("invalid_configuration", reason="named_serving_unsupported")
+        runtime = None
+        if space_operations is None:
+            runtime = compose_space_runtime(app_settings)
+            space_operations = runtime.operations
+        validate_private_operations(space_operations, settings=app_settings)
+        limiter = rate_limiter
+        if transport == "stdio" and limiter is None:
+            limiter = FixedWindowRateLimiter(
+                requests=app_settings.rate_limit_requests,
+                window_seconds=app_settings.rate_limit_window_seconds, max_clients=1,
+            )
+
+        @asynccontextmanager
+        async def owned_lifespan(_server):
+            try:
+                await run_read(lambda _cancel: runtime.start())
+                yield
+            finally:
+                runtime.begin_shutdown()
+                await run_read(lambda _cancel: runtime.shutdown())
+
+        adapter = VaultBridgeMCPAdapter(
+            settings=app_settings, operations=space_operations, vault_service=None,
+            semantic_search_service=None, duplicate_candidate_service=None, relationship_service=None,
+            knowledge_hygiene_service=None, semantic_indexer=None, transport=transport,
+            operation_rate_limiter=limiter,
+        )
+        server = _read_server(adapter, lifespan=owned_lifespan if runtime is not None else None)
+        server._vaultbridge_runtime = runtime
+        return server
     app_vault_service = vault_service or VaultService(
         vault_root=app_settings.vault_path,
         max_note_bytes=app_settings.max_note_bytes,
@@ -871,7 +909,7 @@ def create_private_read_server(*, settings, operations, transport="stdio", rate_
     return _read_server(adapter)
 
 
-def _read_server(adapter):
+def _read_server(adapter, *, lifespan=None):
     app_settings = adapter.settings
     defaults = KnowledgeHygieneScanRequest()
 
@@ -908,6 +946,7 @@ def _read_server(adapter):
         log_level="CRITICAL",
         middleware=[_scoped_read_middleware(adapter)],
         tools=[hygiene_tool],
+        lifespan=lifespan,
     )
     server._vaultbridge_operations = adapter.operations
 
@@ -1071,7 +1110,8 @@ def main() -> int:
     semantic_indexer: BackgroundSemanticIndexer | None = None
     try:
         settings = Settings.from_env()
-        settings.require_legacy_composition()
+        if settings.knowledge_spaces_json is not None:
+            return _run_named_stdio(settings)
         vault_service = VaultService(
             vault_root=settings.vault_path,
             max_note_bytes=settings.max_note_bytes,
@@ -1138,6 +1178,29 @@ def main() -> int:
             "VaultBridge MCP stdio server stopped",
             transport="stdio",
         )
+    return 0
+
+
+def _run_named_stdio(settings):
+    """The SDK lifespan starts/drains the sole runtime, including clean stdin EOF."""
+    try:
+        server = create_mcp_server(settings=settings)
+    except Exception:
+        log_event(logger, logging.ERROR, "mcp_startup_failed", "VaultBridge MCP stdio startup failed",
+                  transport="stdio")
+        return 2
+    try:
+        server.run()
+    except KeyboardInterrupt:
+        pass
+    except Exception:
+        log_event(logger, logging.ERROR, "mcp_server_failed", "VaultBridge MCP stdio server failed",
+                  transport="stdio")
+        return 1
+    if server._vaultbridge_runtime._state != "stopped":
+        log_event(logger, logging.ERROR, "mcp_server_failed", "VaultBridge MCP stdio cleanup is incomplete",
+                  transport="stdio")
+        return 1
     return 0
 
 

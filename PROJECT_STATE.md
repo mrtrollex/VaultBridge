@@ -378,13 +378,17 @@ Current post-v1 planning position:
   reusing existing domain authorization, budgets, ranking, coverage and persisted read-only owners.
   The task owner confirms Slice B independently accepted and merged through PR #148,
   `216f84e1f3c7ad25b9a069178292f823a758768f`. Slice C implements private authorized create/append
-  orchestration, existing REST/MCP write extensions and CLI v2 capture/promotion. Slice C separate
-  acceptance remains pending; D remains unimplemented. Current evidence and exact
+  orchestration, existing REST/MCP write extensions and CLI v2 capture/promotion. The task owner
+  confirms Slice C independently accepted and merged through PR #149,
+  `6d6c257a33d4710a0a6a9c2f92975fac8c50d08b`. D implements coordinated public named runtime
+  composition, exact parent HTTP MCP sharing, owned stdio, CLI profiles and exclusion fences.
+  Current evidence and exact
   native platform/workflow boundaries are in [VB152_A_VERIFICATION.md](docs/VB152_A_VERIFICATION.md)
   and [VB152_B_VERIFICATION.md](docs/VB152_B_VERIFICATION.md), with Slice C evidence in
   [VB152_C_VERIFICATION.md](docs/VB152_C_VERIFICATION.md).
-  Named serving remains blocked by current guards.
-  Milestone 16 remains PLANNED; multi-space serving and index-format changes are not implemented
+  Slice D evidence and verification/activation status are in
+  [VB152_D_VERIFICATION.md](docs/VB152_D_VERIFICATION.md); separate fresh acceptance remains required.
+  Milestone 16 remains PLANNED pending acceptance; no index-format change or release/deployment is claimed
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
 

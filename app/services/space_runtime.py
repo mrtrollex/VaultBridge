@@ -1,4 +1,4 @@
-"""Explicit private E6 composition. No public adapter activates this runtime."""
+"""One registry-owned E6 runtime for coordinated named serving and CLI writes."""
 
 from __future__ import annotations
 
@@ -162,7 +162,8 @@ class SpaceRuntime(_PrivateImmutable):
                 raise
         return self
 
-    def shutdown(self):
+    def begin_shutdown(self):
+        """Fence operations/indexing before the transport closes its ingress."""
         # Fence without waiting for start's lifecycle lock/native acknowledgment.
         # No admission lock is held across any scheduler or native call.
         self.admission.begin_shutdown()
@@ -170,6 +171,9 @@ class SpaceRuntime(_PrivateImmutable):
             self.scheduler.begin_shutdown()
         if self.watcher is not None:
             self.watcher.stop_admission()
+
+    def shutdown(self):
+        self.begin_shutdown()
         with self._lifecycle:
             if self._state == "stopped":
                 return

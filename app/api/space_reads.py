@@ -72,10 +72,10 @@ class SpaceReadRoute(APIRoute):
             settings = request.app.state.settings
             # Same direct-peer limiter once, followed by the same Bearer/session
             # verifier. Named cookies are fenced in the shared dependency.
-            enforce_rate_limit(request, settings, request.app.state.rate_limiter)
-            require_auth(request.headers.get("authorization"), settings, request,
-                         request.headers.get("x-vaultbridge-ui-request"))
             try:
+                enforce_rate_limit(request, settings, request.app.state.rate_limiter)
+                require_auth(request.headers.get("authorization"), settings, request,
+                             request.headers.get("x-vaultbridge-ui-request"))
                 if operation is None:
                     raise SpaceError("invalid_scope")
                 if request.method == "POST":
@@ -90,12 +90,13 @@ class SpaceReadRoute(APIRoute):
                 result = await run_read(lambda token: execute(
                     get_space_operations(request), operation, data, cancel=token,
                 ), disconnected=request.is_disconnected)
-                return JSONResponse(result)
-            except HTTPException:
-                raise
+                return JSONResponse(result, headers={"Cache-Control": "no-store"})
+            except HTTPException as exc:
+                return JSONResponse({"detail": exc.detail}, status_code=exc.status_code,
+                                    headers={**(exc.headers or {}), "Cache-Control": "no-store"})
             except Exception as exc:
                 code, status, _ = public_error(exc)
-                return JSONResponse({"detail": code}, status_code=status)
+                return JSONResponse({"detail": code}, status_code=status, headers={"Cache-Control": "no-store"})
 
         if operation not in {"query", "create", "append"}:
             return dispatch

@@ -407,9 +407,7 @@ def test_cli_actual_profile_and_restart_reconstruction(settings):
 
 @pytest.mark.parametrize("command", [["capture"], ["promote", "review", "--source-path", SOURCE,
     "--capture-id", CAPTURE_ID], ["promote", "apply"]])
-def test_cli_singular_selection_and_public_guard(settings, capsys, command):
-    assert main([*command, "--space", "research"], settings=settings) == 2
-    assert "invalid_configuration" in capsys.readouterr().out
+def test_cli_singular_selection(settings, capsys, command):
     assert main([*command, "--space", "research", "--space", "default"], settings=Settings()) == 2
     # Parsing retains all repetitions; dispatch rejects rather than last-wins.
     assert json.loads(capsys.readouterr().out) == {"category": "invalid_scope"}
@@ -420,8 +418,9 @@ def test_cli_singular_selection_and_public_guard(settings, capsys, command):
     (run_promote_apply, {}),
 ])
 def test_exported_named_cli_guard(settings, runner, arguments):
-    with pytest.raises(SpaceError, match="invalid_configuration"):
-        runner(settings, space="research", **arguments)
+    output = StringIO()
+    assert runner(settings, space="research", service=object(), output=output, **arguments) == 2
+    assert json.loads(output.getvalue()) == {"category": "invalid_configuration"}
 
 
 @pytest.mark.parametrize("operation", ["create", "append"])
@@ -525,8 +524,9 @@ def test_frozen_operation_ids_and_schema_alternatives(settings, runtime):
         assert endpoint["operationId"] == operation_id
         assert len(endpoint["responses"]["200"]["content"]["application/json"]["schema"]["anyOf"]) == 2
         assert "space" in endpoint["requestBody"]["content"]["application/json"]["schema"]["properties"]
-    with pytest.raises(SpaceError, match="invalid_configuration"):
-        create_app(settings=settings)
+    public = create_app(settings=settings)
+    assert public.state.space_operations is public.state.space_runtime.operations
+    public.state.space_runtime.shutdown()
 
 
 @pytest.mark.parametrize("operation", ["create", "append"])

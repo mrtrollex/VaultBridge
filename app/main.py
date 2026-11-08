@@ -21,17 +21,20 @@ from app.core.logging import configure_application_logging, log_event
 from app.core.observability import RequestObservabilityMiddleware
 from app.core.ui_session import UISessionNoStoreMiddleware
 from app.mcp_http import create_mcp_http_transport
+from app.read_execution import run_read
 from app.services.adapter_composition import legacy_operations
 from app.services.duplicate_candidates import DuplicateCandidateService
 from app.services.filesystem_watcher import SemanticFilesystemWatcher
 from app.services.indexer import BackgroundSemanticIndexer
 from app.services.knowledge_hygiene import KnowledgeHygieneService
+from app.services.knowledge_spaces import SpaceError
 from app.services.rate_limiter import FixedWindowRateLimiter
 from app.services.relationships import RelationshipService
 from app.services.semantic_search import (
     SemanticSearchService,
     semantic_search_service_from_settings,
 )
+from app.services.space_runtime import compose_space_runtime
 from app.services.vault import (
     NoteConflictError,
     NoteNotFoundError,
@@ -61,6 +64,10 @@ class VaultBridgeApplication(FastAPI):
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
+    if getattr(application.state, "space_runtime", None) is not None:
+        async with named_lifespan(application):
+            yield
+        return
     operations = getattr(application.state, "space_operations", None)
     admission = operations._admission if operations is not None else None
     semantic_indexer: BackgroundSemanticIndexer = application.state.semantic_indexer
@@ -166,6 +173,66 @@ async def lifespan(application: FastAPI):
         )
 
 
+@asynccontextmanager
+async def named_lifespan(application: FastAPI):
+    """The parent owns one generation; MCP only owns its ingress/sessions."""
+    runtime = application.state.space_runtime
+    sessions = AsyncExitStack()
+    try:
+        # Drain even when ASGI startup is cancelled during a native readiness call.
+        await run_read(lambda _cancel: runtime.start())
+        server = application.state.mcp_server
+        if server is not None:
+            await sessions.enter_async_context(server.session_manager.run())
+        yield
+    finally:
+        runtime.begin_shutdown()
+        try:
+            await sessions.aclose()
+        finally:
+            await run_read(lambda _cancel: runtime.shutdown())
+
+
+def _application(settings, operations):
+    application = VaultBridgeApplication(
+        title=APP_TITLE, version=APP_VERSION, description=APP_DESCRIPTION,
+        docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan,
+    )
+    application.state.settings = settings
+    application.state.space_operations = operations
+    application.state.mcp_server = None
+    application.add_middleware(NamedUIFence, named=settings.knowledge_spaces_json is not None)
+    application.add_exception_handler(VaultServiceError, handle_vault_service_error)
+    for router in (health_router, notes_router, relationships_router, knowledge_hygiene_router,
+                   knowledge_query_router, search_router, ui_router):
+        application.include_router(router)
+    install_read_openapi(application)
+    return application
+
+
+def _named_application(settings, rate_limiter):
+    runtime = compose_space_runtime(settings)
+    application = _application(settings, runtime.operations)
+    application.state.space_runtime = runtime
+    application.state.rate_limiter = rate_limiter or FixedWindowRateLimiter(
+        requests=settings.rate_limit_requests, window_seconds=settings.rate_limit_window_seconds,
+        max_clients=settings.rate_limit_max_clients,
+    )
+    try:
+        if settings.mcp_http_enabled:
+            server, transport = create_mcp_http_transport(
+                settings=settings, space_operations=runtime.operations,
+                rate_limiter=application.state.rate_limiter,
+            )
+            application.state.mcp_server = server
+            application.mount("/", transport, name="mcp-http")
+    except BaseException:
+        # Constructors are inert, but retain this generation if cleanup fails.
+        runtime.shutdown()
+        raise
+    return application
+
+
 async def handle_vault_service_error(_request: Request, exc: VaultServiceError) -> JSONResponse:
     status_codes = {
         VaultValidationError: status.HTTP_400_BAD_REQUEST,
@@ -189,7 +256,13 @@ def create_app(
     knowledge_hygiene_service: KnowledgeHygieneService | None = None,
 ) -> FastAPI:
     app_settings = settings if settings is not None else Settings.from_env()
-    app_settings.require_legacy_composition()
+    if app_settings.knowledge_spaces_json is not None:
+        if any(owner is not None for owner in (
+            duplicate_candidate_service, semantic_search_service, semantic_indexer, semantic_watcher,
+            relationship_service, vault_service, knowledge_hygiene_service,
+        )):
+            raise SpaceError("invalid_configuration", reason="named_serving_unsupported")
+        return _named_application(app_settings, rate_limiter)
     app_semantic_search_service = (
         semantic_search_service
         if semantic_search_service is not None

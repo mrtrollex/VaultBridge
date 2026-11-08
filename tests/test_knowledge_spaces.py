@@ -592,15 +592,12 @@ def test_public_composition_guards_run_before_owners(tmp_path, monkeypatch):
     assert_category("invalid_configuration", lambda: mcp_http.create_mcp_http_transport(
         settings=settings, vault_service=None, semantic_search_service=None, duplicate_candidate_service=None,
         relationship_service=None, knowledge_hygiene_service=None, semantic_indexer=None, rate_limiter=None))
-    for run in (cli.run_status, cli.run_index_check, cli.run_index, cli.run_index_rebuild, cli.run_reindex,
-                cli.run_capture, cli.run_promote_apply, cli.run_hygiene_scan):
+    for run in (cli.run_status, cli.run_index_check, cli.run_index, cli.run_index_rebuild, cli.run_reindex):
         assert_category("invalid_configuration", lambda: run(settings))
-    assert_category("invalid_configuration", lambda: cli.run_search(settings, "text"))
-    assert_category("invalid_configuration", lambda: cli.run_related(settings, "text"))
-    assert_category("invalid_configuration", lambda: cli.run_knowledge_query(settings))
-    assert_category("invalid_configuration",
-                    lambda: cli.run_promote_review(settings, source_path="a.md", capture_id="x"))
-    assert cli.main(["capture"], settings=settings) == 2
+    # Supported CLI reads now reach strict named configuration and return a safe category.
+    assert cli.run_search(settings, "text") == 2
+    assert cli.run_related(settings, "text") == 2
+    assert cli.run_knowledge_query(settings, literal_text="text") == 2
     monkeypatch.setattr(Settings, "from_env", classmethod(lambda cls: settings))
     assert mcp_server.main() == 2
 

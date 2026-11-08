@@ -523,7 +523,7 @@ def test_cli_denial_precedes_profile_owners(tmp_path, backend, monkeypatch):
     assert backend.instances == []
 
 
-def test_public_entry_points_and_named_maintenance_stay_guarded(settings, monkeypatch, capsys):
+def test_conflicting_injection_and_named_maintenance_stay_guarded(settings, monkeypatch, capsys):
     from app import cli
     from app.main import create_app
     from app.mcp_http import create_mcp_http_transport
@@ -535,7 +535,7 @@ def test_public_entry_points_and_named_maintenance_stay_guarded(settings, monkey
     monkeypatch.setattr(VaultService, "__init__", fail)
     for factory in (create_app, create_mcp_server):
         with pytest.raises(SpaceError, match="invalid_configuration"):
-            factory(settings=settings)
+            factory(settings=settings, vault_service=object())
     with pytest.raises(SpaceError, match="invalid_configuration"):
         create_mcp_http_transport(settings=settings, vault_service=None, semantic_search_service=None,
             duplicate_candidate_service=None, relationship_service=None, knowledge_hygiene_service=None,
