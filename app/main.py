@@ -61,6 +61,8 @@ class VaultBridgeApplication(FastAPI):
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
+    operations = getattr(application.state, "space_operations", None)
+    admission = operations._admission if operations is not None else None
     semantic_indexer: BackgroundSemanticIndexer = application.state.semantic_indexer
     semantic_watcher: SemanticFilesystemWatcher | None = getattr(
         application.state,
@@ -84,6 +86,8 @@ async def lifespan(application: FastAPI):
         if mcp_server is not None:
             await mcp_sessions.enter_async_context(mcp_server.session_manager.run())
     except BaseException as exc:
+        if admission is not None:
+            admission.begin_shutdown()
         log_event(
             logger,
             logging.ERROR,
@@ -99,6 +103,8 @@ async def lifespan(application: FastAPI):
                 if semantic_watcher is not None:
                     await asyncio.to_thread(semantic_watcher.stop)
             finally:
+                if admission is not None:
+                    await asyncio.to_thread(admission.drain)
                 await asyncio.to_thread(semantic_indexer.shutdown)
         raise
     log_event(
@@ -112,6 +118,8 @@ async def lifespan(application: FastAPI):
     try:
         yield
     finally:
+        if admission is not None:
+            admission.begin_shutdown()
         shutdown_started_at = time.perf_counter()
         log_event(
             logger,
@@ -130,6 +138,8 @@ async def lifespan(application: FastAPI):
             except BaseException as exc:
                 shutdown_error = exc
         try:
+            if admission is not None:
+                await asyncio.to_thread(admission.drain)
             await asyncio.to_thread(semantic_indexer.shutdown)
         except BaseException as exc:
             shutdown_error = shutdown_error or exc
@@ -258,7 +268,7 @@ def create_app(
     application.state.vault_service = app_vault_service
     application.state.knowledge_hygiene_service = app_knowledge_hygiene_service
     application.state.space_operations = legacy_operations(
-        app_settings, vault=app_vault_service, semantic=app_semantic_search_service,
+        app_settings, indexer=app_semantic_indexer, vault=app_vault_service, semantic=app_semantic_search_service,
         relationships=app_relationship_service, duplicates=app_duplicate_candidate_service,
         hygiene=app_knowledge_hygiene_service,
     )

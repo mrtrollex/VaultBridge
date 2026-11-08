@@ -366,7 +366,7 @@ Current post-v1 planning position:
   `5d6f0298e8511c3287366e0c7876db20ea2e6287`; the evidence report is retained unchanged.
   VB-152's authoritative contract was approved and merged through PR #146,
   `3653b1644ad9041b6c073370fd761bf0116edf82`; see
-  [BACKLOG.md](BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-slices-a-and-b-private-activation-blocked).
+  [BACKLOG.md](BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-slices-a-b-and-c-private-activation-blocked).
   It selects existing REST/MCP scope extensions plus one Query route/tool, scoped CLI reads/writes,
   same-space v2 capture/promotion with default v1 parity, minimal named health and a coordinated
   activation gate. Named Dashboard/session and maintenance/status are explicitly fenced; registry/
@@ -376,9 +376,13 @@ Current post-v1 planning position:
   `670ca21df166f34e989e88d86a95fe6bf81d67b5` (task-owner confirmation). Slice B adds the strict shared
   Knowledge Query request, versioned REST route, MCP tool on stdio/HTTP and structured CLI input,
   reusing existing domain authorization, budgets, ranking, coverage and persisted read-only owners.
-  Slice B separate acceptance remains pending; C/D remain unimplemented. Current evidence and exact
+  The task owner confirms Slice B independently accepted and merged through PR #148,
+  `216f84e1f3c7ad25b9a069178292f823a758768f`. Slice C implements private authorized create/append
+  orchestration, existing REST/MCP write extensions and CLI v2 capture/promotion. Slice C separate
+  acceptance remains pending; D remains unimplemented. Current evidence and exact
   native platform/workflow boundaries are in [VB152_A_VERIFICATION.md](docs/VB152_A_VERIFICATION.md)
-  and [VB152_B_VERIFICATION.md](docs/VB152_B_VERIFICATION.md).
+  and [VB152_B_VERIFICATION.md](docs/VB152_B_VERIFICATION.md), with Slice C evidence in
+  [VB152_C_VERIFICATION.md](docs/VB152_C_VERIFICATION.md).
   Named serving remains blocked by current guards.
   Milestone 16 remains PLANNED; multi-space serving and index-format changes are not implemented
 - VB-032 and VB-033 remain deferred optional future work

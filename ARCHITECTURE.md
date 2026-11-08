@@ -704,9 +704,9 @@ Existing REST/MCP/CLI composition rejects named configuration before owner const
 until VB-152 integrates every applicable entry point. No public schema, route, operation ID,
 resource, storage format or legacy response changes in the current runtime.
 
-### VB-152 adapters (Slices A and B private; public named activation blocked)
+### VB-152 adapters (Slices A, B and C private; public named activation blocked)
 
-The authoritative [VB-152 contract](BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-slices-a-and-b-private-activation-blocked)
+The authoritative [VB-152 contract](BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-slices-a-b-and-c-private-activation-blocked)
 defines exact schemas, error projections, inventory, activation gates and acceptance evidence.
 It extends existing `/api/v1/notes*` and hygiene routes/MCP tools with explicit `space` (one-space
 operations) or `spaces` (bounded federation). It adds one POST `/api/v1/knowledge/query` operation
@@ -744,14 +744,34 @@ path flags select scoped validation and cannot expand an omitted default-only se
 Explicitly private constructors support named integration tests. Every production constructor and
 entry point still enforces `require_legacy_composition()`. Named health uses minimal projections;
 readiness authorizes default before probes, and Dashboard/session/assets/cookie and CLI maintenance
-fences have executable private coverage. There is no named UI, discovery, scoped write or public
+fences have executable private coverage. There is no named UI, discovery or public
 named serving. See [Slice A evidence](docs/VB152_A_VERIFICATION.md) and
-[Slice B evidence](docs/VB152_B_VERIFICATION.md). Separate Slice B acceptance remains pending.
+[Slice B evidence](docs/VB152_B_VERIFICATION.md). The task owner confirms Slice B independently
+accepted and merged through PR #148. Slice C is implemented privately; its separate acceptance is pending.
+
+Slice C adds `scoped_create_note`/`scoped_append_note` and default-only write compatibility dispatch
+to SpaceOperations. Policy/capability resolution precedes admission and root/owner work. Mutation
+stays in VaultService; explicit paths reject foreign host-root syntax on both native platforms.
+Only new durable commits enqueue the exact binding and qualified path; derived callback failure
+cannot erase a write outcome. Legacy serving binds its existing indexer to operation admission,
+fencing and draining operations before indexer shutdown. Its startup filesystem behavior is unchanged.
+Existing REST create/append aliases and optional MCP tools gain strict singular `space` and
+OneSpace<NoteResult> alternatives. MCP write opt-in remains a registration gate; raw JSON rejection
+also catches escaped invalid Unicode before SDK parsing. Explicit writes use cancellable drain;
+omitted MCP writes retain their established disconnect behavior.
+
+CLI capture and promotion gain singular `--space`; explicit default/nondefault selects v2, omission
+retains default v1. Scoped apply validates bounded input, reconstructs review/decision in the current
+process and reauthorizes through existing primitives before commit. Absent create destinations are
+retained without reading an append preimage. The private write profile uses SpaceRuntime, waits
+for scheduler quiescence and preserves startup reconciliation of unselected enabled owners; review
+uses inspection-only owners. Incomplete shutdown retains outcome evidence and returns operational
+failure. See [Slice C evidence](docs/VB152_C_VERIFICATION.md). Public guards remain until Slice D.
 
 Every public operation, including old aliases, resources and CLI calls, must enter SpaceOperations
 and the authoritative resolver before owner work. One immutable registry generation pins owner,
 admission, background jobs and lifecycle; HTTP MCP shares the parent runtime. Named stdio owns its
-runtime and must not run beside another writer to the same derived state. Future compatibility
+runtime and must not run beside another writer to the same derived state. Compatibility
 dispatch and create/append orchestration belong to SpaceOperations, preserving local owner behavior;
 adapters cannot obtain/authorize owners directly or reconfigure a pinned default from Settings.
 Legacy startup still uses its existing behavior, without named fail-fast checks.

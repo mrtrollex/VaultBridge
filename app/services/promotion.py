@@ -191,9 +191,18 @@ class PromotionService:
                          candidate.path, exact_spelling=True) == candidate.path)
         return PromotionReview(**{**snapshot.__dict__, "evidence": safe, "evidence_state": "available"})
 
-    def inspect_destination(self, destination: str) -> DestinationReview:
+    def inspect_destination(self, destination: str, *, missing_ok=False) -> DestinationReview | None:
         if type(destination) is not str or destination.startswith("Inbox/Captures/"):
             raise PromotionError("unsafe_destination")
+        if missing_ok:
+            try:
+                with self.vault_service._promotion_parent(destination, missing_ok=True) as context:
+                    if not context[3]():
+                        return None
+            except PromotionWriteError as exc:
+                if exc.category == "destination_missing":
+                    return None
+                raise PromotionError(exc.category) from None
         try:
             data = self.vault_service.read_promotion_bytes(destination)
         except PromotionWriteError as exc:
@@ -204,6 +213,59 @@ class PromotionService:
         ):
             raise PromotionError("unsafe_destination")
         return DestinationReview(destination, data.decode("utf-8"), hashlib.sha256(data).hexdigest())
+
+    @staticmethod
+    def validate_request(request):
+        """Pure bounded input preflight for scoped reconstruction, never a grant.
+
+        decide/apply still validate the complete request against live source facts.
+        Legacy decision validation and its failure precedence remain unchanged.
+        """
+        if (type(request) is not dict or request.keys() - (_REQUIRED | _DESTINATION)
+                or not _REQUIRED <= request.keys()):
+            raise PromotionError()
+        source, capture_id = request["source_path"], request["capture_id"]
+        if (type(source) is not str or type(capture_id) is not str or not _ID.fullmatch(capture_id)
+                or source != f"Inbox/Captures/{capture_id}.md"):
+            raise PromotionError()
+        action = request["action"]
+        if type(action) is not str or action not in {"create", "append"}:
+            raise PromotionError()
+        for key, pattern in (("expected_source_sha256", _HASH), ("promotion_id", _ID)):
+            if type(request[key]) is not str or not pattern.fullmatch(request[key]):
+                raise PromotionError()
+        _utc(request["approved_at"])
+        destination = request["destination"]
+        if (type(destination) is not str or not destination or destination == source
+                or destination.startswith("Inbox/Captures/")):
+            raise PromotionError("unsafe_destination")
+        content = request["approved_content"]
+        if type(content) is not str or not content.strip():
+            raise PromotionError()
+        try:
+            encoded = content.encode("utf-8")
+            destination.encode("utf-8")
+        except UnicodeError:
+            raise PromotionError() from None
+        if len(encoded) > 65_536:
+            raise PromotionError("size_limit")
+        if (any(character in content for character in ("\r", "\u0085", "\u2028", "\u2029"))
+                or any(marker in encoded for marker in (*_markers(request["promotion_id"]),
+                                                       *_markers(request["promotion_id"], 2)))):
+            raise PromotionError()
+        fields = request["transfer_fields"]
+        if (type(fields) is not list or any(type(field) is not str for field in fields)
+                or fields != [field for field in _TRANSFER if field in fields]):
+            raise PromotionError()
+        expected = {"expected_destination"} if action == "create" else {"expected_destination_sha256"}
+        if request.keys() & _DESTINATION != expected:
+            raise PromotionError()
+        if action == "create":
+            if request["expected_destination"] != "absent":
+                raise PromotionError()
+        elif (type(request["expected_destination_sha256"]) is not str
+              or not _HASH.fullmatch(request["expected_destination_sha256"])):
+            raise PromotionError()
 
     def decide(self, request: Mapping[str, object], snapshot: PromotionReview) -> PromotionDecision:
         if (type(request) is not dict or request.keys() - (_REQUIRED | _DESTINATION)

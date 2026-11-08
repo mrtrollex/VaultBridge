@@ -37,7 +37,6 @@ from app.services.knowledge_spaces import SpaceError
 from app.services.note_writes import (
     clean_note_tags,
     clean_note_title,
-    enqueue_after_committed_write,
 )
 from app.services.rate_limiter import FixedWindowRateLimiter
 from app.services.relationships import RelationshipService
@@ -339,6 +338,8 @@ def _scoped_read_middleware(adapter):
                   "related_notes": "related", "duplicate_candidates": "duplicates",
                   "note_links": "links", "note_backlinks": "backlinks", "knowledge_hygiene_scan": "hygiene",
                   "knowledge_query": "query"}
+    if adapter is not None and adapter.settings.mcp_write_enabled:
+        operations.update(create_note="create", append_note="append")
 
     @contextmanager
     def read_lifetime(context):
@@ -356,6 +357,9 @@ def _scoped_read_middleware(adapter):
             raise MCPError(code=INVALID_PARAMS,
                            message="note_resource_unavailable: Note resource is invalid or unavailable.")
         arguments = params.get("arguments", {})
+        if (params.get("name") in {"create_note", "append_note"}
+                and not adapter.settings.mcp_write_enabled):
+            return await _privacy_error_middleware(context, call_next)
         if context.method == "tools/call" and (has_scope(arguments) or params.get("name") == "knowledge_query"):
             name = params.get("name")
             try:
@@ -369,6 +373,10 @@ def _scoped_read_middleware(adapter):
                         try:
                             if type(arguments) is not dict or INVALID_SCOPED_JSON in arguments:
                                 raise InvalidReadRequest()
+                            if operations[name] in {"create", "append"}:
+                                from app.space_write_transport import execute_note_write
+
+                                return execute_note_write(adapter.operations, operations[name], arguments, cancel=token)
                             return execute_scoped(adapter.operations, operations[name], arguments,
                                                   resource_uris=True, cancel=token)
                         except Exception as exc:
@@ -385,7 +393,8 @@ def _scoped_read_middleware(adapter):
                 return CallToolResult(
                     is_error=True, content=[TextContent(type="text", text=f"{code}: Operation failed.")]
                 )
-        if context.method == "resources/read" or (context.method == "tools/call" and params.get("name") in operations):
+        if context.method == "resources/read" or (context.method == "tools/call"
+                and params.get("name") in operations and operations[params["name"]] not in {"create", "append"}):
             with read_lifetime(context) as cancellation:
                 return await run_async_read(lambda: _privacy_error_middleware(context, call_next), **cancellation)
         return await _privacy_error_middleware(context, call_next)
@@ -739,16 +748,13 @@ class VaultBridgeMCPAdapter:
         tags: list[str],
     ) -> NoteWriteResult:
         def action() -> NoteWriteResult:
-            result = self.vault_service.create_note(
+            result = self.operations.compatibility_write("create", canonical_enqueue=True, request=dict(
                 title=clean_note_title(title),
                 folder=folder,
                 content=content,
                 tags=clean_note_tags(tags),
-            )
+            ))
             canonical_path = _canonical_service_path(result.path)
-            if result.status == "created":
-                assert self.semantic_indexer is not None
-                enqueue_after_committed_write(self.semantic_indexer, canonical_path)
             return NoteWriteResult(success=True, path=canonical_path, status=result.status)
 
         return self._execute("create_note", action, result_count=lambda _result: 1)
@@ -761,15 +767,12 @@ class VaultBridgeMCPAdapter:
         dedupe_key: str | None,
     ) -> NoteWriteResult:
         def action() -> NoteWriteResult:
-            result = self.vault_service.append_note(
+            result = self.operations.compatibility_write("append", canonical_enqueue=True, request=dict(
                 path=path,
                 content=content,
                 dedupe_key=dedupe_key,
-            )
+            ))
             canonical_path = _canonical_service_path(result.path)
-            if result.status == "appended":
-                assert self.semantic_indexer is not None
-                enqueue_after_committed_write(self.semantic_indexer, canonical_path)
             return NoteWriteResult(success=True, path=canonical_path, status=result.status)
 
         return self._execute("append_note", action, result_count=lambda _result: 1)
@@ -847,7 +850,7 @@ def create_mcp_server(
             app_settings, space_operations, vault=app_vault_service, semantic=app_semantic_service,
             relationships=app_relationship_service, duplicates=app_duplicate_service, hygiene=app_hygiene_service,
         ) if space_operations is not None else legacy_operations(
-            app_settings, vault=app_vault_service, semantic=app_semantic_service,
+            app_settings, indexer=semantic_indexer, vault=app_vault_service, semantic=app_semantic_service,
             relationships=app_relationship_service, duplicates=app_duplicate_service, hygiene=app_hygiene_service,
         )),
     )
@@ -856,8 +859,6 @@ def create_mcp_server(
 
 def create_private_read_server(*, settings, operations, transport="stdio", rate_limiter=None, **raw_owners):
     validate_private_operations(operations, settings=settings, **raw_owners)
-    if settings.mcp_write_enabled:
-        raise SpaceError("invalid_configuration", reason="named_serving_unsupported")
     limiter = rate_limiter
     if transport == "stdio" and limiter is None:
         limiter = FixedWindowRateLimiter(requests=settings.rate_limit_requests,
@@ -908,6 +909,7 @@ def _read_server(adapter):
         middleware=[_scoped_read_middleware(adapter)],
         tools=[hygiene_tool],
     )
+    server._vaultbridge_operations = adapter.operations
 
     @server.tool(annotations=READ_ONLY_ANNOTATIONS, structured_output=True)
     def knowledge_query() -> ScopedReadOutput[MCPNoteMatchOutput | MCPSemanticMatchOutput]:
@@ -1045,6 +1047,9 @@ def _read_server(adapter):
         "note_backlinks": ("backlinks", OneSpaceOutput[NoteBacklinksResult]),
         "knowledge_hygiene_scan": ("hygiene", OneSpaceOutput[KnowledgeHygieneScanResponse]),
     }
+    if app_settings.mcp_write_enabled:
+        schemas.update(create_note=("create", OneSpaceOutput[NoteWriteResult]),
+                       append_note=("append", OneSpaceOutput[NoteWriteResult]))
     from app.knowledge_query_transport import knowledge_query_schema
 
     query_tool = server._tool_manager.get_tool("knowledge_query")
@@ -1120,6 +1125,10 @@ def main() -> int:
         )
         return 1
     finally:
+        operations = getattr(server, "_vaultbridge_operations", None)
+        if operations is not None and operations._admission is not None:
+            operations._admission.begin_shutdown()
+            operations._admission.drain()
         if semantic_indexer is not None:
             semantic_indexer.shutdown()
         log_event(

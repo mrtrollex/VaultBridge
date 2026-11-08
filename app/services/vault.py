@@ -343,6 +343,17 @@ class VaultService:
             raise VaultValidationError("Path escapes the vault") from exc
         return candidate
 
+    @staticmethod
+    def validate_scoped_write_path(raw: str) -> None:
+        """Explicit writes reject foreign host-root syntax on every platform.
+
+        Legacy path spelling remains unchanged; mutation still performs its
+        existing live containment checks in this owner.
+        """
+        normalized = raw.strip().replace("\\", "/")
+        if PureWindowsPath(normalized).drive or PurePosixPath(normalized).is_absolute():
+            raise VaultValidationError("Path must be vault-relative")
+
     def existing_relative_path(self, raw: str) -> str | None:
         path = self.resolve_path(raw)
         if not path.exists():

@@ -1221,7 +1221,7 @@ VB-150 knowledge-space and scope-policy ADR — complete, accepted design
    ↓
 VB-151 compatibility-safe multi-space domain boundary — complete; A–G merged
    ↓
-VB-152 permission-aware query and write adapter integration — A accepted; B private; C/D unimplemented
+VB-152 permission-aware query and write adapter integration — A/B accepted; C private; D unimplemented
 ```
 
 ---
@@ -1248,7 +1248,7 @@ VB-151 has an authoritative contract in BACKLOG.md; runtime A–G are complete a
 Native verification and baseline parity are recorded in
 [docs/VB151_G_VERIFICATION.md](docs/VB151_G_VERIFICATION.md).
 VB-152's accepted authoritative adapter contract is defined in
-[BACKLOG.md](BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-slices-a-and-b-private-activation-blocked).
+[BACKLOG.md](BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-slices-a-b-and-c-private-activation-blocked).
 Its four independently reviewable slices are: policy-bound existing reads and exclusion fences;
 end-to-end Knowledge Query; authorized writes and scoped CLI capture/promotion; coordinated public
 composition and activation. Existing routes/tools gain explicit scopes; one Query route/tool is new.
@@ -1256,7 +1256,10 @@ Default omission remains compatible. Named Dashboard/session, maintenance and re
 discovery are excluded and fenced. Slice A is independently accepted and merged through PR #147.
 Slice B implements end-to-end Query privately with shared strict request validation, scoped results
 and structured CLI input; [native evidence](docs/VB152_B_VERIFICATION.md) records its verification.
-Separate Slice B acceptance, C/D and complete cross-surface acceptance precede public named serving. Rebind/old-artifact
+The task owner confirms Slice B independently accepted and merged through PR #148. Slice C now
+implements authorized create/append and existing REST/MCP write extensions plus scoped CLI v2
+capture/promotion privately; [native evidence](docs/VB152_C_VERIFICATION.md) records its verification.
+Separate Slice C acceptance, Slice D and complete cross-surface acceptance precede public named serving. Rebind/old-artifact
 migration remain separate contracts; Milestone 16 remains PLANNED.
 
 ## Deployment and integration candidates
