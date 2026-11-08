@@ -15,9 +15,11 @@ import numpy as np
 import pytest
 
 from app.api.notes import AppendNoteRequest, CreateNoteRequest, append_note, create_note
+from app.core.config import Settings
 from app.core.logging import JsonLogFormatter, configure_application_logging, log_event
 from app.main import lifespan
 from app.repositories.semantic import SemanticRepository
+from app.services.adapter_composition import legacy_operations
 from app.services.indexer import BackgroundSemanticIndexer
 from app.services.semantic_search import SemanticSearchService
 from app.services.vault import VaultService
@@ -41,6 +43,12 @@ def capture_application_logs() -> Iterator[StringIO]:
 
 def parsed_records(stream: StringIO) -> list[dict]:
     return [json.loads(line) for line in stream.getvalue().splitlines() if line]
+
+
+def note_write_dependencies(vault, indexer):
+    settings = Settings(vault_path=vault.vault_root, max_note_bytes=vault.max_note_bytes)
+    request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(settings=settings)))
+    return request, legacy_operations(settings, vault=vault, indexer=indexer)
 
 
 @pytest.mark.parametrize(
@@ -467,13 +475,11 @@ def test_targeted_queue_and_note_mutation_events_exclude_note_content(tmp_path):
                 content=note_content,
                 tags=[],
             ),
-            vault,
-            indexer,
+            *note_write_dependencies(vault, indexer),
         )
         append_note(
             AppendNoteRequest(path=created.path, content=note_content),
-            vault,
-            indexer,
+            *note_write_dependencies(vault, indexer),
         )
 
     raw = stream.getvalue()
@@ -494,8 +500,7 @@ def test_note_write_survives_targeted_queue_failure_and_logs_warning(tmp_path):
     with capture_application_logs() as stream:
         result = create_note(
             CreateNoteRequest(title="Bezpečná", content="never log this", tags=[]),
-            vault,
-            FailingIndexer(),
+            *note_write_dependencies(vault, FailingIndexer()),
         )
 
     records = parsed_records(stream)
@@ -538,8 +543,7 @@ def test_note_write_survives_real_stream_handler_failure(tmp_path):
     try:
         result = create_note(
             CreateNoteRequest(title="Durable", content="committed content", tags=[]),
-            vault,
-            indexer,
+            *note_write_dependencies(vault, indexer),
         )
     finally:
         application_logger.removeHandler(handler)

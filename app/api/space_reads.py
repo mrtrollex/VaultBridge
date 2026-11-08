@@ -22,6 +22,7 @@ from app.space_read_transport import (
 _READS = {"read": "read", "list": "list", "search": "literal", "related": "related",
           "duplicates": "duplicates", "links": "links", "backlinks": "backlinks", "scan": "hygiene",
           "query": "query"}
+_READS.update({"notes": "create", "append": "append"})
 
 
 def _query(request):
@@ -83,7 +84,10 @@ class SpaceReadRoute(APIRoute):
                         raise SpaceError("invalid_scope")
                 else:
                     data = _query(request)
-                result = await run_read(lambda token: execute_scoped(
+                from app.space_write_transport import execute_note_write
+
+                execute = execute_note_write if operation in {"create", "append"} else execute_scoped
+                result = await run_read(lambda token: execute(
                     get_space_operations(request), operation, data, cancel=token,
                 ), disconnected=request.is_disconnected)
                 return JSONResponse(result)
@@ -93,7 +97,7 @@ class SpaceReadRoute(APIRoute):
                 code, status, _ = public_error(exc)
                 return JSONResponse({"detail": code}, status_code=status)
 
-        if operation != "query":
+        if operation not in {"query", "create", "append"}:
             return dispatch
 
         async def query_dispatch(request):

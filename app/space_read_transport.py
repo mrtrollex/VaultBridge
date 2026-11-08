@@ -116,10 +116,12 @@ def scoped_request_schema(operation, legacy):
         if operation == "related":
             properties["text"] = {"type": "string", "minLength": 1, "description": "At most 4,096 UTF-8 bytes"}
             properties["min_score"] = {"type": "number", "minimum": 0, "maximum": 1, "default": 0.28}
-    if "path" in properties:
+    if "path" in properties and operation not in {"create", "append"}:
         properties["path"] = {"type": "string", "minLength": 1, "description": "At most 1,024 UTF-8 bytes"}
     if operation == "duplicates":
         properties.pop("min_score", None)
+    if operation == "append" and "dedupe_key" in properties:
+        properties["dedupe_key"] = {"type": "string", "maxLength": 120}
     properties[key] = scope
     scoped = {"type": "object", "additionalProperties": False, "properties": properties,
               "required": [*legacy.get("required", []), key]}

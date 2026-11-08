@@ -700,7 +700,7 @@ text selects semantic score fields; other Query results contain qualified note i
 CLI reads retain persisted read-only composition: no startup sync, storage initialization, watcher
 or model download. Production named-space configuration remains guarded; the multi-space adapters
 are verified only through explicit private composition. See the
-[exact request and error contract](BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-slices-a-and-b-private-activation-blocked).
+[exact request and error contract](BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-slices-a-b-and-c-private-activation-blocked).
 
 `capture` reads exactly one UTF-8 JSON request from standard input (at most 1,048,576 bytes):
 
@@ -778,6 +778,21 @@ separately from the image gate, which only checks their parsers.
 Capture and Promotion have no REST/MCP/dashboard adapters. Query has REST and MCP adapters;
 its Dashboard integration remains unavailable. Named multi-space serving and
 Hygiene mutations remain unavailable.
+
+The existing create/append REST routes and optional MCP tools accept singular `space` in their
+JSON body. Explicit selection, including `"default"`, uses strict validation and returns
+`{space_id,result}` around the existing note result. Omission retains the default-only legacy
+request and response. `MCP_WRITE_ENABLED` must still be enabled before either write tool exists;
+registration grants no space permissions. Public named configuration remains guarded until Slice D.
+
+CLI capture, promotion review and apply likewise accept one `--space ID`. Explicit selection uses
+v2 provenance and `{space_id,result}` evidence; omitted selection retains v1 bytes and outputs.
+Scoped review requires `--destination` for the exact chosen create or append path. Scoped apply
+reconstructs and reauthorizes the approved request in the current process; client metadata and
+hashes do not grant access. V1 and v2 artifacts cannot be exchanged between these flows. Scoped
+writes use the existing runtime, including startup reconciliation for enabled spaces and index
+drain before exit. Stop the serving application/stdio process first. No new cross-process lock,
+approval cache, automatic promotion or uncertain-write retry is provided.
 
 `index` brings derived semantic data up to date through the production incremental/full sync path;
 `reindex` first discards and then rebuilds derived semantic data. Markdown remains the source of

@@ -6,8 +6,22 @@ from app.services.knowledge_spaces import SpaceError, SpaceOwners, SpacePolicyRe
 from app.services.space_operations import SpaceOperations
 
 
+class _LegacyNoteIndex:
+    def __init__(self, indexer):
+        self.indexer = indexer
+
+    def enqueue(self, path):
+        return self.indexer.enqueue(path.relative_path)
+
+    def enqueue_legacy(self, path):
+        from app.services.note_writes import enqueue_after_committed_write
+
+        enqueue_after_committed_write(self.indexer, path.relative_path)
+        return True
+
+
 def legacy_operations(settings, *, vault, semantic=None, relationships=None, duplicates=None,
-                      hygiene=None, query=None):
+                      hygiene=None, query=None, indexer=None, capture=None, promotion=None):
     settings.require_legacy_composition()
     if query is None and vault is not None and relationships is not None and semantic is not None:
         from app.services.knowledge_query import KnowledgeQueryService
@@ -19,10 +33,16 @@ def legacy_operations(settings, *, vault, semantic=None, relationships=None, dup
     owners = SpaceOwners(
         definition=definition, root_identity=None, vault=vault, semantic=semantic,
         relationships=relationships, duplicates=duplicates, hygiene=hygiene, query=query,
-        capture=None, promotion=None, scheduler=None,
+        capture=capture, promotion=promotion, scheduler=_LegacyNoteIndex(indexer) if indexer is not None else None,
     )
     object.__setattr__(registry, "_owners", MappingProxyType({definition.space_id: owners}))
-    return SpaceOperations(SpacePolicyResolver(registry))
+    admission = None
+    if indexer is not None:
+        from app.services.space_admission import ScopedOperationAdmission
+
+        admission = ScopedOperationAdmission()
+        admission.open()
+    return SpaceOperations(SpacePolicyResolver(registry), admission)
 
 
 def validate_private_operations(operations, *, settings=None, **raw_owners):

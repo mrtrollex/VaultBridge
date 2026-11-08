@@ -1,14 +1,12 @@
 """Private v2 orchestration; portable facts never act as policy selectors."""
 
 import json
-import sqlite3
 from dataclasses import dataclass, field, replace
 
-from app.services.knowledge_spaces import Capability, QualifiedPath, SpaceError, SpaceId, WriteScope
+from app.services._space_writes import enqueue
+from app.services.knowledge_spaces import Capability, SpaceError, SpaceId, WriteScope
 from app.services.promotion import PromotionError, PromotionReview, PromotionService
-from app.services.semantic_search import SemanticIndexOperationError, SynchronizationCancelledError
 from app.services.space_operations import OneSpaceResult
-from app.services.vault import VaultValidationError
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,17 +58,11 @@ def _service(owners, sid):
     return PromotionService(owner.vault_service, candidates=_LocalAdvice(owners.duplicates), _space_id=sid)
 
 
-def _enqueue(owners, sid, result):
-    if result.category not in ("created", "appended") or not result.committed or owners.scheduler is None:
+def _enqueue(binding, result):
+    if result.category not in ("created", "appended") or not result.committed:
         return result
-    try:
-        relative = result.path if hasattr(result, "path") else result.destination
-        pending = owners.scheduler.enqueue(QualifiedPath(sid, relative))
-    except sqlite3.ProgrammingError:
-        raise
-    except (OSError, sqlite3.DatabaseError, SemanticIndexOperationError,
-            SynchronizationCancelledError, SpaceError, VaultValidationError):
-        pending = False
+    relative = result.path if hasattr(result, "path") else result.destination
+    pending = enqueue(binding, relative)
     return replace(result, index_state="index_pending" if pending else "index_unavailable")
 
 
@@ -85,7 +77,7 @@ def capture(ops, scope, request, *, cancel=None):
         result = owners.capture.capture(request, _space_id=binding.space_id)
         if token is not None and (result.committed or result.category == "commit_unknown"):
             token._write_completed = True
-        return OneSpaceResult(binding.space_id, _enqueue(owners, binding.space_id, result))
+        return OneSpaceResult(binding.space_id, _enqueue(binding, result))
 
 
 def review(ops, source, capture_id, destination, candidate_limit, *, cancel=None):
@@ -100,11 +92,12 @@ def review(ops, source, capture_id, destination, candidate_limit, *, cancel=None
         return ScopedPromotionReview(binding.space_id, 2, snapshot, destination.relative_path, binding)
 
 
-def inspect_destination(ops, destination, *, cancel=None):
+def inspect_destination(ops, destination, *, cancel=None, missing_ok=False):
     destination = ops._path(destination)
     binding = ops._read(destination.space_id, Capability.PROMOTION)
     with ops._admit(cancel):
-        result = _service(ops._owners(binding), binding.space_id).inspect_destination(destination.relative_path)
+        result = _service(ops._owners(binding), binding.space_id).inspect_destination(
+            destination.relative_path, missing_ok=missing_ok)
         return OneSpaceResult(binding.space_id, result)
 
 
@@ -138,4 +131,4 @@ def apply(ops, decision, *, cancel=None):
         result = service.apply(request)
         if token is not None and (result.committed or result.category == "commit_unknown"):
             token._write_completed = True
-        return OneSpaceResult(binding.space_id, _enqueue(owners, binding.space_id, result))
+        return OneSpaceResult(binding.space_id, _enqueue(binding, result))

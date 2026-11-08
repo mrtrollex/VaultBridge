@@ -3,26 +3,21 @@ from __future__ import annotations
 import logging
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel, Field, field_validator
 
 from app.api.dependencies import (
     PROTECTED_ROUTE_DEPENDENCIES,
-    get_semantic_indexer,
     get_space_operations,
-    get_vault_service,
 )
 from app.api.space_reads import SpaceReadRoute
 from app.api.versioning import versioned_api_route
 from app.core.logging import log_event
-from app.services.indexer import BackgroundSemanticIndexer
 from app.services.note_writes import (
     clean_note_tags,
     clean_note_title,
-    enqueue_after_committed_write,
 )
 from app.services.space_operations import SpaceOperations
-from app.services.vault import VaultService
 
 router = APIRouter(route_class=SpaceReadRoute)
 logger = logging.getLogger("vaultbridge.api.notes")
@@ -77,16 +72,10 @@ class NoteResult(BaseModel):
 )
 def create_note(
     note: CreateNoteRequest,
-    vault_service: VaultService = Depends(get_vault_service),
-    semantic_indexer: BackgroundSemanticIndexer = Depends(get_semantic_indexer),
+    request: Request,
+    operations: SpaceOperations = Depends(get_space_operations),
 ) -> NoteResult:
-    result = vault_service.create_note(
-        title=note.title,
-        folder=note.folder,
-        content=note.content,
-        tags=note.tags,
-    )
-    if result.status == "created":
+    def committed(result):
         log_event(
             logger,
             logging.INFO,
@@ -95,7 +84,8 @@ def create_note(
             operation="create",
             note_path=result.path,
         )
-        enqueue_after_committed_write(semantic_indexer, result.path)
+    result = operations.compatibility_write("create", request=note.model_dump(),
+        _legacy_on_commit=committed if request.app.state.settings.knowledge_spaces_json is None else None)
     return NoteResult(success=True, path=result.path, status=result.status)
 
 
@@ -111,11 +101,10 @@ def create_note(
 )
 def append_note(
     req: AppendNoteRequest,
-    vault_service: VaultService = Depends(get_vault_service),
-    semantic_indexer: BackgroundSemanticIndexer = Depends(get_semantic_indexer),
+    request: Request,
+    operations: SpaceOperations = Depends(get_space_operations),
 ) -> NoteResult:
-    result = vault_service.append_note(path=req.path, content=req.content, dedupe_key=req.dedupe_key)
-    if result.status == "appended":
+    def committed(result):
         log_event(
             logger,
             logging.INFO,
@@ -124,7 +113,8 @@ def append_note(
             operation="append",
             note_path=result.path,
         )
-        enqueue_after_committed_write(semantic_indexer, result.path)
+    result = operations.compatibility_write("append", request=req.model_dump(),
+        _legacy_on_commit=committed if request.app.state.settings.knowledge_spaces_json is None else None)
     return NoteResult(success=True, path=result.path, status=result.status)
 
 

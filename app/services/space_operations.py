@@ -72,6 +72,24 @@ class SpaceOperations:
 
         return read(self, operation, arguments, cancel=cancel)
 
+    def compatibility_write(self, operation, *, request=None, cancel=None, **arguments):
+        """Authorize default before legacy writes/reviews, retaining their owner contract."""
+        from app.services._space_writes import compatibility
+
+        return compatibility(self, operation, request, arguments, cancel=cancel)
+
+    @_safe_local_errors
+    def scoped_create_note(self, scope: WriteScope, request, *, cancel=None):
+        from app.services._space_writes import note
+
+        return note(self, "create", scope, request, cancel=cancel)
+
+    @_safe_local_errors
+    def scoped_append_note(self, scope: WriteScope, request, *, cancel=None):
+        from app.services._space_writes import note
+
+        return note(self, "append", scope, request, cancel=cancel)
+
     def authorize_read_requirements(self, operation, scope, *, request=None):
         """Pure profile preflight, before composing any operational owner.
 
@@ -141,9 +159,9 @@ class SpaceOperations:
         return review(self, source, capture_id, destination, candidate_limit, cancel=cancel)
 
     @_safe_local_errors
-    def scoped_promotion_destination(self, destination: QualifiedPath, *, cancel=None):
+    def scoped_promotion_destination(self, destination: QualifiedPath, *, cancel=None, missing_ok=False):
         from app.services._scoped_promotion import inspect_destination
-        return inspect_destination(self, destination, cancel=cancel)
+        return inspect_destination(self, destination, cancel=cancel, missing_ok=missing_ok)
 
     @_safe_local_errors
     def scoped_promotion_decide(self, snapshot, request, *, cancel=None):

@@ -35,6 +35,7 @@ def _rejection_message(message):
     name = next((name for name in (
         "read_note", "list_notes", "search_notes", "related_notes", "duplicate_candidates",
         "note_links", "note_backlinks", "knowledge_hygiene_scan", "knowledge_query",
+        "create_note", "append_note",
     ) if name == original_params.get("name")), "read_note")
     method = "resources/read" if message.get("method") == "resources/read" else "tools/call"
     uri = original_params.get("uri")
@@ -62,6 +63,13 @@ def _rejection_message(message):
 def normalize_scoped_message(raw):
     duplicate, scoped, resource, nonfinite = False, False, False, False
     invalid_encoding = False
+    classified = raw
+    if isinstance(raw, bytes):
+        try:
+            classified = raw.decode("utf-8", errors="strict")
+        except UnicodeError:
+            classified = raw.decode("utf-8", errors="surrogateescape")
+            invalid_encoding = True
     if isinstance(raw, str):
         try:
             raw.encode("utf-8", errors="strict")
@@ -70,10 +78,23 @@ def normalize_scoped_message(raw):
             # first parser has classified every original selection/tool name.
             invalid_encoding = True
 
+    def unicode_values(value):
+        nonlocal invalid_encoding
+        if type(value) is str:
+            try:
+                value.encode("utf-8", errors="strict")
+            except UnicodeError:
+                invalid_encoding = True
+        elif type(value) is list:
+            for item in value:
+                unicode_values(item)
+
     def object_pairs(pairs):
         nonlocal duplicate, scoped, resource
         result = {}
         for key, value in pairs:
+            unicode_values(key)
+            unicode_values(value)
             # The FIRST parser sees every object member, including members of
             # overwritten params/arguments/URI/method. Capture all selection
             # evidence before collapsing; the final dictionary is not evidence
@@ -99,7 +120,7 @@ def normalize_scoped_message(raw):
 
     message = {}
     try:
-        message = json.loads(raw, object_pairs_hook=object_pairs, parse_float=number, parse_constant=constant)
+        message = json.loads(classified, object_pairs_hook=object_pairs, parse_float=number, parse_constant=constant)
     except (ValueError, UnicodeError, RecursionError):
         # Failed classification cannot establish that tainted input is legacy.
         if not (invalid_encoding or ((scoped or resource) and (duplicate or nonfinite))):
@@ -153,7 +174,8 @@ class _HTTPReadLifetime:
     """One HTTP request, with cancellation limited to its enrolled reads.
 
     The SDK carries the Request in per-message metadata on both protocol paths.
-    Writes are never enrolled or cancelled by this read-only bridge.
+    Writes also enroll; confirmed/uncertain outcomes survive cancellation in
+    domain admission, while the disconnected transport drains without responding.
     """
 
     def __init__(self):

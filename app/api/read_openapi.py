@@ -19,14 +19,17 @@ def install_read_openapi(application):
         schema = original()
         if getattr(application.state, "read_openapi_schema", None) is schema:
             return schema
+        from app.api.notes import NoteResult
         from app.api.relationships import NoteBacklinksResponse, NoteLinksResponse
         from app.api.search import DuplicateCandidatesResponse
         from app.knowledge_hygiene_transport import KnowledgeHygieneScanResponse
 
-        one = {"duplicates": DuplicateCandidatesResponse, "links": NoteLinksResponse,
+        one = {"notes": NoteResult, "append": NoteResult,
+               "duplicates": DuplicateCandidatesResponse, "links": NoteLinksResponse,
                "backlinks": NoteBacklinksResponse, "scan": KnowledgeHygieneScanResponse}
         reads = {"read": "read", "list": "list", "search": "literal", "related": "related",
-                 "duplicates": "duplicates", "links": "links", "backlinks": "backlinks", "scan": "hygiene"}
+                 "duplicates": "duplicates", "links": "links", "backlinks": "backlinks", "scan": "hygiene",
+                 "notes": "create", "append": "append"}
         components = schema.setdefault("components", {}).setdefault("schemas", {})
 
         def register(value):
@@ -64,6 +67,7 @@ def install_read_openapi(application):
                 continue
             leaf = path.rsplit("/", 1)[-1]
             if leaf not in reads or not (path.startswith("/notes/") or path.startswith("/api/v1/notes/")
+                                         or path in {"/notes", "/api/v1/notes"}
                                          or path == "/api/v1/knowledge/hygiene/scan"):
                 continue
             operation = reads[leaf]
@@ -98,6 +102,20 @@ def install_read_openapi(application):
                           "required": ["space_id", "result"]}
             response = endpoint["responses"]["200"]["content"]["application/json"]
             response["schema"] = schema_union(response["schema"], scoped)
+            if operation in {"create", "append"}:
+                for status, codes in {
+                    400: ["invalid_path"], 403: ["scope_not_allowed"], 404: ["note_not_found"],
+                    409: ["capability_unavailable", "note_conflict"], 413: ["size_limit"],
+                    422: ["invalid_scope", "invalid_request"],
+                    503: ["space_unavailable", "operation_cancelled"], 500: ["internal_error"],
+                }.items():
+                    endpoint["responses"][str(status)] = {
+                        "description": "Privacy-safe explicit write error; omitted scope retains legacy errors",
+                        "content": {"application/json": {"schema": {
+                            "type": "object", "additionalProperties": False, "required": ["detail"],
+                            "properties": {"detail": {"type": "string", "enum": codes}},
+                        }}},
+                    }
         application.state.read_openapi_schema = schema
         return schema
 

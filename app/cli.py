@@ -38,7 +38,7 @@ from app.services.knowledge_query import (
     KnowledgeQueryResult,
     KnowledgeQueryService,
 )
-from app.services.knowledge_spaces import ReadScope, SpaceError, SpaceId
+from app.services.knowledge_spaces import QualifiedPath, ReadScope, SpaceError, SpaceId, WriteScope
 from app.services.persisted_space_reads import compose_persisted_space_reads
 from app.services.promotion import PromotionError, PromotionService
 from app.services.relationships import RelationshipService
@@ -198,6 +198,8 @@ def _parser(*, hygiene: bool = False, scoped: bool = False, json_mode: bool = Fa
     review.set_defaults(action="promote_review")
     apply = promote_modes.add_parser("apply", help="apply one JSON decision from standard input")
     apply.set_defaults(action="promote_apply")
+    for command in (capture, review, apply):
+        command.add_argument("--space", action="append", default=None, help="exactly one writable space ID")
 
     index = commands.add_parser(
         "index",
@@ -910,9 +912,13 @@ def run_capture(
     input_stream: BinaryIO | None = None,
     output: TextIO | None = None,
     service: CaptureService | None = None,
+    space: str | None = None,
 ) -> int:
     """Read one bounded request; the domain owns validation and all capture semantics."""
     settings.require_legacy_composition()
+    if space is not None:
+        return _run_write_cli(settings, "capture", space=space, input_stream=input_stream, output=output,
+                              service=service)
     stream = output or sys.stdout
 
     def unique_object(pairs):
@@ -948,7 +954,8 @@ def run_capture(
 
     capture_service = service or CaptureService(_vault_service(settings), enqueue=enqueue)
     try:
-        result = capture_service.capture(request)
+        operations = legacy_operations(settings, vault=capture_service.vault_service, capture=capture_service)
+        result = operations.compatibility_write("capture", request=request)
         # Enqueue evidence is separate from later worker completion. Drain this local
         # CLI worker before exit; Markdown success is unchanged by derived failure.
         if worker is not None:
@@ -971,8 +978,12 @@ def run_capture(
 
 def run_promote_review(settings: Settings, *, source_path: str, capture_id: str,
                        candidate_limit: int | None = None, destination: str | None = None,
-                       output: TextIO | None = None, service: PromotionService | None = None) -> int:
+                       output: TextIO | None = None, service: PromotionService | None = None,
+                       space: str | None = None) -> int:
     settings.require_legacy_composition()
+    if space is not None:
+        return _run_write_cli(settings, "review", space=space, source_path=source_path, capture_id=capture_id,
+                              candidate_limit=candidate_limit, destination=destination, output=output, service=service)
     stream = output or sys.stdout
     if service is None:
         vault = _vault_service(settings)
@@ -987,8 +998,10 @@ def run_promote_review(settings: Settings, *, source_path: str, capture_id: str,
         promoter = PromotionService(vault, candidates=candidates)
     else:
         promoter = service
+    operations = legacy_operations(settings, vault=promoter.vault_service, promotion=promoter)
     try:
-        snapshot = promoter.review(source_path, capture_id, candidate_limit=candidate_limit)
+        snapshot = operations.compatibility_write("promotion_review", source_path=source_path,
+                                                  capture_id=capture_id, candidate_limit=candidate_limit)
         response = {"category": "reviewed", "source_path": snapshot.source_path,
                     "capture_id": snapshot.capture_id, "capture_state": snapshot.capture_state,
                     "metadata": dict(snapshot.metadata), "body": snapshot.body,
@@ -996,7 +1009,8 @@ def run_promote_review(settings: Settings, *, source_path: str, capture_id: str,
                     "evidence_state": snapshot.evidence_state,
                     "evidence": [asdict(candidate) for candidate in snapshot.evidence]}
         if destination is not None:
-            response["destination"] = asdict(promoter.inspect_destination(destination))
+            response["destination"] = asdict(operations.compatibility_write(
+                "promotion_destination", destination=destination))
     except PromotionError as exc:
         print(json.dumps({"category": exc.category}), file=stream)
         return EXIT_INTEGRITY_PROBLEM
@@ -1005,8 +1019,11 @@ def run_promote_review(settings: Settings, *, source_path: str, capture_id: str,
 
 
 def run_promote_apply(settings: Settings, *, input_stream: BinaryIO | None = None,
-                      output: TextIO | None = None, service: PromotionService | None = None) -> int:
+                      output: TextIO | None = None, service: PromotionService | None = None,
+                      space: str | None = None) -> int:
     settings.require_legacy_composition()
+    if space is not None:
+        return _run_write_cli(settings, "apply", space=space, input_stream=input_stream, output=output, service=service)
     stream = output or sys.stdout
 
     def unique_object(pairs):
@@ -1038,7 +1055,8 @@ def run_promote_apply(settings: Settings, *, input_stream: BinaryIO | None = Non
 
     promoter = service or PromotionService(_vault_service(settings), enqueue=enqueue)
     try:
-        result = promoter.apply(request)
+        operations = legacy_operations(settings, vault=promoter.vault_service, promotion=promoter)
+        result = operations.compatibility_write("promotion_apply", request=request)
         if worker is not None:
             try:
                 worker.wait()
@@ -1164,12 +1182,147 @@ def _run_scoped_cli(settings, operation, data, *, operations=None, json_output=F
         return exit_code
 
 
+def _write_space_argument(values):
+    if values is None:
+        return {}
+    if len(values) != 1:
+        raise SpaceError("invalid_scope")
+    return {"space": SpaceId(values[0]).value}
+
+
+def _write_evidence(result, operation):
+    evidence = {"category": result.category, "committed": result.committed}
+    if result.committed:
+        fields = (("capture_id", "path", "index_state") if operation == "capture" else
+                  ("source_path", "destination", "capture_id", "promotion_id", "index_state"))
+        evidence.update({key: getattr(result, key) for key in fields})
+    return evidence
+
+
+def _review_evidence(snapshot):
+    return {"category": "reviewed", "source_path": snapshot.source_path,
+            "capture_id": snapshot.capture_id, "capture_state": snapshot.capture_state,
+            "metadata": dict(snapshot.metadata), "body": snapshot.body,
+            "source_sha256": snapshot.source_sha256, "evidence_state": snapshot.evidence_state,
+            "evidence": [asdict(candidate) for candidate in snapshot.evidence]}
+
+
+def _run_write_cli(settings, operation, *, space=None, input_stream=None, output=None,
+                   source_path=None, capture_id=None, destination=None, candidate_limit=None,
+                   operations=None, **raw_owners):
+    """Private vertical seam. Public commands retain their named activation guard."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from app.services.scoped_budget import CancellationToken
+    from app.services.write_composition import compose_write_profile
+
+    stream = output or sys.stdout
+    profile, outcome = None, None
+    try:
+        if any(owner is not None for owner in raw_owners.values()):
+            raise SpaceError("invalid_configuration", reason="named_serving_unsupported")
+        scope = None if space is None else WriteScope(SpaceId(space))
+        if operation == "review":
+            if scope is not None and destination is None:
+                raise InvalidReadRequest()
+        else:
+            raw = (input_stream or sys.stdin.buffer).read(1_048_577)
+            if len(raw) > 1_048_576:
+                raise PromotionError("size_limit")
+            request = strict_json(raw)
+            if type(request) is not dict:
+                raise InvalidReadRequest()
+            if operation == "apply":
+                PromotionService.validate_request(request)
+                source_path, capture_id, destination = (request[key] for key in (
+                    "source_path", "capture_id", "destination"))
+        if operations is None:
+            profile = compose_write_profile(settings, operation, scope, candidate_limit=candidate_limit)
+            operations = profile.start().operations
+        else:
+            validate_private_operations(operations, settings=settings)
+        cancel = CancellationToken()
+
+        def execute():
+            if scope is None:
+                if operation == "review":
+                    snapshot = operations.compatibility_write("promotion_review", source_path=source_path,
+                        capture_id=capture_id, candidate_limit=candidate_limit, cancel=cancel)
+                    evidence = _review_evidence(snapshot)
+                    if destination is not None:
+                        evidence["destination"] = asdict(operations.compatibility_write(
+                            "promotion_destination", destination=destination, cancel=cancel))
+                    return evidence, True
+                result = operations.compatibility_write("capture" if operation == "capture" else "promotion_apply",
+                                                        request=request, cancel=cancel)
+                return _write_evidence(result, operation), result.committed
+            if operation == "capture":
+                result = operations.scoped_capture(scope, request, cancel=cancel).result
+            else:
+                source = QualifiedPath(scope.space_id, source_path)
+                target = QualifiedPath(scope.space_id, destination)
+                snapshot = operations.scoped_promotion_review(source, capture_id, destination=target,
+                    candidate_limit=candidate_limit if operation == "review" else None, cancel=cancel)
+                if operation == "review":
+                    evidence = _review_evidence(snapshot.review)
+                    evidence["provenance_version"] = snapshot.provenance_version
+                    # An absent create target is retained by the review wrapper.
+                    # Only existing append destinations have Markdown/hash evidence.
+                    existing = operations.scoped_promotion_destination(target, cancel=cancel, missing_ok=True).result
+                    if existing is not None:
+                        evidence["destination"] = asdict(existing)
+                    return {"space_id": scope.space_id.value, "result": evidence}, True
+                decision = operations.scoped_promotion_decide(snapshot, request, cancel=cancel)
+                result = operations.scoped_promotion_apply(decision, cancel=cancel).result
+            return {"space_id": scope.space_id.value, "result": _write_evidence(result, operation)}, result.committed
+
+        # Keyboard interruption signals the same domain token; blocking mutation
+        # drains on its owning thread before profile shutdown or evidence output.
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            work = executor.submit(execute)
+            try:
+                outcome = work.result()
+            except KeyboardInterrupt:
+                cancel.cancel()
+                outcome = work.result()
+        if profile is not None:
+            if profile.scheduler is not None:
+                profile.scheduler.wait()
+            profile.shutdown()
+        print(json.dumps(outcome[0], ensure_ascii=True, allow_nan=False), file=stream)
+        return EXIT_SUCCESS if outcome[1] else EXIT_INTEGRITY_PROBLEM
+    except (Exception, KeyboardInterrupt) as exc:
+        failure = exc
+        if profile is not None:
+            try:
+                profile.shutdown()
+            except BaseException:
+                failure = SpaceError("unavailable_space")
+        # Even failed cleanup cannot erase a confirmed/uncertain write outcome.
+        if outcome is not None:
+            print(json.dumps(outcome[0], ensure_ascii=True, allow_nan=False), file=stream)
+            return EXIT_INTEGRITY_PROBLEM
+        if isinstance(failure, PromotionError):
+            code, exit_code = failure.category, EXIT_INTEGRITY_PROBLEM
+        else:
+            code, _, exit_code = public_error(failure)
+        if isinstance(failure, KeyboardInterrupt):
+            code, exit_code = "operation_cancelled", EXIT_INTEGRITY_PROBLEM
+        print(json.dumps({"category": code}), file=stream)
+        return exit_code
+
+
 def main(argv: Sequence[str] | None = None, *, settings: Settings | None = None) -> int:
     tokens = list(argv) if argv is not None else sys.argv[1:]
+    write_scoped = bool(tokens and tokens[0] in {"capture", "promote"} and any(
+        token.startswith("--") and len(token.split("=", 1)[0]) > 2 and (
+            "--space".startswith(token.split("=", 1)[0]) or token.split("=", 1)[0] in {
+                "--spaces", "--scope", "--space-id", "--source-space", "--destination-space"})
+        for token in tokens))
     args = _parser(
         hygiene=bool(tokens and tokens[0] == "hygiene"),
-        json_mode="--json" in tokens,
-        scoped=any(token == "--space" or token.startswith("--space=") or (
+        json_mode="--json" in tokens or bool(tokens and tokens[0] in {"capture", "promote"}),
+        scoped=write_scoped or any(token == "--space" or token.startswith("--space=") or (
             tokens[0] == "query" and token.startswith("--") and any(
                 flag.startswith(token.split("=", 1)[0]) for flag in ("--request-json", "--qualified-path")
             )) for token in tokens),
@@ -1195,13 +1348,13 @@ def main(argv: Sequence[str] | None = None, *, settings: Settings | None = None)
                 json_output=args.json, **({"spaces": args.space} if args.space is not None else {}),
             )
         if args.action == "capture":
-            return run_capture(app_settings)
+            return run_capture(app_settings, **_write_space_argument(args.space))
         if args.action == "promote_review":
             return run_promote_review(app_settings, source_path=args.source_path,
                                       capture_id=args.capture_id, candidate_limit=args.candidate_limit,
-                                      destination=args.destination)
+                                      destination=args.destination, **_write_space_argument(args.space))
         if args.action == "promote_apply":
-            return run_promote_apply(app_settings)
+            return run_promote_apply(app_settings, **_write_space_argument(args.space))
         if args.action == "status":
             return run_status(app_settings)
         if args.action == "index_check":
@@ -1246,7 +1399,7 @@ def main(argv: Sequence[str] | None = None, *, settings: Settings | None = None)
         )
     except SpaceError as exc:
         code, _, exit_code = public_error(exc)
-        if getattr(args, "json", False):
+        if getattr(args, "json", False) or args.action in {"capture", "promote_review", "promote_apply"}:
             print(json.dumps({"category": code}))
         else:
             print(f"{code}: Operation failed.", file=sys.stderr)
