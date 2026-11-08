@@ -43,6 +43,25 @@ def install_read_openapi(application):
             return references(value)
 
         for path, methods in schema["paths"].items():
+            if path == "/api/v1/knowledge/query":
+                from app.knowledge_query_transport import knowledge_query_schema
+
+                endpoint = methods["post"]
+                endpoint["requestBody"]["content"]["application/json"]["schema"] = knowledge_query_schema()
+                for status in (400, 403, 409, 422, 503, 500):
+                    endpoint["responses"][str(status)] = {
+                        "description": "Privacy-safe scoped error",
+                        "content": {"application/json": {"schema": {
+                            "type": "object", "additionalProperties": False, "required": ["detail"],
+                            "properties": {"detail": {"type": "string", "enum": {
+                                400: ["invalid_path"], 403: ["scope_not_allowed"],
+                                409: ["capability_unavailable"], 422: ["invalid_scope", "invalid_request"],
+                                503: ["space_unavailable", "semantic_unavailable", "operation_cancelled"],
+                                500: ["internal_error"],
+                            }[status]}},
+                        }}},
+                    }
+                continue
             leaf = path.rsplit("/", 1)[-1]
             if leaf not in reads or not (path.startswith("/notes/") or path.startswith("/api/v1/notes/")
                                          or path == "/api/v1/knowledge/hygiene/scan"):

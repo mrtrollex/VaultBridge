@@ -181,6 +181,7 @@ def test_openapi_contract_matrix_has_stable_unique_operation_ids_and_identical_s
         "/api/v1/notes/links",
         "/api/v1/notes/backlinks",
         "/api/v1/knowledge/hygiene/scan",
+        "/api/v1/knowledge/query",
     }
     operation_ids: list[str] = []
 
@@ -201,6 +202,7 @@ def test_openapi_contract_matrix_has_stable_unique_operation_ids_and_identical_s
         assert v1_shape == legacy_shape
 
     assert set(schema["paths"]) == expected_paths
+    assert schema["paths"]["/api/v1/knowledge/query"]["post"]["operationId"] == "queryKnowledgeV1"
     for path_item in schema["paths"].values():
         operation_ids.extend(operation["operationId"] for operation in path_item.values())
     assert len(operation_ids) == len(set(operation_ids))

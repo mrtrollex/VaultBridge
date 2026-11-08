@@ -16,7 +16,7 @@ from mcp import Client
 from pydantic import SecretStr
 
 from app.api.private_reads import create_private_read_app
-from app.cli import _run_scoped_cli
+from app.cli import _query_cli_input, _run_scoped_cli
 from app.core.ui_session import create_ui_session_token
 from app.mcp_server import create_private_read_server
 from app.services.knowledge_spaces import SpaceError
@@ -222,8 +222,7 @@ def test_persisted_cli_actual_index_no_mutations(settings, runtime, backend, mon
     for operation, data in (
         ("literal", {"spaces": ["default", "space-1"], "query": "Independent"}),
         ("related", {"spaces": ["default", "space-1"], "text": "Independent", "min_score": 0}),
-        ("query", {"spaces": ["space-1"], "semantic_text": "Independent", "literal_text": None,
-                   "folder": None, "paths": (), "tags": (), "limit": 20}),
+        ("query", {"spaces": ["space-1"], "semantic_text": "Independent", "limit": 20}),
         ("hygiene", {"space": "space-1", "groups": [], "inspect_derived_index": True}),
     ):
         stream = StringIO()
@@ -606,22 +605,23 @@ def test_eight_space_persisted_profile_has_one_model_no_workers(tmp_path, backen
 
 
 def test_scoped_cli_query_inheritance_json_and_human_escaping(settings, runtime):
-    query = {"spaces": ["space-1", "space-1"], "literal_text": "Independent", "semantic_text": None,
-             "folder": None, "paths": ("same.md",), "tags": (), "limit": 20}
+    query = {"spaces": ["space-1", "space-1"], "literal_text": "Independent", "paths": ("same.md",)}
     output = StringIO()
-    assert _run_scoped_cli(settings, "query", query, operations=runtime.operations, output=output) == 0
+    def request():
+        return _query_cli_input(**query)
+    assert _run_scoped_cli(settings, "query", request, operations=runtime.operations, output=output) == 0
     assert '["space-1"] "same.md"' in output.getvalue() and "coverage:" in output.getvalue()
     query["spaces"] = ["default", "space-1"]
     output = StringIO()
     assert (
-        _run_scoped_cli(settings, "query", query, operations=runtime.operations, json_output=True, output=output) == 2
+        _run_scoped_cli(settings, "query", request, operations=runtime.operations, json_output=True, output=output) == 2
     )
     assert json.loads(output.getvalue()) == {"category": "invalid_scope"}
 
 
 def test_scoped_openapi_preserves_routes_and_describes_scope(settings, runtime):
     schema = rest(settings, runtime).app.openapi()
-    assert "/api/v1/knowledge/query" not in schema["paths"]
+    assert schema["paths"]["/api/v1/knowledge/query"]["post"]["operationId"] == "queryKnowledgeV1"
     for path in ("/notes/read", "/api/v1/notes/read"):
         operation = schema["paths"][path]["get"]
         assert any(parameter["name"] == "space" for parameter in operation["parameters"])

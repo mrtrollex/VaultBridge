@@ -356,7 +356,7 @@ def test_project_state_current_mcp_and_dashboard_contract():
 
     current = (ROOT / "PROJECT_STATE.md").read_text(encoding="utf-8").split(
         "## Working production characteristics", 1)[1]
-    assert "exactly eight default read-only tools" in current and "(ten total)" in current
+    assert "exactly nine default read-only tools" in current and "(eleven total)" in current
     for name in TOOLS | WRITE_TOOLS:
         assert f"`{name}`" in current
     assert "with five MCP tools" not in current and "with seven MCP tools" not in current

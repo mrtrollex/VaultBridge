@@ -34,7 +34,7 @@ def _rejection_message(message):
     original_params = original_params if isinstance(original_params, dict) else {}
     name = next((name for name in (
         "read_note", "list_notes", "search_notes", "related_notes", "duplicate_candidates",
-        "note_links", "note_backlinks", "knowledge_hygiene_scan",
+        "note_links", "note_backlinks", "knowledge_hygiene_scan", "knowledge_query",
     ) if name == original_params.get("name")), "read_note")
     method = "resources/read" if message.get("method") == "resources/read" else "tools/call"
     uri = original_params.get("uri")
@@ -61,6 +61,14 @@ def _rejection_message(message):
 
 def normalize_scoped_message(raw):
     duplicate, scoped, resource, nonfinite = False, False, False, False
+    invalid_encoding = False
+    if isinstance(raw, str):
+        try:
+            raw.encode("utf-8", errors="strict")
+        except UnicodeError:
+            # Stdio retains malformed bytes as surrogate escapes until the
+            # first parser has classified every original selection/tool name.
+            invalid_encoding = True
 
     def object_pairs(pairs):
         nonlocal duplicate, scoped, resource
@@ -72,6 +80,7 @@ def normalize_scoped_message(raw):
             # that the original envelope omitted selection.
             duplicate = duplicate or key in result
             scoped = scoped or key in SCOPE_FIELDS
+            scoped = scoped or (key == "name" and value == "knowledge_query")
             scoped = scoped or (key == "uri" and isinstance(value, str) and value.startswith("vaultbridge://space/"))
             resource = resource or (key == "method" and value == "resources/read")
             result[key] = value
@@ -92,12 +101,13 @@ def normalize_scoped_message(raw):
     try:
         message = json.loads(raw, object_pairs_hook=object_pairs, parse_float=number, parse_constant=constant)
     except (ValueError, UnicodeError, RecursionError):
-        if not ((scoped or resource) and (duplicate or nonfinite)):
+        # Failed classification cannot establish that tainted input is legacy.
+        if not (invalid_encoding or ((scoped or resource) and (duplicate or nonfinite))):
             return raw  # Existing SDK protocol/parse error boundary, before rejection.
     else:
         if not isinstance(message, dict) or not (scoped or resource):
             return raw
-        invalid = duplicate or nonfinite
+        invalid = duplicate or nonfinite or invalid_encoding
         if not invalid and message.get("method") == "resources/read":
             params = message.get("params")
             uri = params.get("uri") if isinstance(params, dict) else None
@@ -127,7 +137,16 @@ class StrictScopedLines:
 
     async def __aiter__(self):
         async for line in self.source:
-            yield normalize_scoped_message(line)
+            normalized = normalize_scoped_message(line)
+            if normalized is line:
+                # Only unchanged legacy input retains the SDK's historical
+                # replacement policy. Rejected input or construction failure
+                # cannot reach this compatibility branch.
+                try:
+                    line.encode("utf-8", errors="strict")
+                except UnicodeError:
+                    normalized = line.encode("utf-8", errors="surrogateescape").decode("utf-8", errors="replace")
+            yield normalized
 
 
 class _HTTPReadLifetime:

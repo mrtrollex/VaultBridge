@@ -9,6 +9,11 @@ from app.services.space_operations import SpaceOperations
 def legacy_operations(settings, *, vault, semantic=None, relationships=None, duplicates=None,
                       hygiene=None, query=None):
     settings.require_legacy_composition()
+    if query is None and vault is not None and relationships is not None and semantic is not None:
+        from app.services.knowledge_query import KnowledgeQueryService
+
+        query = KnowledgeQueryService(vault_service=vault, relationship_service=relationships,
+                                      semantic_search_service=semantic)
     registry = SpaceRegistry.from_settings(settings)
     definition, = registry._definitions
     owners = SpaceOwners(

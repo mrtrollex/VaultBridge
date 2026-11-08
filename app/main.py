@@ -11,6 +11,7 @@ from starlette.types import ASGIApp
 
 from app.api.health import router as health_router
 from app.api.knowledge_hygiene import router as knowledge_hygiene_router
+from app.api.knowledge_query import router as knowledge_query_router
 from app.api.notes import router as notes_router
 from app.api.read_openapi import install_read_openapi
 from app.api.relationships import router as relationships_router
@@ -268,6 +269,7 @@ def create_app(
     application.include_router(notes_router)
     application.include_router(relationships_router)
     application.include_router(knowledge_hygiene_router)
+    application.include_router(knowledge_query_router)
     application.include_router(search_router)
     application.include_router(ui_router)
     if app_settings.mcp_http_enabled:

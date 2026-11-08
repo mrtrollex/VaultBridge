@@ -229,7 +229,7 @@ Current post-v1 planning position:
   vault, and data were removed afterward. The production vault was not used or validated.
 - VB-075 is complete with exact-source CI and exact-image runtime evidence
 - VB-106 adds default-off `create_note` and `append_note` parity to both MCP transports. The disabled
-  surface now contains eight read-only tools including Hygiene; write-enabled stdio owns and shuts down a targeted
+  surface now contains nine read-only tools including Hygiene and Knowledge Query; write-enabled stdio owns and shuts down a targeted
   indexer, while HTTP reuses the live application indexer
 - OAuth, Prompts, delete/overwrite/file-management tools, VB-034 backlink insertion, and VaultBridge
   subscription features remain unimplemented
@@ -366,14 +366,19 @@ Current post-v1 planning position:
   `5d6f0298e8511c3287366e0c7876db20ea2e6287`; the evidence report is retained unchanged.
   VB-152's authoritative contract was approved and merged through PR #146,
   `3653b1644ad9041b6c073370fd761bf0116edf82`; see
-  [BACKLOG.md](BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-slice-a-private-activation-blocked).
+  [BACKLOG.md](BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-slices-a-and-b-private-activation-blocked).
   It selects existing REST/MCP scope extensions plus one Query route/tool, scoped CLI reads/writes,
   same-space v2 capture/promotion with default v1 parity, minimal named health and a coordinated
   activation gate. Named Dashboard/session and maintenance/status are explicitly fenced; registry/
   label discovery, rebind and migration remain separate. Slice A implements existing policy-bound
   reads, qualified resources, a persisted read-only CLI profile and named exclusion fences privately.
-  Slices B–D remain unimplemented, and separate fresh acceptance is pending. Current evidence and
-  its exact platform/workflow boundaries are in [VB152_A_VERIFICATION.md](docs/VB152_A_VERIFICATION.md).
+  Slice A was independently accepted and merged through PR #147,
+  `670ca21df166f34e989e88d86a95fe6bf81d67b5` (task-owner confirmation). Slice B adds the strict shared
+  Knowledge Query request, versioned REST route, MCP tool on stdio/HTTP and structured CLI input,
+  reusing existing domain authorization, budgets, ranking, coverage and persisted read-only owners.
+  Slice B separate acceptance remains pending; C/D remain unimplemented. Current evidence and exact
+  native platform/workflow boundaries are in [VB152_A_VERIFICATION.md](docs/VB152_A_VERIFICATION.md)
+  and [VB152_B_VERIFICATION.md](docs/VB152_B_VERIFICATION.md).
   Named serving remains blocked by current guards.
   Milestone 16 remains PLANNED; multi-space serving and index-format changes are not implemented
 - VB-032 and VB-033 remain deferred optional future work
@@ -487,10 +492,10 @@ Current milestones:
   authenticated `GET /api/v1/notes/list?limit=5` returned an empty note list
 - Python 3.12 container
 - FastAPI routes, vault operations, semantic orchestration and SQLite persistence have separate modules
-- `python -m app.mcp_server` local stdio adapter with exactly eight default read-only tools:
-  `knowledge_hygiene_scan`, `list_notes`, `read_note`, `search_notes`, `related_notes`,
+- `python -m app.mcp_server` local stdio adapter with exactly nine default read-only tools:
+  `knowledge_hygiene_scan`, `knowledge_query`, `list_notes`, `read_note`, `search_notes`, `related_notes`,
   `duplicate_candidates`, `note_links`, and `note_backlinks`; opt-in MCP writes add only
-  `create_note` and `append_note` (ten total). It provides one contained Markdown Resource template,
+  `create_note` and `append_note` (eleven total). It provides legacy and qualified contained Markdown Resource templates,
   process-wide monotonic rate limiting, and safe stderr-only diagnostics
 - disabled-by-default read-only MCP Streamable HTTP at exact `/mcp` on the application port, using
   SDK Host/Origin protection, shared Bearer rotation, the live direct-peer limiter, live services,

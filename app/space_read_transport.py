@@ -153,8 +153,16 @@ def strict_json(raw):
     def constant(_):
         raise InvalidReadRequest()
 
+    def number(value):
+        result = float(value)
+        if not math.isfinite(result):
+            raise InvalidReadRequest()
+        return result
+
     try:
-        return json.loads(raw, object_pairs_hook=pairs, parse_constant=constant)
+        if isinstance(raw, bytes):
+            raw = raw.decode("utf-8", errors="strict")
+        return json.loads(raw, object_pairs_hook=pairs, parse_constant=constant, parse_float=number)
     except (ValueError, UnicodeError, RecursionError):
         raise InvalidReadRequest() from None
 
@@ -304,6 +312,11 @@ def project_scoped(result, *, resource_uris=False):
 
 
 def execute_scoped(operations, operation, data, *, resource_uris=False, cancel=None):
+    if operation == "query":
+        from app.knowledge_query_transport import parse_knowledge_query
+
+        return project_scoped(operations.scoped_query(parse_knowledge_query(data), cancel=cancel),
+                              resource_uris=resource_uris)
     selected, arguments = parse_scoped(operation, data)
     if operation in PLURAL_READS:
         method = {"list": operations.scoped_list, "literal": operations.scoped_literal_search,

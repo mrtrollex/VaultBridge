@@ -24,6 +24,7 @@ from pathlib import Path
 
 TOOLS = {
     "knowledge_hygiene_scan",
+    "knowledge_query",
     "list_notes",
     "read_note",
     "search_notes",
@@ -532,6 +533,13 @@ async def client_smoke(
                 "findings_truncated": False,
             }
             paths = {note["path"] for note in result.structured_content["notes"]}
+            query = await client.call_tool("knowledge_query", {"literal_text": "Smoke"})
+            assert not query.is_error
+            assert [row["space_id"] for row in query.structured_content["coverage"]] == ["default"]
+            assert query.structured_content["ordering"] == "canonical_path"
+            for row in query.structured_content["items"]:
+                assert row["identity"]["space_id"] == "default" and row["identity"]["path"] in paths
+                assert row["resource_uri"].startswith("vaultbridge://space/default/note/")
             if writes:
                 if not read_back_only:
                     created_bytes = {}

@@ -145,6 +145,7 @@ def test_ui_routes_are_excluded_from_openapi_contract(tmp_path):
         "/api/v1/notes/links",
         "/api/v1/notes/backlinks",
         "/api/v1/knowledge/hygiene/scan",
+        "/api/v1/knowledge/query",
     }
 
 
@@ -1007,6 +1008,7 @@ def test_ui_preserves_exact_api_operation_id_contract(tmp_path):
         ("GET", "/api/v1/notes/links", "listNoteLinksV1"),
         ("GET", "/api/v1/notes/backlinks", "listNoteBacklinksV1"),
         ("POST", "/api/v1/knowledge/hygiene/scan", "scanKnowledgeHygieneV1"),
+        ("POST", "/api/v1/knowledge/query", "queryKnowledgeV1"),
     }
 
 

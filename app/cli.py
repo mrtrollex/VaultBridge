@@ -15,6 +15,7 @@ from pydantic import ValidationError
 from app.core.config import Settings
 from app.core.logging import configure_application_logging
 from app.knowledge_hygiene_transport import serialize_hygiene_result
+from app.knowledge_query_transport import parse_knowledge_query, qualified_path
 from app.repositories.semantic import ImmutableIndexInspectionUnavailableError
 from app.services._space_compatibility import LegacyReadUnavailable
 from app.services.adapter_composition import legacy_operations, validate_private_operations
@@ -37,11 +38,10 @@ from app.services.knowledge_query import (
     KnowledgeQueryResult,
     KnowledgeQueryService,
 )
-from app.services.knowledge_spaces import QualifiedPath, ReadScope, SpaceError, SpaceId
+from app.services.knowledge_spaces import ReadScope, SpaceError, SpaceId
 from app.services.persisted_space_reads import compose_persisted_space_reads
 from app.services.promotion import PromotionError, PromotionService
 from app.services.relationships import RelationshipService
-from app.services.scoped_reads import ScopedKnowledgeQuery
 from app.services.semantic_search import (
     Embedder,
     IndexState,
@@ -54,7 +54,14 @@ from app.services.semantic_search import (
     semantic_search_service_from_settings,
 )
 from app.services.vault import NoteSearchResult, VaultService, VaultServiceError, VaultValidationError
-from app.space_read_transport import execute_scoped, parse_scoped, project_scoped, public_error, selection
+from app.space_read_transport import (
+    InvalidReadRequest,
+    execute_scoped,
+    parse_scoped,
+    public_error,
+    selection,
+    strict_json,
+)
 
 EXIT_SUCCESS = 0
 EXIT_INTEGRITY_PROBLEM = 1
@@ -139,7 +146,7 @@ def _parser(*, hygiene: bool = False, scoped: bool = False, json_mode: bool = Fa
     if scoped:
         class ScopedParser(argparse.ArgumentParser):
             def error(self, message):
-                code = "invalid_scope" if "--space" in message else "invalid_request"
+                code = "invalid_scope" if message.partition(":")[0].endswith("--space") else "invalid_request"
                 if json_mode:
                     print(json.dumps({"category": code}))
                     self.exit(EXIT_CLI_FAILURE)
@@ -245,6 +252,9 @@ def _parser(*, hygiene: bool = False, scoped: bool = False, json_mode: bool = Fa
     query.add_argument("--semantic-text", help="semantic text used by the existing hybrid ranking")
     query.add_argument("--literal-text", help="exact case-sensitive text required in each note")
     query.add_argument("--folder", help="exact vault-relative recursive folder scope")
+    query.add_argument("--request-json", action="store_true", help="read one complete KnowledgeQueryRequest from stdin")
+    query.add_argument("--qualified-path", action="append", default=[],
+                       help="one QualifiedPath JSON object; repeat for OR")
     query.add_argument(
         "--path",
         action="append",
@@ -760,6 +770,10 @@ def run_knowledge_query(
     tags: Sequence[str] = (),
     limit: int = KNOWLEDGE_QUERY_DEFAULT_LIMIT,
     spaces: Sequence[str] | None = None,
+    request_json: bool = False,
+    qualified_paths: Sequence[str] = (),
+    input_stream: BinaryIO | None = None,
+    content_flags: bool = False,
     json_output: bool = False,
     output: TextIO | None = None,
     error_output: TextIO | None = None,
@@ -767,9 +781,14 @@ def run_knowledge_query(
 ) -> int:
     """Run the existing bounded domain query and print only its safe result evidence."""
     settings.require_legacy_composition()
-    if spaces is not None:
-        return _run_scoped_cli(settings, "query", {"spaces": list(spaces), "semantic_text": semantic_text,
-            "literal_text": literal_text, "folder": folder, "paths": tuple(paths), "tags": tuple(tags), "limit": limit},
+    if spaces is not None or request_json or qualified_paths:
+        def request():
+            return _query_cli_input(
+                spaces=spaces, semantic_text=semantic_text, literal_text=literal_text, folder=folder,
+                paths=paths, tags=tags, limit=limit, qualified_paths=qualified_paths,
+                request_json=request_json, input_stream=input_stream, content_flags=content_flags,
+            )
+        return _run_scoped_cli(settings, "query", request,
             json_output=json_output, output=output, error_output=error_output, service=service)
     stream = output or sys.stdout
     error_stream = error_output or sys.stderr
@@ -1040,6 +1059,48 @@ def run_promote_apply(settings: Settings, *, input_stream: BinaryIO | None = Non
     return EXIT_SUCCESS if result.committed else EXIT_INTEGRITY_PROBLEM
 
 
+def _query_cli_input(*, spaces=None, semantic_text=None, literal_text=None, folder=None, paths=(), tags=(),
+                     limit=KNOWLEDGE_QUERY_DEFAULT_LIMIT, qualified_paths=(), request_json=False,
+                     input_stream=None, content_flags=False):
+    if request_json:
+        if (content_flags or any(value is not None for value in (semantic_text, literal_text, folder))
+                or paths or tags or qualified_paths or limit != KNOWLEDGE_QUERY_DEFAULT_LIMIT):
+            raise InvalidReadRequest()
+        raw = (input_stream or sys.stdin.buffer).read(1_048_577)
+        if len(raw) > 1_048_576:
+            raise InvalidReadRequest()
+        data = strict_json(raw)
+        if type(data) is not dict:
+            raise InvalidReadRequest()
+        if spaces is not None:
+            if "spaces" in data:
+                raise SpaceError("invalid_scope")
+            data["spaces"] = list(spaces)
+        return data
+    if paths and qualified_paths:
+        raise SpaceError("invalid_scope")
+    data = {key: value for key, value in (("semantic_text", semantic_text), ("literal_text", literal_text),
+                                         ("folder", folder)) if value is not None}
+    data.update(tags=list(tags), limit=limit)
+    if spaces is not None:
+        data["spaces"] = list(spaces)
+    if paths:
+        scope = selection("literal", {"spaces": list(spaces)}) if spaces is not None else None
+        if scope is not None and len(scope.space_ids) != 1:
+            raise SpaceError("invalid_scope")
+        sid = "default" if scope is None else scope.space_ids[0].value
+        data["paths"] = [{"space_id": sid, "path": path} for path in paths]
+    else:
+        if len(qualified_paths) > 64:
+            raise InvalidReadRequest()
+        data["paths"] = []
+        for raw in qualified_paths:
+            value = strict_json(raw)
+            qualified_path(value)
+            data["paths"].append(value)
+    return data
+
+
 def _print_scoped_result(result, stream):
     if "items" not in result:
         print(f"[{json.dumps(result['space_id'])}]", file=stream)
@@ -1064,15 +1125,11 @@ def _run_scoped_cli(settings, operation, data, *, operations=None, json_output=F
     try:
         if any(value is not None for value in raw_owners.values()):
             raise SpaceError("invalid_configuration", reason="named_serving_unsupported")
+        if callable(data):
+            data = data()
         if operation == "query":
-            scope = selection("literal", {"spaces": data["spaces"]})
-            if data["paths"] and len(scope.space_ids) != 1:
-                raise SpaceError("invalid_scope")
-            paths = tuple(QualifiedPath(scope.space_ids[0], path) for path in data["paths"])
-            request = ScopedKnowledgeQuery(scope, KnowledgeQuery(
-                semantic_text=data["semantic_text"], literal_text=data["literal_text"], folder=data["folder"],
-                tags=data["tags"], limit=data["limit"],
-            ), paths=paths)
+            request = parse_knowledge_query(data)
+            scope = request.scope
         else:
             selected, arguments = parse_scoped(operation, data)
             scope = ReadScope((selected,)) if type(selected) is SpaceId else selected
@@ -1082,10 +1139,7 @@ def _run_scoped_cli(settings, operation, data, *, operations=None, json_output=F
             operations = profile.start().operations
         else:
             validate_private_operations(operations, settings=settings)
-        if operation == "query":
-            result = project_scoped(operations.scoped_query(request))
-        else:
-            result = execute_scoped(operations, operation, data)
+        result = execute_scoped(operations, operation, data)
         if profile is not None:
             profile.shutdown()
         if json_output:
@@ -1115,7 +1169,10 @@ def main(argv: Sequence[str] | None = None, *, settings: Settings | None = None)
     args = _parser(
         hygiene=bool(tokens and tokens[0] == "hygiene"),
         json_mode="--json" in tokens,
-        scoped=any(token == "--space" or token.startswith("--space=") for token in tokens),
+        scoped=any(token == "--space" or token.startswith("--space=") or (
+            tokens[0] == "query" and token.startswith("--") and any(
+                flag.startswith(token.split("=", 1)[0]) for flag in ("--request-json", "--qualified-path")
+            )) for token in tokens),
     ).parse_args(tokens)
     configured = False
     try:
@@ -1166,6 +1223,11 @@ def main(argv: Sequence[str] | None = None, *, settings: Settings | None = None)
         if args.action == "query":
             return run_knowledge_query(
                 app_settings,
+                **({"request_json": args.request_json, "qualified_paths": args.qualified_path,
+                    "content_flags": any(token.startswith("--") and any(
+                        flag.startswith(token.split("=", 1)[0]) for flag in (
+                            "--semantic-text", "--literal-text", "--folder", "--path", "--qualified-path", "--tag",
+                            "--limit")) for token in tokens[1:])} if args.request_json or args.qualified_path else {}),
                 **({"spaces": args.space, "json_output": args.json} if args.space is not None or args.json else {}),
                 semantic_text=args.semantic_text,
                 literal_text=args.literal_text,
