@@ -20,7 +20,8 @@ from app.space_read_transport import (
 )
 
 _READS = {"read": "read", "list": "list", "search": "literal", "related": "related",
-          "duplicates": "duplicates", "links": "links", "backlinks": "backlinks", "scan": "hygiene"}
+          "duplicates": "duplicates", "links": "links", "backlinks": "backlinks", "scan": "hygiene",
+          "query": "query"}
 
 
 def _query(request):
@@ -48,7 +49,8 @@ class SpaceReadRoute(APIRoute):
         operation = _READS.get(self.path.rsplit("/", 1)[-1])
 
         async def dispatch(request):
-            scoped = any(key in request.query_params for key in ("space", "spaces", "scope", "space_id"))
+            scoped = operation == "query" or any(
+                key in request.query_params for key in ("space", "spaces", "scope", "space_id"))
             raw = None
             if request.method == "POST":
                 raw = await request.body()
@@ -91,4 +93,15 @@ class SpaceReadRoute(APIRoute):
                 code, status, _ = public_error(exc)
                 return JSONResponse({"detail": code}, status_code=status)
 
-        return dispatch
+        if operation != "query":
+            return dispatch
+
+        async def query_dispatch(request):
+            try:
+                response = await dispatch(request)
+            except HTTPException as exc:
+                response = JSONResponse({"detail": exc.detail}, status_code=exc.status_code, headers=exc.headers)
+            response.headers["Cache-Control"] = "no-store"
+            return response
+
+        return query_dispatch

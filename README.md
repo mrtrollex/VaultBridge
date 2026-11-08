@@ -164,7 +164,7 @@ python -m app.mcp_server
 ```
 
 The stdio transport exposes `list_notes`, `read_note`, `search_notes`, `related_notes`,
-`duplicate_candidates`, `note_links`, `note_backlinks`, and `knowledge_hygiene_scan` (eight read-only
+`duplicate_candidates`, `note_links`, `note_backlinks`, `knowledge_hygiene_scan`, and `knowledge_query` (nine read-only
 tools), plus contained Markdown Resources such as
 `vaultbridge://note/Projects%2FLaunch%20plan.md`. The process reuses `VAULT_PATH`,
 `SEMANTIC_DATA_PATH`, model, size, and rate-limit settings. It does not require `API_KEY`; the local
@@ -185,7 +185,7 @@ args:
   - app.mcp_server
 ```
 
-The same eight read-only tools and contained Markdown Resources can be exposed over Streamable HTTP
+The same nine read-only tools and contained Markdown Resources can be exposed over Streamable HTTP
 at `/mcp` on the existing application port. It is disabled by default. Enable it with
 `MCP_HTTP_ENABLED=true`, keep using `Authorization: Bearer <token>`, and configure
 `MCP_HTTP_ALLOWED_HOSTS` plus `MCP_HTTP_ALLOWED_ORIGINS` for the actual deployment. The defaults
@@ -236,6 +236,7 @@ New integrations should use the versioned application API:
 | GET | `/api/v1/notes/links` | `listNoteLinksV1` |
 | GET | `/api/v1/notes/backlinks` | `listNoteBacklinksV1` |
 | POST | `/api/v1/knowledge/hygiene/scan` | `scanKnowledgeHygieneV1` |
+| POST | `/api/v1/knowledge/query` | `queryKnowledgeV1` |
 
 Existing clients may continue using the unversioned compatibility layer:
 
@@ -467,7 +468,7 @@ host PUID:PGID  ->  container process user and group
 | `RATE_LIMIT_WINDOW_SECONDS` | `60` | Positive fixed-window duration in seconds |
 | `RATE_LIMIT_MAX_CLIENTS` | `1024` | Positive hard cap on process-local peer state |
 | `MCP_HTTP_ENABLED` | `false` | Opt in to Streamable HTTP at `/mcp` on the existing application port |
-| `MCP_WRITE_ENABLED` | `false` | Add MCP `create_note` and `append_note`; the default eight-tool surface remains read-only |
+| `MCP_WRITE_ENABLED` | `false` | Add MCP `create_note` and `append_note`; the default nine-tool surface remains read-only |
 | `MCP_HTTP_ALLOWED_HOSTS` | loopback hosts with any port | Comma-separated Host allowlist enforced by the MCP SDK; external hosts must be explicit |
 | `MCP_HTTP_ALLOWED_ORIGINS` | loopback HTTP origins with any port | Comma-separated allowlist for a present Origin; external origins must be explicit |
 | `OBSIDIAN_VAULT_PATH` | `/path/to/your/Obsidian/Vault` | Required absolute host path to the vault |
@@ -671,10 +672,35 @@ does not load the embedding model. `related` uses the existing compatible semant
 synchronizing it and live-verifies result paths before display. Both query commands support
 `--folder`; `search` supports `--limit`, while `related` supports `--limit` and `--min-score`.
 Those commands print bounded snippets and vault-relative paths. `query` calls the bounded
-`KnowledgeQueryService` directly and supports `--semantic-text`, `--literal-text`, `--folder`,
+`KnowledgeQueryService` and supports `--semantic-text`, `--literal-text`, `--folder`,
 repeatable exact `--path`, repeatable required `--tag`, and `--limit`. It prints only canonical
 vault-relative paths and existing semantic score evidence when applicable. Empty results are
 successful.
+
+For the shared structured Knowledge Query request, use:
+
+```bash
+python -m app.cli query --request-json --json < query-request.json
+python -m app.cli query --literal-text "backup" --qualified-path '{"space_id":"default","path":"Projects/Backup.md"}' --json
+```
+
+`--request-json` reads one complete UTF-8 object, at most 1,048,576 bytes, with optional `spaces`,
+`semantic_text`, `literal_text`, `folder`, `paths`, `tags`, `metadata`, `relationships` and `limit`.
+For example, `{"literal_text":"backup","metadata":[{"key":"status","operator":"equals","value":"active"}]}`.
+It uses the same request as REST `POST /api/v1/knowledge/query` and MCP `knowledge_query`.
+Unknown/duplicate keys, non-finite values and conflicting flags are rejected. Do not combine
+`--request-json` with query-content flags; `--space` may supply selection only when JSON omits
+`spaces`. Repeatable `--qualified-path` accepts one `{space_id,path}` object per occurrence and
+cannot mix with bare `--path`. Neither form expands the selected scope. Bare paths require one
+effective selected space. Omitted selection remains default-only.
+
+Structured requests and explicit `--space` use qualified results and selected-space coverage;
+REST Query always uses this structure, and MCP adds a canonical `resource_uri` per item. Semantic
+text selects semantic score fields; other Query results contain qualified note identities.
+CLI reads retain persisted read-only composition: no startup sync, storage initialization, watcher
+or model download. Production named-space configuration remains guarded; the multi-space adapters
+are verified only through explicit private composition. See the
+[exact request and error contract](BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-slices-a-and-b-private-activation-blocked).
 
 `capture` reads exactly one UTF-8 JSON request from standard input (at most 1,048,576 bytes):
 
@@ -749,7 +775,8 @@ Capture and Promotion apply because they own targeted index writes; use the same
 for review with optional candidate evidence. Focused Capture/Promotion tests cover synthetic writes
 separately from the image gate, which only checks their parsers.
 
-Query, Capture and Promotion have no REST/MCP/dashboard adapters. Named multi-space serving and
+Capture and Promotion have no REST/MCP/dashboard adapters. Query has REST and MCP adapters;
+its Dashboard integration remains unavailable. Named multi-space serving and
 Hygiene mutations remain unavailable.
 
 `index` brings derived semantic data up to date through the production incremental/full sync path;

@@ -207,6 +207,7 @@ def test_sdk_v2_server_advertises_exact_read_only_surface_and_no_prompts(tmp_pat
     assert version("mcp").split(".", 1)[0] == "2"
     assert [tool.name for tool in tools.tools] == [
         "knowledge_hygiene_scan",
+        "knowledge_query",
         "list_notes",
         "read_note",
         "search_notes",
@@ -239,6 +240,7 @@ def test_write_enabled_surface_adds_exact_write_tools_with_annotations(tmp_path)
     tools = run_client(server, lambda client: client.list_tools()).tools
     assert [tool.name for tool in tools] == [
         "knowledge_hygiene_scan",
+        "knowledge_query",
         "list_notes",
         "read_note",
         "search_notes",
@@ -386,7 +388,7 @@ def test_tool_schemas_keep_adr_defaults_and_bounds(tmp_path):
     tools = run_client(server, lambda client: client.list_tools()).tools
     # Omitted-scope schemas are the first complete alternative. Explicit reads
     # intentionally have different bounds; the frozen legacy branch is intact.
-    by_name = {tool.name: tool.input_schema["anyOf"][0] for tool in tools}
+    by_name = {tool.name: tool.input_schema["anyOf"][0] for tool in tools if tool.name != "knowledge_query"}
 
     assert by_name["list_notes"]["properties"]["limit"] | {} == {
         "default": 50,
@@ -914,6 +916,7 @@ def test_official_client_stdio_round_trip_and_clean_eof_shutdown(tmp_path):
     )
     assert [tool.name for tool in tools.tools] == [
         "knowledge_hygiene_scan",
+        "knowledge_query",
         "list_notes",
         "read_note",
         "search_notes",

@@ -85,6 +85,14 @@ class SpaceOperations:
         if operation == "query":
             from app.services._scoped_federation import validate_scoped_query
             validate_scoped_query(request)
+            selected_ids = tuple(binding.space_id for binding in bindings)
+            if any(path.space_id not in selected_ids for path in request.paths) or any(
+                    predicate.other.space_id not in selected_ids for predicate in request.relationships):
+                raise SpaceError("invalid_scope")
+            if request.relationships:
+                dialects = frozenset(origin for predicate in request.relationships for origin in (
+                    (predicate.origin,) if predicate.origin else tuple(Dialect)))
+                self._resolver.authorize_read(scope, Capability.RELATIONSHIPS, dialects)
             if request.query.semantic_text is not None:
                 self._resolver.authorize_read(scope, Capability.SEMANTIC_RETRIEVAL)
         if operation == "hygiene":

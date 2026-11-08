@@ -57,6 +57,9 @@ from app.services.vault import (
 )
 from app.space_read_transport import (
     InvalidReadRequest,
+    MCPNoteMatchOutput,
+    MCPSemanticMatchOutput,
+    ScopedReadOutput,
     execute_scoped,
     has_scope,
     parse_resource_uri,
@@ -226,7 +229,8 @@ class VaultBridgeMCPServer(MCPServer):
 
         stdin, restore = _claim_fd(0, sys.stdin, "rb", _open_stdin_diversion)
         try:
-            source = anyio.wrap_file(_UnownedTextWrapper(stdin, encoding="utf-8", errors="replace"))
+            # Retain malformed bytes until strict Query/scope classification.
+            source = anyio.wrap_file(_UnownedTextWrapper(stdin, encoding="utf-8", errors="surrogateescape"))
             async with stdio_server(stdin=StrictScopedLines(source)) as (read_stream, write_stream):
                 await self._lowlevel_server.run(
                     read_stream, write_stream, self._lowlevel_server.create_initialization_options(),
@@ -333,7 +337,8 @@ async def _privacy_error_middleware(
 def _scoped_read_middleware(adapter):
     operations = {"list_notes": "list", "read_note": "read", "search_notes": "literal",
                   "related_notes": "related", "duplicate_candidates": "duplicates",
-                  "note_links": "links", "note_backlinks": "backlinks", "knowledge_hygiene_scan": "hygiene"}
+                  "note_links": "links", "note_backlinks": "backlinks", "knowledge_hygiene_scan": "hygiene",
+                  "knowledge_query": "query"}
 
     @contextmanager
     def read_lifetime(context):
@@ -351,7 +356,7 @@ def _scoped_read_middleware(adapter):
             raise MCPError(code=INVALID_PARAMS,
                            message="note_resource_unavailable: Note resource is invalid or unavailable.")
         arguments = params.get("arguments", {})
-        if context.method == "tools/call" and has_scope(arguments):
+        if context.method == "tools/call" and (has_scope(arguments) or params.get("name") == "knowledge_query"):
             name = params.get("name")
             try:
                 if name not in operations:
@@ -362,7 +367,7 @@ def _scoped_read_middleware(adapter):
                         # Convert inside the action so _execute never applies a
                         # legacy exception category to an explicit scoped call.
                         try:
-                            if INVALID_SCOPED_JSON in arguments:
+                            if type(arguments) is not dict or INVALID_SCOPED_JSON in arguments:
                                 raise InvalidReadRequest()
                             return execute_scoped(adapter.operations, operations[name], arguments,
                                                   resource_uris=True, cancel=token)
@@ -905,6 +910,11 @@ def _read_server(adapter):
     )
 
     @server.tool(annotations=READ_ONLY_ANNOTATIONS, structured_output=True)
+    def knowledge_query() -> ScopedReadOutput[MCPNoteMatchOutput | MCPSemanticMatchOutput]:
+        """Run a bounded policy-authorized Knowledge Query over selected spaces."""
+        raise ToolError("internal_error: Operation failed.")  # Raw middleware owns dispatch.
+
+    @server.tool(annotations=READ_ONLY_ANNOTATIONS, structured_output=True)
     def list_notes(folder: Folder = "", limit: ListLimit = 50) -> ListNotesResult:
         """List contained Markdown notes in a vault-relative folder."""
         return adapter.list_notes(folder=folder, limit=limit)
@@ -1035,6 +1045,14 @@ def _read_server(adapter):
         "note_backlinks": ("backlinks", OneSpaceOutput[NoteBacklinksResult]),
         "knowledge_hygiene_scan": ("hygiene", OneSpaceOutput[KnowledgeHygieneScanResponse]),
     }
+    from app.knowledge_query_transport import knowledge_query_schema
+
+    query_tool = server._tool_manager.get_tool("knowledge_query")
+    query_tool.parameters = knowledge_query_schema()
+    query_tool.fn_metadata.output_schema = schema_union(
+        ScopedReadOutput[MCPNoteMatchOutput].model_json_schema(),
+        ScopedReadOutput[MCPSemanticMatchOutput].model_json_schema(),
+    )
     for name, (operation, model) in schemas.items():
         tool = server._tool_manager.get_tool(name)
         tool.parameters = scoped_request_schema(operation, tool.parameters)

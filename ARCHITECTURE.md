@@ -622,7 +622,7 @@ application's direct-peer limiter before SDK dispatch. The adapter reuses the ex
 `create_app()`, so it sees the live index lifecycle and relationship behavior without creating
 another owner. The route remains outside REST OpenAPI.
 
-HTTP uses stateless JSON responses and the same default eight read-only tools and contained Resource. It has
+HTTP uses stateless JSON responses and the same default nine read-only tools and contained Resources. It has
 no MCP operation limiter inside the adapter, preventing double counting with the HTTP boundary. The
 deprecated standalone HTTP+SSE transport, a custom transport, a second MCP service/container, and a
 new port are not implemented.
@@ -704,17 +704,23 @@ Existing REST/MCP/CLI composition rejects named configuration before owner const
 until VB-152 integrates every applicable entry point. No public schema, route, operation ID,
 resource, storage format or legacy response changes in the current runtime.
 
-### VB-152 adapters (Slice A private; public named activation blocked)
+### VB-152 adapters (Slices A and B private; public named activation blocked)
 
-The authoritative [VB-152 contract](BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-slice-a-private-activation-blocked)
+The authoritative [VB-152 contract](BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-slices-a-and-b-private-activation-blocked)
 defines exact schemas, error projections, inventory, activation gates and acceptance evidence.
 It extends existing `/api/v1/notes*` and hygiene routes/MCP tools with explicit `space` (one-space
 operations) or `spaces` (bounded federation). It adds one POST `/api/v1/knowledge/query` operation
 and `knowledge_query` MCP tool, using existing ScopedKnowledgeQuery. No second REST family or
 parallel scoped tools are selected. Omitted existing requests stay default-only with unchanged
 wire shapes, bounds and semantics; explicit scope, including default, gets qualified output.
-New Query always uses the scoped contract, with omission still default-only; its REST/MCP and
-structured CLI additions remain unimplemented Slice B work.
+New Query always uses the scoped contract, with omission still default-only. Slice B implements
+POST `/api/v1/knowledge/query` (`queryKnowledgeV1`), MCP `knowledge_query` and CLI
+`query --request-json` / repeatable `--qualified-path`. The strict request parser and discoverable
+schema in `knowledge_query_transport.py` are shared by all three. They dispatch only through
+`SpaceOperations.scoped_query`, preserving the existing engine, full-precision ordering and coverage.
+REST applies no-store to Query responses; MCP adds canonical qualified resource URIs after projection.
+Both MCP transports classify Query intent in the first raw JSON parse, including omitted spaces,
+so duplicate envelope keys and non-finite values cannot erase the strict request boundary.
 
 Slice A integrates existing reads with `SpaceOperations.compatibility_read` and the existing
 qualified operations. Legacy composition binds the exact injected owners once, and mounted MCP
@@ -731,13 +737,16 @@ storage. Its model wrapper resolves existing artifacts before calling FastEmbed 
 local path, avoiding download/cache-repair fallback. CLI profile preflight authorizes the complete
 selection and supplementary requirements before owner construction; execution reauthorizes after
 the complete registry's owner map is final. Explicit CLI reads and new JSON options preserve the
-legacy omitted branch and do not add structured Query selectors.
+legacy omitted branch. Structured Query input has the same bounded JSON/predicate schema as REST
+and MCP, with a 1,048,576-byte stdin ceiling and explicit selector/content conflicts. Qualified
+path flags select scoped validation and cannot expand an omitted default-only selection.
 
 Explicitly private constructors support named integration tests. Every production constructor and
 entry point still enforces `require_legacy_composition()`. Named health uses minimal projections;
 readiness authorizes default before probes, and Dashboard/session/assets/cookie and CLI maintenance
-fences have executable private coverage. There is no named UI, discovery, scoped write, new Query
-route/tool or public named serving. See [Slice A evidence](docs/VB152_A_VERIFICATION.md).
+fences have executable private coverage. There is no named UI, discovery, scoped write or public
+named serving. See [Slice A evidence](docs/VB152_A_VERIFICATION.md) and
+[Slice B evidence](docs/VB152_B_VERIFICATION.md). Separate Slice B acceptance remains pending.
 
 Every public operation, including old aliases, resources and CLI calls, must enter SpaceOperations
 and the authoritative resolver before owner work. One immutable registry generation pins owner,

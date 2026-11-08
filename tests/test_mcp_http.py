@@ -242,6 +242,7 @@ def test_official_client_modern_http_lists_and_calls_read_only_surface(tmp_path)
 
     assert [tool.name for tool in tools.tools] == [
         "knowledge_hygiene_scan",
+        "knowledge_query",
         "list_notes",
         "read_note",
         "search_notes",

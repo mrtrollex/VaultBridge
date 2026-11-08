@@ -6,6 +6,7 @@ from app.services.adapter_composition import validate_private_operations
 def create_private_read_app(*, settings, operations, rate_limiter=None, **raw_owners):
     from app.api.health import router as health
     from app.api.knowledge_hygiene import router as hygiene
+    from app.api.knowledge_query import router as query
     from app.api.notes import router as notes
     from app.api.read_openapi import install_read_openapi
     from app.api.relationships import router as relationships
@@ -26,7 +27,7 @@ def create_private_read_app(*, settings, operations, rate_limiter=None, **raw_ow
     )
     application.add_middleware(NamedUIFence, named=True)
     application.add_exception_handler(VaultServiceError, handle_vault_service_error)
-    for router in (health, notes, search, relationships, hygiene, ui):
+    for router in (health, notes, search, relationships, hygiene, query, ui):
         application.include_router(router)
     install_read_openapi(application)
     return application
