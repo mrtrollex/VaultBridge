@@ -13,6 +13,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
+import numpy as np
+
 from app.services.capture import CaptureService
 from app.services.knowledge_query import KnowledgeQuery
 from app.services.knowledge_spaces import ReadScope, SpaceId
@@ -40,6 +42,44 @@ class EvidenceBackend(DeterministicConceptEmbedder):
 
     def invalidate_embedding_compatibility_cache(self):
         pass
+
+
+def _evidence_dot(left, right):
+    """Fixed binary32 reduction for this synthetic backend's 80 dimensions.
+
+    Preserve the accepted reference's reduction tree: four 16-lane blocks,
+    folded to eight, four, two and one lanes, followed by the 16-element tail
+    accumulated in binary64. No BLAS dispatch, score rounding or fixture lookup.
+    This is deliberately limited to the evidence vectors, not a runtime ranker.
+    """
+    if left.shape != (80,) or right.shape != (80,) or left.dtype != np.float32 or right.dtype != np.float32:
+        raise ValueError("evidence requires 80-dimensional binary32 vectors")
+    products = left * right
+    blocks = [products[i:i + 8] + products[i + 8:i + 16] for i in (0, 16, 32, 48)]
+    lanes = ((blocks[0] + blocks[1]) + blocks[2]) + blocks[3]
+    halves = lanes[:4] + lanes[4:]
+    head = (halves[0] + halves[1]) + (halves[2] + halves[3])
+    return np.float32(float(head) + sum(float(value) for value in products[64:]))
+
+
+class _EvidenceLinalg:
+    @staticmethod
+    def norm(vector):
+        return np.sqrt(_evidence_dot(vector, vector))
+
+
+class _EvidenceNumpy:
+    """Use production scoring with only its synthetic numeric backend fixed.
+
+    Forward elementwise operations unchanged; substitute the two reductions
+    whose evaluation order otherwise depends on the host's BLAS CPU kernel.
+    Never mutate the shared numpy module or production methods.
+    """
+    linalg = _EvidenceLinalg()
+    dot = staticmethod(_evidence_dot)
+
+    def __getattr__(self, name):
+        return getattr(np, name)
 
 
 def score_rows(results, *, scoped=False):
@@ -141,7 +181,8 @@ def export_evidence(root):
 
 def evidence_bytes():
     with TemporaryDirectory(prefix="vb151-g-") as directory:
-        payload = export_evidence(Path(directory))
+        with patch("app.services.semantic_search.np", _EvidenceNumpy()):
+            payload = export_evidence(Path(directory))
     return (json.dumps(payload, sort_keys=True, ensure_ascii=True, indent=2, allow_nan=False) + "\n").encode("utf-8")
 
 

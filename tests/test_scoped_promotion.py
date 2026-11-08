@@ -337,31 +337,54 @@ def test_stale_destination_and_parallel_exact_retry(runtime):
     assert target.read_bytes() == b"Changed" + approved.decision.markdown
 
 
-def test_actual_scheduler_indexes_only_bound_space(tmp_path, monkeypatch):
+@pytest.mark.parametrize("late_default_sync", [False, True])
+def test_actual_scheduler_indexes_only_bound_space(tmp_path, monkeypatch, late_default_sync):
     import threading
 
     from app.services.semantic_search import SemanticSearchService
     from tests.test_space_runtime import backend as backend_fixture
     backend_fixture.__wrapped__(monkeypatch)
     indexed = threading.Event()
+    wait_started = threading.Event()
     original = SemanticSearchService.sync_step
 
     def step(owner, *args, **kwargs):
         result = original(owner, *args, **kwargs)
         if result.indexed and any(c.path == SOURCE for c in owner.repository.load_chunks()):
             assert owner.vault_root.name == "research"
+            if late_default_sync and not indexed.is_set():
+                # Deterministically leave default work pending at the research
+                # receipt. No sleep or assumption about which owner ran first.
+                assert rt.registry._owners[SpaceId("default")].scheduler.request_full_sync()
+                indexed.set()
+                assert wait_started.wait(20)
             indexed.set()
         return result
 
     monkeypatch.setattr(SemanticSearchService, "sync_step", step)
     rt = compose_space_runtime(runtime_settings(tmp_path, "enabled")).start()
+    original_wait = rt.scheduler.wait
+
+    def wait_for_all(timeout):
+        wait_started.set()
+        return original_wait(timeout)
+
+    monkeypatch.setattr(rt.scheduler, "wait", wait_for_all)
     try:
         assert capture(rt).committed
         assert indexed.wait(20)
+        # A research batch receipt does not drain other owners' startup work.
+        # In particular, default's WAL/SHM can still roll over between the bound
+        # reader's identity probes. Assert isolation only after all work drains.
+        rt.scheduler.wait(20)
+        for entry in rt.scheduler._owners.values():
+            status = rt.scheduler.status(entry.binding)
+            assert not status.running and not status.requires_full_sync and status.error_type is None
         own = rt.registry._owners
         assert any(c.path == SOURCE for c in own[SpaceId("research")].semantic.repository.load_chunks())
         assert not own[SpaceId("default")].semantic.repository.load_chunks()
     finally:
+        wait_started.set()
         rt.shutdown()
 
 
