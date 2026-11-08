@@ -698,8 +698,8 @@ Structured requests and explicit `--space` use qualified results and selected-sp
 REST Query always uses this structure, and MCP adds a canonical `resource_uri` per item. Semantic
 text selects semantic score fields; other Query results contain qualified note identities.
 CLI reads retain persisted read-only composition: no startup sync, storage initialization, watcher
-or model download. Production named-space configuration remains guarded; the multi-space adapters
-are verified only through explicit private composition. See the
+or model download. Named production composition and its deliberate UI/maintenance exclusions are
+described in [Named Knowledge Spaces](docs/KNOWLEDGE_SPACES.md). See the
 [exact request and error contract](BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-slices-a-b-and-c-private-activation-blocked).
 
 `capture` reads exactly one UTF-8 JSON request from standard input (at most 1,048,576 bytes):
@@ -776,14 +776,15 @@ for review with optional candidate evidence. Focused Capture/Promotion tests cov
 separately from the image gate, which only checks their parsers.
 
 Capture and Promotion have no REST/MCP/dashboard adapters. Query has REST and MCP adapters;
-its Dashboard integration remains unavailable. Named multi-space serving and
-Hygiene mutations remain unavailable.
+its Dashboard integration remains unavailable. Named mode fences the whole Dashboard/session
+surface; Hygiene mutations remain unavailable.
 
 The existing create/append REST routes and optional MCP tools accept singular `space` in their
 JSON body. Explicit selection, including `"default"`, uses strict validation and returns
 `{space_id,result}` around the existing note result. Omission retains the default-only legacy
 request and response. `MCP_WRITE_ENABLED` must still be enabled before either write tool exists;
-registration grants no space permissions. Public named configuration remains guarded until Slice D.
+registration grants no space permissions. Slice D connects named production composition to one
+runtime; see [configuration, operational boundaries and recovery](docs/KNOWLEDGE_SPACES.md).
 
 CLI capture, promotion review and apply likewise accept one `--space ID`. Explicit selection uses
 v2 provenance and `{space_id,result}` evidence; omitted selection retains v1 bytes and outputs.

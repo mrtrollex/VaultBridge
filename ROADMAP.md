@@ -1221,7 +1221,7 @@ VB-150 knowledge-space and scope-policy ADR — complete, accepted design
    ↓
 VB-151 compatibility-safe multi-space domain boundary — complete; A–G merged
    ↓
-VB-152 permission-aware query and write adapter integration — A/B accepted; C private; D unimplemented
+VB-152 permission-aware query and write adapter integration — A/B/C accepted; D implementation awaiting acceptance
 ```
 
 ---
@@ -1259,8 +1259,11 @@ and structured CLI input; [native evidence](docs/VB152_B_VERIFICATION.md) record
 The task owner confirms Slice B independently accepted and merged through PR #148. Slice C now
 implements authorized create/append and existing REST/MCP write extensions plus scoped CLI v2
 capture/promotion privately; [native evidence](docs/VB152_C_VERIFICATION.md) records its verification.
-Separate Slice C acceptance, Slice D and complete cross-surface acceptance precede public named serving. Rebind/old-artifact
-migration remain separate contracts; Milestone 16 remains PLANNED.
+The task owner confirms Slice C independently accepted and merged through PR #149. Slice D now
+implements coordinated public composition and explicit exclusion fences; its complete native
+verification and separate acceptance remain required. See [Slice D evidence](docs/VB152_D_VERIFICATION.md)
+and [named operations](docs/KNOWLEDGE_SPACES.md). Rebind/old-artifact migration remain separate
+contracts; Milestone 16 remains PLANNED pending acceptance.
 
 ## Deployment and integration candidates
 
@@ -1405,9 +1408,9 @@ VB-151 runtime Slices A–C implement private configuration/registry/policy reso
 bundles and bounded internal nonsemantic read federation. D1–D3b implement semantic federation
 and Query; E1–E5 implement binding/resource/lifecycle primitives; E6 composes and activates them
 privately. F implements scoped v2 capture/promotion; G verifies integration and regression parity.
-The private runtime A–G is complete and merged. Current adapters reject named configuration.
-VB-152 has an accepted contract and private Slice A implementation, with no public named activation;
-Milestone 16 completion state is unchanged.
+The private runtime A–G is complete and merged. VB-152 A/B/C are accepted and merged;
+D implements coordinated public composition with native verification and separate acceptance
+gates recorded in its evidence report. Milestone 16 completion state is unchanged pending acceptance.
 
 ---
 

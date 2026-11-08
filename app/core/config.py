@@ -122,7 +122,7 @@ class Settings(BaseModel):
         return self
 
     def require_legacy_composition(self) -> None:
-        """Named serving is blocked until every adapter adopts the policy owner."""
+        """Fence unsupported named maintenance and legacy raw-owner composition."""
         if self.knowledge_spaces_json is not None:
             raise SpaceError("invalid_configuration", reason="named_serving_unsupported")
 

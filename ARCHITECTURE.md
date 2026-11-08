@@ -260,7 +260,7 @@ old backend model, then advances the generation; owners discard cached compatibi
 and reject prepared searches from older generations. Shutdown rejects new leases and drains
 active operations before release. The process composer owns shutdown, not individual services.
 Repositories, source/index bindings, synchronization locks and lifecycle state remain per owner.
-E6 supplies explicit private runtime composition; public named-space startup remains blocked.
+E6 supplies runtime composition; VB-152 D connects the supported public named entry points to it.
 
 VB-151 E3 adds owner-local resumable synchronization through internal `begin_sync`, `sync_step`,
 `cancel_sync` and `close_synchronization` methods. An opaque identity handle reserves exactly one
@@ -699,12 +699,12 @@ composition. F supplies scoped v2 writes; G adds integration/regression verifica
 changing production architecture. The task owner confirms private runtime A–G complete and merged
 through PR #145 (`5d6f0298e8511c3287366e0c7876db20ea2e6287`). Native evidence and accepted limits are in
 [VB151_G_VERIFICATION.md](docs/VB151_G_VERIFICATION.md).
-Existing REST/MCP/CLI composition rejects named configuration before owner construction with
-`invalid_configuration` (internal reason `named_serving_unsupported`). Named serving remains blocked
-until VB-152 integrates every applicable entry point. No public schema, route, operation ID,
-resource, storage format or legacy response changes in the current runtime.
+VB-152 D composes supported named REST/MCP/CLI entry points through this runtime. Conflicting raw
+injection and unsupported named surfaces fail before construction with `invalid_configuration`
+(internal reason `named_serving_unsupported`). Legacy raw-owner composition remains legacy-only.
+Storage formats, ranking and the existing default wire contracts remain unchanged.
 
-### VB-152 adapters (Slices A, B and C private; public named activation blocked)
+### VB-152 adapters (A–C accepted; D implementation awaiting acceptance)
 
 The authoritative [VB-152 contract](BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-slices-a-b-and-c-private-activation-blocked)
 defines exact schemas, error projections, inventory, activation gates and acceptance evidence.
@@ -730,7 +730,7 @@ Both MCP transports reject duplicate scoped JSON keys before SDK coercion. Quali
 URIs encode the entire canonical path as one component and require one-decode/re-encode equality
 after authorized owner read. The default resource template retains its original rules.
 
-`compose_persisted_space_reads` is a private stopped-service profile with one shared lazy model,
+`compose_persisted_space_reads` is a stopped-service profile with one shared lazy model,
 the same federation/admission and retained runtime cleanup, and no scheduler/watcher/startup sync.
 Its bounded immutable SQLite view rejects sidecars, missing/incompatible namespaces and redirected
 storage. Its model wrapper resolves existing artifacts before calling FastEmbed with an explicit
@@ -741,13 +741,13 @@ legacy omitted branch. Structured Query input has the same bounded JSON/predicat
 and MCP, with a 1,048,576-byte stdin ceiling and explicit selector/content conflicts. Qualified
 path flags select scoped validation and cannot expand an omitted default-only selection.
 
-Explicitly private constructors support named integration tests. Every production constructor and
-entry point still enforces `require_legacy_composition()`. Named health uses minimal projections;
-readiness authorizes default before probes, and Dashboard/session/assets/cookie and CLI maintenance
-fences have executable private coverage. There is no named UI, discovery or public
-named serving. See [Slice A evidence](docs/VB152_A_VERIFICATION.md) and
+Explicitly private constructors remain test seams. Slice D replaces public activation guards with
+runtime-aware composition; `require_legacy_composition()` remains on raw legacy composition and
+unsupported named maintenance. Named health uses minimal projections; readiness authorizes default
+before probes. Dashboard/session/assets/cookies and CLI maintenance retain their explicit fences.
+There is no named UI or discovery. See [Slice A evidence](docs/VB152_A_VERIFICATION.md) and
 [Slice B evidence](docs/VB152_B_VERIFICATION.md). The task owner confirms Slice B independently
-accepted and merged through PR #148. Slice C is implemented privately; its separate acceptance is pending.
+accepted and merged through PR #148, and Slice C accepted and merged through PR #149.
 
 Slice C adds `scoped_create_note`/`scoped_append_note` and default-only write compatibility dispatch
 to SpaceOperations. Policy/capability resolution precedes admission and root/owner work. Mutation
@@ -763,10 +763,26 @@ omitted MCP writes retain their established disconnect behavior.
 CLI capture and promotion gain singular `--space`; explicit default/nondefault selects v2, omission
 retains default v1. Scoped apply validates bounded input, reconstructs review/decision in the current
 process and reauthorizes through existing primitives before commit. Absent create destinations are
-retained without reading an append preimage. The private write profile uses SpaceRuntime, waits
+retained without reading an append preimage. The write profile uses SpaceRuntime, waits
 for scheduler quiescence and preserves startup reconciliation of unselected enabled owners; review
-uses inspection-only owners. Incomplete shutdown retains outcome evidence and returns operational
-failure. See [Slice C evidence](docs/VB152_C_VERIFICATION.md). Public guards remain until Slice D.
+uses inspection-only owners, with a persisted read-only profile for optional omitted-v1 semantic
+advice. Explicit scoped review remains local/nonsemantic. Incomplete shutdown retains outcome evidence and returns operational
+failure. See [Slice C evidence](docs/VB152_C_VERIFICATION.md).
+
+Slice D's FastAPI factory and module-level app create one validated registry/runtime before serving.
+Its lifespan starts E5 through native readiness, starts E4 reconciliation, then opens admission;
+semantic index readiness remains asynchronous. Mounted HTTP MCP borrows the parent's exact
+operations and limiter and owns only its SDK ingress/sessions. Disabled HTTP MCP constructs no
+SDK server. Named stdio's SDK lifespan owns one runtime instead of the serving application; public
+HTTP construction without parent operations and conflicting raw injection fail before allocation.
+All-disabled indexing starts no resource, scheduler or watcher. Shutdown fences operations/indexing
+before closing MCP ingress and then delegates all resource cleanup to the same runtime generation.
+Named CLI omission uses default-only compatibility dispatch with persisted immutable reads or the
+full write lifecycle. Explicit selection retains scoped dispatch and v2 artifacts. Immutable
+compatibility semantic reads validate root/storage identity and namespace without writable storage.
+Production entry-point tests, fault evidence and outstanding acceptance gates are recorded in
+[VB152_D_VERIFICATION.md](docs/VB152_D_VERIFICATION.md); [operator instructions](docs/KNOWLEDGE_SPACES.md)
+describe configuration, stopped-service use, exclusions and recovery.
 
 Every public operation, including old aliases, resources and CLI calls, must enter SpaceOperations
 and the authoritative resolver before owner work. One immutable registry generation pins owner,
@@ -798,10 +814,10 @@ readiness and no registry/count diagnostics; no registry/label discovery is sele
 old-artifact migration and expanded diagnostics remain separate contracts.
 
 Four slices cover policy-bound existing reads/fences, end-to-end Query, end-to-end authorized
-writes, then coordinated public composition/activation. All current named startup guards remain
-until the final slice passes the complete Windows/native WSL and compatibility matrix and separate
-acceptance. ADR 0010's bounded retained ambiguous ownership/permanent stopping limitation remains;
-activation does not promise universal cleanup liveness. This contract changes no production behavior.
+writes, then coordinated public composition/activation. D implements the final composition;
+the complete Windows/native WSL matrix and separate acceptance remain its activation gates.
+ADR 0010's bounded retained ambiguous ownership/permanent stopping limitation remains;
+activation does not promise universal cleanup liveness or completion of a release/deployment.
 
 ## Target architecture
 
@@ -1351,8 +1367,8 @@ Ambiguous original or final-guard release retains bounded ownership and can keep
 the runtime permanently stopping. Numeric validity, matching metadata and even
 same-object equality cannot authorize another close. Process termination may be
 the only reclamation mechanism; it is not successful in-process shutdown.
-Public REST/MCP/CLI guards remain intact. F scoped v2 execution is private; G verifies its
-integration with indexing and federation. VB-152 public activation remains separate and blocked.
+F supplies scoped v2 execution and G verifies its integration with indexing and federation.
+VB-152 D uses this same lifecycle in public named composition, retaining its cleanup limitations.
 
 ### `schemas/`
 
@@ -1366,10 +1382,12 @@ endpoint function and service path.
 
 ### `mcp_server.py`
 
-Shared MCP tool/Resource registration plus the explicit stdio composition root. Stdio injects
-existing read services, applies a one-identity process-wide fixed-window operation budget, reserves
-stdout for MCP traffic, emits allowlisted structured diagnostics to stderr, and starts no index
-writer.
+Shared MCP tool/Resource registration plus the explicit stdio composition root. Legacy stdio
+retains persisted reads and the write-opt-in indexer. Named stdio owns one SpaceRuntime with
+policy-authorized reconciliation and optional shared watching. Both retain the one-identity
+process-local limiter, stdout for MCP traffic and allowlisted stderr diagnostics. Named stdio must
+run instead of the serving application against the same writable derived state, without a
+cross-process lock or coordination claim.
 
 ### `mcp_http.py`
 

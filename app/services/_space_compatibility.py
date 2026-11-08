@@ -37,7 +37,8 @@ _OPERATIONS = {
 }
 
 
-def read(operations, operation, arguments, *, cancel):
+def authorize(operations, operation, arguments):
+    """Pure compatibility preflight, also used before CLI owner composition."""
     capability = _OPERATIONS.get(operation)
     if capability is None:
         raise SpaceError("unsupported_capability")
@@ -64,6 +65,11 @@ def read(operations, operation, arguments, *, cancel):
             operations._resolver.authorize_read(scope, Capability.DUPLICATE_CANDIDATES)
     if operation == "query" and arguments["request"].semantic_text is not None:
         operations._resolver.authorize_read(scope, Capability.SEMANTIC_RETRIEVAL)
+    return binding
+
+
+def read(operations, operation, arguments, *, cancel):
+    binding = authorize(operations, operation, arguments)
     with operations._admit(cancel):
         owners = operations._owners(binding)
         if operation == "read":

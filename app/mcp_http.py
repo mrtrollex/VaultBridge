@@ -67,17 +67,16 @@ class MCPHTTPAccessMiddleware:
 def create_mcp_http_transport(
     *,
     settings: Settings,
-    vault_service: VaultService,
-    semantic_search_service: SemanticSearchService,
-    duplicate_candidate_service: DuplicateCandidateService,
-    relationship_service: RelationshipService,
-    knowledge_hygiene_service: KnowledgeHygieneService,
-    semantic_indexer: BackgroundSemanticIndexer,
+    vault_service: VaultService | None = None,
+    semantic_search_service: SemanticSearchService | None = None,
+    duplicate_candidate_service: DuplicateCandidateService | None = None,
+    relationship_service: RelationshipService | None = None,
+    knowledge_hygiene_service: KnowledgeHygieneService | None = None,
+    semantic_indexer: BackgroundSemanticIndexer | None = None,
     rate_limiter: FixedWindowRateLimiter,
     space_operations=None,
 ) -> tuple[MCPServer, ASGIApp]:
     """Create the mounted SDK app over the live application's service objects."""
-    settings.require_legacy_composition()
     server = create_mcp_server(
         settings=settings,
         vault_service=vault_service,

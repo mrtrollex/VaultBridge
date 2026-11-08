@@ -4071,7 +4071,9 @@ VB-152 adapters; Docker/release/deployment. The original contract task was docum
 runtime changes require explicitly scoped slices. Slice B changes no public adapter or accepted
 ADR, commits nothing and launches no reviewer. Milestone 16 is not complete.
 
-### VB-152 — Permission-aware query and write adapter integration — P1 (Slices A, B and C private; activation blocked)
+<a id="vb-152--permission-aware-query-and-write-adapter-integration--p1-slices-a-b-and-c-private-activation-blocked"></a>
+
+### VB-152 — Permission-aware query and write adapter integration — P1 (A–C accepted; D implementation awaiting acceptance)
 
 **Authority / status:** This section is the authoritative accepted implementation contract under
 accepted ADRs [0009](docs/adr/0009-knowledge-spaces-and-scope-policies.md) and
@@ -4090,9 +4092,13 @@ transports and structured CLI input; its evidence and separate-review boundary a
 independently accepted and merged through PR #148, `216f84e1f3c7ad25b9a069178292f823a758768f`.
 Slice C implements authorized create/append orchestration, existing REST/MCP write extensions and
 CLI v2 capture/promotion privately; [VB152_C_VERIFICATION.md](docs/VB152_C_VERIFICATION.md)
-records its verification and retained limitations. Slice C separate acceptance remains pending.
-Slice D remains unimplemented.
-No public named mode is enabled here. Milestone 16 remains **PLANNED**.
+records its verification and retained limitations. The task owner confirms Slice C independently
+accepted and merged through PR #149, `6d6c257a33d4710a0a6a9c2f92975fac8c50d08b`.
+Slice D now implements coordinated public composition, parent-owned HTTP MCP, runtime-owned
+named stdio, CLI profiles and explicit UI/maintenance fences. Its executable matrix and current
+verification/activation status are in [VB152_D_VERIFICATION.md](docs/VB152_D_VERIFICATION.md).
+Separate fresh acceptance remains required; no release/deployment or milestone completion is claimed.
+Milestone 16 remains **PLANNED** pending that acceptance.
 
 #### Decisions and compatibility boundary
 
@@ -4570,11 +4576,10 @@ executable vertical path in private tests before production activation; no disco
 | **C — End-to-end authorized writes** | Depends A+B and VB-151 F. scoped_create_note/append_note and v1 compatibility orchestration; REST/MCP existing create/append; CLI capture/promotion v2 scope/review/decide/apply and bound enqueue/drain. | Named serving still guarded. Both platforms test capability/opt-in/zero-work denial, exact approval/source/destination/replay, v1/v2 parity, races/uncertain commit/cancellation and index callback isolation. | No REST/MCP capture/promotion, destination inference/conversion/move/delete/rebind or new write setting. No one-surface named activation. |
 | **D — Coordinated public composition and activation** | Depends accepted A+B+C and inventory-complete evidence. Replace public guards with runtime-aware composition, parent/shared MCP lifecycle, named stdio ownership, CLI profile dispatch, background wiring, named UI/maintenance fences and operational client docs. | Enable named mode only here, after every row is covered or deliberately fenced. Execute full Windows/native WSL integration, lifecycle fault matrix, all legacy contracts, frozen schemas/IDs, 13-case/v1 exports, browser regression for legacy Dashboard and named fence tests. Run change-aware completion workflow; separate fresh acceptance required. | Legacy startup/defaults stay unchanged. Named dashboard/discovery/maintenance remain unavailable by contract. No deployment/release/packaging, dependencies, DB migrations or accepted ADR change. |
 
-**Remaining activation gates:** the contract and Slices A/B are accepted; Slice C requires its separate
-fresh acceptance review. Before D, all A–C work, including create/append orchestration and scoped
-write adapters, must be independently accepted, and the complete cross-surface native matrix must
-pass. The read-only CLI composition
-and its complete Query supplementary preflight are implemented; public activation remains guarded.
+**Remaining activation gates:** the contract and Slices A/B/C are independently accepted and merged
+(task-owner confirmation). Slice D implements production composition; its complete cross-surface
+native matrix must pass and a separate fresh independent acceptance review remains required.
+The read-only CLI composition and its complete supplementary preflight retain the full registry.
 A failed/unavailable required check blocks activation. No unresolved API spelling or policy decision
 is delegated to individual adapters; if existing owner contracts cannot implement this projection,
 stop for a contract amendment, not a fallback. Future named Dashboard, registry/label/diagnostic

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sqlite3
 import sys
 import unicodedata
@@ -141,9 +142,10 @@ class _HygieneParser(argparse.ArgumentParser):
         self.exit(EXIT_CLI_FAILURE, "Knowledge hygiene failed: invalid_request.\n")
 
 
-def _parser(*, hygiene: bool = False, scoped: bool = False, json_mode: bool = False) -> argparse.ArgumentParser:
+def _parser(*, hygiene: bool = False, scoped: bool = False, json_mode: bool = False,
+            safe_errors: bool = False) -> argparse.ArgumentParser:
     parser_class = _HygieneParser if hygiene else argparse.ArgumentParser
-    if scoped:
+    if scoped or safe_errors:
         class ScopedParser(argparse.ArgumentParser):
             def error(self, message):
                 code = "invalid_scope" if message.partition(":")[0].endswith("--space") else "invalid_request"
@@ -657,11 +659,13 @@ def run_search(
     vault_service: VaultService | None = None,
 ) -> int:
     """Run the existing literal vault search and print bounded relative-path results."""
-    settings.require_legacy_composition()
     if spaces is not None:
         return _run_scoped_cli(settings, "literal", {"spaces": list(spaces), "query": query,
             **({"folder": folder} if folder is not None else {}), "limit": limit}, json_output=json_output,
             output=output, error_output=error_output, vault_service=vault_service)
+    if settings.knowledge_spaces_json is not None:
+        return _run_named_compatibility_cli(settings, "literal", query=query, folder=folder, limit=limit,
+            json_output=json_output, output=output, error_output=error_output, vault_service=vault_service)
     folder = "" if folder is None else folder
     stream = output or sys.stdout
     error_stream = error_output or sys.stderr
@@ -711,11 +715,14 @@ def run_related(
     vault_service: VaultService | None = None,
 ) -> int:
     """Search an existing compatible semantic index and display only verified live notes."""
-    settings.require_legacy_composition()
     if spaces is not None:
         return _run_scoped_cli(settings, "related", {"spaces": list(spaces), "text": text,
             **({"folder": folder} if folder is not None else {}), "limit": limit, "min_score": min_score},
             json_output=json_output, output=output, error_output=error_output,
+            vault_service=vault_service, service=service)
+    if settings.knowledge_spaces_json is not None:
+        return _run_named_compatibility_cli(settings, "related", text=text, folder=folder, limit=limit,
+            min_score=min_score, json_output=json_output, output=output, error_output=error_output,
             vault_service=vault_service, service=service)
     folder = "" if folder is None else folder
     stream = output or sys.stdout
@@ -782,7 +789,6 @@ def run_knowledge_query(
     service: KnowledgeQueryService | None = None,
 ) -> int:
     """Run the existing bounded domain query and print only its safe result evidence."""
-    settings.require_legacy_composition()
     if spaces is not None or request_json or qualified_paths:
         def request():
             return _query_cli_input(
@@ -792,6 +798,11 @@ def run_knowledge_query(
             )
         return _run_scoped_cli(settings, "query", request,
             json_output=json_output, output=output, error_output=error_output, service=service)
+    if settings.knowledge_spaces_json is not None:
+        return _run_named_compatibility_cli(settings, "query", request=KnowledgeQuery(
+            semantic_text=semantic_text, literal_text=literal_text, folder=folder, paths=tuple(paths),
+            tags=tuple(tags), limit=limit), json_output=json_output, output=output,
+            error_output=error_output, service=service)
     stream = output or sys.stdout
     error_stream = error_output or sys.stderr
     query_service = service
@@ -856,7 +867,6 @@ def run_hygiene_scan(
     service: KnowledgeHygieneService | None = None,
 ) -> int:
     """Map a validated request to one read-only domain scan, preserving its evidence."""
-    settings.require_legacy_composition()
     if spaces is not None:
         data = {"space": spaces[0]} if len(spaces) == 1 else {"spaces": list(spaces)}
         data.update(
@@ -868,6 +878,9 @@ def run_hygiene_scan(
         )
         return _run_scoped_cli(settings, "hygiene", data, json_output=json_output,
                                output=output, error_output=error_output, service=service)
+    if settings.knowledge_spaces_json is not None:
+        return _run_named_compatibility_cli(settings, "hygiene", request=request,
+            json_output=json_output, output=output, error_output=error_output, service=service)
     stream = output or sys.stdout
     error_stream = error_output or sys.stderr
     try:
@@ -915,8 +928,7 @@ def run_capture(
     space: str | None = None,
 ) -> int:
     """Read one bounded request; the domain owns validation and all capture semantics."""
-    settings.require_legacy_composition()
-    if space is not None:
+    if space is not None or settings.knowledge_spaces_json is not None:
         return _run_write_cli(settings, "capture", space=space, input_stream=input_stream, output=output,
                               service=service)
     stream = output or sys.stdout
@@ -980,8 +992,7 @@ def run_promote_review(settings: Settings, *, source_path: str, capture_id: str,
                        candidate_limit: int | None = None, destination: str | None = None,
                        output: TextIO | None = None, service: PromotionService | None = None,
                        space: str | None = None) -> int:
-    settings.require_legacy_composition()
-    if space is not None:
+    if space is not None or settings.knowledge_spaces_json is not None:
         return _run_write_cli(settings, "review", space=space, source_path=source_path, capture_id=capture_id,
                               candidate_limit=candidate_limit, destination=destination, output=output, service=service)
     stream = output or sys.stdout
@@ -1021,8 +1032,7 @@ def run_promote_review(settings: Settings, *, source_path: str, capture_id: str,
 def run_promote_apply(settings: Settings, *, input_stream: BinaryIO | None = None,
                       output: TextIO | None = None, service: PromotionService | None = None,
                       space: str | None = None) -> int:
-    settings.require_legacy_composition()
-    if space is not None:
+    if space is not None or settings.knowledge_spaces_json is not None:
         return _run_write_cli(settings, "apply", space=space, input_stream=input_stream, output=output, service=service)
     stream = output or sys.stdout
 
@@ -1135,9 +1145,115 @@ def _print_scoped_result(result, stream):
     print("result_limited: " + json.dumps(result["result_limited"]), file=stream)
 
 
+def _cli_read(action):
+    from concurrent.futures import ThreadPoolExecutor
+
+    from app.services.scoped_budget import CancellationToken
+
+    cancel = CancellationToken()
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        work = executor.submit(action, cancel)
+        try:
+            return work.result()
+        except KeyboardInterrupt:
+            cancel.cancel()
+            work.result()  # Join the same owner before releasing the profile.
+            raise
+
+
+def _run_named_compatibility_cli(settings, operation, *, json_output=False, output=None,
+                                 error_output=None, service=None, vault_service=None, **arguments):
+    """Omitted scope keeps old limits and output through the default policy boundary."""
+    stream, errors = output or sys.stdout, error_output or sys.stderr
+    profile = None
+    try:
+        if service is not None or vault_service is not None:
+            raise SpaceError("invalid_configuration", reason="named_serving_unsupported")
+        profile = compose_persisted_space_reads(
+            settings, operation=operation, request=arguments.get("request"), compatibility=True,
+        )
+        operations = profile.start().operations
+        call = dict(arguments)
+        if operation in {"literal", "related"}:
+            call["folder"] = call.get("folder") or ""
+            call["cli"] = True
+        if operation == "literal":
+            call["limit"] = sys.maxsize  # Existing CLI sorts before applying its limit.
+        if operation == "related":
+            def prepare(owner):
+                try:
+                    available = owner.use_persisted_index_for_read_only_search()
+                except ImmutableIndexInspectionUnavailableError:
+                    available = False
+                if not available:
+                    raise LegacyReadUnavailable("index")
+            call["prepare"] = prepare
+        result = _cli_read(lambda cancel: operations.compatibility_read(operation, cancel=cancel, **call))
+        profile.shutdown()
+        if operation == "literal":
+            result = sorted(result, key=lambda row: (row.path.replace("\\", "/").casefold(),
+                                                     row.path.replace("\\", "/")))[:arguments["limit"]]
+            evidence = {"query": arguments["query"], "results": [
+                {"path": row.path, "title": row.title, "snippet": row.snippet} for row in result]}
+            if not json_output:
+                _print_literal_results(result, stream, private_values=_private_output_values(settings))
+        elif operation == "related":
+            evidence = {"text": arguments["text"], "results": [
+                {"path": path, "title": PurePosixPath(path).stem, **{key: getattr(row, key) for key in (
+                    "score", "semantic_score", "lexical_score", "snippet", "heading")}} for path, row in result]}
+            if not json_output:
+                _print_related_results(result, stream, private_values=_private_output_values(settings))
+        elif operation == "query":
+            evidence = {"matches": [{key: getattr(row, key) for key in (
+                "canonical_path", "final_score", "semantic_score", "lexical_score")} for row in result.matches],
+                "ordering": result.ordering, "semantic_index_basis": result.semantic_index_basis}
+            if not json_output:
+                _print_knowledge_query_results(result, stream)
+        else:
+            evidence = serialize_hygiene_result(result).model_dump(mode="json")
+            if not json_output:
+                for field in ("scan", "candidates", "derived_index", "findings_truncated"):
+                    print(f"{field}: {json.dumps(evidence[field], ensure_ascii=True)}", file=stream)
+                if not evidence["findings"]:
+                    print("No findings in this bounded scan; evidence is partial." if result.scan.state == "partial"
+                          else "No findings in this bounded scan.", file=stream)
+                for finding in evidence["findings"]:
+                    print(json.dumps(finding, ensure_ascii=True), file=stream)
+        if json_output:
+            print(json.dumps(evidence, ensure_ascii=True, allow_nan=False), file=stream)
+        return EXIT_SUCCESS
+    except (Exception, KeyboardInterrupt) as exc:
+        failure = exc
+        if profile is not None:
+            try:
+                profile.shutdown()
+            except BaseException:
+                failure = SpaceError("unavailable_space")
+        if isinstance(failure, KnowledgeHygieneError):
+            print(f"Knowledge hygiene failed: {failure.reason}.", file=errors)
+            return EXIT_CLI_FAILURE if failure.reason == "invalid_request" else EXIT_INTEGRITY_PROBLEM
+        if isinstance(failure, KnowledgeQueryError):
+            print(f"Knowledge query failed: {failure.reason}.", file=errors)
+            return EXIT_INTEGRITY_PROBLEM
+        if isinstance(failure, LegacyReadUnavailable):
+            message = ("Search not started: configured vault is unavailable." if operation == "literal" else
+                       "Related search not started: configured vault is unavailable." if failure.kind == "vault" else
+                       "Related search unavailable: no compatible searchable semantic index.")
+            print(message, file=errors)
+            return EXIT_INTEGRITY_PROBLEM
+        code, _, exit_code = public_error(failure)
+        if isinstance(failure, KeyboardInterrupt):
+            code, exit_code = "operation_cancelled", EXIT_INTEGRITY_PROBLEM
+        if json_output:
+            print(json.dumps({"category": code}), file=stream)
+        else:
+            print(f"{code}: Operation failed.", file=errors)
+        return exit_code
+
+
 def _run_scoped_cli(settings, operation, data, *, operations=None, json_output=False,
                     output=None, error_output=None, **raw_owners):
-    """Private vertical seam; public exported commands still enforce activation guards."""
+    """Shared scoped CLI dispatch, with a stopped-service persisted read profile."""
     stream, error_stream = output or sys.stdout, error_output or sys.stderr
     profile = None
     try:
@@ -1157,7 +1273,7 @@ def _run_scoped_cli(settings, operation, data, *, operations=None, json_output=F
             operations = profile.start().operations
         else:
             validate_private_operations(operations, settings=settings)
-        result = execute_scoped(operations, operation, data)
+        result = _cli_read(lambda cancel: execute_scoped(operations, operation, data, cancel=cancel))
         if profile is not None:
             profile.shutdown()
         if json_output:
@@ -1210,7 +1326,7 @@ def _review_evidence(snapshot):
 def _run_write_cli(settings, operation, *, space=None, input_stream=None, output=None,
                    source_path=None, capture_id=None, destination=None, candidate_limit=None,
                    operations=None, **raw_owners):
-    """Private vertical seam. Public commands retain their named activation guard."""
+    """Public CLI writes and private tests share the same lifecycle and dispatch."""
     from concurrent.futures import ThreadPoolExecutor
 
     from app.services.scoped_budget import CancellationToken
@@ -1321,6 +1437,8 @@ def main(argv: Sequence[str] | None = None, *, settings: Settings | None = None)
         for token in tokens))
     args = _parser(
         hygiene=bool(tokens and tokens[0] == "hygiene"),
+        safe_errors=(settings.knowledge_spaces_json is not None if settings is not None else
+                     "KNOWLEDGE_SPACES_JSON" in os.environ),
         json_mode="--json" in tokens or bool(tokens and tokens[0] in {"capture", "promote"}),
         scoped=write_scoped or any(token == "--space" or token.startswith("--space=") or (
             tokens[0] == "query" and token.startswith("--") and any(
@@ -1330,8 +1448,13 @@ def main(argv: Sequence[str] | None = None, *, settings: Settings | None = None)
     configured = False
     try:
         configure_application_logging()
+        maintenance = args.action in {"status", "index", "index_check", "index_rebuild", "reindex"}
+        if maintenance and settings is None and "KNOWLEDGE_SPACES_JSON" in os.environ:
+            # A named maintenance invocation must not even resolve configured roots.
+            raise SpaceError("invalid_configuration", reason="named_serving_unsupported")
         app_settings = settings or Settings.from_env()
-        app_settings.require_legacy_composition()
+        if maintenance:
+            app_settings.require_legacy_composition()
         configured = True
         if args.action == "hygiene_scan":
             defaults = KnowledgeHygieneRequest()
