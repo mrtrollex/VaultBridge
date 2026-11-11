@@ -13,39 +13,32 @@ SCALE 24.10 or later. Both are independent of the generic Docker workflow in the
 Versioned GHCR images remain the runtime artifact for both the Community App and manual deployments.
 Installing the Community App does not automatically migrate an existing source-built Custom App.
 
-> **Current availability:** VaultBridge is available from the TrueNAS Community catalog through
-> **Apps > Discover Apps**. Inspected upstream `truenas/apps` master (2026-10-10) has development package `1.0.3`,
-> selects VaultBridge `1.3.0`, and defaults the Web UI to port `30491`.
->
-> VaultBridge `v1.3.0` is the latest stable application and GHCR release. The catalog's automated
-> image update does not include the checked-in first-class MCP form fields: current upstream source
-> and generated package forms still omit them. That form delivery and live TrueNAS lifecycle
-> verification remain separate work. See the
-> [`v1.3.0` release evidence](docs/RELEASE_CHECKLIST.md#v130-release-evidence).
+> **Current availability (2026-11-11 source inspection):** VaultBridge is available through
+> **Apps > Discover Apps**. Pinned upstream development/generated package `1.0.11` selects
+> application `1.4.0`. Dedicated MCP fields are still absent; catalog metadata does not prove
+> live upgrade, persistence or recovery. See [the pinned ledger](docs/VB153_RELEASE_READINESS.md#truenas-imagecatalog-separation).
 
-## Stable preparation boundary
+## Application release and source boundary
 
-Source is prepared as `1.4.0`; it is not yet published, and the published stable remains `v1.3.0`.
-Published rc.2 passed exact-image verification and its bounded runtime/image canary on TrueNAS 25.10.7.
-Stable publication follows review, merge and successful exact-source CI under separate authorization.
-The version-only transition requires no repeat TrueNAS canary; the exact published stable digest
-still requires immutable-image verification and MCP smoke. Real catalog migration remains pending.
-The stable source includes Dashboard Hygiene and remembered signed-cookie access, eight read-only
-MCP tools (ten with opt-in create/append), and local Query/Capture/Promotion/Hygiene CLI workflows.
-See the [main README](README.md#local-cli-and-semantic-index-administration) for stopped-service
-index-write rules and the [stable publication procedure](docs/V140_RC_RUNBOOK.md#p4-stable-publication--v140).
-The browser submits a key as JSON to `/ui/session`; JavaScript does not persist it. The HttpOnly,
-SameSite=Strict cookie lasts up to seven days, refreshes on restore, and is Secure when the app sees
-HTTPS. Current-key rotation invalidates saved sessions; logout clears the browser cookie and
-protected results. Configure trusted HTTPS termination appropriately; no stronger proxy behavior
-is implied. Named multi-space serving is unavailable.
+**v1.4.0 is published stable**, from `16488735e7a19a6283707a1b6995249432916ca8`; its publication
+workflow passed. It includes Dashboard Hygiene and signed-cookie sessions, eight read-only MCP
+tools (ten with opt-in create/append), and CLI Query/Capture/Promotion/Hygiene. Its historical rc.2
+immutable-image/bounded Custom App evidence does not qualify a Knowledge Spaces deployment.
+Current main additionally enables accepted named REST/MCP/CLI composition and nine read-only MCP
+tools (eleven with writes), while still reporting version 1.4.0. Provisional v1.5.0 needs new-source,
+immutable-image and disposable canary gates. Named UI/session and maintenance/status remain fenced.
+See [VB-153](docs/VB153_RELEASE_READINESS.md) and the [named operator guide](docs/KNOWLEDGE_SPACES.md).
 
-P2 pinned upstream package `1.0.3` / image `1.3.0`; refresh actual Community package identity before
-P5/O3. First-class MCP Edit App controls remain pending P5/O3. Current-package migration,
-non-default Host/Origin preservation and accepted/denied Origin behavior, Edit App persistence,
-host reboot, generated catalog upgrade, rollback/recovery and ixVolume retain/remove outcomes are
-**NOT YET VERIFIED** through a catalog upgrade. The package-only watcher debounce repair has no live
-catalog proof from the Custom App canary. These P5/O3 gates remain separate from application stable publication.
+The legacy browser submits a key as JSON to `/ui/session`; JavaScript does not persist it. The
+HttpOnly, SameSite=Strict cookie lasts up to seven days, refreshes on restore and is Secure when
+the app sees HTTPS. Current-key rotation invalidates saved sessions; logout clears protected state.
+Named composition does not enable that Dashboard/session surface.
+
+P2 pinned package 1.0.3/app 1.3.0 historically; refresh upstream before P5/O3. Dedicated MCP field
+delivery, legacy additional_envs Host/Origin migration, Edit App persistence, host reboot, actual
+generated catalog upgrade, rollback/recovery and ixVolume retain/remove remain **NOT YET VERIFIED**.
+No Custom App image swap proves these catalog gates or the package-only watcher debounce repair.
+Image publication and Community App delivery are separate; no production TrueNAS access is authorized.
 
 ## Preferred installation: TrueNAS Community App
 

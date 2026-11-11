@@ -636,11 +636,12 @@ manage arbitrary files, or bypass deferred VB-032/VB-033/VB-034 boundaries.
 
 ---
 
-## Knowledge Spaces (accepted design and private runtime; public activation blocked)
+## Knowledge Spaces (accepted runtime and public REST/MCP/CLI composition)
 
 [ADR 0009: Knowledge Spaces and Scope Policies](docs/adr/0009-knowledge-spaces-and-scope-policies.md)
-is Accepted; VB-150 is complete as design-only work. Public serving remains one contained Markdown root.
-The accepted design separates stable logical `space_id` from the private root binding and extends future
+is Accepted; VB-150 is complete as design-only work. VB-151 A–G and VB-152 A–D are accepted
+and merged; D enables explicit named REST/MCP/CLI composition. Legacy single-root serving remains.
+The accepted design separates stable logical `space_id` from the private root binding and extends
 note identity to `(space_id, canonical_relative_path)`. Existing path-only calls stay default-space
 calls; legacy `VAULT_PATH` remains valid without mandatory migration.
 
@@ -704,7 +705,7 @@ injection and unsupported named surfaces fail before construction with `invalid_
 (internal reason `named_serving_unsupported`). Legacy raw-owner composition remains legacy-only.
 Storage formats, ranking and the existing default wire contracts remain unchanged.
 
-### VB-152 adapters (A–C accepted; D implementation awaiting acceptance)
+### VB-152 adapters (A–D accepted and merged)
 
 The authoritative [VB-152 contract](BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-slices-a-b-and-c-private-activation-blocked)
 defines exact schemas, error projections, inventory, activation gates and acceptance evidence.
@@ -815,7 +816,9 @@ old-artifact migration and expanded diagnostics remain separate contracts.
 
 Four slices cover policy-bound existing reads/fences, end-to-end Query, end-to-end authorized
 writes, then coordinated public composition/activation. D implements the final composition;
-the complete Windows/native WSL matrix and separate acceptance remain its activation gates.
+the complete Windows/native WSL matrix is retained in its evidence report. The task owner confirms
+independent D acceptance, merged through PR #150; PR #151 and exact-main CI #321 also pass.
+[VB-153](docs/VB153_RELEASE_READINESS.md) separates source acceptance from release qualification.
 ADR 0010's bounded retained ambiguous ownership/permanent stopping limitation remains;
 activation does not promise universal cleanup liveness or completion of a release/deployment.
 

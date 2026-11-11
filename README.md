@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/mrtrollex/VaultBridge/releases/tag/v1.3.0"><img src="https://img.shields.io/badge/stable-v1.3.0-2f6f5e" alt="Stable release v1.3.0"></a>
+  <a href="https://github.com/mrtrollex/VaultBridge/releases/tag/v1.4.0"><img src="https://img.shields.io/badge/stable-v1.4.0-2f6f5e" alt="Stable release v1.4.0"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-356a8a" alt="MIT License"></a>
   <a href="pyproject.toml"><img src="https://img.shields.io/badge/python-3.12-3776AB?logo=python&amp;logoColor=white" alt="Python 3.12"></a>
   <a href="https://github.com/mrtrollex/VaultBridge/pkgs/container/vaultbridge"><img src="https://img.shields.io/badge/container-GHCR-181717?logo=github" alt="VaultBridge container on GHCR"></a>
@@ -30,19 +30,18 @@
   <img src="docs/assets/vaultbridge-architecture.webp" alt="VaultBridge architecture showing an AI client connected through VaultBridge to an Obsidian vault and a local semantic index" width="960">
 </p>
 
-> **Release status:** VaultBridge `v1.3.0` is the latest published stable application and GHCR
-> release. Its immutable source, workflow, OCI digests, aliases, anonymous pull, MCP smoke, and full
-> functional verification are recorded in
-> [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md#v130-release-evidence). The current TrueNAS
-> Community package pinned by P2 is `1.0.3` and selects application image `1.3.0`; refresh upstream
-> before operational tests. Its pinned form does not yet include the first-class MCP configuration fields.
+> **Release status (2026-11-11):** [v1.4.0](https://github.com/mrtrollex/VaultBridge/releases/tag/v1.4.0)
+> is the published stable application release, from source `16488735e7a19a6283707a1b6995249432916ca8`.
+> Its publication workflow succeeded. See the [release ledger](docs/RELEASE_CHECKLIST.md).
+> Current main includes accepted VB-151/VB-152 Knowledge Spaces but still reports version `1.4.0`;
+> it is a different source from the stable tag and needs new image/deployment qualification.
+> The next release is provisionally **v1.5.0**, with no version bump or publication in VB-153.
+> See [release readiness and next tasks](docs/VB153_RELEASE_READINESS.md).
 
-> **Stable source prepared:** `1.4.0` includes read-only Dashboard Hygiene, remembered sessions and
-> Hygiene/Query/Capture/Promotion CLI workflows. Published rc.2 passed exact-image verification and
-> its bounded TrueNAS runtime/image canary. Stable `v1.4.0` is not yet published; publication follows
-> review, merge and successful exact-source CI under separate authorization. P5/O3 catalog delivery
-> and migration remain separate and pending. See the
-> [stable publication procedure](docs/V140_RC_RUNBOOK.md#p4-stable-publication--v140).
+> **TrueNAS delivery:** upstream package `1.0.11` selects application `1.4.0` at the pinned
+> 2026-11-11 inspection. Dedicated MCP form fields, legacy configuration migration and remaining
+> catalog lifecycle gates are separate and unverified. Historical rc.2 Custom App qualification
+> does not validate the current Knowledge Spaces image or catalog migration.
 
 > **v1.3.0 scope:** This release adds verified Obsidian wikilink
 > relationships across REST, MCP, and the dashboard, plus default-off MCP note creation/appending and
@@ -170,7 +169,7 @@ tools), plus contained Markdown Resources such as
 `SEMANTIC_DATA_PATH`, model, size, and rate-limit settings. It does not require `API_KEY`; the local
 spawning process and filesystem permissions are the trust boundary.
 
-With the default `MCP_WRITE_ENABLED=false`, the adapter never starts FastAPI, a network listener, a
+In legacy single-vault mode with `MCP_WRITE_ENABLED=false`, the adapter never starts FastAPI, a network listener, a
 background indexer, or the filesystem watcher. Literal list/read/search operations work
 independently of semantic storage. Semantic tools read only an existing compatible ready index and
 never synchronize, rebuild, or modify it; if a safe immutable index view is unavailable, those
@@ -410,10 +409,11 @@ Published GitHub Releases also produce the same Dockerfile-based application ima
 ghcr.io/<repository-owner>/vaultbridge:<version>
 ```
 
-Use the lowercase repository owner shown on the package page. The current stable image is `v1.3.0`:
+Use the lowercase repository owner shown on the package page. Published stable v1.4.0 uses
+the image tag `1.4.0`; provisional v1.5.0 is not published:
 
 ```bash
-docker pull ghcr.io/<repository-owner>/vaultbridge:1.3.0
+docker pull ghcr.io/<repository-owner>/vaultbridge:1.4.0
 ```
 
 The publication workflow accepts v-prefixed semantic release tags. Every release receives the exact

@@ -6,9 +6,17 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ## [Unreleased]
 
+- accepted VB-151 A–G and VB-152 A–D: explicit named REST/MCP/CLI composition, scoped Query,
+  authorized one-space writes and v2 capture/promotion; legacy default omission and v1 remain
+  compatible. Named UI/maintenance/discovery remain fenced. PR #151 repairs test-only scheduler
+  synchronization and synthetic evidence reductions; exact-main CI #321 passes.
+- VB-153 reconciles published v1.4.0 status and plans provisional v1.5.0 qualification; no version
+  bump, release publication or catalog delivery is made by this documentation task.
+
 ## [1.4.0] - 2026-10-10
 
-Stable source prepared for publication; v1.4.0 is not yet published. Published stable remains v1.3.0.
+Published stable on 2026-10-10 from `16488735e7a19a6283707a1b6995249432916ca8`; publication
+workflow 38074909687 succeeded. The scope below describes that historical source, not current main.
 
 ### Added
 

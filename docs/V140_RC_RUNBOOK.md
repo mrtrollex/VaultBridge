@@ -1,20 +1,25 @@
 # v1.4.0 stable publication and historical RC/O1 runbook
 
-As of 2026-10-10, rc.2 publication, exact-image functional/MCP gates and the bounded O1 runtime/image
-canary are complete. Published stable remains **v1.3.0**. The completed observations below come
-from the assigned evidence task; this documentation change did not rerun publication or live checks.
-The historical RC source-freeze/publication procedure retained below is a reference for completed work,
-not a pending instruction to republish rc.2. It authorizes no new release or live operation.
-See [exact publication/OCI evidence](RELEASE_CHECKLIST.md#v140-rc2-publication-evidence--2026-10-10).
+**Status reconciliation — 2026-11-11:** v1.4.0 was published on 2026-10-10 from source
+`16488735e7a19a6283707a1b6995249432916ca8`; publication workflow
+[38074909687](https://github.com/mrtrollex/VaultBridge/actions/runs/38074909687) passed all jobs.
+See [release evidence](RELEASE_CHECKLIST.md#v140-stable-publication--reconciled-2026-11-11).
+The P4 and RC publication commands below are **historical reference only**, not pending work or
+authorization to republish existing identities. Do not execute them against current main.
+
+Historical rc.2 exact-image functional/MCP gates and bounded O1 observations retain their recorded
+source/digest/scope. They do not qualify current Knowledge Spaces source or its next image.
+[VB-153](VB153_RELEASE_READINESS.md) defines the provisional v1.5.0 preparation/publication plan
+and separate TrueNAS lifecycle gates. VB-153 reran no image or deployment checks.
 
 ## P4 stable publication — v1.4.0
 
-**Prepared procedure only; v1.4.0 is NOT yet published. Published stable remains v1.3.0.**
-Execute only after separate publication authorization, fresh review, merge and successful CI on the
-final stable merge SHA. The next operational step is stable publication, not another RC/preparation
-cycle. This version-only transition changes no runtime logic. The completed bounded rc.2 O1 canary
-below remains pre-stable runtime qualification; do not repeat a TrueNAS canary solely for the version
-transition. Exact published stable image verification remains mandatory.
+**Historical P4 procedure.** This described the reviewed rc.2-to-stable metadata-only transition,
+whose stable publication is now complete. Its former pending status and no-repeat-canary rationale
+apply only to that historical source delta, not Knowledge Spaces. Preserve the source/Release/image
+identities and use a separately prepared v1.5.0 runbook for any new publication.
+
+The following original procedure is retained for audit and contract tests; it grants no authority.
 
 Run these blocks sequentially in one PowerShell session from the reviewed merged checkout.
 Record the actual final `$reviewedSha` at execution time; never substitute the old RC SHA or mutable
@@ -186,7 +191,8 @@ has no live catalog proof from the Custom App canary.
 ## Historical RC procedure and evidence
 
 The remaining RC-targeted commands and preparation descriptions are retained historical reference
-only. Current source metadata is `1.4.0`; use the P4 procedure above for the next publication.
+only. Both RC and stable v1.4.0 publication are completed historical work; neither procedure
+is an instruction for the next publication. See VB-153 for provisional v1.5.0 gates.
 
 ## Completed bounded O1 runtime/image canary — 2026-10-10
 
@@ -246,8 +252,8 @@ checks above prove runtime enforcement with persisted Custom App settings, not p
 package migration. The watcher-debounce package-preparation repair has not been live-proved through
 a catalog migration.
 
-P4 stable source is prepared above; publication is the immediate next operational step after
-fresh review, merge and exact-source CI. Stable v1.4.0 is not yet published.
+At the original O1 handoff, P4 publication followed source preparation, review, merge and
+exact-source CI. That pending status is superseded by the verified stable publication above.
 P5 remains later, requires refreshed upstream and
 a verified published stable image; O3 actual catalog migration/lifecycle remains pending.
 

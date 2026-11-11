@@ -1,7 +1,12 @@
 # VaultBridge v1.4.0 release productization plan
 
-**Current execution status:** see [section 19](#19-execution-status-addendum--2026-10-10) and the
-[P4 stable publication procedure](V140_RC_RUNBOOK.md#p4-stable-publication--v140).
+**Current status — reconciled 2026-11-11:** v1.4.0 was published on 2026-10-10 from
+`16488735e7a19a6283707a1b6995249432916ca8`; workflow 38074909687 passed. Preserve its identities.
+VB-151/VB-152 are now accepted and merged; exact-main CI #321 passes. The next release plan is
+[VB-153, provisional v1.5.0](VB153_RELEASE_READINESS.md), with new-source/image/canary gates.
+The [section 19](#19-execution-status-addendum--2026-10-10) preparation snapshot and
+[P4 publication procedure](V140_RC_RUNBOOK.md#p4-stable-publication--v140) below are historical;
+their pending-publication and unimplemented-named descriptions are not current instructions.
 Sections 1–18 preserve the historical coordinated-delivery proposal; their pre-stable package/lifecycle
 recommendations are not additional application-publication prerequisites. Those unverified gates
 remain pending P5/O3 work under the current accepted release scope.
@@ -1148,6 +1153,8 @@ dedicated fields, Edit App persistence, actual generated public-catalog upgrade,
 catalog rollback/recovery and new-package ixVolume retain/remove remain **NOT YET VERIFIED / PENDING**.
 There is no supported pre-merge candidate-package catalog workflow. Runtime Origin acceptance/403
 does not substitute for the required migration preservation proof in this historical plan.
+
+Historical pre-publication snapshot (superseded by the 2026-11-11 status above):
 
 P4 stable preparation is complete: source metadata is prepared as `1.4.0` with no runtime logic
 changes. This supersedes the previous status that P4 stable preparation was next. The next

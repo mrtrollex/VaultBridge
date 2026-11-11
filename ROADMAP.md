@@ -13,29 +13,27 @@ VaultBridge is self-hosted, not local-only. It may run on a workstation, NAS, ho
 another operator-controlled host. "Local-first" describes the default privacy and processing model:
 no mandatory cloud AI, embedding, database, or knowledge service is required.
 
-## Release-track boundary
+## Release-track boundary — reconciled 2026-11-11
 
-P1 Hygiene Dashboard and P2 MCP delivery preparation are merged. `v1.4.0-rc.1` was published and
-exact-image verified; its bounded TrueNAS 25.10.7 runtime canary passed the tested checks.
-On 2026-10-10, `v1.4.0-rc.2` publication, exact-image functional/MCP verification and bounded O1
-runtime/image canary completed after the reviewed, CI-passed package-only watcher debounce repair
-(PR #128, merged as `c98c70c`). The TrueNAS Custom App rc.1 -> rc.2 image swap and App Stop/Start
-preserved synthetic Markdown, compatible derived state and safe MCP behavior; production remained
-untouched. This does not prove catalog migration or live execution of the package repair.
-Source is prepared as stable `1.4.0` without runtime logic changes. After fresh review, merge and
-successful exact-source CI, P4 stable publication is the immediate next operational step, requiring
-separate publication authorization. `v1.4.0` is NOT yet published. The rc.2 bounded O1 canary remains
-pre-stable runtime qualification; no repeat TrueNAS canary is required solely for the version
-transition, but the exact published stable digest must pass immutable-image verification and MCP
-smoke. P5 requires refreshed upstream and a verified published stable image; O3 remains pending.
-The unavailable pre-merge catalog path does not block application stable publication.
-Real package/legacy MCP field migration, Edit App persistence, host reboot, generated
-catalog upgrade, catalog rollback/recovery and new-package ixVolume retain/remove remain unverified.
-Published stable remains `v1.3.0`.
-P2 pinned package 1.0.3/image 1.3.0; refresh it before operations.
-Historical dashboard milestones below describe their then-current sessionStorage behavior; current
-source uses the signed HttpOnly cookie session documented in README. Named spaces remain disabled.
-See [RC runbook](docs/V140_RC_RUNBOOK.md).
+**v1.4.0 is published stable**, from `16488735e7a19a6283707a1b6995249432916ca8` on 2026-10-10;
+publication workflow [38074909687](https://github.com/mrtrollex/VaultBridge/actions/runs/38074909687)
+passed. Preserve its source/tag/images and the historical rc.2 exact-image/bounded O1 evidence.
+Those old-image receipts do not qualify current Knowledge Spaces source or Community App migration.
+
+VB-151 A–G and VB-152 A–D are independently accepted and merged. PR #150 enabled supported
+named REST/MCP/CLI composition; PR #151 repairs test-only CI regressions. Main
+`246178eb679b0393c7dda3e07fc7cc613115810c` passes exact-main CI #321 (python/docker/dashboard-e2e).
+Source version metadata remains 1.4.0. The next release strategy is provisionally **v1.5.0**:
+exact preparation/alignment, authorized RC and immutable-image verification, bounded disposable
+canary, then stable preparation and explicit publication authorization. See
+[VB-153 evidence and execution plan](docs/VB153_RELEASE_READINESS.md). No release is performed here.
+
+Upstream TrueNAS package 1.0.11/app 1.4.0 at the 2026-11-11 pin is separate from application
+publication; dedicated MCP fields, legacy migration, Edit App persistence, reboot, generated catalog
+upgrade, rollback/recovery and ixVolume retain/remove remain unverified. P2's package 1.0.3/app
+1.3.0 is historical. Refresh upstream before delivery. Historical dashboard milestones retain
+their then-current session behavior; current legacy mode uses signed HttpOnly cookies. Named UI,
+maintenance/status and registry discovery remain fenced.
 
 ## Product principles
 
@@ -115,20 +113,29 @@ second authoritative store.
 
 ---
 
-# Current project state — `v1.3.0` published
+# Current project state — `v1.4.0` published; Knowledge Spaces accepted in source
 
-The published stable GitHub Release and GHCR application release are `v1.3.0`, built from source commit
-`a7e14ece0de74632d1d9be599d53678931dc64b3`. The exact image is
-`ghcr.io/mrtrollex/vaultbridge:1.3.0` with OCI digest
-`sha256:5a1709c279c3731f891b59026adb7e8f5497c299687596b74b49ffd64a9f5a0e`.
-Stable aliases `1.3`, `1`, and `latest` were also published.
+Published stable is `v1.4.0`, released on 2026-10-10 from
+`16488735e7a19a6283707a1b6995249432916ca8`. VB-151 and VB-152 A–D are accepted and merged;
+D merged through PR #150, the Python CI repair through PR #151, and exact-main CI #321 passed.
+Public named REST/MCP/CLI composition and Knowledge Query are implemented. Provisional v1.5.0
+is future release planning; its publication/deployment qualification and separate TrueNAS
+migration gates remain open. See the release-track boundary above and VB-153.
 
-P2-pinned upstream TrueNAS package `1.0.3` selects application image `1.3.0`, but its source and
-generated forms do **not** contain the new first-class MCP configuration fields. Delivering those
-fields and completing the unresolved VB-082 post-merge validation gates remain separate from
-application publication.
+**Historical v1.3.0 publication / P2 snapshot (2026-09-24 release; 2026-10-10 P2 pin):** source
+`a7e14ece0de74632d1d9be599d53678931dc64b3`, image
+`ghcr.io/mrtrollex/vaultbridge:1.3.0`, OCI digest
+`sha256:5a1709c279c3731f891b59026adb7e8f5497c299687596b74b49ffd64a9f5a0e` and then-current
+aliases `1.3`, `1`, `latest` remain historical evidence. P2 pinned package `1.0.3`/image `1.3.0`
+without dedicated MCP fields. These are superseded current-status snapshots, not current alias
+or upstream package observations; current upstream identity is recorded in the release-track
+boundary above. Dedicated field delivery and VB-082 lifecycle gates remain separate.
 
 ## Current implementation architecture
+
+The diagram shows the retained **legacy single-vault composition**. Named REST/MCP/CLI
+composition additionally uses one `SpaceRuntime`, registry/resolver and `SpaceOperations` to
+dispatch authorized operations to contained per-space owners and independent derived indexes.
 
 ```text
 Clients: REST / Web Dashboard / MCP / CLI / integrations
@@ -171,10 +178,11 @@ app/services/knowledge_hygiene.py bounded read-only Knowledge Hygiene domain/run
 app/services/duplicate_candidates.py advisory live-title and semantic duplicate evidence
 ```
 
-The only public Knowledge Query adapter is the bounded read-only CLI `query` subset; it has no
-REST or MCP adapter or dashboard presentation. Capture and Promotion domain services and their
-local CLI adapters are implemented. There is no generic portable-document adapter, persisted
-relationship/query store, or multiple-knowledge-space runtime today.
+Knowledge Query is implemented across the accepted REST, MCP and CLI interfaces. VB-151 and
+VB-152 A–D provide public named Knowledge Spaces composition with legacy default compatibility.
+Capture and Promotion remain CLI-only. Named Dashboard, registry discovery and named maintenance
+remain deliberately unsupported by contract; Query has no Dashboard presentation. There is no
+generic portable-document adapter or persisted relationship/query store.
 
 `KnowledgeHygieneService` exists as the bounded, read-only VB-141 domain/runtime owner;
 Knowledge Hygiene domain diagnostics and VB-142 CLI, REST and MCP transport adapters are
@@ -219,20 +227,24 @@ separate future scope. Findings remain diagnostic, read-only, and advisory.
 ## Current verified release baselines
 
 The `v1.0.0` release established the public repository, exact-source CI, GHCR publication,
-anonymous exact-digest pull, and a disposable TrueNAS runtime smoke. The later `v1.3.0` stable
-release is identified above. Immutable artifact values and complete historical evidence remain in
+anonymous exact-digest pull, and a disposable TrueNAS runtime smoke. The later published stable
+`v1.4.0` and the historical `v1.3.0` artifact snapshot are distinguished above. Immutable artifact
+values and complete historical evidence remain in
 [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md); this roadmap does not replace that record.
 
 ## Current known limitations
 
-1. One configured filesystem root provides the only current knowledge space.
+1. Legacy mode retains one configured root. Explicit named REST/MCP/CLI composition supports
+   one to eight configured contained spaces; named Dashboard, registry discovery and named
+   maintenance remain unsupported. Source acceptance does not qualify a release or deployment.
 2. External filesystem changes are automatically queued only when the optional watcher is enabled.
 3. The deterministic retrieval fixture does not by itself measure representative real-model quality
    or latency.
 4. Multiple VaultBridge processes sharing one semantic index are not coordinated.
 5. `RelationshipService` has dialect-specific views plus one immutable normalized multi-dialect
-   domain view. Public relationship adapters remain wikilink-only. Portable aliases and tags are
-   read-only domain values without lookup, query, or public exposure.
+   domain view. Legacy relationship adapters retain their wikilink behavior; scoped operations
+   use configured dialect policy and remain within one space. Portable aliases and tags remain
+   read-only; Knowledge Query supports its accepted tag/metadata predicates, not alias lookup.
 6. Clients can still invent relationship targets unless they use verified VaultBridge results.
 
 ---
@@ -1165,11 +1177,12 @@ P1 — Read-only Knowledge Hygiene Dashboard now implements that presentation se
 VB-142 requires no dashboard implementation; all three required adapters are implemented and
 merged, completing Milestone 15. Repair/mutation workflows and bounded semantic candidate
 retrieval remain separate future scope, not milestone completion dependencies. Knowledge Hygiene
-remains bounded, diagnostic, read-only, and advisory. Milestone 16 remains planned.
+remains bounded, diagnostic, read-only, and advisory. Milestone 16 implementation and acceptance
+are complete through VB-151/VB-152; release/deployment and TrueNAS migration gates remain open.
 
 ---
 
-# Milestone 16 — Multiple Knowledge Spaces and Scope Policies — PLANNED
+# Milestone 16 — Multiple Knowledge Spaces and Scope Policies — RUNTIME/ADAPTER ACCEPTANCE COMPLETE
 
 **Goal:** support explicitly scoped access and retrieval across more than one contained Markdown
 knowledge space without weakening current safety or compatibility.
@@ -1186,33 +1199,33 @@ KnowledgeSpace
 - supported dialect / capabilities
 ```
 
-Personal, work, research, and archive spaces are examples of future operator configuration, not
-current support claims. Cross-space retrieval and writes must be explicitly permission-aware;
+Personal, work, research, and archive spaces are examples of operator configuration supported
+by the accepted VB-152 adapters in current source; release qualification remains separate. Cross-space retrieval and writes must be explicitly permission-aware;
 ambiguous identities must not be guessed across spaces. The design must preserve containment within
-each root and define adapter-visible scope without exposing host paths. The old multiple-vault and
-per-folder access-policy candidates are absorbed here; neither is current behavior.
+each root and define adapter-visible scope without exposing host paths. The old multiple-vault
+candidate is implemented through configured spaces; no separate per-folder ACL feature is implied.
 
 This milestone does not authorize multi-tenancy, account administration, a hosted SaaS control
-plane, or a dashboard user-management system. The current one-root vault configuration remains the
-only supported public serving configuration. The authoritative VB-151 contract is defined in BACKLOG.md;
+plane, or a dashboard user-management system. Legacy one-root configuration remains supported;
+VB-152 D additionally enables explicit named REST/MCP/CLI composition. The authoritative VB-151 contract is defined in BACKLOG.md;
 runtime Slice A implements private immutable config/types/registry/resolver and strict validation.
 Slice B implements private local owner bundles and qualified nonsemantic one-space orchestration,
-with immutable inspection and deferred semantic/lifecycle seams. Named serving is blocked by
-startup guards. Slice C adds internal budgeted Markdown-only list/literal/nonsemantic Query with
+with immutable inspection and deferred semantic/lifecycle seams. Those private slices did not
+activate public named serving; accepted VB-152 D now supplies that composition. Slice C adds internal budgeted Markdown-only list/literal/nonsemantic Query with
 qualified predicates, incremental relationship admission, cancellation and coverage. D1–D3b
 implement bounded precise semantic federation and semantic Query. E1–E5 provide binding and
 resource/lifecycle primitives; E6 now activates them only through explicit private runtime
 composition with single admission and coordinated shutdown. F implements private scoped v2
 capture/promotion. G supplies final integration/regression hardening. The task owner confirms A–G
-complete and merged through PR #145 (`5d6f0298e8511c3287366e0c7876db20ea2e6287`). Named serving
-remains blocked until VB-152's coordinated adapter acceptance/activation gate.
+complete and merged through PR #145 (`5d6f0298e8511c3287366e0c7876db20ea2e6287`). VB-152 A–D
+are also accepted and merged, including coordinated public activation through PR #150.
 
 [Accepted ADR 0009](docs/adr/0009-knowledge-spaces-and-scope-policies.md) defines the VB-150
 accepted design boundary: qualified `(space_id, canonical_relative_path)`
 identity, legacy `default` compatibility, one shared typed policy boundary, up to eight explicitly
 selected readable spaces, exactly one write destination, independent derived indexes, local-only
-relationships and one-space hygiene. Milestone 16 remains PLANNED; no runtime or adapter scope
-is authorized by design acceptance.
+relationships and one-space hygiene. Design acceptance alone authorized no runtime or adapters;
+separately accepted VB-151/VB-152 now complete runtime/adapter acceptance, not release qualification.
 
 Task states (authoritative scope is in BACKLOG.md):
 
@@ -1221,7 +1234,9 @@ VB-150 knowledge-space and scope-policy ADR — complete, accepted design
    ↓
 VB-151 compatibility-safe multi-space domain boundary — complete; A–G merged
    ↓
-VB-152 permission-aware query and write adapter integration — A/B/C accepted; D implementation awaiting acceptance
+VB-152 permission-aware query and write adapter integration — A–D accepted and merged
+   ↓
+VB-153 release readiness — documentation plan; provisional v1.5.0 qualification remains next
 ```
 
 ---
@@ -1260,10 +1275,11 @@ The task owner confirms Slice B independently accepted and merged through PR #14
 implements authorized create/append and existing REST/MCP write extensions plus scoped CLI v2
 capture/promotion privately; [native evidence](docs/VB152_C_VERIFICATION.md) records its verification.
 The task owner confirms Slice C independently accepted and merged through PR #149. Slice D now
-implements coordinated public composition and explicit exclusion fences; its complete native
-verification and separate acceptance remain required. See [Slice D evidence](docs/VB152_D_VERIFICATION.md)
+implements coordinated public composition and explicit exclusion fences; its native verification
+is recorded and independent acceptance is complete. See [Slice D evidence](docs/VB152_D_VERIFICATION.md)
 and [named operations](docs/KNOWLEDGE_SPACES.md). Rebind/old-artifact migration remain separate
-contracts; Milestone 16 remains PLANNED pending acceptance.
+contracts. D is independently accepted and merged through PR #150; the test-only repair PR #151
+and exact-main CI #321 close the reported CI regressions. Release/image/deployment gates remain open.
 
 ## Deployment and integration candidates
 
@@ -1375,12 +1391,11 @@ work, PR #55 CI completes VB-091's read-only stdio implementation verification, 
 opt-in read-only HTTP transport, and PR #62 CI completes VB-093's production-image container gate.
 An isolated source-built TrueNAS smoke also passes with synthetic data while the production app
 remains healthy. The favicon-and-screenshot-only `v1.2.1` patch remains historical release evidence.
-`v1.3.0` is now the published stable GitHub/GHCR release from source commit
-`a7e14ece0de74632d1d9be599d53678931dc64b3`; exact image tag `1.3.0`, aliases `1.3`, `1`, and
-`latest`, and OCI digest
-`sha256:5a1709c279c3731f891b59026adb7e8f5497c299687596b74b49ffd64a9f5a0e` are published. The
-P2-pinned upstream TrueNAS package `1.0.3` selects image `1.3.0`, but it does not yet contain the first-class
-MCP form fields. Their delivery remains separate, and VB-082's lifecycle gates stay open.
+The v1.3.0 source/image/then-current alias receipts remain historical in the release checklist.
+Published stable is v1.4.0, source `16488735e7a19a6283707a1b6995249432916ca8`. Upstream package
+1.0.11 selects app 1.4.0 at the 2026-11-11 pin, still without dedicated MCP fields. Their delivery
+and VB-082 lifecycle gates remain separate. VB-153 plans the provisional v1.5.0 release of accepted
+Knowledge Spaces source; no publication or deployment is executed by that planning task.
 
 Milestone 11 is complete as the PKM relationship foundation. VB-100 implements the reusable
 read-only Obsidian-compatible wikilink parser/resolver,
@@ -1402,15 +1417,16 @@ VB-141 runtime is complete and merged via PR #112. VB-142's contract is complete
 and required REST, MCP and CLI adapters are complete and merged via PRs #114, #115 and #116,
 respectively. Milestone 15 is complete. The separate v1.4.0 plan P1 implements read-only Hygiene
 Dashboard presentation; repair/mutation and bounded
-semantic candidate retrieval remain separate future scope. Milestone 16 remains planned.
+semantic candidate retrieval remain separate future scope. Milestone 16 implementation and
+acceptance are complete; provisional v1.5.0 publication/deployment qualification remains open.
 VB-150 and ADR 0009 are complete / accepted as design only; VB-151 has a defined domain contract.
 VB-151 runtime Slices A–C implement private configuration/registry/policy resolution, local owner
 bundles and bounded internal nonsemantic read federation. D1–D3b implement semantic federation
 and Query; E1–E5 implement binding/resource/lifecycle primitives; E6 composes and activates them
 privately. F implements scoped v2 capture/promotion; G verifies integration and regression parity.
-The private runtime A–G is complete and merged. VB-152 A/B/C are accepted and merged;
-D implements coordinated public composition with native verification and separate acceptance
-gates recorded in its evidence report. Milestone 16 completion state is unchanged pending acceptance.
+The private runtime A–G and VB-152 A–D are accepted and merged. Coordinated named composition
+is enabled in source; exact-main CI #321 passes after PR #151. Milestone 16 runtime/adapter
+acceptance is complete. VB-153 defines the separate provisional v1.5.0 release qualification gates.
 
 ---
 

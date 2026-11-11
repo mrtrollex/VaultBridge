@@ -1,5 +1,12 @@
 # VaultBridge v1.4.0
 
+Published on 2026-10-10 from `16488735e7a19a6283707a1b6995249432916ca8`;
+[publication evidence](RELEASE_CHECKLIST.md#v140-stable-publication--reconciled-2026-11-11).
+These notes preserve that release's scope, including its disabled named serving and CLI-only
+Query/Capture/Promotion. Current main has subsequently accepted VB-151/VB-152 scoped REST/MCP/CLI
+composition; [VB-153](VB153_RELEASE_READINESS.md) plans its provisional v1.5.0 qualification.
+No historical v1.4.0 capability or test outcome is extended by that later source acceptance.
+
 VaultBridge expands its portable Markdown knowledge tools while keeping Markdown authoritative,
 SQLite indexes rebuildable, and embeddings local by default.
 
@@ -34,7 +41,8 @@ and retain deployment configuration before upgrading; derived semantic indexes r
 
 This application release includes preparation for dedicated MCP package fields and legacy Host/Origin
 allowlist migration, plus a watcher-disabled debounce rendering repair in package preparation.
-These changes do not establish public catalog delivery or live catalog migration proof. The upstream
-Community package does not yet expose the new MCP form fields. Refreshed package delivery, real
+These changes do not establish public catalog delivery or live catalog migration proof. At the
+2026-11-11 pinned upstream inspection, Community package 1.0.11 selects app 1.4.0
+but its development/generated forms still omit dedicated MCP fields. Refreshed package delivery, real
 catalog migration, Edit App persistence, reboot, rollback/recovery and ixVolume lifecycle validation
 remain separate pending work.
