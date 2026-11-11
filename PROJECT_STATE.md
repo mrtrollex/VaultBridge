@@ -2,40 +2,41 @@
 
 This document is the current factual snapshot for future Codex sessions. It should describe what exists **now**, not future plans.
 
-## v1.4.0 stable source and historical bounded O1 evidence — 2026-10-10
+## Release and Knowledge Spaces reconciliation — 2026-11-11
 
-P1 and P2 are merged. `v1.4.0-rc.1` was published and its exact OCI image verified. The bounded
-runtime/image canary on TrueNAS 25.10.7 passed for the checks actually tested; this does not prove
-catalog package migration. It exposed a separate watcher-disabled package rendering bug that could
-emit `SEMANTIC_WATCH_DEBOUNCE_SECONDS=""`. The package-preparation repair was reviewed, passed CI,
-and merged in PR #128 as `c98c70ce153f4af3071698af071cbe89aae96168`; it changes no VaultBridge runtime
-image behavior.
+Published stable is **v1.4.0**, released on 2026-10-10 from annotated-tag target
+`16488735e7a19a6283707a1b6995249432916ca8`; publication workflow
+[38074909687](https://github.com/mrtrollex/VaultBridge/actions/runs/38074909687) passed all three jobs.
+Preserve this tag, Release, source, images and historical evidence. The former pending-publication
+status was stale. Current main is `246178eb679b0393c7dda3e07fc7cc613115810c`, after accepted
+VB-152 D PR #150 and test-only CI repair PR #151. Exact-main
+[CI #321](https://github.com/mrtrollex/VaultBridge/actions/runs/42513741045) passed python, docker
+and dashboard-e2e; [CI #320](https://github.com/mrtrollex/VaultBridge/actions/runs/42512587414)
+passed on the repair PR. Independent slice acceptance is confirmed by the task owner.
 
-`v1.4.0-rc.2` publication and immutable-image functional/MCP verification are complete from source
-`01f3c105b9e5b787e91914ea89879881dd988fb4`; see the
-[release evidence](docs/RELEASE_CHECKLIST.md#v140-rc2-publication-evidence--2026-10-10).
-The bounded O1 runtime/image canary on TrueNAS 25.10.7 passed: the disposable Custom App moved
-from rc.1 to the exact rc.2 digest, preserving synthetic Markdown, compatible derived state,
-safe MCP settings/marker, credential denial/recovery, read-only tools and Origin enforcement,
-including a real App Stop/Start. Production app `vault_prod` remained untouched.
-This image swap is not a catalog package migration and does not live-prove the watcher-debounce
-package repair. Real current-package migration, legacy `additional_envs` Host/Origin carry-forward
-into dedicated fields, Edit App persistence, host reboot, actual generated catalog upgrade,
-catalog rollback/recovery and new-package ixVolume retain/remove remain **NOT YET VERIFIED**.
-Source metadata is prepared as stable `1.4.0`, with no runtime logic change from rc.2.
-Stable `v1.4.0` is **NOT yet published**; published stable remains `v1.3.0`.
-After fresh review, merge and successful exact-source CI, P4 stable publication is the immediate next
-operational step under separate publication authorization, using the
-[stable procedure](docs/V140_RC_RUNBOOK.md#p4-stable-publication--v140) and
-[release notes](docs/V140_RELEASE_NOTES.md). The completed bounded rc.2 O1 runtime/image canary
-remains pre-stable qualification; no repeat TrueNAS canary is required solely for this version-only
-transition. The published stable digest still requires immutable-image verification and MCP smoke.
-P5 requires refreshed upstream and a verified published stable image; O3 catalog migration/lifecycle
-remains pending. The unavailable pre-merge candidate catalog path does not block application stable
-publication or close any package/lifecycle gate.
-Older release/package records
-below retain their historical identities; P2 pinned package 1.0.3/image 1.3.0 and execution must
-refresh upstream.
+VB-151 A–G and VB-152 A–D are accepted and merged. Public named REST/MCP/CLI composition is
+implemented in source; named Dashboard/session, maintenance/status and discovery remain fenced.
+Milestone 16 runtime/adapter acceptance is complete; release/deployment qualification is separate.
+Source package/APP/MCP metadata still says `1.4.0` despite material runtime changes since the
+published stable source. **VB-153 recommends provisional v1.5.0** with new-source/immutable-image
+gates; no version bump or publication is made here. See
+[VB153_RELEASE_READINESS.md](docs/VB153_RELEASE_READINESS.md) for the evidence ledger and four tasks.
+
+Historical rc.2 source `01f3c105b9e5b787e91914ea89879881dd988fb4`, immutable image verification
+and bounded TrueNAS 25.10.7 Custom App canary remain valid only for that image/scope. The rc.1 ->
+rc.2 image swap and App Stop/Start preserved synthetic data and safe MCP behavior; production was
+untouched. They do not qualify Knowledge Spaces or catalog migration. The package-only watcher
+debounce repair PR #128 (`c98c70ce153f4af3071698af071cbe89aae96168`) has no live catalog proof.
+
+Pinned upstream `truenas/apps` on 2026-11-11 is
+`c85431d5f6ad13eb234bb67a1fc5dc908e05d112`: development/generated package 1.0.11/app 1.4.0,
+still without dedicated MCP fields. P2's 1.0.3/app 1.3.0 is a historical pin. Dedicated field
+delivery, legacy additional_envs migration, Edit App persistence, host reboot, generated catalog
+upgrade, rollback/recovery and ixVolume retain/remove remain **NOT YET VERIFIED**. Refresh upstream
+before operations. Image publication and Community App delivery remain independently gated.
+
+Older dated records below retain their original source/image and then-current deployment scope;
+they are not current release or named-activation status.
 
 ## Baseline date
 
@@ -337,10 +338,13 @@ Current post-v1 planning position:
   now adds explicit browser scans over the unchanged REST endpoint, safe findings/coverage presentation,
   shared cookie authentication, and logout/401/stale-request cleanup. Repair/mutation workflows and bounded
   semantic candidate retrieval remain separate future work, not completion dependencies.
-  Milestone 16 remains planned. This dashboard implementation does not constitute a v1.4.0 release
+  Milestone 16 implementation and acceptance are complete through VB-151 and VB-152 A–D.
+  The dashboard alone did not constitute release publication; v1.4.0 was published on 2026-10-10
+  from `16488735e7a19a6283707a1b6995249432916ca8`. Provisional v1.5.0 publication/deployment
+  qualification and separate TrueNAS migration gates remain open
 - VB-150 is complete under accepted [ADR 0009: Knowledge Spaces and Scope Policies](docs/adr/0009-knowledge-spaces-and-scope-policies.md)
-  as design-only work after independent design review returned APPROVE. Public serving still supports one contained
-  authoritative Markdown root. The accepted design defines logical space IDs and qualified note identity,
+  as design-only work after independent design review returned APPROVE. The later accepted VB-152 D
+  enables public named composition; the legacy single-root path remains supported. The accepted design defines logical space IDs and qualified note identity,
   legacy default compatibility, one typed scope/policy boundary, bounded multi-space reads and
   one-space writes, independent derived indexes, local links and one-space hygiene.
 - VB-151 now has the authoritative implementation contract in BACKLOG.md: strict bounded JSON
@@ -387,12 +391,16 @@ Current post-v1 planning position:
   and [VB152_B_VERIFICATION.md](docs/VB152_B_VERIFICATION.md), with Slice C evidence in
   [VB152_C_VERIFICATION.md](docs/VB152_C_VERIFICATION.md).
   Slice D evidence and verification/activation status are in
-  [VB152_D_VERIFICATION.md](docs/VB152_D_VERIFICATION.md); separate fresh acceptance remains required.
-  Milestone 16 remains PLANNED pending acceptance; no index-format change or release/deployment is claimed
+  [VB152_D_VERIFICATION.md](docs/VB152_D_VERIFICATION.md). The task owner confirms D acceptance;
+  PR #150 merged as `a35fb060d61f5d6db837a54aeba90467df6b3983`. The CI repair PR #151 merged as
+  `246178eb679b0393c7dda3e07fc7cc613115810c`; its native evidence is in
+  [VB152_D_CI_REPAIR_VERIFICATION.md](docs/VB152_D_CI_REPAIR_VERIFICATION.md), and exact-main CI #321
+  passes all three jobs. Milestone 16 runtime/adapter acceptance is complete; the provisional
+  v1.5.0 release/image/deployment gates remain open. No index-format change is claimed
 - VB-032 and VB-033 remain deferred optional future work
 - VB-055 remains optional and is not a prerequisite for the planned dashboard
 
-Published `v1.3.0` release and distribution status:
+Historical `v1.3.0` release and distribution evidence (superseded current status above):
 
 - `v1.3.0` is a published stable, non-prerelease GitHub Release from source commit
   `a7e14ece0de74632d1d9be599d53678931dc64b3`
@@ -489,10 +497,10 @@ Current milestones:
 ## Working production characteristics
 
 - FastAPI application
-- package, FastAPI application, and MCP server source metadata align to stable target `1.4.0`;
-  stable publication remains pending, while published stable is `v1.3.0`;
-  the P2-pinned TrueNAS Community package `1.0.3` also selects image `1.3.0`, while its first-class MCP
-  form fields and live lifecycle verification remain separate delivery evidence
+- package, FastAPI application, and MCP server source metadata still report `1.4.0`;
+  published stable v1.4.0 is a different source from current main. Provisional v1.5.0 needs alignment
+  and qualification. Upstream package 1.0.11 selects image 1.4.0 at the 2026-11-11 pin; dedicated MCP
+  fields and live catalog lifecycle verification remain separate delivery gates
 - tracked source and reachable remote branch history passed the VB-060 public-exposure audit
 - public GitHub source was anonymously cloned and clean-built on TrueNAS SCALE / Linux amd64 with
   Docker Engine 28.3.1 using a disposable empty vault and isolated port `8876`

@@ -12,6 +12,11 @@ Legend:
 
 `BACKLOG.md` is the authoritative source for individual task scope. `ROADMAP.md` describes milestones and direction.
 
+Current release reconciliation (2026-11-11): v1.4.0 is published stable; VB-151 A–G and VB-152
+A–D are accepted/merged, and exact-main CI #321 passes. See VB-153 below and
+[the release-readiness ledger](docs/VB153_RELEASE_READINESS.md). Older task contracts and dated
+release records retain their original scope; they do not override this current status.
+
 ## Foundation
 
 ### VB-001 — Establish public project metadata — P0 ✅
@@ -1546,7 +1551,7 @@ services, REST/MCP/dashboard changes, graph visualization, and note mutation.
 
 ### VB-106 — MCP write parity and first-class TrueNAS MCP configuration — P1
 
-**Status:** Implemented on 2026-09-23 and published in `v1.3.0`. Current upstream TrueNAS package
+**Status:** Implemented on 2026-09-23 and published in `v1.3.0`. The then-inspected upstream TrueNAS package
 `1.0.2` selects image `1.3.0`, but delivery of the first-class MCP form fields remains separate.
 
 **Goal:** add default-off MCP create/append parity with the protected REST note API and expose all
@@ -3319,7 +3324,8 @@ changes documentation only, and stops after `agent_finish.py` creates the review
 
 **Status:** Complete as design-only work. Accepted design is recorded in
 [ADR 0009](docs/adr/0009-knowledge-spaces-and-scope-policies.md) after independent design review returned APPROVE.
-Milestone 16 remains PLANNED. This task defines architecture only; a review packet does not
+At design acceptance Milestone 16 remained planned; later VB-151/VB-152 runtime/adapter
+acceptance is now complete. This task defined architecture only; a review packet does not
 constitute ADR acceptance or runtime authorization.
 
 **Scope:** Inspect current Settings, containment, relationships, Knowledge Query, capture/promotion,
@@ -3375,9 +3381,9 @@ primitives through private SpaceRuntime with exact final owner identity, single 
 admission and coordinated startup/rollback/shutdown. Slices A–F are implemented and accepted.
 Slice G adds cross-component integration and reproducible native regression/parity evidence in
 [VB151_G_VERIFICATION.md](docs/VB151_G_VERIFICATION.md). The task owner confirms A–G complete
-and merged through PR #145 (`5d6f0298e8511c3287366e0c7876db20ea2e6287`). Named serving remains
-blocked. Milestone 16 remains **PLANNED**; VB-152 now has the separate proposed adapter contract below,
-with implementation not started.
+and merged through PR #145 (`5d6f0298e8511c3287366e0c7876db20ea2e6287`). Those private slices
+did not activate public named serving. VB-152 A–D below are now accepted/merged and D enables
+supported public composition; release/image/deployment qualification remains separate.
 Later explicitly requested implementation must follow this contract and ADRs 0005–0008 without
 reopening their semantics.
 
@@ -4069,11 +4075,12 @@ cross-space Markdown links/graph/duplicates; automatic note migration/move; cros
 hygiene repair; new ranker/model/index format; cloud embeddings; distributed queue/coordinator;
 VB-152 adapters; Docker/release/deployment. The original contract task was documentation-only;
 runtime changes require explicitly scoped slices. Slice B changes no public adapter or accepted
-ADR, commits nothing and launches no reviewer. Milestone 16 is not complete.
+ADR, commits nothing and launches no reviewer. VB-151 alone did not complete Milestone 16;
+its runtime/adapter acceptance is now complete after the separately accepted VB-152 D.
 
 <a id="vb-152--permission-aware-query-and-write-adapter-integration--p1-slices-a-b-and-c-private-activation-blocked"></a>
 
-### VB-152 — Permission-aware query and write adapter integration — P1 (A–C accepted; D implementation awaiting acceptance)
+### VB-152 — Permission-aware query and write adapter integration — P1 (complete; A–D accepted and merged)
 
 **Authority / status:** This section is the authoritative accepted implementation contract under
 accepted ADRs [0009](docs/adr/0009-knowledge-spaces-and-scope-policies.md) and
@@ -4097,8 +4104,13 @@ accepted and merged through PR #149, `6d6c257a33d4710a0a6a9c2f92975fac8c50d08b`.
 Slice D now implements coordinated public composition, parent-owned HTTP MCP, runtime-owned
 named stdio, CLI profiles and explicit UI/maintenance fences. Its executable matrix and current
 verification/activation status are in [VB152_D_VERIFICATION.md](docs/VB152_D_VERIFICATION.md).
-Separate fresh acceptance remains required; no release/deployment or milestone completion is claimed.
-Milestone 16 remains **PLANNED** pending that acceptance.
+The task owner confirms independent D acceptance; PR #150 merged as
+`a35fb060d61f5d6db837a54aeba90467df6b3983`. The test-only Python CI repair PR #151 merged as
+`246178eb679b0393c7dda3e07fc7cc613115810c`; see
+[repair verification](docs/VB152_D_CI_REPAIR_VERIFICATION.md). Repair PR CI #320 and exact-main
+[CI #321](https://github.com/mrtrollex/VaultBridge/actions/runs/42513741045) pass python, docker
+and dashboard-e2e. Milestone 16 runtime/adapter acceptance is complete. Historical implementation
+reports retain their original pending-review exclusions; they do not claim release/deployment proof.
 
 #### Decisions and compatibility boundary
 
@@ -4589,6 +4601,31 @@ the fences. Accepted ADRs remain unchanged.
 
 ---
 
+### VB-153 — Post-Knowledge-Spaces Release Readiness and Version Reconciliation — P1
+
+**Status:** Documentation plan implemented; separate fresh acceptance pending. No release executed.
+The corrected task-owner instruction preserves published v1.4.0 (2026-10-10), source
+`16488735e7a19a6283707a1b6995249432916ca8`, tag and GHCR identities. VB-151/VB-152 acceptance
+and exact-main CI #321 do not qualify a new deployment. Current metadata remains 1.4.0.
+
+**Recommendation:** qualify accepted current functionality as provisional v1.5.0. Historical
+v1.4.0 publication is complete; never retag/republish it with Knowledge Spaces. The rationale,
+alternatives, reusable versus old-source/image evidence, missing gates, TrueNAS separation and
+STOP conditions are in [VB153_RELEASE_READINESS.md](docs/VB153_RELEASE_READINESS.md).
+
+**Ordered next tasks:** (1) exact RC/stable release preparation and version alignment;
+(2) explicitly authorized RC publication and immutable-image verification including named adapters;
+(3) bounded disposable deployment/restart/recovery canary; (4) stable metadata preparation and
+explicitly authorized stable publication, followed by exact stable-image and alias verification.
+Each task's dependencies/checks/evidence/exclusions are defined in the readiness plan. Preparation
+does not authorize publication. Existing accepted evidence is reused only with verified applicability.
+
+**Acceptance:** reconcile current release/named-source status while preserving historical records;
+document the four-class evidence ledger and minimal execution plan; pass documentation consistency
+and workflow checks; regenerate `.agent/review_packet.md` and stop for separate acceptance.
+No runtime/test/version/ADR/dependency/package changes, deployment, tags/releases/images/aliases,
+production access, commits/pushes/PRs, reviewer launch or subagents.
+
 ## Release history
 
 ### v1.2.0 release
@@ -4638,7 +4675,7 @@ metadata, anonymous exact-digest pull, MCP read/write smoke, and the full immuta
 gate pass. Durable evidence is in
 [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md#v130-release-evidence).
 
-Current upstream TrueNAS package `1.0.2` selects application image `1.3.0`, but its form still omits
+At the v1.3.0 release inspection, upstream TrueNAS package `1.0.2` selected image `1.3.0`; its form omitted
 the first-class MCP fields. Delivering those fields and completing live TrueNAS lifecycle validation
 remain separate from the application release.
 
@@ -4734,11 +4771,12 @@ open. VB-090 and VB-091 complete the read-only stdio MCP design and implementati
 opt-in read-only Streamable HTTP path, and VB-093 completes its container CI validation. This does
 not establish production TrueNAS runtime behavior. A separate isolated TrueNAS source-build smoke
 also passed against synthetic data without using the production vault. The favicon-and-screenshot-only
-`v1.2.1` patch remains historical release evidence. `v1.3.0` is the published stable GitHub/GHCR
-release from source commit `a7e14ece0de74632d1d9be599d53678931dc64b3`, with immutable image
-evidence recorded in `docs/RELEASE_CHECKLIST.md`. Current upstream TrueNAS package `1.0.2` selects
-image `1.3.0` but still lacks the first-class MCP form fields, and the remaining VB-082 gates stay
-open. Milestone 11 is complete as a read-first relationship track; VB-105 records evaluation
+`v1.2.1` patch and `v1.3.0` release from source
+`a7e14ece0de74632d1d9be599d53678931dc64b3` remain historical evidence in
+`docs/RELEASE_CHECKLIST.md`. Published stable is now v1.4.0 from
+`16488735e7a19a6283707a1b6995249432916ca8`. Upstream package 1.0.11 selects image 1.4.0 at the
+2026-11-11 pin, still without dedicated MCP fields. VB-082 lifecycle gates remain open; VB-153
+defines the provisional v1.5.0 preparation/qualification sequence. Milestone 11 is complete as a read-first relationship track; VB-105 records evaluation
 evidence but does not support a production graph-ranking change, while VB-106 adds default-off MCP
 write parity and first-class TrueNAS MCP configuration source. VB-032/VB-033 remain deferred and
 VB-034 remains a later, opt-in write capability. VB-110 accepts ADR 0005 as the portable PKM

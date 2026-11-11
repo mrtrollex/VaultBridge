@@ -4,21 +4,32 @@ This is the durable release checklist and historical completed release evidence 
 `v1.0.0` audit, and each later release adds its own immutable record without replacing earlier tags,
 GitHub Releases, or artifact evidence.
 
-## v1.4.0 stable publication gate - pending
+## v1.4.0 stable publication — reconciled 2026-11-11
 
-Use the [P4 stable procedure](V140_RC_RUNBOOK.md#p4-stable-publication--v140) and tracked
-[stable release notes](V140_RELEASE_NOTES.md). Require annotated tag `v1.4.0` to resolve to the
-reviewed merge SHA, clean checkout and successful CI on that exact SHA, a published non-draft,
-non-prerelease Release, and **PASS** for `Verify release source`, `Build and publish` and
-`Publish stable aliases` (SKIPPED is failure for stable publication). Record OCI index/runtime
-manifest, labels and aliases `1.4`, `1`, `latest`; verify the exact immutable stable digest with
-`scripts/verify_release_image.py` (expected revision = final merge SHA, version = `1.4.0`) and
-`scripts/smoke_mcp_http.py`. Any identity/artifact/runtime failure is **STOP**.
+[v1.4.0](https://github.com/mrtrollex/VaultBridge/releases/tag/v1.4.0) was published on
+`2026-10-10T18:13:27Z`, non-draft and non-prerelease. Annotated tag object
+`714c849c53afa7f0747f2e377d80d17d790c3d46` resolves to source
+`16488735e7a19a6283707a1b6995249432916ca8`. Publication workflow
+[38074909687](https://github.com/mrtrollex/VaultBridge/actions/runs/38074909687) succeeded:
+`Verify release source`, `Build and publish`, `Publish stable aliases` all passed.
+The former pending-publication status is superseded; preserve the tag/Release/source/artifacts.
 
-The completed bounded rc.2 O1 canary below remains pre-stable runtime qualification; no repeat
-TrueNAS canary is required solely for unchanged-runtime rc.2 -> stable metadata. P5/O3 catalog
-migration/lifecycle gates remain separate and pending; their unavailable pre-merge catalog path
-does not block application stable publication. No stable publication evidence exists yet.
+These live GitHub checks establish publication. A fresh anonymous stable-digest pull, alias/OCI
+readback, functional/MCP gate or stable deployment was **not** executed by VB-153. Do not infer
+those observations from a green workflow or assign the rc.2 digest to the stable rebuild.
+The [v1.4.0 notes](V140_RELEASE_NOTES.md) describe that stable source; the
+[P4 procedure](V140_RC_RUNBOOK.md#p4-stable-publication--v140) is retained historical reference.
+
+## Next release — provisional v1.5.0, not published
+
+Current main `246178eb679b0393c7dda3e07fc7cc613115810c` includes accepted VB-151/VB-152;
+exact-main [CI #321](https://github.com/mrtrollex/VaultBridge/actions/runs/42513741045) passed
+python, docker and dashboard-e2e. Its version metadata still reports 1.4.0, but its source is
+materially different from stable/rc.2. The [VB-153 ledger and four-task plan](VB153_RELEASE_READINESS.md)
+require version preparation, authorized RC publication, exact-image legacy **and named** checks,
+disposable deployment/restart/recovery evidence, then explicit stable authority and stable-image
+readback. Passing source tests or the old rc.2 canary cannot qualify this image. TrueNAS Community
+App field delivery/migration/lifecycle remains separate and pending; no production access occurs.
 
 ## v1.4.0-rc.2 publication evidence — 2026-10-10
 
@@ -27,10 +38,11 @@ does not block application stable publication. No stable publication evidence ex
 | RC PUBLICATION — PASS | Published non-draft prerelease from exact reviewed source; source verification and image publication passed; stable-alias job skipped. |
 | EXACT IMAGE — PASS | OCI identity agreed with release source; `verify_release_image.py` immutable-image gate and `smoke_mcp_http.py` read-only/write-enabled container smoke passed against the exact digest below. |
 | BOUNDED O1 RUNTIME/IMAGE — PASS | TrueNAS 25.10.7 disposable Custom App rc.1 -> rc.2 image swap and real App Stop/Start passed the tested checks in the [RC runbook](V140_RC_RUNBOOK.md#completed-bounded-o1-runtimeimage-canary--2026-10-10). |
-| P4 STABLE - SOURCE PREPARED / PUBLICATION PENDING | Source metadata is `1.4.0`, with no runtime logic changes. Fresh review, merge and exact-source CI precede the immediate next operational step: separately authorized stable publication. `v1.4.0` is NOT yet published; published stable remains `v1.3.0`. |
+| P4 — HISTORICAL PRE-PUBLICATION STATE, SUPERSEDED | The original rc.2 record stopped at stable source preparation. Stable v1.4.0 was subsequently published; the verified publication identity is recorded above. This rc.2 ledger supplies no stable-digest functional verification. |
 | PACKAGE / LIFECYCLE — NOT YET VERIFIED | Real current-package migration, legacy MCP Host/Origin into dedicated fields, Edit App persistence, generated public-catalog upgrade, host reboot, catalog rollback/recovery and new-package ixVolume retain/remove. P5 requires refreshed upstream and a verified published stable image; O3 remains pending. |
 
-Follow [V140_RC_RUNBOOK.md](V140_RC_RUNBOOK.md). Published stable remains `v1.3.0`.
+The [V140_RC_RUNBOOK.md](V140_RC_RUNBOOK.md) preserves historical procedures. Published stable
+is now v1.4.0; the rc.2 evidence below retains its original image identity.
 P2 pinned upstream package `1.0.3` / image `1.3.0`; refresh before package operations. `v1.4.0-rc.1` was published and its
 exact OCI image verified; the bounded TrueNAS 25.10.7 runtime/image canary passed its tested checks.
 The rc.2 Custom App image swap is not a real catalog migration and cannot live-prove the
