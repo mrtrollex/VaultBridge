@@ -6,6 +6,12 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ## [Unreleased]
 
+## [1.5.0-rc.1] - Unpublished preparation
+
+- VB-154 aligns source package/APP/MCP metadata to `1.5.0-rc.1`, supplies
+  [prepared release notes](docs/V150_RELEASE_NOTES.md), an
+  [RC runbook](docs/V150_RC_RUNBOOK.md) and executable disposable named-image smoke.
+  Separate acceptance, exact-source CI and publication authority remain required.
 - accepted VB-151 A–G and VB-152 A–D: explicit named REST/MCP/CLI composition, scoped Query,
   authorized one-space writes and v2 capture/promotion; legacy default omission and v1 remain
   compatible. Named UI/maintenance/discovery remain fenced. PR #151 repairs test-only scheduler

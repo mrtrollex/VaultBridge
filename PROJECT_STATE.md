@@ -8,19 +8,21 @@ Published stable is **v1.4.0**, released on 2026-10-10 from annotated-tag target
 `16488735e7a19a6283707a1b6995249432916ca8`; publication workflow
 [38074909687](https://github.com/mrtrollex/VaultBridge/actions/runs/38074909687) passed all three jobs.
 Preserve this tag, Release, source, images and historical evidence. The former pending-publication
-status was stale. Current main is `246178eb679b0393c7dda3e07fc7cc613115810c`, after accepted
-VB-152 D PR #150 and test-only CI repair PR #151. Exact-main
-[CI #321](https://github.com/mrtrollex/VaultBridge/actions/runs/42513741045) passed python, docker
-and dashboard-e2e; [CI #320](https://github.com/mrtrollex/VaultBridge/actions/runs/42512587414)
-passed on the repair PR. Independent slice acceptance is confirmed by the task owner.
+status was stale. VB-154 starts at `65958c5a8b124fac899454aef64b7822021cb3e5`, the merged
+VB-153 PR #152 following accepted VB-152 D PR #150 and test-only CI repair PR #151. Exact-main
+[CI 43016049057](https://github.com/mrtrollex/VaultBridge/actions/runs/43016049057) passed python,
+docker and dashboard-e2e. Independent slice acceptance is confirmed by the task owner.
 
 VB-151 A–G and VB-152 A–D are accepted and merged. Public named REST/MCP/CLI composition is
 implemented in source; named Dashboard/session, maintenance/status and discovery remain fenced.
 Milestone 16 runtime/adapter acceptance is complete; release/deployment qualification is separate.
-Source package/APP/MCP metadata still says `1.4.0` despite material runtime changes since the
-published stable source. **VB-153 recommends provisional v1.5.0** with new-source/immutable-image
-gates; no version bump or publication is made here. See
-[VB153_RELEASE_READINESS.md](docs/VB153_RELEASE_READINESS.md) for the evidence ledger and four tasks.
+VB-154 prepares package/APP/MCP metadata `1.5.0-rc.1`, with
+[release notes](docs/V150_RELEASE_NOTES.md), [runbook](docs/V150_RC_RUNBOOK.md) and
+[verification report](docs/VB154_VERIFICATION.md). This is unpublished source preparation;
+separate acceptance and exact preparation-merge CI remain required. New immutable-image and
+disposable canary gates remain open. The later stable `1.5.0` metadata/documentation transition
+requires separate review and authority. See [VB-153](docs/VB153_RELEASE_READINESS.md) for its retained
+historical ledger and four-task boundary.
 
 Historical rc.2 source `01f3c105b9e5b787e91914ea89879881dd988fb4`, immutable image verification
 and bounded TrueNAS 25.10.7 Custom App canary remain valid only for that image/scope. The rc.1 ->
@@ -497,9 +499,10 @@ Current milestones:
 ## Working production characteristics
 
 - FastAPI application
-- package, FastAPI application, and MCP server source metadata still report `1.4.0`;
-  published stable v1.4.0 is a different source from current main. Provisional v1.5.0 needs alignment
-  and qualification. Upstream package 1.0.11 selects image 1.4.0 at the 2026-11-11 pin; dedicated MCP
+- package, FastAPI application, and MCP server source metadata prepare unpublished `1.5.0-rc.1`;
+  published stable v1.4.0 is a different source. VB-154 preparation requires separate acceptance,
+  exact-merge CI and image/deployment qualification. Upstream package 1.0.11 selects image 1.4.0
+  at the 2026-11-11 pin; dedicated MCP
   fields and live catalog lifecycle verification remain separate delivery gates
 - tracked source and reachable remote branch history passed the VB-060 public-exposure audit
 - public GitHub source was anonymously cloned and clean-built on TrueNAS SCALE / Linux amd64 with

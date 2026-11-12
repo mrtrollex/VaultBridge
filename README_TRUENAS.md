@@ -25,8 +25,10 @@ workflow passed. It includes Dashboard Hygiene and signed-cookie sessions, eight
 tools (ten with opt-in create/append), and CLI Query/Capture/Promotion/Hygiene. Its historical rc.2
 immutable-image/bounded Custom App evidence does not qualify a Knowledge Spaces deployment.
 Current main additionally enables accepted named REST/MCP/CLI composition and nine read-only MCP
-tools (eleven with writes), while still reporting version 1.4.0. Provisional v1.5.0 needs new-source,
-immutable-image and disposable canary gates. Named UI/session and maintenance/status remain fenced.
+tools (eleven with writes). VB-154 prepares unpublished source version `1.5.0-rc.1`; separate
+acceptance, new-source CI, immutable-image and disposable canary gates remain. See the
+[RC runbook](docs/V150_RC_RUNBOOK.md). Named UI/session and maintenance/status remain fenced.
+The Community App form does not imply named settings or independent mount support.
 See [VB-153](docs/VB153_RELEASE_READINESS.md) and the [named operator guide](docs/KNOWLEDGE_SPACES.md).
 
 The legacy browser submits a key as JSON to `/ui/session`; JavaScript does not persist it. The
