@@ -201,8 +201,19 @@ def test_reconstruction_wakes_paused_gap_work_once(tmp_path):
         r.owners["default"].fail = False
         r.watcher = replacement(r)
         r.watcher.start()
+        entry = r.scheduler._owners[binding.space_id]
+        # Native arming can precede the asynchronous coverage-restored receipt.
+        # wait() also accepts paused quiescence, so establish restoration first.
+        with r.scheduler._condition:
+            assert r.scheduler._condition.wait_for(
+                lambda: entry.coverage_restored == entry.coverage_revision, 5,
+            )
         r.scheduler.wait(5)
         assert not r.scheduler.status(binding).requires_full_sync
+        assert not r.scheduler.status(binding).paused
+        assert not r.scheduler.status(binding).monitoring_recovering
+        assert r.scheduler.status(binding).error_type is None
+        assert entry.coverage_reconciled == entry.coverage_revision
 
 
 @pytest.mark.parametrize("reconstructions", [1, 3])

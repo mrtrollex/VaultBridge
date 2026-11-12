@@ -22,8 +22,11 @@ Those old-image receipts do not qualify current Knowledge Spaces source or Commu
 
 VB-151 A–G and VB-152 A–D are independently accepted and merged. PR #150 enabled supported
 named REST/MCP/CLI composition; PR #151 repairs test-only CI regressions. Main
-`246178eb679b0393c7dda3e07fc7cc613115810c` passes exact-main CI #321 (python/docker/dashboard-e2e).
-Source version metadata remains 1.4.0. The next release strategy is provisionally **v1.5.0**:
+`65958c5a8b124fac899454aef64b7822021cb3e5` includes VB-153 PR #152 and passes exact-main
+[CI 43016049057](https://github.com/mrtrollex/VaultBridge/actions/runs/43016049057).
+VB-154 prepares source metadata **1.5.0-rc.1**, [release notes](docs/V150_RELEASE_NOTES.md),
+[runbook](docs/V150_RC_RUNBOOK.md) and bounded named-image smoke; separate acceptance/merge CI
+remain required. The release sequence remains:
 exact preparation/alignment, authorized RC and immutable-image verification, bounded disposable
 canary, then stable preparation and explicit publication authorization. See
 [VB-153 evidence and execution plan](docs/VB153_RELEASE_READINESS.md). No release is performed here.

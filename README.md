@@ -30,13 +30,13 @@
   <img src="docs/assets/vaultbridge-architecture.webp" alt="VaultBridge architecture showing an AI client connected through VaultBridge to an Obsidian vault and a local semantic index" width="960">
 </p>
 
-> **Release status (2026-11-11):** [v1.4.0](https://github.com/mrtrollex/VaultBridge/releases/tag/v1.4.0)
+> **Release status (2026-11-12):** [v1.4.0](https://github.com/mrtrollex/VaultBridge/releases/tag/v1.4.0)
 > is the published stable application release, from source `16488735e7a19a6283707a1b6995249432916ca8`.
 > Its publication workflow succeeded. See the [release ledger](docs/RELEASE_CHECKLIST.md).
-> Current main includes accepted VB-151/VB-152 Knowledge Spaces but still reports version `1.4.0`;
-> it is a different source from the stable tag and needs new image/deployment qualification.
-> The next release is provisionally **v1.5.0**, with no version bump or publication in VB-153.
-> See [release readiness and next tasks](docs/VB153_RELEASE_READINESS.md).
+> Current source prepares **1.5.0-rc.1** with accepted VB-151/VB-152 Knowledge Spaces.
+> It is unpublished and requires separate acceptance, exact-source CI and image/deployment qualification.
+> See [prepared notes](docs/V150_RELEASE_NOTES.md), [RC procedure](docs/V150_RC_RUNBOOK.md) and
+> [release readiness and task boundaries](docs/VB153_RELEASE_READINESS.md).
 
 > **TrueNAS delivery:** upstream package `1.0.11` selects application `1.4.0` at the pinned
 > 2026-11-11 inspection. Dedicated MCP form fields, legacy configuration migration and remaining
@@ -194,7 +194,7 @@ clients when its Host is allowed. The HTTP transport accepts the current `API_KE
 services/index lifecycle.
 
 Set `MCP_WRITE_ENABLED=true` to add exactly `create_note` and `append_note` to either transport
-(ten tools total).
+(eleven tools total).
 They reuse the protected REST write behavior: create never overwrites, append supports an optional
 dedupe key, and only committed changes queue targeted semantic refresh. Stdio owns and shuts down a
 targeted index worker only in this mode; it does not start an unnecessary full sync. For remote
@@ -375,6 +375,11 @@ OBSIDIAN_VAULT_PATH=/home/alice/Documents/MyVault
 `OBSIDIAN_VAULT_PATH` is a path on the Docker host. Compose bind-mounts it at `/vault` in the
 container; it is not a container path. Never commit `.env`. It is ignored by Git, but you should
 still treat it as a secret-bearing file.
+
+This generic Compose path does not forward `KNOWLEDGE_SPACES_JSON` from `.env`. Named mode needs
+explicit environment injection and independent root/data mounts; see the
+[concrete manual Docker procedure](docs/V150_RC_RUNBOOK.md#configuration-delivery-outside-the-runner).
+Published v1.4.0 does not provide named composition.
 
 On Linux, set the container identity to the user that owns the vault:
 

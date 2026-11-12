@@ -22,10 +22,12 @@ The [v1.4.0 notes](V140_RELEASE_NOTES.md) describe that stable source; the
 
 ## Next release — provisional v1.5.0, not published
 
-Current main `246178eb679b0393c7dda3e07fc7cc613115810c` includes accepted VB-151/VB-152;
-exact-main [CI #321](https://github.com/mrtrollex/VaultBridge/actions/runs/42513741045) passed
-python, docker and dashboard-e2e. Its version metadata still reports 1.4.0, but its source is
-materially different from stable/rc.2. The [VB-153 ledger and four-task plan](VB153_RELEASE_READINESS.md)
+VB-154 begins at `65958c5a8b124fac899454aef64b7822021cb3e5`, merged VB-153 PR #152 after
+accepted VB-151/VB-152. Exact-main [CI 43016049057](https://github.com/mrtrollex/VaultBridge/actions/runs/43016049057)
+passed python, docker and dashboard-e2e. Current source metadata is prepared as **1.5.0-rc.1**;
+it remains unpublished and requires separate acceptance and exact preparation-merge CI.
+See [notes](V150_RELEASE_NOTES.md), [executable runbook](V150_RC_RUNBOOK.md) and
+[VB-154 verification](VB154_VERIFICATION.md). The [VB-153 ledger and four-task plan](VB153_RELEASE_READINESS.md)
 require version preparation, authorized RC publication, exact-image legacy **and named** checks,
 disposable deployment/restart/recovery evidence, then explicit stable authority and stable-image
 readback. Passing source tests or the old rc.2 canary cannot qualify this image. TrueNAS Community

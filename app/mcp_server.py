@@ -68,7 +68,7 @@ from app.space_read_transport import (
 )
 
 MCP_SERVER_NAME = "VaultBridge"
-MCP_SERVER_VERSION = "1.4.0"
+MCP_SERVER_VERSION = "1.5.0-rc.1"
 MCP_CLIENT_ID = "stdio-process"
 MCPTransport = Literal["stdio", "streamable-http"]
 NOTE_RESOURCE_TEMPLATE = "vaultbridge://note/{path}"

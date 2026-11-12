@@ -23,10 +23,10 @@ def constant(path: str, name: str) -> str:
                 and any(isinstance(target, ast.Name) and target.id == name for target in node.targets))
 
 
-def test_stable_versions_agree():
+def test_release_candidate_versions_agree():
     version = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
     assert version == constant("app/main.py", "APP_VERSION") == constant(
-        "app/mcp_server.py", "MCP_SERVER_VERSION") == "1.4.0"
+        "app/mcp_server.py", "MCP_SERVER_VERSION") == "1.5.0-rc.1"
 
 
 def workflow():
@@ -41,6 +41,8 @@ def test_release_semver_and_prerelease_contract():
     assert re.fullmatch(pattern, "v1.4.0-rc.1")
     assert re.fullmatch(pattern, "v1.4.0-rc.2")
     assert re.fullmatch(pattern, "v1.4.0")
+    assert re.fullmatch(pattern, "v1.5.0-rc.1")
+    assert re.fullmatch(pattern, "v1.5.0")
     assert not re.fullmatch(pattern, "1.4.0-rc.1")
     assert not re.fullmatch(pattern, "v1.4.0+local")
     assert '"$release_tag" == *-* && "$expected_prerelease" != "true"' in script
@@ -83,6 +85,10 @@ def test_recovery_and_exact_source_contract():
 
 
 @pytest.mark.parametrize(("tag", "expected", "actual", "draft", "published", "success"), [
+    ("v1.5.0-rc.1", "true", "true", "false", "2026-01-01", True),
+    ("v1.5.0-rc.1", "false", "false", "false", "2026-01-01", False),
+    ("v1.5.0-rc.1", "true", "false", "false", "2026-01-01", False),
+    ("v1.5.0-rc.1", "true", "true", "true", "", False),
     ("v1.4.0-rc.1", "true", "true", "false", "2026-01-01", True),
     ("v1.4.0-rc.1", "false", "false", "false", "2026-01-01", False),
     ("v1.4.0-rc.1", "true", "false", "false", "2026-01-01", False),
@@ -140,7 +146,7 @@ def test_bad_identity_inputs_rejected(field, value):
         gate.validate_inputs(args)
 
 
-@pytest.mark.parametrize("version", ["1.4.0", "1.4.0-rc.1", "1.4.0-rc.2", "1.3.0"])
+@pytest.mark.parametrize("version", ["1.5.0-rc.1", "1.5.0", "1.4.0", "1.4.0-rc.1", "1.4.0-rc.2", "1.3.0"])
 def test_identity_labels_must_match(version):
     args = arguments("--expected-version", version)
     gate.validate_inputs(args)
@@ -233,7 +239,8 @@ def test_documented_cli_examples_parse():
 def test_current_documentation_local_links_exist():
     for name in ("README.md", "README_TRUENAS.md", "ARCHITECTURE.md", "PROJECT_STATE.md", "ROADMAP.md",
                  "docs/RELEASE_CHECKLIST.md", "docs/DASHBOARD_RELEASE_CHECKLIST.md", "docs/V140_RC_RUNBOOK.md",
-                 "docs/V140_RELEASE_NOTES.md"):
+                 "docs/V140_RELEASE_NOTES.md", "docs/V150_RC_RUNBOOK.md", "docs/V150_RELEASE_NOTES.md",
+                 "docs/VB154_VERIFICATION.md", "docs/KNOWLEDGE_SPACES.md"):
         path = ROOT / name
         content = re.sub(r"```.*?```", "", path.read_text(encoding="utf-8"), flags=re.S)
         content = re.sub(r"`[^`\n]+`", "", content)
@@ -339,6 +346,8 @@ def test_runbook_powershell_blocks_parse_without_execution(tmp_path):
     blocks, _, _ = publication_blocks()
     historical, _, _ = publication_blocks(historical=True)
     blocks += historical
+    current = (ROOT / "docs/V150_RC_RUNBOOK.md").read_text(encoding="utf-8")
+    blocks += re.findall(r"```powershell\n(.*?)```", current, re.S)
     source = tmp_path / "runbook.ps1"
     source.write_text("\n".join(blocks), encoding="utf-8")
     parser_script = (
