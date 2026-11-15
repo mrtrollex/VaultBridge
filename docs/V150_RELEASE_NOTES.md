@@ -1,6 +1,6 @@
-# VaultBridge v1.5.0-rc.1 — prepared release notes
+# VaultBridge v1.5.0-rc.2 — prepared release notes
 
-**Unpublished candidate source: 1.5.0-rc.1.** These notes describe accepted VB-151 A–G and
+**Unpublished candidate source: 1.5.0-rc.2.** These notes describe accepted VB-151 A–G and
 VB-152 A–D functionality. They do not announce publication, image qualification or deployment.
 Published stable [v1.4.0](https://github.com/mrtrollex/VaultBridge/releases/tag/v1.4.0) does not
 contain named Knowledge Spaces. Its tag, image and historical verification remain separate.

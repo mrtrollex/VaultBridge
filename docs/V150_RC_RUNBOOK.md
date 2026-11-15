@@ -1,6 +1,6 @@
 # v1.5.0 RC preparation and qualification runbook
 
-Status: **source preparation only; v1.5.0-rc.1 is not published**. This implements only task 1 of
+Status: **source preparation only; v1.5.0-rc.2 is not published**. This implements only task 1 of
 [VB-153](VB153_RELEASE_READINESS.md). No command in this document grants publication or deployment
 authority. [Release notes](V150_RELEASE_NOTES.md) describe scope and accepted limits. Preserve all
 historical v1.4.0 records, including [its runbook](V140_RC_RUNBOOK.md).
@@ -31,7 +31,7 @@ if ($reviewedSha -cnotmatch '^[0-9a-f]{40}$' -or $ciRun -cnotmatch '^[0-9]+$') {
 }
 $repository = 'mrtrollex/VaultBridge'
 $remote = 'https://github.com/mrtrollex/VaultBridge.git'
-$tag = 'v1.5.0-rc.1'
+$tag = 'v1.5.0-rc.2'
 function Assert-ReviewedCheckout {
     if (@(Invoke-Checked git -Arguments @('status', '--porcelain')).Count -ne 0) { throw 'Dirty checkout' }
     $headSha = (Invoke-Checked git -Arguments @('rev-parse', '--verify', 'HEAD^{commit}')).Trim()
@@ -71,7 +71,7 @@ No user roots, existing credentials or arbitrary mount arguments are accepted. R
 ```powershell
 Invoke-Checked docker -Arguments @('build', '-t', 'vaultbridge:vb154-local', '.')
 Invoke-Checked python -Arguments @('scripts/verify_named_image.py', '--local-image', 'vaultbridge:vb154-local',
-    '--expected-revision', $reviewedSha, '--expected-version', '1.5.0-rc.1')
+    '--expected-revision', $reviewedSha, '--expected-version', '1.5.0-rc.2')
 ```
 
 For an uncommitted preparation dry-run, record HEAD **plus a complete changed-source manifest**;
@@ -83,7 +83,7 @@ published immutable image. A later digest run requires a previously anonymously 
 ```powershell
 $image = 'ghcr.io/mrtrollex/vaultbridge@sha256:<observed-64-hex-index-digest>'
 Invoke-Checked python -Arguments @('scripts/verify_named_image.py', '--image', $image,
-    '--expected-revision', $reviewedSha, '--expected-version', '1.5.0-rc.1')
+    '--expected-revision', $reviewedSha, '--expected-version', '1.5.0-rc.2')
 ```
 
 The runner creates `vaultbridge-named-*` under the system temporary directory, with `default`,
@@ -198,7 +198,7 @@ legacy-v1.4.0 upgrade on its own copy and demonstrated restore to an isolated pr
 
 After task-1 acceptance and exact-source CI, present concrete SHA, tag, notes, expected alias
 effects and rollback limits for explicit authorization covering GitHub **and** GHCR publication.
-Only that later task may create a new annotated `v1.5.0-rc.1` at the frozen SHA and a non-draft
+Only that later task may create a new annotated `v1.5.0-rc.2` at the frozen SHA and a non-draft
 GitHub prerelease using `docs/V150_RELEASE_NOTES.md`. Recheck clean checkout/tag absence immediately
 before mutation; independently fetch/dereference after tag push and after Release creation.
 Never move/reuse a published identity. Workflow recovery is only for an already published matching
@@ -249,10 +249,10 @@ pull with an empty Docker credential config must succeed. Run on the observed in
 ```powershell
 Invoke-Checked docker -Arguments @('buildx', 'imagetools', 'inspect', $image)
 Invoke-Checked python -Arguments @('scripts/verify_release_image.py', '--image', $image,
-    '--expected-revision', $reviewedSha, '--expected-version', '1.5.0-rc.1')
+    '--expected-revision', $reviewedSha, '--expected-version', '1.5.0-rc.2')
 Invoke-Checked python -Arguments @('scripts/smoke_mcp_http.py', '--image', $image)
 Invoke-Checked python -Arguments @('scripts/verify_named_image.py', '--image', $image,
-    '--expected-revision', $reviewedSha, '--expected-version', '1.5.0-rc.1')
+    '--expected-revision', $reviewedSha, '--expected-version', '1.5.0-rc.2')
 ```
 
 The legacy verifier performs real model/index checks on its legacy layout; it does not qualify

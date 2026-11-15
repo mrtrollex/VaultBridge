@@ -6,6 +6,12 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ## [Unreleased]
 
+## [1.5.0-rc.2] - Unpublished preparation
+
+- Align package, FastAPI, MCP and current release metadata to `1.5.0-rc.2`.
+  API, persistence and index formats are unchanged. The new artifact requires its own
+  image qualification and a separately authorized upgrade/rollback canary.
+
 ## [1.5.0-rc.1] - Unpublished preparation
 
 - VB-154 aligns source package/APP/MCP metadata to `1.5.0-rc.1`, supplies

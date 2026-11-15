@@ -26,7 +26,7 @@ def constant(path: str, name: str) -> str:
 def test_release_candidate_versions_agree():
     version = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
     assert version == constant("app/main.py", "APP_VERSION") == constant(
-        "app/mcp_server.py", "MCP_SERVER_VERSION") == "1.5.0-rc.1"
+        "app/mcp_server.py", "MCP_SERVER_VERSION") == "1.5.0-rc.2"
 
 
 def workflow():

@@ -24,7 +24,7 @@ VB-151 A–G and VB-152 A–D are independently accepted and merged. PR #150 ena
 named REST/MCP/CLI composition; PR #151 repairs test-only CI regressions. Main
 `65958c5a8b124fac899454aef64b7822021cb3e5` includes VB-153 PR #152 and passes exact-main
 [CI 43016049057](https://github.com/mrtrollex/VaultBridge/actions/runs/43016049057).
-VB-154 prepares source metadata **1.5.0-rc.1**, [release notes](docs/V150_RELEASE_NOTES.md),
+Current source prepares metadata **1.5.0-rc.2**, [release notes](docs/V150_RELEASE_NOTES.md),
 [runbook](docs/V150_RC_RUNBOOK.md) and bounded named-image smoke; separate acceptance/merge CI
 remain required. The release sequence remains:
 exact preparation/alignment, authorized RC and immutable-image verification, bounded disposable

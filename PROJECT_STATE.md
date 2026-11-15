@@ -16,7 +16,7 @@ docker and dashboard-e2e. Independent slice acceptance is confirmed by the task 
 VB-151 A–G and VB-152 A–D are accepted and merged. Public named REST/MCP/CLI composition is
 implemented in source; named Dashboard/session, maintenance/status and discovery remain fenced.
 Milestone 16 runtime/adapter acceptance is complete; release/deployment qualification is separate.
-VB-154 prepares package/APP/MCP metadata `1.5.0-rc.1`, with
+Current source prepares package/APP/MCP metadata `1.5.0-rc.2`, with
 [release notes](docs/V150_RELEASE_NOTES.md), [runbook](docs/V150_RC_RUNBOOK.md) and
 [verification report](docs/VB154_VERIFICATION.md). This is unpublished source preparation;
 separate acceptance and exact preparation-merge CI remain required. New immutable-image and
@@ -499,7 +499,7 @@ Current milestones:
 ## Working production characteristics
 
 - FastAPI application
-- package, FastAPI application, and MCP server source metadata prepare unpublished `1.5.0-rc.1`;
+- package, FastAPI application, and MCP server source metadata prepare unpublished `1.5.0-rc.2`;
   published stable v1.4.0 is a different source. VB-154 preparation requires separate acceptance,
   exact-merge CI and image/deployment qualification. Upstream package 1.0.11 selects image 1.4.0
   at the 2026-11-11 pin; dedicated MCP

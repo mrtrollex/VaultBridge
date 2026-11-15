@@ -24,7 +24,7 @@ The [v1.4.0 notes](V140_RELEASE_NOTES.md) describe that stable source; the
 
 VB-154 begins at `65958c5a8b124fac899454aef64b7822021cb3e5`, merged VB-153 PR #152 after
 accepted VB-151/VB-152. Exact-main [CI 43016049057](https://github.com/mrtrollex/VaultBridge/actions/runs/43016049057)
-passed python, docker and dashboard-e2e. Current source metadata is prepared as **1.5.0-rc.1**;
+passed python, docker and dashboard-e2e. Current source metadata is prepared as **1.5.0-rc.2**;
 it remains unpublished and requires separate acceptance and exact preparation-merge CI.
 See [notes](V150_RELEASE_NOTES.md), [executable runbook](V150_RC_RUNBOOK.md) and
 [VB-154 verification](VB154_VERIFICATION.md). The [VB-153 ledger and four-task plan](VB153_RELEASE_READINESS.md)
