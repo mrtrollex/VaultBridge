@@ -183,8 +183,18 @@ def test_stopped_gap_survives_sync_and_failed_reconstruction(tmp_path, monkeypat
         assert r.scheduler.status(binding).monitoring_recovering
         r.watcher = replacement(r)
         r.watcher.start()
+        entry = r.scheduler._owners[binding.space_id]
+        # Native readiness can precede the asynchronous restored-coverage receipt.
+        # Quiescence alone does not prove that its reconciliation was submitted.
+        with r.scheduler._condition:
+            assert r.scheduler._condition.wait_for(
+                lambda: entry.coverage_restored == entry.coverage_revision, 5,
+            )
         r.scheduler.wait(5)
         assert not r.scheduler.status(binding).requires_full_sync
+        assert not r.scheduler.status(binding).paused
+        assert not r.scheduler.status(binding).monitoring_recovering
+        assert entry.coverage_reconciled == entry.coverage_revision
 
 
 def test_reconstruction_wakes_paused_gap_work_once(tmp_path):

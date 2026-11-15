@@ -96,7 +96,7 @@ class OneSpaceOutput(_Output, Generic[T]):
 def schema_union(legacy, scoped):
     legacy, scoped = deepcopy(legacy), deepcopy(scoped)
     definitions = {**legacy.pop("$defs", {}), **scoped.pop("$defs", {})}
-    return {"anyOf": [legacy, scoped], **({"$defs": definitions} if definitions else {})}
+    return {"type": "object", "anyOf": [legacy, scoped], **({"$defs": definitions} if definitions else {})}
 
 
 def scoped_request_schema(operation, legacy):

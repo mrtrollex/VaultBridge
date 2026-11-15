@@ -305,7 +305,7 @@ class SemanticRepository(DescriptorDisposal):
             raise IndexBindingUnavailableError
         return current
 
-    def validate_expected_binding(self, *, allow_initialization=True) -> None:
+    def validate_expected_binding(self, *, allow_initialization=True, _finalizing=False) -> None:
         """Non-destructive preflight, before any model or writable connection.
 
         Bound lifecycle preflight requires stopped storage (no sidecars). D1's
@@ -317,6 +317,7 @@ class SemanticRepository(DescriptorDisposal):
                 if identity is None and not allow_initialization:
                     raise IndexBindingUnavailableError
             return
+        validated = False
         try:
             legacy = self.__default_binding is not None
             before = self._binding_storage_identity(immutable=not legacy)
@@ -336,7 +337,15 @@ class SemanticRepository(DescriptorDisposal):
                 )
                 if self._binding_storage_identity(immutable=not legacy) != before:
                     raise IndexBindingUnavailableError
-        except (OSError, sqlite3.DatabaseError, IndexBindingUnavailableError):
+                validated = True
+        except (OSError, sqlite3.DatabaseError, IndexBindingUnavailableError) as error:
+            # Shutdown must observe disposal/locking failures; ordinary readers
+            # retain their unavailable projection and registered cleanup owner.
+            if _finalizing:
+                if validated or self.cleanup_failed:
+                    raise RepositoryCleanupIncompleteError from None
+                if getattr(error, "sqlite_errorcode", 0) & 0xFF in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED):
+                    raise
             raise IndexBindingUnavailableError from None
 
     def _connect_bound(self) -> sqlite3.Connection:
@@ -635,6 +644,43 @@ class SemanticRepository(DescriptorDisposal):
         ):
             raise IndexBindingUnavailableError
         self._validate_namespace(lambda sql, args=(): session._connection.execute(sql, args).fetchone())
+
+    def finish_stopped_storage(self):
+        """Let SQLite retire default WAL files after all admitted readers drain.
+
+        A final mode=ro reader can recreate WAL/SHM and close without removing
+        them. This is not a leaked connection. Only the serving default owner
+        may open an existing, validated database read/write for SQLite's normal
+        last-close cleanup; no schema, namespace or journal-mode writes occur.
+        Immutable profiles and unavailable/foreign storage remain untouched.
+        """
+        if self.__default_binding is None:
+            return
+        self._check_cleanup_available()
+        with self._initialization_lock:
+            if self._initializations:
+                raise RepositoryCleanupIncompleteError
+        if self._reader_connections.pending:
+            raise RepositoryCleanupIncompleteError
+        try:
+            before = self._binding_storage_identity(immutable=False)
+            if before is None or not any(Path(f"{self.db_path}{s}").exists() for s in ("-wal", "-shm")):
+                return
+            self.validate_expected_binding(allow_initialization=False, _finalizing=True)
+        except (OSError, IndexBindingUnavailableError):
+            return  # Never turn shutdown into initialization or foreign recovery.
+        uri = f"{self.db_path.absolute().as_uri()}?mode=rw"
+        with self._reader_connections.connection(uri, uri=True, timeout=0) as connection:
+            connection.execute("PRAGMA query_only=ON")
+            connection.execute("BEGIN")
+            self._validate_namespace(lambda sql, args=(): connection.execute(sql, args).fetchone())
+            if self._binding_storage_identity(immutable=False) != before:
+                raise IndexBindingUnavailableError
+            connection.rollback()
+        # SQLite owns checkpoint/unlink. A busy peer or failed disposal must not
+        # be mistaken for a completed transition to immutable stopped storage.
+        if self._binding_storage_identity() != before:
+            raise IndexBindingUnavailableError
 
     def _connect(self) -> sqlite3.Connection:
         if self.__inspection_binding is not None:

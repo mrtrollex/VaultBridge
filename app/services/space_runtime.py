@@ -200,6 +200,7 @@ class SpaceRuntime(_PrivateImmutable):
                     cleanups = (
                         (getattr(getattr(owners.semantic, "repository", None), "close_initializations", None),
                          {"retry": not scheduler_failed}),
+                        (getattr(getattr(owners.semantic, "repository", None), "finish_stopped_storage", None), {}),
                         (getattr(owners.semantic, "close_resources", None), {}),
                         (getattr(owners.vault, "close_scoped_resources", None), {}),
                     )
