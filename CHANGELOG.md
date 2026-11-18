@@ -6,7 +6,19 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ## [Unreleased]
 
-## [1.5.0-rc.2] - Unpublished preparation
+## [1.5.0] - Stable release preparation (unpublished)
+
+- Metadata-only promotion from the published `1.5.0-rc.2` candidate: package,
+  FastAPI, MCP and release-test versions become `1.5.0`. Runtime logic,
+  API contracts and persisted formats are unchanged.
+- RC2 canary verified semantic indexing, two named spaces and filesystem-watcher
+  targeted reindexing on isolated TrueNAS mounts. One real-vault-copy note was
+  reported as `note_unavailable` during federated reads (801 enumerated,
+  800 evaluated), so complete coverage is **not** claimed.
+- Stable publication, GHCR moving aliases and stable-image qualification
+  remain separately gated; this preparation does not publish a release.
+
+## [1.5.0-rc.2] - Published prerelease
 
 - Align package, FastAPI, MCP and current release metadata to `1.5.0-rc.2`.
   API, persistence and index formats are unchanged. The new artifact requires its own

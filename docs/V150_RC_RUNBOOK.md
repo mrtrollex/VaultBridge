@@ -1,9 +1,11 @@
 # v1.5.0 RC preparation and qualification runbook
 
-Status: **source preparation only; v1.5.0-rc.2 is not published**. This implements only task 1 of
-[VB-153](VB153_RELEASE_READINESS.md). No command in this document grants publication or deployment
-authority. [Release notes](V150_RELEASE_NOTES.md) describe scope and accepted limits. Preserve all
-historical v1.4.0 records, including [its runbook](V140_RC_RUNBOOK.md).
+Status: **historical RC2 preparation and qualification runbook**. The
+`v1.5.0-rc.2` prerelease has been published; do not rerun its tag/release creation commands
+or treat this runbook as authorization to move an existing identity. The separate stable
+`1.5.0` transition is described in [VB-153](VB153_RELEASE_READINESS.md) and
+[release notes](V150_RELEASE_NOTES.md). Preserve historical v1.4.0 records, including
+[its runbook](V140_RC_RUNBOOK.md).
 
 ## Preparation and exact source gate
 

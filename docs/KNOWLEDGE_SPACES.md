@@ -5,9 +5,11 @@ and native verification status are recorded in [VB152_D_VERIFICATION.md](VB152_D
 The task owner confirms independent acceptance of A–D, merged through PR #150; the test-only
 repair PR #151 and exact-main CI #321 pass. These are current-source capabilities, absent from
 published v1.4.0. [VB-153](VB153_RELEASE_READINESS.md) plans provisional v1.5.0 qualification;
-The current candidate prepares unpublished source version `1.5.0-rc.2`; see its
-[release notes](V150_RELEASE_NOTES.md) and [executable Docker qualification runbook](V150_RC_RUNBOOK.md).
-This guide does not announce publication, deployment, catalog update or client migration.
+The `1.5.0-rc.2` prerelease has been published; the metadata-only stable `1.5.0`
+transition is being prepared separately. See the
+[release notes](V150_RELEASE_NOTES.md) and [Docker qualification runbook](V150_RC_RUNBOOK.md).
+This guide does not announce stable publication, production deployment, catalog update
+or client migration.
 
 ## Configuration and composition
 
