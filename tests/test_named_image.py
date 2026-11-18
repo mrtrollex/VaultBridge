@@ -39,8 +39,8 @@ def test_cli_timeout_registers_identity_before_execution(monkeypatch, tmp_path):
 
 def test_actual_entry_point_metadata(tmp_path):
     settings = Settings(vault_path=tmp_path / "vault", semantic_data_path=tmp_path / "data")
-    assert create_app(settings=settings).version == "1.5.0-rc.2"
-    assert create_mcp_server(settings=settings).version == "1.5.0-rc.2"
+    assert create_app(settings=settings).version == "1.5.0"
+    assert create_mcp_server(settings=settings).version == "1.5.0"
     assert not (tmp_path / "data").exists()
 
 
