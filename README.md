@@ -33,8 +33,10 @@
 > **Release status (2026-11-12):** [v1.4.0](https://github.com/mrtrollex/VaultBridge/releases/tag/v1.4.0)
 > is the published stable application release, from source `16488735e7a19a6283707a1b6995249432916ca8`.
 > Its publication workflow succeeded. See the [release ledger](docs/RELEASE_CHECKLIST.md).
-> Current source prepares **1.5.0-rc.2** with accepted VB-151/VB-152 Knowledge Spaces.
-> It is unpublished and requires separate acceptance, exact-source CI and image/deployment qualification.
+> The [v1.5.0-rc.2 prerelease](https://github.com/mrtrollex/VaultBridge/releases/tag/v1.5.0-rc.2)
+> has been published with accepted VB-151/VB-152 Knowledge Spaces. Current source prepares
+> **1.5.0**; the stable tag/image are not yet published and require separate exact-source
+> review, CI, publication authorization and stable-image qualification.
 > See [prepared notes](docs/V150_RELEASE_NOTES.md), [RC procedure](docs/V150_RC_RUNBOOK.md) and
 > [release readiness and task boundaries](docs/VB153_RELEASE_READINESS.md).
 
