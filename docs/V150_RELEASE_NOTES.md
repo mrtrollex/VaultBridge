@@ -1,9 +1,11 @@
-# VaultBridge v1.5.0-rc.2 — prepared release notes
+# VaultBridge v1.5.0 — prepared stable release notes
 
-**Unpublished candidate source: 1.5.0-rc.2.** These notes describe accepted VB-151 A–G and
-VB-152 A–D functionality. They do not announce publication, image qualification or deployment.
+**Stable release preparation; not yet published.** This metadata-only transition builds on
+the published [v1.5.0-rc.2](https://github.com/mrtrollex/VaultBridge/releases/tag/v1.5.0-rc.2)
+candidate and its accepted VB-151 A–G / VB-152 A–D functionality. Application behavior,
+API contracts, index formats and persistent data formats are unchanged from RC2.
 Published stable [v1.4.0](https://github.com/mrtrollex/VaultBridge/releases/tag/v1.4.0) does not
-contain named Knowledge Spaces. Its tag, image and historical verification remain separate.
+contain named Knowledge Spaces and retains its independent immutable release identity.
 
 ## Delivered functionality
 
@@ -60,16 +62,36 @@ in-process release. Rollback requires stopped writers, independent Markdown/conf
 and a separate prior-image/layout copy; v1.4.0 does not interpret named/v2 artifacts. Never repoint
 old code at incompatible bound databases or move immutable tags to recover.
 
-## Remaining release gates
+## RC2 qualification evidence and known canary finding
 
-This preparation requires separate acceptance and independent CI on its eventual exact merge SHA.
-RC publication needs explicit authority for both GitHub prerelease and the resulting GHCR push.
-The exact immutable RC image must pass legacy and named tests, real model/index/watcher checks,
-and separately authorized disposable canary/restart/recovery before stable authorization.
-Semantic-disabled smoke proves none of those semantic/deployment gates.
+The immutable RC2 image passed named-space and semantic smoke tests, followed by an isolated
+TrueNAS Custom App canary using copied Markdown, not production mounts. On TrueNAS, both named
+spaces reached a compatible semantic index; the default index reconciled 800 notes. An external
+new Markdown file in `research` was detected and indexed automatically via the watcher, and
+retrieval returned it with complete research coverage. Persisted indexes were reused after an
+application configuration redeploy.
 
-The eventual `1.5.0` transition requires separate review, limited to release metadata/documentation
-unless new evidence requires a bounded repair and requalification. Stable publication rebuilds
-the image and advances `1.5`, `1` and `latest`; verify the stable digest separately. Existing
-`1.4.0`/`1.4` remain historical identities. TrueNAS Community App form delivery and catalog lifecycle
-are separate: no named-space form support, catalog update or production deployment is claimed.
+**Open canary finding:** Default federated semantic reads reported
+`note_unavailable` with 801 Markdown paths enumerated and 800 evaluated. All 801 copied
+files passed a host-side UTF-8/readability check as UID 568, but the precise cause remains
+unresolved. Do not claim complete default-space coverage, or conflate the missing indexed
+note with the failed federated read without further evidence.
+
+This canary does not independently establish an isolated v1.4-to-v1.5 upgrade, an explicit
+restore demonstration, or all TrueNAS Community App lifecycle gates. The stable digest has
+not been qualified by the RC2 canary alone.
+
+## Stable release gates
+
+The stable metadata/documentation delta requires review, an authorized merge and successful
+independent CI on the resulting exact commit SHA. Obtain separate explicit authorization
+before creating the `v1.5.0` tag and publishing its non-prerelease GitHub Release.
+Stable publication **rebuilds** the image and moves the `1.5`, `1` and `latest` GHCR
+aliases; it is not an RC image rename. Verify the published stable digest, source
+revision, OCI labels, dependency/model equivalence, legacy and named functional gates,
+and restart/persistence evidence before declaring the release qualified. If equivalent
+runtime inputs cannot be established, repeat a bounded stable-digest canary.
+
+Existing `1.4.0`/`1.4` retain their historical identities. TrueNAS Community App form
+delivery and catalog lifecycle are separate: no named-space form support, catalog update,
+production upgrade or automatic rollback is claimed.
