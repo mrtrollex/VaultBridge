@@ -1,10 +1,11 @@
 # v1.5.0 RC preparation and qualification runbook
 
-Status: **historical RC2 preparation and qualification runbook**. The
-`v1.5.0-rc.2` prerelease has been published; do not rerun its tag/release creation commands
-or treat this runbook as authorization to move an existing identity. The separate stable
-`1.5.0` transition is described in [VB-153](VB153_RELEASE_READINESS.md) and
-[release notes](V150_RELEASE_NOTES.md). Preserve historical v1.4.0 records, including
+Status: **historical RC2 preparation and qualification runbook**. Both `v1.5.0-rc.2` and
+stable `v1.5.0` are published. All source-freeze, publication and stable-transition instructions
+below describe their original preparation context. Do not rerun tag/release creation commands
+or move/reuse an existing identity. Current installation belongs in [Docker setup](DOCKER.md)
+and [Knowledge Spaces](KNOWLEDGE_SPACES.md); current publication evidence belongs in the
+[release ledger](RELEASE_CHECKLIST.md#v150-release-evidence). Preserve historical v1.4.0 records, including
 [its runbook](V140_RC_RUNBOOK.md).
 
 ## Preparation and exact source gate

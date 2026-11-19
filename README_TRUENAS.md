@@ -13,34 +13,26 @@ SCALE 24.10 or later. Both are independent of the generic Docker workflow in the
 Versioned GHCR images remain the runtime artifact for both the Community App and manual deployments.
 Installing the Community App does not automatically migrate an existing source-built Custom App.
 
-> **Current availability (2026-11-11 source inspection):** VaultBridge is available through
-> **Apps > Discover Apps**. Pinned upstream development/generated package `1.0.11` selects
-> application `1.4.0`. Dedicated MCP fields are still absent; catalog metadata does not prove
-> live upgrade, persistence or recovery. See [the pinned ledger](docs/VB153_RELEASE_READINESS.md#truenas-imagecatalog-separation).
+> **Upstream source snapshot (2026-11-19):** package `1.0.12` selects app `1.4.0`
+> at commit `8fd9c079ad13e823d4bd274655deabdbb6d7d97c`. Dedicated MCP form fields remain absent.
+> Catalog application image versions update automatically; no version-only PR is needed.
+> Source metadata does not prove an installed upgrade or lifecycle outcome. See the
+> [release ledger](docs/RELEASE_CHECKLIST.md#v150-release-evidence).
 
 ## Application release and source boundary
 
-**v1.4.0 is published stable**, from `16488735e7a19a6283707a1b6995249432916ca8`; its publication
-workflow passed. It includes Dashboard Hygiene and signed-cookie sessions, eight read-only MCP
-tools (ten with opt-in create/append), and CLI Query/Capture/Promotion/Hygiene. Its historical rc.2
-immutable-image/bounded Custom App evidence does not qualify a Knowledge Spaces deployment.
-Current main additionally enables accepted named REST/MCP/CLI composition and nine read-only MCP
-tools (eleven with writes). VB-154 prepares unpublished source version `1.5.0-rc.1`; separate
-acceptance, new-source CI, immutable-image and disposable canary gates remain. See the
-[RC runbook](docs/V150_RC_RUNBOOK.md). Named UI/session and maintenance/status remain fenced.
-The Community App form does not imply named settings or independent mount support.
-See [VB-153](docs/VB153_RELEASE_READINESS.md) and the [named operator guide](docs/KNOWLEDGE_SPACES.md).
+**v1.5.0 is published stable** and includes opt-in named Knowledge Spaces with REST/MCP/CLI.
+The ordinary Community App installation remains a legacy single-vault setup with the bundled
+Dashboard. Its form does not imply named settings or independent root/data mount support.
+See [Knowledge Spaces](docs/KNOWLEDGE_SPACES.md), [release notes](docs/V150_RELEASE_NOTES.md)
+and the [legacy Dashboard session guide](docs/DASHBOARD.md).
 
-The legacy browser submits a key as JSON to `/ui/session`; JavaScript does not persist it. The
-HttpOnly, SameSite=Strict cookie lasts up to seven days, refreshes on restore and is Secure when
-the app sees HTTPS. Current-key rotation invalidates saved sessions; logout clears protected state.
-Named composition does not enable that Dashboard/session surface.
-
-P2 pinned package 1.0.3/app 1.3.0 historically; refresh upstream before P5/O3. Dedicated MCP field
-delivery, legacy additional_envs Host/Origin migration, Edit App persistence, host reboot, actual
-generated catalog upgrade, rollback/recovery and ixVolume retain/remove remain **NOT YET VERIFIED**.
-No Custom App image swap proves these catalog gates or the package-only watcher debounce repair.
-Image publication and Community App delivery are separate; no production TrueNAS access is authorized.
+Application publication, automatic catalog image updates, dedicated MCP fields/legacy migration
+and operator lifecycle validation are distinct. VB-082 Edit App persistence, host reboot,
+generated-catalog upgrade, rollback/recovery and ixVolume retain/remove remain **NOT YET VERIFIED**.
+Isolated Custom App canary reports do not close catalog gates. Preserve historical v1.4.0 images
+and backups; old code cannot interpret named/v2 artifacts. No production access is authorized by
+this runbook or the documentation cleanup.
 
 ## Preferred installation: TrueNAS Community App
 
@@ -52,9 +44,9 @@ Image publication and Community App delivery are separate; no production TrueNAS
 
 The checked-in VB-106 package source defines an **MCP Configuration** group with **Enable MCP
 HTTP**, **Enable MCP Writes**, **MCP Allowed Hosts**, and **MCP Allowed Origins**. Those fields use
-the same Web Port and remove the normal need for Additional Environment Variables. Current upstream
-development package `1.0.3` selects image `1.3.0` but still lacks these form fields; they require a separate
-reviewed `truenas/apps` source update rather than only an automated image-version bump.
+the same Web Port and remove the normal need for Additional Environment Variables. The dated
+upstream snapshot above still lacks these form fields; they require a separate reviewed
+`truenas/apps` source update rather than only an automated image-version bump.
 
 [P2 delivery preparation](ix-dev/preparations/vaultbridge-mcp/README.md) provides a pinned
 current-upstream candidate and tested legacy MCP carry-forward/conflict handling. It does not

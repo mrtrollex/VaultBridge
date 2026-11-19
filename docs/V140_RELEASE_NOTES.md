@@ -1,5 +1,9 @@
 # VaultBridge v1.4.0
 
+> Historical v1.4.0 material. Dated statements below retain their original context;
+> current stable is v1.5.0. Use the [current release ledger](RELEASE_CHECKLIST.md#v150-release-evidence).
+> Plans/procedures here do not authorize recreating published release identities.
+
 Published on 2026-10-10 from `16488735e7a19a6283707a1b6995249432916ca8`;
 [publication evidence](RELEASE_CHECKLIST.md#v140-stable-publication--reconciled-2026-11-11).
 These notes preserve that release's scope, including its disabled named serving and CLI-only

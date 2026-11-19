@@ -1,5 +1,9 @@
 # VaultBridge v1.4.0 release productization plan
 
+> Historical v1.4.0 material. Dated statements below retain their original context;
+> current stable is v1.5.0. Use the [current release ledger](RELEASE_CHECKLIST.md#v150-release-evidence).
+> Plans/procedures here do not authorize recreating published release identities.
+
 **Current status — reconciled 2026-11-11:** v1.4.0 was published on 2026-10-10 from
 `16488735e7a19a6283707a1b6995249432916ca8`; workflow 38074909687 passed. Preserve its identities.
 VB-151/VB-152 are now accepted and merged; exact-main CI #321 passes. The next release plan is

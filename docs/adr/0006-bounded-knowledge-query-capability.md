@@ -1,5 +1,9 @@
 # ADR 0006: Bounded Knowledge Query capability
 
+> Implementation context (2026-11-19): The initial domain/CLI-only implementation sequence below retains its original scope. VB-152
+> subsequently exposed accepted bounded REST/MCP Query profiles; see
+> [current composition](../../ARCHITECTURE.md#servicesknowledge_querypy) and [named usage](../KNOWLEDGE_SPACES.md).
+
 - **Status:** Accepted
 - **Date:** 2026-09-27
 - **Task:** VB-120

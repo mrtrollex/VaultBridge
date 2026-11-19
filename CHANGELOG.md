@@ -6,25 +6,31 @@ The project intends to follow Semantic Versioning after the public repository ba
 
 ## [Unreleased]
 
-## [1.5.0] - Stable release preparation (unpublished)
+## [1.5.0] - 2026-11-19
 
-- Metadata-only promotion from the published `1.5.0-rc.2` candidate: package,
-  FastAPI, MCP and release-test versions become `1.5.0`. Runtime logic,
-  API contracts and persisted formats are unchanged.
-- RC2 canary verified semantic indexing, two named spaces and filesystem-watcher
-  targeted reindexing on isolated TrueNAS mounts. One real-vault-copy note was
-  reported as `note_unavailable` during federated reads (801 enumerated,
-  800 evaluated), so complete coverage is **not** claimed.
-- Stable publication, GHCR moving aliases and stable-image qualification
-  remain separately gated; this preparation does not publish a release.
+- Published stable with opt-in Knowledge Spaces: isolated named roots, scoped REST/MCP/CLI,
+  local semantic federation and bounded Knowledge Query. Legacy single-vault compatibility remains.
+- Authorized one-space create/append and CLI-only Capture/Promotion with space-bound provenance;
+  read-only Hygiene and relationships reuse the existing owners. Named Dashboard remains excluded.
+- Metadata-only source promotion from RC2; runtime logic, API contracts and persisted formats are
+  unchanged. Stable publication rebuilt the image and advanced `1.5`, `1`, `latest`.
+- Corrected the RC2 partial-coverage diagnosis using the operator's later oversized-file finding;
+  no subsequent 801/801 regression is claimed. Additional stable canary observations remain distinct
+  from CI, and do not establish MCP writes, production migration or catalog lifecycle completion.
+- See [release notes](docs/V150_RELEASE_NOTES.md) and the
+  [identity/evidence ledger](docs/RELEASE_CHECKLIST.md#v150-release-evidence).
 
-## [1.5.0-rc.2] - Published prerelease
+## [1.5.0-rc.2] - 2026-11-16
 
 - Align package, FastAPI, MCP and current release metadata to `1.5.0-rc.2`.
-  API, persistence and index formats are unchanged. The new artifact requires its own
-  image qualification and a separately authorized upgrade/rollback canary.
+  API, persistence and index formats are unchanged. The preparation required separate
+  image qualification and an authorized upgrade/rollback canary; later publication/qualification
+  evidence is linked from the [release ledger](docs/RELEASE_CHECKLIST.md#v150-release-evidence).
 
-## [1.5.0-rc.1] - Unpublished preparation
+## [1.5.0-rc.1] - 2026-11-12
+
+Published prerelease. The preparation-only scope below records what VB-154 did
+before that later publication; it is historical, not current release status.
 
 - VB-154 aligns source package/APP/MCP metadata to `1.5.0-rc.1`, supplies
   [prepared release notes](docs/V150_RELEASE_NOTES.md), an

@@ -12,10 +12,33 @@ Legend:
 
 `BACKLOG.md` is the authoritative source for individual task scope. `ROADMAP.md` describes milestones and direction.
 
-Current release reconciliation (2026-11-11): v1.4.0 is published stable; VB-151 A–G and VB-152
-A–D are accepted/merged, and exact-main CI #321 passes. See VB-153 below and
-[the release-readiness ledger](docs/VB153_RELEASE_READINESS.md). Older task contracts and dated
-release records retain their original scope; they do not override this current status.
+## Current-work entry point
+
+Updated 2026-11-19 after published stable **v1.5.0**. This navigation does not alter any task's
+acceptance criteria or infer missing operator validation from code or release publication.
+The [release ledger](docs/RELEASE_CHECKLIST.md#v150-release-evidence) owns publication/image facts;
+[PROJECT_STATE.md](PROJECT_STATE.md) owns the compact current snapshot.
+
+| Work class | Current boundary / where to start |
+| --- | --- |
+| Active | Post-v1.5.0 documentation/productization cleanup in this scope; fresh independent review pending. Select another implementation task only from an explicitly scoped issue/contract. |
+| Blocked on external/operator evidence | VB-082 remains partial. Edit App persistence, host reboot, generated-catalog upgrade, rollback/recovery and ixVolume retain/remove need authorized disposable TrueNAS evidence. |
+| Separate downstream delivery | VB-106 package-source MCP fields and legacy migration preparation exist; upstream form delivery and lifecycle validation remain separate. Refresh upstream before any delivery task. |
+| Deferred | VB-032 design/ADR and VB-033 section update endpoint; neither is authorized by this cleanup. |
+| Optional candidates | VB-034 verified backlink insertion and VB-055 multi-arch remain optional. Diagnostics, qualification tooling, measured refactors and named Dashboard are roadmap candidates requiring contracts. |
+| Completed / historical | VB-001–VB-031 foundation/retrieval (where marked), VB-040–VB-060 (except VB-055), Dashboard/MCP/relationship/PKM/Query/Capture/Hygiene work, and accepted VB-150/VB-151/VB-152 remain under their existing contracts below. See dated evidence rather than treating old sequences as next-task advice. |
+
+Application publication is complete for v1.5.0. This does not complete every release-qualification,
+catalog-form, deployment or lifecycle acceptance gate. TrueNAS application image versions update
+automatically; do not open an upstream PR solely to bump an image version.
+The P0 legend above describes the original v1.0 task taxonomy; current candidate priorities live in
+[ROADMAP.md](ROADMAP.md#4-current-priorities) and do not reclassify those contracts.
+
+## Retained task contracts
+
+The specifications below preserve task IDs, acceptance criteria, design-only/runtime distinctions
+and dated execution notes. A missing checkmark is not by itself an open-work instruction; consult
+the task's explicit status/evidence. Historical release plans are not authority to reuse a tag.
 
 ## Foundation
 
@@ -4078,6 +4101,8 @@ runtime changes require explicitly scoped slices. Slice B changes no public adap
 ADR, commits nothing and launches no reviewer. VB-151 alone did not complete Milestone 16;
 its runtime/adapter acceptance is now complete after the separately accepted VB-152 D.
 
+<a id="vb-152--permission-aware-query-and-write-adapter-integration--p1-complete-ad-accepted-and-merged"></a>
+
 <a id="vb-152--permission-aware-query-and-write-adapter-integration--p1-slices-a-b-and-c-private-activation-blocked"></a>
 
 ### VB-152 — Permission-aware query and write adapter integration — P1 (complete; A–D accepted and merged)
@@ -4603,6 +4628,10 @@ the fences. Accepted ADRs remain unchanged.
 
 ### VB-153 — Post-Knowledge-Spaces Release Readiness and Version Reconciliation — P1
 
+> Historical planning record from 2026-11-11. The original status and ordered tasks below are
+> retained as written. v1.5.0 has since been published; use the current-work entry point and
+> release ledger for current status. This notice does not assert that all operator gates closed.
+
 **Status:** Documentation plan implemented; separate fresh acceptance pending. No release executed.
 The corrected task-owner instruction preserves published v1.4.0 (2026-10-10), source
 `16488735e7a19a6283707a1b6995249432916ca8`, tag and GHCR identities. VB-151/VB-152 acceptance
@@ -4681,7 +4710,10 @@ remain separate from the application release.
 
 ---
 
-## Recommended Codex sequence
+## Historical Codex sequence
+
+This retained sequence predates v1.5.0 publication and contains then-current status statements.
+It is historical evidence, not current task-selection advice. Use the current-work entry point.
 
 ```text
 VB-001 ✓

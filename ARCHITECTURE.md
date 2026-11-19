@@ -4,6 +4,19 @@
 
 VaultBridge exposes a deliberately small API over an Obsidian Markdown vault. It supports ordinary note operations and local semantic retrieval without turning the vault into a proprietary database.
 
+## Reading this architecture
+
+This is the current ownership/compatibility reference. Detailed lifecycle sections retain slice IDs
+as provenance; their internal/private constructors do not mean public named mode is unavailable.
+Named REST/MCP/CLI composition ships in v1.5.0. The Dashboard remains legacy-only.
+Release status and image evidence belong in [the release ledger](docs/RELEASE_CHECKLIST.md), not here.
+
+- [Current architecture](#current-architecture) and [HTTP compatibility](#http-api-versioning)
+- [Dashboard and packaging](#web-dashboard-and-platform-packaging)
+- [MCP transports](#mcp-transports) and [Knowledge Spaces](#knowledge-spaces-accepted-runtime-and-public-restmcpcli-composition)
+- [Module ownership](#module-ownership) and [request flows](#request-flows)
+- [Security boundaries](#security-boundaries) and [scaling assumptions](#scaling-assumptions)
+
 ## Current architecture
 
 ```text
@@ -80,7 +93,7 @@ non-root runtime identities and overrides the path where the generic deployment 
 
 ```text
 app/main.py          application construction, dependency wiring, router registration
-app/cli.py           read-only semantic integrity check and explicit offline rebuild entry point
+app/cli.py           local reads/Query, Capture/Promotion/Hygiene and legacy offline index maintenance
 app/api/             health, note/search routers, versioned alias registration and HTTP dependencies
 app/ui/              explicit dashboard routes and bundled HTML/CSS/vanilla JavaScript assets
 app/core/config.py   typed environment configuration
@@ -296,7 +309,8 @@ composer closes the E2 resource afterward. Legacy `BackgroundSemanticIndexer` al
 process-owned executor without shutting it down; its default behavior still owns its own worker.
 The shared scheduler does not wrap eight legacy whole-sync loops. Disabled owners receive no
 scheduler work, and the existing deferred registry lifecycle remains unchanged. E5 supplies the
-private shared watcher described below; E6 now composes these primitives explicitly and privately.
+internal shared watcher described below; E6 composes these primitives for the accepted public
+named composition through VB-152 adapters.
 
 Discovery uses a private temporary SQLite workspace for canonical paths and its directory frontier,
 with a fixed page cache and at most one open `scandir` cursor. Each discovery/admission turn consumes
@@ -534,10 +548,10 @@ receive text-only fallbacks. Mode changes and newer searches abort/invalidate ol
 requests. Search terms and results remain memory-only: they are not stored, placed in URLs, logged
 for UI analytics, or restored on reload. Logout and `401` clear protected form/results; `429`, safe
 validation errors, connectivity errors, and semantic `503` do not invalidate an authenticated
-session. The Search area performs no note reads or mutations and exposes no duplicate or index
-operation.
+session. The selected-note viewer uses the existing protected note-read endpoint. Search and its viewer
+perform no mutations and expose no duplicate or index operation.
 
-### Planned deployment relationship
+### Deployment relationship
 
 The normal VaultBridge image is the one distributable application across platforms:
 
@@ -667,7 +681,8 @@ same-space QualifiedPaths; decision/apply retain the authorized registry context
 request. V2 uses the portable fields, canonical digest additions and replay markers specified in
 BACKLOG.md. Legacy unscoped owners preserve v1. New writes require runtime admission, delegate to
 existing VaultService coordinated primitives and enqueue qualified paths on the bound scheduler
-only after a new durable commit. Disabled indexing stays inert; no public adapters are enabled.
+only after a new durable commit. Disabled indexing stays inert. These domain owners are used by
+the accepted VB-152 public adapters; private construction alone exposes no transport.
 `services/space_operations.py: SpaceOperations` authorizes through SpacePolicyResolver before
 owner access, verifies the registry token/exact bundle and named root identity, then delegates
 only one-space note reads, outgoing/backlinks, nonsemantic duplicate advice, hygiene or inspection.
@@ -707,7 +722,7 @@ Storage formats, ranking and the existing default wire contracts remain unchange
 
 ### VB-152 adapters (A–D accepted and merged)
 
-The authoritative [VB-152 contract](BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-slices-a-b-and-c-private-activation-blocked)
+The authoritative [VB-152 contract](BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-complete-ad-accepted-and-merged)
 defines exact schemas, error projections, inventory, activation gates and acceptance evidence.
 It extends existing `/api/v1/notes*` and hygiene routes/MCP tools with explicit `space` (one-space
 operations) or `spaces` (bounded federation). It adds one POST `/api/v1/knowledge/query` operation
@@ -822,7 +837,7 @@ independent D acceptance, merged through PR #150; PR #151 and exact-main CI #321
 ADR 0010's bounded retained ambiguous ownership/permanent stopping limitation remains;
 activation does not promise universal cleanup liveness or completion of a release/deployment.
 
-## Target architecture
+## Runtime layout
 
 ```text
                   REST / Web / CLI clients          MCP clients
@@ -847,7 +862,7 @@ activation does not promise universal cleanup liveness or completion of a releas
                                                    Embedder (ONNX)             SQLite repo
 ```
 
-## Proposed module boundaries
+## Module ownership
 
 ### `core/config.py`
 
@@ -1152,7 +1167,7 @@ Batching, lifecycle-state transitions and index contents remain owned by
 - reuses `FilesystemEventInterpreter`; create/modify/delete/move events preserve
   their exact authorized space, including both eligible rename paths
 - one monotonic dispatcher, no semantic executor or eager model loading; disabled
-  owners receive no watcher work; E6 private activation does not enable public named composition
+  owners receive no watcher work; public named activation is owned by VB-152 composition, not by E6 alone
 - E4 owns debounce deadlines as reservations under its existing condition lock;
   debounce, queued and in-flight paths share the same 2,000-per-space and
   10,000-global distinct-identity caps, including concurrent direct submissions
@@ -1241,10 +1256,11 @@ and reuses one `RelationshipService` resolution snapshot. Incoming predicates de
 source once rather than scanning backlinks per candidate. Expected stale/unreadable candidates are
 omitted conservatively and final paths are reverified without claiming an atomic vault snapshot.
 
-The service is wired only into the read-only CLI `query` adapter for its bounded subset. It is not
-wired into application construction, REST/OpenAPI, MCP, or the dashboard. It adds no public schema,
-persistence, cache/query/relationship index, dependency, write, model/chunking/index-signature, or
-ranking change.
+The service is composed by the CLI `query` adapter and the VB-152 REST/MCP Query profiles.
+Shared transport validation/serialization uses `knowledge_query_transport.py` and scoped projection
+uses `space_read_transport.py`; authorization stays in SpaceOperations. Query has no Dashboard
+adapter and adds no persistence, query/relationship index, write, model/chunking/index-signature
+or ranking change.
 
 ### `repositories/semantic.py`
 
@@ -1451,7 +1467,7 @@ request → rate limit → auth → validate folder → scan/search Markdown →
 
 A future optimization may add a lexical index, but only if measured vault sizes justify it.
 
-### Semantic search — target
+### Semantic search
 
 ```text
 request
@@ -1572,9 +1588,10 @@ Writes should not synchronously rebuild unrelated notes.
 
 ## Security boundaries
 
-Current VaultBridge is allowed to access one configured vault root and its own data directory.
-Accepted ADR 0009 describes future separately contained space bindings; it grants no current
-multi-root access or permission to accept caller-supplied host paths.
+Legacy composition accesses one configured vault root and its derived-data directory. Explicit
+named composition uses the separately contained immutable root/data bindings accepted by ADR 0009
+and enforced by registry/policy owners. Clients select logical space IDs and vault-relative paths;
+no mode accepts arbitrary caller-supplied host paths.
 
 It must not expose:
 

@@ -1,15 +1,11 @@
 # Named Knowledge Spaces
 
-VB-152 Slice D connects the accepted scoped adapters to one runtime. Its implementation
-and native verification status are recorded in [VB152_D_VERIFICATION.md](VB152_D_VERIFICATION.md).
-The task owner confirms independent acceptance of A–D, merged through PR #150; the test-only
-repair PR #151 and exact-main CI #321 pass. These are current-source capabilities, absent from
-published v1.4.0. [VB-153](VB153_RELEASE_READINESS.md) plans provisional v1.5.0 qualification;
-The `1.5.0-rc.2` prerelease has been published; the metadata-only stable `1.5.0`
-transition is being prepared separately. See the
-[release notes](V150_RELEASE_NOTES.md) and [Docker qualification runbook](V150_RC_RUNBOOK.md).
-This guide does not announce stable publication, production deployment, catalog update
-or client migration.
+Named Knowledge Spaces ship in published stable **v1.5.0**. Start with legacy single-vault
+[Docker setup](DOCKER.md) unless you need independent roots and explicit policies.
+This guide owns named configuration, selection and operational limits. See the
+[release ledger](RELEASE_CHECKLIST.md#v150-release-evidence) for exact identities and evidence,
+and [release notes](V150_RELEASE_NOTES.md) for recovery boundaries. Historical slice verification
+is retained in [VB152_D_VERIFICATION.md](VB152_D_VERIFICATION.md).
 
 ## Configuration and composition
 
@@ -51,6 +47,34 @@ then opens operation admission. Semantic indexing completes asynchronously. Read
 controls background work; disabled indexing never processes old derived rows. Markdown remains
 authoritative, derived SQLite indexes remain independent, and embeddings stay local/CPU-only.
 
+## Docker configuration
+
+Generic Compose forwards an explicit environment allowlist and mounts one root. Adding named JSON
+only to `.env` has no effect. Use explicit environment injection and independent mounts.
+Provision disjoint host directories and deliberate ownership/ACLs for the chosen non-root UID/GID.
+For an isolated synthetic evaluation, replace the placeholder paths and use a private `named.env`:
+
+```bash
+IMAGE=ghcr.io/mrtrollex/vaultbridge:1.5.0
+docker run --detach --name vaultbridge-named --user 568:568 --cap-drop ALL \
+  --publish 127.0.0.1:18765:8000 --env-file /absolute/disposable/named.env \
+  --mount type=bind,src=/absolute/disposable/default,dst=/vault/default \
+  --mount type=bind,src=/absolute/disposable/research,dst=/vault/research \
+  --mount type=bind,src=/absolute/disposable/default-data,dst=/data/default \
+  --mount type=bind,src=/absolute/disposable/research-data,dst=/data/research \
+  --mount type=bind,src=/absolute/disposable/cache,dst=/cache \
+  "$IMAGE"
+```
+
+For immutable evaluation replace `IMAGE` with the [verified digest](RELEASE_CHECKLIST.md#v150-release-evidence).
+`named.env` must contain `API_KEY=<synthetic-key>`, `VAULT_PATH=/vault/default`,
+`SEMANTIC_DATA_PATH=/data/default`, `HF_HOME=/cache`, `SEMANTIC_WATCH_ENABLED=false` and the one-line
+`KNOWLEDGE_SPACES_JSON` value from the example above. Do not include shell `export` or surrounding
+shell quotes in env-file values. Add explicit MCP settings only when needed; protect the file.
+The indexing-disabled example has no semantic readiness; enable indexing/capability deliberately
+for semantic evaluation. Stop/remove the serving instance before CLI/stdio uses the same writable
+mounts. The Community App form does not imply this named layout.
+
 ## REST and explicit selection
 
 Use existing `/api/v1` routes. Existing note/search aliases retain their paths and operation IDs.
@@ -79,7 +103,7 @@ automatic scope expansion or fallback to another space. Equal paths in two space
 Scoped content responses use `Cache-Control: no-store`. GET path/scope parameters can appear
 in separately operated reverse-proxy/access logs; application redaction does not control those
 external logs. Treat result content, selected IDs and capture/promotion review output as private.
-See the [complete request/error contract](../BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-slices-a-b-and-c-private-activation-blocked)
+See the [complete request/error contract](../BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-complete-ad-accepted-and-merged)
 for strict bounds, Query predicates and legacy/scoped error distinctions.
 
 ## MCP transports

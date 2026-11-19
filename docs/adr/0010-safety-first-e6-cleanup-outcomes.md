@@ -9,7 +9,7 @@
 
 Allocation safety takes priority over universal cleanup retry. This supplements
 ADR 0009's delegated runtime lifecycle contract; its architecture, status and all
-unrelated E1–E6 requirements remain unchanged.
+unrelated E1â€“E6 requirements remain unchanged.
 
 Classify each original/proof allocation as owned and open, release in progress,
 verified released, verified safe to retry, or ambiguous. Terminal cleanup complete
