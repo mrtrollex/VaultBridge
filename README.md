@@ -1,904 +1,141 @@
 <p align="center">
-  <img src="docs/assets/vaultbridge-logo.webp" alt="VaultBridge" width="240">
+  <img src="docs/assets/vaultbridge-logo.webp" alt="VaultBridge" width="180">
 </p>
 
-<p align="center">
-  <strong>VaultBridge is a self-hosted REST + semantic search API for Obsidian Markdown vaults.</strong>
-</p>
+# VaultBridge
 
-<p align="center">
-  Keep Markdown as the source of truth while giving AI clients, scripts, and automations a small
-  authenticated interface for reading, searching, and safely writing notes. Semantic retrieval runs
-  locally, and the derived index remains disposable.
-</p>
+**A self-hosted REST, MCP and semantic-search bridge for Markdown vaults.**
+Use it to connect Obsidian notes to AI clients, scripts and automations while keeping your files
+portable. Markdown remains the source of truth; local CPU embeddings and a rebuildable SQLite
+index provide semantic retrieval. Your vault stays usable without VaultBridge.
 
-<p align="center">
-  <a href="https://github.com/mrtrollex/VaultBridge/releases/tag/v1.4.0"><img src="https://img.shields.io/badge/stable-v1.4.0-2f6f5e" alt="Stable release v1.4.0"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-356a8a" alt="MIT License"></a>
-  <a href="pyproject.toml"><img src="https://img.shields.io/badge/python-3.12-3776AB?logo=python&amp;logoColor=white" alt="Python 3.12"></a>
-  <a href="https://github.com/mrtrollex/VaultBridge/pkgs/container/vaultbridge"><img src="https://img.shields.io/badge/container-GHCR-181717?logo=github" alt="VaultBridge container on GHCR"></a>
-</p>
+[Stable v1.5.0](https://github.com/mrtrollex/VaultBridge/releases/tag/v1.5.0) ·
+[MIT](LICENSE) · Python 3.12 · Linux/amd64 container
 
-<p align="center">
-  <a href="#quick-start">Quick start</a> ·
-  <a href="#current-api">API</a> ·
-  <a href="README_TRUENAS.md">TrueNAS</a> ·
-  <a href="https://richardsenko.com/vaultbridge-1-0/">Story behind v1.0</a>
-</p>
+- Read, list, search, create and append notes through a small authenticated API.
+- Find related notes and verified relationships; use bounded Knowledge Query and read-only Hygiene.
+- Capture Markdown and explicitly review/promote it through the CLI.
+- Start with one vault and the bundled Web Dashboard; opt into isolated Knowledge Spaces when needed.
+- Keep embeddings local, note paths vault-relative and indexes disposable.
 
-<p align="center">
-  <img src="docs/assets/vaultbridge-architecture.webp" alt="VaultBridge architecture showing an AI client connected through VaultBridge to an Obsidian vault and a local semantic index" width="960">
-</p>
-
-> **Release status (2026-11-12):** [v1.4.0](https://github.com/mrtrollex/VaultBridge/releases/tag/v1.4.0)
-> is the published stable application release, from source `16488735e7a19a6283707a1b6995249432916ca8`.
-> Its publication workflow succeeded. See the [release ledger](docs/RELEASE_CHECKLIST.md).
-> The [v1.5.0-rc.2 prerelease](https://github.com/mrtrollex/VaultBridge/releases/tag/v1.5.0-rc.2)
-> has been published with accepted VB-151/VB-152 Knowledge Spaces. Current source prepares
-> **1.5.0**; the stable tag/image are not yet published and require separate exact-source
-> review, CI, publication authorization and stable-image qualification.
-> See [prepared notes](docs/V150_RELEASE_NOTES.md), [RC procedure](docs/V150_RC_RUNBOOK.md) and
-> [release readiness and task boundaries](docs/VB153_RELEASE_READINESS.md).
-
-> **TrueNAS delivery:** upstream package `1.0.11` selects application `1.4.0` at the pinned
-> 2026-11-11 inspection. Dedicated MCP form fields, legacy configuration migration and remaining
-> catalog lifecycle gates are separate and unverified. Historical rc.2 Custom App qualification
-> does not validate the current Knowledge Spaces image or catalog migration.
-
-> **v1.3.0 scope:** This release adds verified Obsidian wikilink
-> relationships across REST, MCP, and the dashboard, plus default-off MCP note creation/appending and
-> first-class TrueNAS MCP package-source settings. Existing REST compatibility, production semantic
-> ranking, and storage/index formats remain unchanged. Upstream delivery of those form fields and
-> live TrueNAS lifecycle verification remain separate from the application release.
-
-## Why VaultBridge
-
-VaultBridge sits between an Obsidian vault and API-capable clients such as ChatGPT, scripts,
-automations, or future applications. Its boundaries are intentionally narrow:
-
-- Markdown files remain authoritative and usable without VaultBridge.
-- Semantic data is local, derived, disposable, and rebuildable from the vault.
-- The API exposes a small set of authenticated note and search operations, not general filesystem
-  access.
-- Vault-relative path validation and containment keep clients inside the configured vault.
-- The service is client agnostic and needs only a normal self-hosted Docker setup plus SQLite.
-
-The architecture remains understandable without the graphic:
-
-```text
-Client
-  |
-  | HTTPS + Bearer key
-  v
-VaultBridge (FastAPI)
-  |                 \
-  v                  v
-Markdown vault    Semantic retrieval
-                     |
-                 FastEmbed/ONNX
-                     |
-                 SQLite index
-```
-
-The vault is never replaced by the index, and there is no general filesystem endpoint.
-
-## Features
-
-### 📁 Vault API
-
-- create, read, append to, and list Markdown notes
-- literal title and content search
-- safe vault-relative access with traversal and symlink-escape protection
-- advisory duplicate-candidate discovery against live notes
-
-### 🧠 Local semantic retrieval
-
-- multilingual related-note search
-- hybrid semantic + lexical ranking with inspectable scores
-- heading-aware chunks and title/heading embedding context
-- incremental SQLite index that remains derived from Markdown
-- startup, targeted, and background semantic refresh
-- optional filesystem watcher for external Markdown changes
-
-### 🔒 Self-hosted by design
-
-- Markdown remains the source of truth
-- local FastEmbed/ONNX embeddings on CPU
-- Bearer authentication with operator-controlled API-key rotation
-- process-local rate limiting for protected routes
-- no cloud embedding API or external vector database required
-
-### 🖥️ Web Dashboard
-
-- bundled same-origin `/ui/` entry point with no second frontend service
-- accessible Overview, Search, Hygiene, API / Integration, and About navigation
-- read-only Overview using the existing public `/health` facts, with manual refresh and explicit
-  loading/unavailable states
-- API-key unlock through the existing dashboard session boundary and signed HttpOnly cookie
-- strict browser security headers, local assets, and text-only dynamic rendering
-- protected literal and semantic Search using existing backend ranking and read-only result fields,
-  with no query/history persistence
-- bounded outgoing-link and backlink facts for a successfully read note, using the existing
-  authenticated versioned endpoints without client-side relationship parsing or persistence
-- read-only Knowledge Hygiene scans on explicit Run scan / Refresh scan, with returned finding
-  counts, canonical note paths, safe evidence, and separate scan/candidate/index coverage;
-  partial scans and truncated findings are explicitly labelled
-- retrieval-only operator visibility: no note editor, index-maintenance controls, account system,
-  or TrueNAS-specific behavior
-
-Open the dashboard from the same VaultBridge origin at `/ui/`. The browser session uses an
-operator-supplied existing API key once through `/ui/session`; the key is not stored by browser
-JavaScript. The signed HttpOnly cookie restores access across reloads and browser reopen for up to seven days;
-successful restoration refreshes that lifetime. It uses `SameSite=Strict`, path `/`, and `Secure`
-when the application sees HTTPS. Unlock sends the key in a JSON POST body, never a URL. Protected
-requests use the cookie plus `X-VaultBridge-UI-Request: 1`. Changing the current API key invalidates
-existing sessions, even while the previous key remains accepted for Bearer clients and new unlocks.
-Logout deletes the browser cookie and clears protected form/results; `401` also clears that page
-state. There is no server-side revocation list: a copied signed token remains valid until expiry or
-current-key rotation. The public Overview remains available.
-
-The dashboard targets current evergreen browsers with support for ES modules, `fetch`,
-`AbortController`, `URL`, and `Intl.NumberFormat`. This is a modest
-standards-based compatibility statement, not a claim that every browser/version has been tested.
-Actual browser and production-image evidence is tracked separately in
-[`docs/DASHBOARD_RELEASE_CHECKLIST.md`](docs/DASHBOARD_RELEASE_CHECKLIST.md).
-
-<p align="center">
-  <img src="docs/assets/vaultbridge-dashboard-overview.png" alt="VaultBridge dashboard Overview showing a ready local semantic index" width="720">
-</p>
-
-<p align="center">
-  <img src="docs/assets/vaultbridge-dashboard-about.png" alt="VaultBridge dashboard About view describing its local-first, API-first design" width="720">
-</p>
-
-These screenshots were captured from the running TrueNAS canary dashboard without browser chrome,
-API keys, note content, paths, or private host details. The Overview exposes only the same public
-health facts returned by `/health`. Their repository URLs are non-authoritative source/preview
-material; they are not evidence that the accepted TrueNAS catalog already displays them.
-
-### MCP
-
-VaultBridge can be launched as a local MCP server for MCP-capable clients:
-
-```text
-python -m app.mcp_server
-```
-
-The stdio transport exposes `list_notes`, `read_note`, `search_notes`, `related_notes`,
-`duplicate_candidates`, `note_links`, `note_backlinks`, `knowledge_hygiene_scan`, and `knowledge_query` (nine read-only
-tools), plus contained Markdown Resources such as
-`vaultbridge://note/Projects%2FLaunch%20plan.md`. The process reuses `VAULT_PATH`,
-`SEMANTIC_DATA_PATH`, model, size, and rate-limit settings. It does not require `API_KEY`; the local
-spawning process and filesystem permissions are the trust boundary.
-
-In legacy single-vault mode with `MCP_WRITE_ENABLED=false`, the adapter never starts FastAPI, a network listener, a
-background indexer, or the filesystem watcher. Literal list/read/search operations work
-independently of semantic storage. Semantic tools read only an existing compatible ready index and
-never synchronize, rebuild, or modify it; if a safe immutable index view is unavailable, those
-tools return a retryable error.
-
-A generic client entry uses the current Python environment and repository as its working directory:
-
-```yaml
-command: python
-args:
-  - -m
-  - app.mcp_server
-```
-
-The same nine read-only tools and contained Markdown Resources can be exposed over Streamable HTTP
-at `/mcp` on the existing application port. It is disabled by default. Enable it with
-`MCP_HTTP_ENABLED=true`, keep using `Authorization: Bearer <token>`, and configure
-`MCP_HTTP_ALLOWED_HOSTS` plus `MCP_HTTP_ALLOWED_ORIGINS` for the actual deployment. The defaults
-allow loopback Host/Origin values only; a request without `Origin` remains valid for non-browser
-clients when its Host is allowed. The HTTP transport accepts the current `API_KEY` and optional
-`API_KEY_PREVIOUS`, and shares the normal process-local peer rate limit and live application
-services/index lifecycle.
-
-Set `MCP_WRITE_ENABLED=true` to add exactly `create_note` and `append_note` to either transport
-(eleven tools total).
-They reuse the protected REST write behavior: create never overwrites, append supports an optional
-dedupe key, and only committed changes queue targeted semantic refresh. Stdio owns and shuts down a
-targeted index worker only in this mode; it does not start an unnecessary full sync. For remote
-read/write MCP, use all four explicit settings and terminate TLS at a trusted reverse proxy or use a
-private VPN:
-
-```env
-MCP_HTTP_ENABLED=true
-MCP_WRITE_ENABLED=true
-MCP_HTTP_ALLOWED_HOSTS=vaultbridge.example.test:*
-MCP_HTTP_ALLOWED_ORIGINS=https://vaultbridge.example.test
-```
-
-Do not use wildcard Host or Origin values. Streamable HTTP remains schema-hidden and adds no port,
-service, container, OAuth flow, Prompt, subscription feature, or standalone HTTP+SSE endpoint.
-
-### 🐳 Deployment & operations
-
-- Docker source builds and published GHCR release images
-- TrueNAS SCALE deployment runbook
-- liveness, readiness, and detailed operator health visibility
-- local CLI for search, status, related notes, and stopped-service index maintenance
-- Custom GPT Action example with legacy-route compatibility
-
-## Current API
-
-New integrations should use the versioned application API:
-
-| Method | Path | Operation |
-|---|---|---|
-| POST | `/api/v1/notes` | `createNoteV1` |
-| POST | `/api/v1/notes/append` | `appendNoteV1` |
-| GET | `/api/v1/notes/read` | `readNoteV1` |
-| POST | `/api/v1/notes/search` | `searchNotesV1` |
-| POST | `/api/v1/notes/related` | `findRelatedNotesV1` |
-| POST | `/api/v1/notes/duplicates` | `findDuplicateCandidatesV1` |
-| GET | `/api/v1/notes/list` | `listNotesV1` |
-| GET | `/api/v1/notes/links` | `listNoteLinksV1` |
-| GET | `/api/v1/notes/backlinks` | `listNoteBacklinksV1` |
-| POST | `/api/v1/knowledge/hygiene/scan` | `scanKnowledgeHygieneV1` |
-| POST | `/api/v1/knowledge/query` | `queryKnowledgeV1` |
-
-Existing clients may continue using the unversioned compatibility layer:
-
-| Legacy path | Legacy operation | Preferred path |
-|---|---|---|
-| `/notes` | `createNote` | `/api/v1/notes` |
-| `/notes/append` | `appendNote` | `/api/v1/notes/append` |
-| `/notes/read` | `readNote` | `/api/v1/notes/read` |
-| `/notes/search` | `searchNotes` | `/api/v1/notes/search` |
-| `/notes/related` | `findRelatedNotes` | `/api/v1/notes/related` |
-| `/notes/duplicates` | `findDuplicateCandidates` | `/api/v1/notes/duplicates` |
-| `/notes/list` | `listNotes` | `/api/v1/notes/list` |
-
-Both paths in each compatibility pair use the same authentication, validation, response, error, and domain-service
-implementation. The checked-in ChatGPT Action schema remains on the legacy paths so existing Actions
-continue working without an immediate configuration change. Migrating that external configuration
-and removing the compatibility layer are separate future decisions; no removal date is set.
-
-The relationship endpoints are versioned-only and have no unversioned compatibility aliases. They
-return live derived link metadata and perform no Markdown or semantic-index mutation.
-
-Operational routes remain unversioned: `GET /health` (`healthCheck`), `GET /health/live`
-(`livenessCheck`), and `GET /health/ready` (`readinessCheck`). The public `GET /privacy` text endpoint
-is intentionally excluded from OpenAPI and also remains unversioned.
-
-## Health and operator status
-
-`GET /health` is unauthenticated as before and returns a cheap factual snapshot without loading the
-embedding model, synchronizing the vault, generating embeddings, or performing a search.
-
-```json
-{
-  "ok": true,
-  "vault_exists": true,
-  "semantic_index_ready": false,
-  "semantic_index_state": "indexing",
-  "semantic_search_available": true,
-  "semantic_indexer_running": true,
-  "full_sync_required": false,
-  "indexed_notes": 734,
-  "semantic_chunks": 4610,
-  "vault_notes": 842,
-  "last_successful_sync": "2026-08-23T10:00:00+00:00"
-}
-```
-
-`ok` means the application answered the health request; vault availability remains a separate fact.
-`semantic_index_ready` retains its original meaning (`semantic_index_state == "ready"`). Search
-availability is separate because an existing compatible index can remain searchable while a refresh
-is `indexing` or after that refresh fails with `error`. `full_sync_required` is process-local and is
-also true while unresolved full-sync recovery debt exists; it does not claim system-wide recovery.
-
-Indexed-note/chunk counts come from one short-lived, coherent read-only SQLite snapshot.
-`vault_notes` counts semantic-index-eligible Markdown files using the same containment, internal
-directory exclusion and maximum-size policy as full synchronization, without reading note contents.
-Together these counts provide inferred completeness; they are not explicit current-note, percentage,
-batch or ETA progress counters. `last_successful_sync` is `null` until the first successful full
-synchronization and is not advanced by targeted note refreshes.
-
-## Semantic search
-
-Default embedding model:
-
-```text
-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
-```
-
-FastEmbed runs the ONNX model locally on CPU. Markdown is split on ATX heading boundaries where
-practical, and each chunk retains its heading hierarchy. Oversized sections remain bounded and are
-split through exact source slices while fitted fenced-code blocks stay intact. Adjacent tiny sections
-coalesce into useful bounded chunks whose metadata identifies the contained heading range. Markdown
-chunks and normalized embeddings are stored in SQLite. Persisted chunk content remains unchanged;
-embedding input adds the canonical heading hierarchy between note title and content when that context
-is not already the chunk's first heading. The semantic database is derived data and can always be
-rebuilt from the vault.
-
-Upgrading from the earlier fixed-size chunker or the VB-020 heading-aware embedding representation
-changes the semantic index signature. VaultBridge automatically discards incompatible derived chunks
-and rebuilds them from the Markdown vault; no manual SQLite migration is required. If a targeted
-refresh encounters an older signature, it safely performs the required full rebuild. Upgrading from
-`v1.1.0` to `v1.2.0` also performs one automatic rebuild because `v1.2.0` fingerprints the effective
-embedding backend and model artifacts before reusing persisted vectors. Markdown is not changed.
-
-Example:
-
-```bash
-curl -X POST http://127.0.0.1:8765/api/v1/notes/related \
-  -H "Authorization: Bearer YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"text":"professional courses and certifications","limit":5}'
-```
-
-Before creating a note, clients can request advisory duplicate candidates:
-
-```bash
-curl -X POST http://127.0.0.1:8765/api/v1/notes/duplicates \
-  -H "Authorization: Bearer YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"title":"Professional certifications","text":"Courses, exams, and renewal notes","limit":5}'
-```
-
-The response contains only real live vault notes. Conservative normalized filename equivalence is
-reported as `exact_title` and is stronger evidence than semantic relatedness; a `semantic` match does
-not prove that two notes are duplicates. Semantic paths are verified against the live vault before
-return, and the operation never merges, creates, appends, renames, deletes, or otherwise writes notes
-or the semantic index.
+**Install:** follow the [Docker quick start](#quick-start), or use the
+[TrueNAS Community App](README_TRUENAS.md#preferred-installation-truenas-community-app).
+[Detailed setup and operations](docs/DOCKER.md) cover configuration, permissions and recovery.
 
 ## Quick start
 
-### Prerequisites
-
-- Docker Engine or Docker Desktop with Docker Compose support
-- Git, when cloning the repository
-- an existing Obsidian vault directory
-- enough free disk space for the local embedding model cache and semantic index
-- internet access when the container image and embedding model are downloaded for the first time
-
-TrueNAS, Kubernetes, Redis, an external vector database, and a cloud embedding API are not required.
-
-The following is the canonical Linux/macOS shell workflow:
+This Linux/macOS shell example runs the published stable image in legacy single-vault mode.
+Use Docker Engine/Desktop with Compose and an existing vault directory accessible to Docker.
+The first start downloads the local embedding model; allow disk space and initial network access.
 
 ```bash
 git clone https://github.com/mrtrollex/VaultBridge.git
 cd VaultBridge
+git checkout v1.5.0
 cp .env.example .env
 docker run --rm python:3.12-slim python -c 'import secrets; print(secrets.token_urlsafe(48))'
 ```
 
-Copy the generated value into `API_KEY` in `.env`, then set the host path to your existing vault:
+Using a local editor, put the generated key in `.env` and set the absolute host vault path:
 
 ```env
 API_KEY=YOUR_GENERATED_API_KEY
-API_KEY_PREVIOUS=
-OBSIDIAN_VAULT_PATH=/home/alice/Documents/MyVault
+OBSIDIAN_VAULT_PATH=/path/to/your/Obsidian/Vault
+API_PORT=8765
+PUID=1000
+PGID=1000
 ```
 
-`OBSIDIAN_VAULT_PATH` is a path on the Docker host. Compose bind-mounts it at `/vault` in the
-container; it is not a container path. Never commit `.env`. It is ignored by Git, but you should
-still treat it as a secret-bearing file.
+On Linux, use the vault owner's `id -u` / `id -g` for `PUID` / `PGID`; grant deliberate read/write
+access to the vault and derived-data directory. Docker Desktop mediates host permissions differently.
+See [permissions and source-build setup](docs/DOCKER.md#quick-start) for Windows/Compose details.
+Keep `.env` private and untracked. Do not paste resolved Compose configuration or container environments.
 
-This generic Compose path does not forward `KNOWLEDGE_SPACES_JSON` from `.env`. Named mode needs
-explicit environment injection and independent root/data mounts; see the
-[concrete manual Docker procedure](docs/V150_RC_RUNBOOK.md#configuration-delivery-outside-the-runner).
-Published v1.4.0 does not provide named composition.
+Create `compose.release.yml` beside `docker-compose.yml`:
 
-On Linux, set the container identity to the user that owns the vault:
+```yaml
+services:
+  obsidian-api:
+    image: ghcr.io/mrtrollex/vaultbridge:1.5.0
+```
 
 ```bash
-id -u
-id -g
-```
-
-Put those values in `PUID` and `PGID` in `.env`. The defaults are `1000:1000`. VaultBridge needs
-read access for all note operations and write access for create/append operations and its derived
-semantic-data directory. Fix ownership or access-control rules deliberately; do not use `chmod 777`.
-Docker Desktop for macOS and Windows mediates bind-mount permissions through its VM, so host UID/GID
-behavior is not identical to native Linux. Ensure the vault directory is shared with Docker Desktop;
-leave the defaults unless your Docker Desktop setup requires different values.
-
-Build and start VaultBridge:
-
-```bash
-docker compose up -d --build
-docker compose ps
-docker compose logs --tail 100
-```
-
-The source build uses Python 3.12, installs the Linux `libgomp1` runtime required by ONNX Runtime,
-and starts Uvicorn on container port `8000`.
-
-## GHCR release images
-
-Published GitHub Releases also produce the same Dockerfile-based application image at:
-
-```text
-ghcr.io/<repository-owner>/vaultbridge:<version>
-```
-
-Use the lowercase repository owner shown on the package page. Published stable v1.4.0 uses
-the image tag `1.4.0`; provisional v1.5.0 is not published:
-
-```bash
-docker pull ghcr.io/<repository-owner>/vaultbridge:1.4.0
-```
-
-The publication workflow accepts v-prefixed semantic release tags. Every release receives the exact
-version tag without the leading `v`. A stable release also updates its `major.minor` alias and
-`major` alias plus `latest`; a GitHub prerelease receives only its exact prerelease tag, such as
-`1.0.0-rc.1`. Release tags must not be reused. For a cryptographically immutable deployment
-reference, copy the published
-digest from GHCR and pull `ghcr.io/<repository-owner>/vaultbridge@sha256:...`.
-
-GHCR packages are private on first publication unless account/organization policy says otherwise.
-After the first successful release, the repository owner should open the package's **Package
-settings**, verify repository linkage, and deliberately change visibility to **Public** if anonymous
-pulls are intended. Public visibility is not assumed by this workflow.
-
-The checked-in source-build Compose workflow remains supported and unchanged. The GHCR image is an
-additional distribution artifact, not an automatic migration of existing Docker or TrueNAS
-installations. VB-054 publishes only the normal Linux architecture produced by the GitHub-hosted
-runner; multi-architecture manifests remain VB-055.
-
-### Supported deployment platforms
-
-- Production is the repository Dockerfile running as a Linux container, built from source or pulled
-  from GHCR after a release image is actually published and verified.
-- Docker-based TrueNAS SCALE users can install the accepted Community App from Discover Apps. The
-  source-built Custom App workflow remains available in [`README_TRUENAS.md`](README_TRUENAS.md).
-- Docker Desktop on Windows or macOS may run the Linux container. Native Windows is a development
-  and test environment, not a documented production deployment.
-- The current GHCR workflow is single-architecture. Do not assume ARM64 or multi-architecture image
-  support before VB-055 and manifest verification.
-
-Release gates, RC validation, and the stable release procedure are tracked in
-[`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md).
-
-## Docker configuration
-
-The generic Compose file reads `.env`, validates application settings at startup, and uses this
-deployment contract:
-
-```text
-host OBSIDIAN_VAULT_PATH  ->  container /vault
-/vault/.obsidian-chatgpt-data  ->  configured SEMANTIC_DATA_PATH
-host 127.0.0.1:API_PORT  ->  container port 8000
-host PUID:PGID  ->  container process user and group
-```
-
-| `.env` variable | Default/example | Purpose and constraint |
-|---|---|---|
-| `API_KEY` | placeholder only | Required by protected routes; replace with a long random secret |
-| `API_KEY_PREVIOUS` | empty | Optional old key accepted only during an operator-controlled rotation window |
-| `RATE_LIMIT_ENABLED` | `true` | Enable the process-local protected-route limiter |
-| `RATE_LIMIT_REQUESTS` | `120` | Positive requests allowed per peer in one fixed window |
-| `RATE_LIMIT_WINDOW_SECONDS` | `60` | Positive fixed-window duration in seconds |
-| `RATE_LIMIT_MAX_CLIENTS` | `1024` | Positive hard cap on process-local peer state |
-| `MCP_HTTP_ENABLED` | `false` | Opt in to Streamable HTTP at `/mcp` on the existing application port |
-| `MCP_WRITE_ENABLED` | `false` | Add MCP `create_note` and `append_note`; the default nine-tool surface remains read-only |
-| `MCP_HTTP_ALLOWED_HOSTS` | loopback hosts with any port | Comma-separated Host allowlist enforced by the MCP SDK; external hosts must be explicit |
-| `MCP_HTTP_ALLOWED_ORIGINS` | loopback HTTP origins with any port | Comma-separated allowlist for a present Origin; external origins must be explicit |
-| `OBSIDIAN_VAULT_PATH` | `/path/to/your/Obsidian/Vault` | Required absolute host path to the vault |
-| `API_PORT` | `8765` | Host loopback port mapped to container port `8000` |
-| `PUID` / `PGID` | `1000` / `1000` | Numeric container user/group used for bind-mounted files |
-| `MAX_NOTE_BYTES` | `1000000` | Positive maximum note size |
-| `SEMANTIC_MODEL` | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` | Non-empty local model name |
-| `SEMANTIC_CHUNK_CHARS` | `600` | Integer of at least `250` |
-| `SEMANTIC_CHUNK_OVERLAP` | `100` | Non-negative and at most half the chunk size |
-| `SEMANTIC_EMBED_BATCH_SIZE` | `4` | Experimental positive FastEmbed inference batch size; lower values can reduce peak memory during indexing |
-| `SEMANTIC_ONNX_CPU_MEM_ARENA` | `true` | Experimental toggle for the ONNX Runtime CPU memory arena during semantic inference |
-| `SEMANTIC_INDEX_BATCH_SIZE` | `25` | Positive maximum notes committed per indexing transaction |
-| `SEMANTIC_WATCH_ENABLED` | `false` | Opt in to recursive external Markdown change watching |
-| `SEMANTIC_WATCH_DEBOUNCE_SECONDS` | `1.0` | Positive coalescing window for editor/synchronizer event bursts |
-
-Compose fixes the application-only `VAULT_PATH` to `/vault` and `SEMANTIC_DATA_PATH` to
-`/vault/.obsidian-chatgpt-data`; do not put host paths in either setting. Invalid numeric values or
-empty paths/model names stop application startup. `OBSIDIAN_VAULT_PATH`, `API_PORT`, `PUID`, and
-`PGID` are Compose inputs and are not read by the Python application.
-
-### Rotate the API key safely
-
-`API_KEY` is always the required current credential. `API_KEY_PREVIOUS` is optional; when it is
-non-empty, protected legacy and `/api/v1` routes accept either key with the unchanged
-`Authorization: Bearer <key>` header. It does not replace a missing `API_KEY`.
-
-Use this operator-controlled rotation procedure:
-
-1. Generate a new long random key without printing or storing it in repository files.
-2. Edit the untracked `.env` so the new key is current and the old key is previous:
-
-   ```env
-   API_KEY=<new-current-key>
-   API_KEY_PREVIOUS=<old-key-during-rotation>
-   ```
-
-3. Run `docker compose up -d` to recreate the service with both keys accepted.
-4. Migrate every client to the new `API_KEY` and verify its protected requests.
-5. Remove `API_KEY_PREVIOUS` or set it to empty, then run `docker compose up -d` again.
-
-The application does not expire, generate, persist, or hot-reload keys. The previous key remains
-valid until the operator removes it and recreates/restarts the service. Keep both values out of logs,
-support output, shell history, and version control.
-
-### Tune process-local rate limiting
-
-VaultBridge limits protected legacy and `/api/v1` note/search requests by the ASGI peer address.
-The default allows `120` requests per `60` seconds for each peer and retains at most `1024` peer
-windows. `GET /health`, `GET /health/live`, `GET /health/ready`, and the public schema-hidden
-`/privacy` route are exempt. A rejected request returns HTTP `429` with
-`{"detail":"Rate limit exceeded"}` and an integer `Retry-After` value for the remaining fixed
-window.
-
-The limiter is deliberately in-process: state is not persisted, is reset by a restart, and is not
-shared across multiple workers or application instances. It does not provide a distributed quota.
-VaultBridge uses the direct ASGI peer address and does not trust `X-Forwarded-For`, `X-Real-IP`, or
-`Forwarded`. Behind a reverse proxy the peer is commonly the proxy itself, so multiple external
-clients may share one bucket. VB-043 does not add trusted-proxy parsing; size and tune the shared
-bucket for that deployment or disable it with `RATE_LIMIT_ENABLED=false` only when equivalent
-protection exists elsewhere.
-
-### Semantic-data persistence
-
-The generic Compose deployment stores these derived files inside the mounted vault directory:
-
-```text
-/vault/.obsidian-chatgpt-data/semantic-index.sqlite3
-/vault/.obsidian-chatgpt-data/models/
-/vault/.obsidian-chatgpt-data/huggingface/
-```
-
-On the host, they are under `${OBSIDIAN_VAULT_PATH}/.obsidian-chatgpt-data`. This directory therefore
-persists across container replacement and requires write permission for `PUID:PGID`. The SQLite
-index and downloaded model cache are derived/disposable; Markdown files remain the source of truth
-and should be the focus of backups. Do not edit SQLite manually. Use the supported stopped-service
-maintenance commands below to inspect or rebuild the index.
-
-Compose fixes FastEmbed/Hugging Face's internal `HF_HOME` to the `huggingface/` directory above, so
-the configured non-root `PUID:PGID` uses the same writable derived-data mount instead of an unwritable
-root-home cache. This is an internal container path and requires no additional `.env` setting.
-
-The separate `/data` mount described in the TrueNAS guide is not part of generic Compose.
-
-### External Obsidian and synchronization edits
-
-Filesystem watching is disabled by default, preserving the previous startup/full-sync behavior. Set
-`SEMANTIC_WATCH_ENABLED=true` to observe the mounted vault recursively for external Markdown creates,
-changes, deletes, and renames from tools such as Obsidian or Syncthing. The default one-second
-debounce coalesces event bursts and atomic-replace patterns before paths enter the existing targeted
-semantic-index queue. Non-Markdown files, Obsidian internals, temporary artifacts, the semantic data
-directory, and paths that fail vault containment checks are ignored.
-
-The watcher is incremental, process-local functionality for one VaultBridge process. It does not
-replace the authoritative startup full synchronization, which still reconciles changes made while
-VaultBridge was stopped. It also does not replace normal Markdown backups. Disable the watcher if
-the mounted filesystem does not reliably deliver native change notifications.
-
-## First startup and health verification
-
-The HTTP application starts without waiting for the whole vault to be indexed. A background semantic
-synchronization then scans the vault and downloads the local embedding model if it is not cached.
-Consequently, liveness can succeed before semantic readiness:
-
-```bash
+docker compose -f docker-compose.yml -f compose.release.yml pull
+docker compose -f docker-compose.yml -f compose.release.yml up -d --no-build
 curl -fsS http://127.0.0.1:8765/health/live
 curl -i http://127.0.0.1:8765/health/ready
-curl -fsS http://127.0.0.1:8765/health
 ```
 
-- `/health/live` means the HTTP process is alive and returns `200` with `{"ok":true}`.
-- `/health/ready` means VaultBridge can serve its intended vault and semantic workload. It returns
-  `503` with `{"ready":false}` during an initial build and `200` with `{"ready":true}` when usable.
-- `/health` returns richer operator diagnostics, including lifecycle state, availability, indexer
-  activity, counts, and the last successful full synchronization.
+The service binds to host loopback port `8765`. Open `http://127.0.0.1:8765/ui/` for the legacy
+Dashboard and unlock it with your key. Readiness may return `503` during initial indexing/model download;
+inspect `/health` and Compose logs. A compatible existing index can remain searchable during refresh.
 
-Poll readiness and inspect logs while the first index is built. Semantic functionality becomes
-available after a successful initial index. A later startup synchronizes changed Markdown; when the
-stored index signature is incompatible with the running model/chunk configuration, VaultBridge
-automatically rebuilds the derived index from Markdown.
-
-After readiness succeeds, test the preferred versioned API with a non-destructive request:
+To test a read without changing notes, replace the placeholder with the key from `.env`:
 
 ```bash
 curl -fsS 'http://127.0.0.1:8765/api/v1/notes/list?limit=5' \
   -H 'Authorization: Bearer YOUR_API_KEY'
 ```
 
-Replace `YOUR_API_KEY` with the value in `.env`. The API key protects note and search routes; health
-probes are intentionally public. Unversioned note/search routes remain compatibility aliases, but
-new integrations should use `/api/v1`.
-
-If you changed `API_PORT`, replace `8765` in these commands with that value.
-
-## Logs and basic troubleshooting
-
-VaultBridge writes structured application events to the container log stream. Useful commands are:
-
-```bash
-docker compose ps
-docker compose logs --tail 100
-docker compose logs -f
-docker compose restart
-docker compose down
-```
-
-Common first-start checks:
-
-- Readiness remains `503` while initial indexing or model download is still running; inspect
-  `/health` and follow the logs rather than assuming container startup is blocked.
-- Permission errors usually mean `PUID:PGID` cannot read/write the host vault or create
-  `.obsidian-chatgpt-data`.
-- Protected requests return the existing server configuration error when `API_KEY` is missing; an
-  `API_KEY_PREVIOUS` value cannot become the primary credential. Missing, malformed, or unknown
-  Bearer credentials return the existing generic authentication error.
-- Invalid typed environment values stop startup; the container logs identify the configuration
-  validation failure without exposing the API key.
-- HTTP `429` means the process-local peer bucket is exhausted; honor `Retry-After` and check for an
-  accidental client loop before raising the configured allowance.
-- A first model download requires network access. Network/download failures appear in container logs
-  and leave initial semantic readiness unavailable. Correct the problem, then run
-  `docker compose restart` to schedule a new startup synchronization.
-
-Avoid pasting a resolved `docker compose config` into support requests: depending on the Compose
-version, it can include the resolved `API_KEY` and `API_KEY_PREVIOUS`. Never dump the complete
-container environment.
-
-## Updating and stopping
-
-This deployment builds from the checked-out source. Update it conservatively with:
-
-```bash
-git pull
-docker compose up -d --build
-docker compose ps
-```
-
-This recreates the application container as needed and is not a zero-downtime procedure. Markdown
-remains authoritative. Ordinary compatible updates reuse the persisted semantic data; a change to
-the model/chunk/index signature triggers the existing automatic rebuild logic.
-
-`docker compose stop` stops the existing container so it can be started again. `docker compose down`
-stops and removes the Compose container and network. Neither command removes the bind-mounted host
-vault or `.obsidian-chatgpt-data`; deleting host files is a separate destructive action. Do not use
-`docker compose down -v` as a cleanup shortcut, and never point a removal command at the vault.
-
-## Local CLI and semantic index administration
-
-The dependency-free local CLI reuses VaultBridge's existing vault and semantic services:
-
-```bash
-python -m app.cli status
-python -m app.cli index
-python -m app.cli reindex
-python -m app.cli search "backup"
-python -m app.cli related "how is my backup replicated?"
-python -m app.cli query --semantic-text "backup" --folder Projects --tag active --limit 10
-```
-
-`status` is the concise persisted vault/index view. `search` is literal title/content search and
-does not load the embedding model. `related` uses the existing compatible semantic index without
-synchronizing it and live-verifies result paths before display. Both query commands support
-`--folder`; `search` supports `--limit`, while `related` supports `--limit` and `--min-score`.
-Those commands print bounded snippets and vault-relative paths. `query` calls the bounded
-`KnowledgeQueryService` and supports `--semantic-text`, `--literal-text`, `--folder`,
-repeatable exact `--path`, repeatable required `--tag`, and `--limit`. It prints only canonical
-vault-relative paths and existing semantic score evidence when applicable. Empty results are
-successful.
-
-For the shared structured Knowledge Query request, use:
-
-```bash
-python -m app.cli query --request-json --json < query-request.json
-python -m app.cli query --literal-text "backup" --qualified-path '{"space_id":"default","path":"Projects/Backup.md"}' --json
-```
-
-`--request-json` reads one complete UTF-8 object, at most 1,048,576 bytes, with optional `spaces`,
-`semantic_text`, `literal_text`, `folder`, `paths`, `tags`, `metadata`, `relationships` and `limit`.
-For example, `{"literal_text":"backup","metadata":[{"key":"status","operator":"equals","value":"active"}]}`.
-It uses the same request as REST `POST /api/v1/knowledge/query` and MCP `knowledge_query`.
-Unknown/duplicate keys, non-finite values and conflicting flags are rejected. Do not combine
-`--request-json` with query-content flags; `--space` may supply selection only when JSON omits
-`spaces`. Repeatable `--qualified-path` accepts one `{space_id,path}` object per occurrence and
-cannot mix with bare `--path`. Neither form expands the selected scope. Bare paths require one
-effective selected space. Omitted selection remains default-only.
-
-Structured requests and explicit `--space` use qualified results and selected-space coverage;
-REST Query always uses this structure, and MCP adds a canonical `resource_uri` per item. Semantic
-text selects semantic score fields; other Query results contain qualified note identities.
-CLI reads retain persisted read-only composition: no startup sync, storage initialization, watcher
-or model download. Named production composition and its deliberate UI/maintenance exclusions are
-described in [Named Knowledge Spaces](docs/KNOWLEDGE_SPACES.md). See the
-[exact request and error contract](BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-slices-a-b-and-c-private-activation-blocked).
-
-`capture` reads exactly one UTF-8 JSON request from standard input (at most 1,048,576 bytes):
-
-```bash
-python -m app.cli capture < capture-request.json
-```
-
-The request requires `content`, `state` (`inbox` or `draft`), `capture_id` (a lowercase UUID v4),
-and `captured_at` (UTC RFC 3339 at second precision, with `Z` or `+00:00`). Optional fields are
-`title`, `source`, ordered `tags`, `capture_type`, and `metadata` for additional safe portable
-frontmatter values. Duplicate JSON keys and unknown top-level fields are rejected. For example:
-
-```json
-{"content":"Selected Markdown text\n","state":"inbox","capture_id":"9f563c82-f963-4a44-9f36-1f7c6f459a4c","captured_at":"2026-10-03T12:30:00Z","source":"unknown","tags":[]}
-```
-
-Capture creates only `Inbox/Captures/<capture_id>.md`; title is display metadata. It retains the
-exact authored body and ordered portable frontmatter. Keep the original request, ID, and timestamp
-for retries. Exact bytes at that path yield `already_applied`; differences yield `conflict` without
-overwriting or choosing another path. Output contains the stable category and `committed` boolean;
-committed outcomes also include the ID, canonical path, and separate `index_pending` or
-`index_unavailable` evidence. An accepted indexing job may subsequently fail without changing
-Markdown success. After `commit_unknown`, retain the original request and inspect the exact
-canonical path. Verified matching bytes can resolve the outcome as `already_applied`. If the path
-is absent after a possible commit or namespace relocation, do not automatically retry: an operator
-must resolve the possible relocated artifact and explicitly authorize another write. If another
-same-ID artifact cannot be ruled out, do not write again.
-Expected failures exit `1`, confirmed Markdown success exits `0`, and configuration/programming
-failures exit `2`. Content and metadata are never echoed in diagnostics.
-
-Capture enqueues existing local indexing after commit and drains its worker before CLI exit.
-Keep the serving process stopped while running this CLI command because semantic persistence has
-no cross-process index lock. Markdown creation itself coordinates cooperating VaultService writers
-across local processes and threads: a POSIX directory lock or Windows kernel mutex, plus a complete
-temporary file linked atomically without replacement. Active capture destination or staging
-namespace mutation by a non-cooperating filesystem writer is outside that strong guarantee;
-detected uncertainty does not confirm creation. Ordinary external Markdown editing remains
-supported. The filesystem must support hard links; unsupported filesystems fail safely. This adds
-no capture database. Explicit review and promotion are separate CLI operations described below.
-
-`hygiene scan` reads live Markdown and reports relationship (wikilink and inline Markdown link),
-isolation, frontmatter, alias and authored-body diagnostics without repairs:
-
-```bash
-python -m app.cli hygiene scan --json
-python -m app.cli hygiene scan --group relationships --finding-limit 100
-```
-
-The same bounded diagnostics are available through protected
-`POST /api/v1/knowledge/hygiene/scan`, MCP `knowledge_hygiene_scan`, and the Dashboard Hygiene panel.
-Coverage, unavailable notes, truncation and optional duplicate/index evidence are explicit; advice
-is not a repair, freshness guarantee or semantic-duplicate promise.
-
-Explicit promotion retains the capture source and requires a human decision:
-
-```bash
-python -m app.cli promote review --source-path Inbox/Captures/<capture-id>.md --capture-id <capture-id>
-python -m app.cli promote apply < promotion-decision.json
-```
-
-Replace `<capture-id>` with the original lowercase UUID v4. Review emits the source bytes/metadata
-and `source_sha256`; `--destination Notes/Target.md` additionally inspects an append destination.
-Treat review output as private vault content. Apply accepts one bounded JSON decision with
-`source_path`, `capture_id`, `expected_source_sha256`, `approved_content`, `action` (`create` or
-`append`), `destination`, a stable lowercase UUID v4 `promotion_id`, UTC-second `approved_at`, and
-ordered `transfer_fields` (selected existing `title`, `tags`, `capture_type`). Create also requires
-`expected_destination: "absent"`; append instead requires `expected_destination_sha256` from review.
-Changed source/destination bytes fail closed. Preserve the exact decision for retries; do not change
-IDs after uncertain outcomes. `commit_unknown` requires operator reconciliation before another
-write. Markdown success and derived-index outcome are separate. Stop the serving process for
-Capture and Promotion apply because they own targeted index writes; use the same offline discipline
-for review with optional candidate evidence. Focused Capture/Promotion tests cover synthetic writes
-separately from the image gate, which only checks their parsers.
-
-Capture and Promotion have no REST/MCP/dashboard adapters. Query has REST and MCP adapters;
-its Dashboard integration remains unavailable. Named mode fences the whole Dashboard/session
-surface; Hygiene mutations remain unavailable.
-
-The existing create/append REST routes and optional MCP tools accept singular `space` in their
-JSON body. Explicit selection, including `"default"`, uses strict validation and returns
-`{space_id,result}` around the existing note result. Omission retains the default-only legacy
-request and response. `MCP_WRITE_ENABLED` must still be enabled before either write tool exists;
-registration grants no space permissions. Slice D connects named production composition to one
-runtime; see [configuration, operational boundaries and recovery](docs/KNOWLEDGE_SPACES.md).
-
-CLI capture, promotion review and apply likewise accept one `--space ID`. Explicit selection uses
-v2 provenance and `{space_id,result}` evidence; omitted selection retains v1 bytes and outputs.
-Scoped review requires `--destination` for the exact chosen create or append path. Scoped apply
-reconstructs and reauthorizes the approved request in the current process; client metadata and
-hashes do not grant access. V1 and v2 artifacts cannot be exchanged between these flows. Scoped
-writes use the existing runtime, including startup reconciliation for enabled spaces and index
-drain before exit. Stop the serving application/stdio process first. No new cross-process lock,
-approval cache, automatic promotion or uncertain-write retry is provided.
-
-`index` brings derived semantic data up to date through the production incremental/full sync path;
-`reindex` first discards and then rebuilds derived semantic data. Markdown remains the source of
-truth and neither command changes note files.
-
-VaultBridge has no cross-process index lock. `status`, `index`, and `reindex` are stopped-service
-operations; do not run them through `docker exec` in the serving application container. Read-only
-`search`, `related`, and `query` do not mutate semantic persistence, but they are local readers and
-are not a new remote/concurrent-process coordination layer.
-
-Inspect persisted index integrity without loading the embedding model or changing storage:
-
-```bash
-docker compose stop obsidian-api
-docker compose run --rm --no-deps obsidian-api python -m app.cli status
-docker compose run --rm --no-deps obsidian-api python -m app.cli index check
-docker compose up -d obsidian-api
-```
-
-The check reports vault/database/schema/signature/lifecycle/searchability/count status. It uses an
-immutable SQLite view and refuses inspection while SQLite WAL/SHM sidecars are present. Exit `0`
-means healthy, `1` means an integrity/readiness problem, and `2` means a CLI, configuration, or
-programming failure. `/health` and `/health/ready` remain authoritative for the running service.
-
-To update a compatible index normally, keep the service stopped and synchronize it without a reset:
-
-```bash
-docker compose run --rm --no-deps obsidian-api python -m app.cli index
-```
-
-If inspection shows a clean rebuild is appropriate, rebuild only the derived semantic data through
-the production synchronization path:
-
-```bash
-docker compose run --rm --no-deps obsidian-api python -m app.cli reindex
-docker compose run --rm --no-deps obsidian-api python -m app.cli index rebuild
-docker compose up -d obsidian-api
-```
-
-`reindex` and `index rebuild` are equivalent. Rebuild may download the model if its cache is empty.
-It clears/recreates semantic index data but does not modify Markdown. Review a failed check before
-deciding to rebuild; do not edit or delete the SQLite files while the service is running.
-
-## Networking and security
-
-Generic Compose publishes `127.0.0.1:${API_PORT:-8765}:8000`, so VaultBridge is reachable only from
-the Docker host by default. Keep this security-positive binding. For access from another device or
-the public internet, place an HTTPS reverse proxy or VPN in front rather than changing the binding to
-`0.0.0.0` merely for convenience. VaultBridge does not terminate TLS itself.
-
-- use a strong random API key and never commit `.env`;
-- never expose or publish the vault directory itself;
-- use HTTPS, a VPN, or both for remote access;
-- back up the authoritative Markdown vault;
-- treat the semantic database/model cache as rebuildable derived data;
-- remember that the built-in rate limiter is process-local and may aggregate clients behind a
-  reverse proxy; it is not a distributed edge-protection service.
-
-See [`SECURITY.md`](SECURITY.md) for the security invariants.
-
-## TrueNAS
-
-The generic workflow above does not require TrueNAS. For ordinary TrueNAS installations, use the
-VaultBridge Community App from the Community train in Discover Apps. The source-built Custom App
-path remains available for manual and compatibility deployments; see
-[`README_TRUENAS.md`](README_TRUENAS.md). Its separate Compose file, `/data` mount, and compatibility
-identifiers are intentionally not reused in the generic examples.
-
-## About the project
-
-VaultBridge started as a personal bridge between ChatGPT and my Obsidian vault and grew into a
-standalone open-source project.
-
-📖 [Read the story behind VaultBridge 1.0](https://richardsenko.com/vaultbridge-1-0/).
-
-## Development
-
-See [`DEVELOPMENT.md`](DEVELOPMENT.md).
-
-Core checks:
-
-```bash
-PYTHONPATH=. pytest -q
-python -m compileall -q app
-```
-
-## Codex development
-
-The repository is prepared for task-by-task Codex work:
-
-- [`AGENTS.md`](AGENTS.md) — constraints Codex should follow
-- [`ROADMAP.md`](ROADMAP.md) — project phases
-- [`BACKLOG.md`](BACKLOG.md) — small issue-sized tasks
-- [`ARCHITECTURE.md`](ARCHITECTURE.md) — current and target design
-- [`docs/CODEX_PLAYBOOK.md`](docs/CODEX_PLAYBOOK.md) — ready-to-use prompts
-
-Use one exact item from `BACKLOG.md` at a time and verify the current recommendation before starting.
-
-## License
-
+Use the same two `-f` arguments for subsequent release-image Compose operations. To build from source
+instead, follow [the generic Docker guide](docs/DOCKER.md). For immutable deployment, replace the image
+tag with the verified digest from the [release ledger](docs/RELEASE_CHECKLIST.md#v150-release-evidence).
+Back up Markdown, configuration and artifacts with writers stopped before upgrading an existing setup.
+
+## Choose a mode
+
+| | Legacy single vault (default) | Named Knowledge Spaces (advanced opt-in) |
+| --- | --- | --- |
+| Configuration | Omit `KNOWLEDGE_SPACES_JSON` | Explicit validated JSON and independent root/data mounts |
+| Selection | Existing path-only/omitted-scope behavior | Explicit scopes; omission still selects default only |
+| REST / MCP / CLI | Supported | Supported within configured policies and capabilities |
+| Web Dashboard | Bundled `/ui/` | Deliberately unavailable, including assets/session routes |
+| Index maintenance | Stopped-service CLI | Named status/index maintenance unsupported |
+
+Named mode supports one to eight spaces, including exactly one `default`. A Bearer key authenticates
+the deployment; configured server policy governs spaces. It does not create per-user permissions.
+Generic Compose does not forward named JSON automatically.
+See [Knowledge Spaces setup and limits](docs/KNOWLEDGE_SPACES.md) before opting in.
+
+## Setup and integration guides
+
+| I want to… | Start here |
+| --- | --- |
+| Install with Docker / use legacy mode | [Docker setup and operations](docs/DOCKER.md) |
+| Install the TrueNAS Community App | [TrueNAS runbook](README_TRUENAS.md) |
+| Configure named roots, policies and scopes | [Knowledge Spaces](docs/KNOWLEDGE_SPACES.md) |
+| Use REST, health or semantic retrieval | [REST API guide](docs/API.md) |
+| Connect an MCP client (stdio or HTTP) | [MCP integration](docs/MCP.md) |
+| Use Query, Capture, Promotion or index maintenance | [CLI guide](docs/CLI.md) |
+| Understand Dashboard sessions and privacy | [Legacy Dashboard](docs/DASHBOARD.md) |
+| Develop or contribute | [Contributing](CONTRIBUTING.md), [development setup](DEVELOPMENT.md) |
+
+## Security and operational limits
+
+Use HTTPS through a trusted reverse proxy or a private VPN for remote access. Do not expose plain
+HTTP publicly. VaultBridge provides note operations, not arbitrary filesystem access or a delete API.
+MCP HTTP and MCP writes are separate opt-ins; stdio trusts the local launching process and OS permissions.
+The default note-size limit is 1,000,000 bytes; oversized files can cause partial retrieval coverage.
+
+Keep a single semantic writer per data layout. Stop serving/stdio before CLI writes or index maintenance
+on the same writable state. Preserve uncertain-write requests/artifacts and reconcile before retry.
+Named/v2 artifacts cannot be handed directly to v1.4.0 for an in-place downgrade.
+See [security reporting](SECURITY.md), [architecture contracts](ARCHITECTURE.md) and
+[release notes and recovery limits](docs/V150_RELEASE_NOTES.md).
+
+## Project navigation
+
+- [Product roadmap](ROADMAP.md) — candidate priorities, themes and non-goals
+- [Backlog](BACKLOG.md#current-work-entry-point) — task contracts and current-work navigation
+- [Current state](PROJECT_STATE.md) — compact factual snapshot and open operational gates
+- [Changelog](CHANGELOG.md) and [release ledger](docs/RELEASE_CHECKLIST.md) — changes and evidence
+- [Architecture](ARCHITECTURE.md) and [ADRs](docs/adr/) — current ownership and decisions
+- [Codex Playbook](docs/CODEX_PLAYBOOK.md) — task, checks and fresh-review workflow
+- [Documentation index](docs/README.md) and [history](docs/history/README.md)
+
+<p align="center">
+  <img src="docs/assets/vaultbridge-architecture.webp" alt="Clients connect through VaultBridge to portable Markdown and a local semantic index" width="720">
+</p>
+
+Read the [story behind v1.0](https://richardsenko.com/vaultbridge-1-0/).
 VaultBridge is licensed under the [MIT License](LICENSE).

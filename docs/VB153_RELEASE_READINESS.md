@@ -1,5 +1,10 @@
 # VB-153 — Post-Knowledge-Spaces release readiness
 
+> Historical readiness plan, inspected 2026-11-11. Its source/status claims and ordered execution
+> tasks below retain that original context. Stable v1.5.0 is now published; use the
+> [current release ledger](RELEASE_CHECKLIST.md#v150-release-evidence) and
+> [current state](../PROJECT_STATE.md). Do not execute this plan to recreate published identities.
+
 Verified on 2026-11-11. Documentation and planning only; no version, runtime, release, tag,
 image, alias, catalog or deployment was changed. The corrected task-owner instruction preserves
 published v1.4.0 and plans the next Knowledge Spaces release provisionally as **v1.5.0**.
@@ -43,7 +48,7 @@ The recommendation is a planning decision, not a version bump or publication aut
 Named Dashboard/session, maintenance/status, registry discovery, root/ID rebind and artifact
 migration remain fenced or deferred. Deployment keys authenticate the deployment, not tenants;
 space policy/capabilities grant operations. Scope selection is not a new account/RBAC system.
-See the accepted [adapter contract](../BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-slices-a-b-and-c-private-activation-blocked)
+See the accepted [adapter contract](../BACKLOG.md#vb-152--permission-aware-query-and-write-adapter-integration--p1-complete-ad-accepted-and-merged)
 and [operator guide](KNOWLEDGE_SPACES.md).
 
 ## Release evidence ledger

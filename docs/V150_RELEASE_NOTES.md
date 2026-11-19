@@ -1,11 +1,11 @@
-# VaultBridge v1.5.0 — prepared stable release notes
+# VaultBridge v1.5.0
 
-**Stable release preparation; not yet published.** This metadata-only transition builds on
-the published [v1.5.0-rc.2](https://github.com/mrtrollex/VaultBridge/releases/tag/v1.5.0-rc.2)
-candidate and its accepted VB-151 A–G / VB-152 A–D functionality. Application behavior,
-API contracts, index formats and persistent data formats are unchanged from RC2.
-Published stable [v1.4.0](https://github.com/mrtrollex/VaultBridge/releases/tag/v1.4.0) does not
-contain named Knowledge Spaces and retains its independent immutable release identity.
+Published stable on **November 19, 2026** from `90ec06fefe6d4f9ea77b090787b794861ef57235`.
+See the [release ledger](RELEASE_CHECKLIST.md#v150-release-evidence) for verified GitHub/GHCR
+identity, exact-source CI, aliases, operator evidence and remaining gates.
+The RC2-to-stable source change updated metadata/tests/documentation without changing runtime logic,
+API contracts or persisted formats. Stable publication rebuilt the image and advanced stable aliases.
+Historical v1.4.0 retains its independent source/image identity and does not support named artifacts.
 
 ## Delivered functionality
 
@@ -31,7 +31,7 @@ Named mode requires explicit strict JSON, exactly one `default`, disjoint access
 derived-data paths, and matching legacy `VAULT_PATH`/`SEMANTIC_DATA_PATH` for default. Supply mounts
 and environment to the container explicitly. Generic Compose does **not** forward named JSON
 from a local `.env` automatically. See the [operator guide](KNOWLEDGE_SPACES.md) and
-[executable RC procedure](V150_RC_RUNBOOK.md).
+[historical RC qualification procedure](V150_RC_RUNBOOK.md).
 
 Omission selects default only; it never discovers or expands scope. Explicit `default` uses the
 strict scoped contract. REST/MCP single-space operations use `space`; federated operations and
@@ -62,36 +62,21 @@ in-process release. Rollback requires stopped writers, independent Markdown/conf
 and a separate prior-image/layout copy; v1.4.0 does not interpret named/v2 artifacts. Never repoint
 old code at incompatible bound databases or move immutable tags to recover.
 
-## RC2 qualification evidence and known canary finding
+## Qualification and known limits
 
-The immutable RC2 image passed named-space and semantic smoke tests, followed by an isolated
-TrueNAS Custom App canary using copied Markdown, not production mounts. On TrueNAS, both named
-spaces reached a compatible semantic index; the default index reconciled 800 notes. An external
-new Markdown file in `research` was detected and indexed automatically via the watcher, and
-retrieval returned it with complete research coverage. Persisted indexes were reused after an
-application configuration redeploy.
+The earlier isolated RC2 copied-vault canary reported 801 Markdown paths enumerated and 800 evaluated.
+The operator later identified one approximately 29.5 MB Markdown file with 36 inline Base64 image
+markers, exceeding default `MAX_NOTE_BYTES=1000000`. This explains the `note_unavailable` outcome;
+it does not prove a subsequent complete 801/801 semantic regression. No private note identifiers or
+content are recorded here.
 
-**Open canary finding:** Default federated semantic reads reported
-`note_unavailable` with 801 Markdown paths enumerated and 800 evaluated. All 801 copied
-files passed a host-side UTF-8/readability check as UID 568, but the precise cause remains
-unresolved. Do not claim complete default-space coverage, or conflate the missing indexed
-note with the failed federated read without further evidence.
+The task owner reports additional isolated stable-image passes for REST authentication/isolation,
+semantic retrieval/index reuse, watcher update, graceful restart and MCP HTTP/stdio read-only behavior.
+These operator observations are separate from exact-source CI and registry identity verification;
+they were not independently rerun by the documentation cleanup. Stable MCP-write behavior, live
+production migration, public-catalog upgrade and rollback are not claimed as qualified.
 
-This canary does not independently establish an isolated v1.4-to-v1.5 upgrade, an explicit
-restore demonstration, or all TrueNAS Community App lifecycle gates. The stable digest has
-not been qualified by the RC2 canary alone.
-
-## Stable release gates
-
-The stable metadata/documentation delta requires review, an authorized merge and successful
-independent CI on the resulting exact commit SHA. Obtain separate explicit authorization
-before creating the `v1.5.0` tag and publishing its non-prerelease GitHub Release.
-Stable publication **rebuilds** the image and moves the `1.5`, `1` and `latest` GHCR
-aliases; it is not an RC image rename. Verify the published stable digest, source
-revision, OCI labels, dependency/model equivalence, legacy and named functional gates,
-and restart/persistence evidence before declaring the release qualified. If equivalent
-runtime inputs cannot be established, repeat a bounded stable-digest canary.
-
-Existing `1.4.0`/`1.4` retain their historical identities. TrueNAS Community App form
-delivery and catalog lifecycle are separate: no named-space form support, catalog update,
-production upgrade or automatic rollback is claimed.
+TrueNAS catalog application image versions update automatically. Dedicated form/schema changes,
+legacy configuration migration and remaining VB-082 lifecycle evidence remain separate work.
+The historical [RC runbook](V150_RC_RUNBOOK.md) preserves original preparation procedures;
+do not rerun publication commands for existing RC or stable tags.

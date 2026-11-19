@@ -10,7 +10,7 @@ The VB-074/VB-075 records below are historical evidence. Their sessionStorage/Be
 is not the current dashboard contract. Current source uses signed HttpOnly cookie sessions through
 `/ui/session`, same-origin requests with `X-VaultBridge-UI-Request: 1`, and no raw-key persistence
 in JavaScript. Hygiene is now a separate explicit read-only scan panel. See
-[README](../README.md) for cookie lifetime/rotation/logout limits and the
+[Dashboard guide](DASHBOARD.md) for cookie lifetime/rotation/logout limits and the
 [v1.4 RC runbook](V140_RC_RUNBOOK.md) for current image verification. No candidate-image or live
 TrueNAS PASS follows from historical records.
 

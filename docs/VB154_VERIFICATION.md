@@ -1,5 +1,11 @@
 # VB-154 verification — release preparation
 
+> Historical source-preparation verification. Results below apply only to their recorded source,
+> platform and local image; ignored `.agent/` logs are original local receipts, not portable public
+> artifacts. Stable v1.5.0 publication and later evidence are in the
+> [release ledger](RELEASE_CHECKLIST.md#v150-release-evidence). Original test counts and identities
+> remain unchanged; this report is not a pending release instruction.
+
 **Source preparation handoff; independent acceptance remains separate.** The initial native failure
 and aborted workflow remain historical evidence below. The authorized test-only correction and
 complete native Linux requalification are verified. The completion receipt is the successful final

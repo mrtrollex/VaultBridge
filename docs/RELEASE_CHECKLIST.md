@@ -4,6 +4,84 @@ This is the durable release checklist and historical completed release evidence 
 `v1.0.0` audit, and each later release adds its own immutable record without replacing earlier tags,
 GitHub Releases, or artifact evidence.
 
+## Durable release checks
+
+For a new release, preserve the existing task/finish/fresh-review and approved PR/CI gates.
+Record the reviewed source SHA, exact-main CI jobs, version alignment, immutable tag target,
+publication jobs, OCI index/platform/configuration identities, labels and alias readbacks.
+Run legacy, named and MCP qualification as applicable against the exact immutable image using
+synthetic data. Record semantic/model inputs, restart/persistence, cleanup and recovery separately.
+Publication, full-image pull, runtime qualification and operator lifecycle are different evidence.
+Never reuse a published tag; historical procedures below do not authorize repeating publication.
+Catalog image versions update automatically; form/migration changes and live lifecycle proof are
+separate work. A failed or required-but-unavailable gate remains incomplete.
+
+## v1.5.0 release evidence
+
+Read-only reconciliation on **2026-11-19**; no release or external repository was changed.
+This section is the canonical v1.5.0 identity/evidence record for current documentation.
+
+| Observation | Verified result / source |
+| --- | --- |
+| GitHub Release | [v1.5.0](https://github.com/mrtrollex/VaultBridge/releases/tag/v1.5.0), published `2026-11-19T14:39:44Z`, non-draft, non-prerelease; latest published stable at inspection |
+| Annotated tag | `38aeea3b4cc09fdb8657dd3f7ddadce5f43dd464` resolves to `90ec06fefe6d4f9ea77b090787b794861ef57235` ([tag object](https://api.github.com/repos/mrtrollex/VaultBridge/git/tags/38aeea3b4cc09fdb8657dd3f7ddadce5f43dd464)) |
+| Exact-source CI | [44370500086](https://github.com/mrtrollex/VaultBridge/actions/runs/44370500086): `python`, `docker`, `dashboard-e2e` succeeded on that source SHA |
+| Publication | [44546183208](https://github.com/mrtrollex/VaultBridge/actions/runs/44546183208): `Verify release source`, `Build and publish`, `Publish stable aliases` succeeded |
+| Stable OCI index | `ghcr.io/mrtrollex/vaultbridge@sha256:e6547057d9dc495e9d25eb0970416076979fedae8cf0349628bad8bb988cd0dc` |
+| linux/amd64 manifest | `sha256:ceb48a8f81cee386db28c60742f58d0177f0775ea445c02c203b0c3cd08c233b` |
+| Image configuration | `sha256:96d8d4a730b8093a269f7bb42ec37781494f9da7b0ad62e31bbc83357292bdb4` |
+| OCI labels | version `v1.5.0`, revision `90ec06fefe6d4f9ea77b090787b794861ef57235`, source `https://github.com/mrtrollex/VaultBridge`, license `MIT` |
+| Mutable aliases at inspection | `1.5`, `1`, `latest` all resolve to the stable OCI index above; future alias movement does not change this dated observation |
+| Preserved legacy stable | `1.4.0` and `1.4` resolve to `sha256:48dc17d501cab2ee0fc29da57f6194cd9e08e4215c04a81a88c7c37ab3faa4ee`; OCI revision `16488735e7a19a6283707a1b6995249432916ca8`, version `v1.4.0` |
+
+GHCR observations used anonymous pull-scope registry authentication, SHA-256 calculation of returned
+manifest bytes and image-configuration label readback. No local Docker credentials were used.
+The local `docker buildx imagetools inspect` attempt was blocked by a missing
+`docker-credential-desktop` helper; direct registry reads supplied the identity evidence instead.
+This is manifest/configuration verification, **not a complete image-layer pull or runtime test**.
+Remote CI/publication results are independent recorded evidence, not tests rerun by this cleanup.
+
+### RC2 and operator-provided stable canary evidence
+
+The published [v1.5.0-rc.2](https://github.com/mrtrollex/VaultBridge/releases/tag/v1.5.0-rc.2)
+retains source `c753b42400dc1232714172546d8b3ad1c39cc652` and OCI index
+`sha256:4058242dc38fe4d1547a5dd5ecd944e95eb07f72cf192ddf3c32fc269cc5f5fc`.
+Its [exact-source CI 43724876866](https://github.com/mrtrollex/VaultBridge/actions/runs/43724876866)
+and published qualification record are historical RC evidence, not stable-image equivalence proof.
+
+The prior isolated RC2 copied-vault canary enumerated **801** Markdown paths and evaluated **800**.
+The operator subsequently identified one approximately **29.5 MB** Markdown file containing **36
+inline Base64 image markers**, above default `MAX_NOTE_BYTES=1000000`. This explains the observed
+`note_unavailable` outcome under the configured size policy. The report identifies no private note,
+path, subject or content. It does **not** establish a later complete 801/801 semantic regression.
+
+Separately, the task owner reports isolated stable-image passes for:
+
+- REST authentication and space isolation;
+- semantic retrieval and persisted index reuse;
+- filesystem-watcher update and graceful restart;
+- MCP HTTP read-only behavior and MCP stdio read-only behavior.
+
+These are **operator-provided canary observations**, not independently recorded CI or a new run by
+this cleanup. Raw canary logs were not supplied for independent requalification. Do not infer MCP
+write verification, live production migration, Community catalog upgrade or rollback completion.
+The public GitHub Release body still reflects the earlier unresolved-size diagnosis at inspection;
+only repository documentation is corrected here. Native C/C++ security uncertainties retained by
+the RC publication are not resolved or reclassified by the later operator report or this cleanup.
+
+### TrueNAS upstream snapshot and remaining gates
+
+Read-only inspection pinned [truenas/apps `8fd9c079ad13e823d4bd274655deabdbb6d7d97c`](https://github.com/truenas/apps/tree/8fd9c079ad13e823d4bd274655deabdbb6d7d97c).
+[Development metadata](https://github.com/truenas/apps/blob/8fd9c079ad13e823d4bd274655deabdbb6d7d97c/ix-dev/community/vaultbridge/app.yaml)
+and [generated package 1.0.12](https://github.com/truenas/apps/blob/8fd9c079ad13e823d4bd274655deabdbb6d7d97c/trains/community/vaultbridge/1.0.12/app.yaml)
+select app `1.4.0`; generated `ix_values.yaml` pins the preserved 1.4.0 OCI index above.
+Development/generated questions still omit dedicated MCP fields. This is a dated source snapshot,
+not installed-state evidence. Catalog image versions update automatically; no version-only PR.
+Dedicated fields, legacy `additional_envs` migration and named mounts/configuration need distinct
+reviewed scope. VB-082 Edit App persistence, host reboot, actual generated-catalog upgrade,
+rollback/recovery and ixVolume retain/remove remain open operator gates. A Custom App image swap
+or generic restart does not establish them.
+
 ## v1.4.0 stable publication — reconciled 2026-11-11
 
 [v1.4.0](https://github.com/mrtrollex/VaultBridge/releases/tag/v1.4.0) was published on
@@ -20,7 +98,10 @@ those observations from a green workflow or assign the rc.2 digest to the stable
 The [v1.4.0 notes](V140_RELEASE_NOTES.md) describe that stable source; the
 [P4 procedure](V140_RC_RUNBOOK.md#p4-stable-publication--v140) is retained historical reference.
 
-## Next release — provisional v1.5.0, not published
+## Historical v1.5.0 preparation snapshot — 2026-11-11 (superseded)
+
+The following source-preparation claims retain their original date/scope;
+the v1.5.0 record above supersedes their pending-publication language.
 
 VB-154 begins at `65958c5a8b124fac899454aef64b7822021cb3e5`, merged VB-153 PR #152 after
 accepted VB-151/VB-152. Exact-main [CI 43016049057](https://github.com/mrtrollex/VaultBridge/actions/runs/43016049057)
@@ -162,7 +243,7 @@ whose target was `MCP Smoke/Relationship Target`, heading was `Verified Section`
 The disposable create, append, duplicate-append suppression, read-back, and clean shutdown checks
 also passed. The corrected verification run completed at `2026-09-25T16:25:31Z` against the exact
 digest above. It created only
-`C:\Users\619ri\AppData\Local\Temp\vaultbridge-vb093-7jevvbpx`, restored removal permissions for
+`<host-temporary-directory>/vaultbridge-vb093-<run-id>` (host-user path redacted), restored removal permissions for
 the deliberately restricted `Smoke.md` when required, removed that root, and passed the harness's
 explicit post-removal absence assertion. An independent `Test-Path -LiteralPath` check after the
 process exited returned `False`. Earlier MCP smoke runs are not used as successful cleanup evidence;

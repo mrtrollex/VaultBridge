@@ -1,5 +1,9 @@
 # ADR 0003: VaultBridge Web Dashboard architecture and security
 
+> Implementation context (2026-11-19): VB-076 subsequently replaced the initial sessionStorage design with a signed HttpOnly cookie.
+> The original design below is retained as decision history; current session behavior is in
+> [ARCHITECTURE.md](../../ARCHITECTURE.md#current-dashboard-relationship) and [the Dashboard guide](../DASHBOARD.md).
+
 - **Status:** Accepted
 - **Date:** 2026-08-29
 

@@ -1,5 +1,9 @@
 # ADR 0004: MCP integration architecture
 
+> Implementation context (2026-11-19): The initial five-tool/read-only phase below is historical. HTTP transport, additional read tools
+> and opt-in create/append have since shipped; see [current MCP behavior](../MCP.md).
+> This notice preserves the original phased decision rather than authorizing new operations.
+
 - **Status:** Accepted
 - **Date:** 2026-09-07
 - **Decision owner:** VB-090

@@ -1,5 +1,10 @@
 # ADR 0009: Knowledge Spaces and Scope Policies
 
+> Implementation context (2026-11-19): VB-151 A–G and VB-152 A–D subsequently implemented this
+> accepted design and ship in v1.5.0. Future-task language below retains the original VB-150
+> design-only context. Current composition is in [ARCHITECTURE.md](../../ARCHITECTURE.md#knowledge-spaces-accepted-runtime-and-public-restmcpcli-composition);
+> [ADR 0010](0010-safety-first-e6-cleanup-outcomes.md) supplements native cleanup outcomes.
+
 - **Status:** Accepted
 - **Date:** 2026-10-07
 - **Task:** VB-150 (design only)

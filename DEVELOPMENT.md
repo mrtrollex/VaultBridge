@@ -1,15 +1,15 @@
 # Development
 
-## Python
+Target runtime: **Python 3.12**. Read [AGENTS.md](AGENTS.md) and the exact task first;
+[CONTRIBUTING.md](CONTRIBUTING.md) and the [Codex Playbook](docs/CODEX_PLAYBOOK.md) own contribution
+and packet/review workflow. Use disposable synthetic Markdown for development and tests.
 
-Target runtime: Python 3.12.
-
-Create a virtual environment and install dev dependencies:
+## Set up Python
 
 ```bash
-python -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements-dev.txt
+python -m pip install -r requirements-dev.txt
 ```
 
 Windows PowerShell:
@@ -17,48 +17,42 @@ Windows PowerShell:
 ```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements-dev.txt
+python -m pip install -r requirements-dev.txt
 ```
 
-## Run tests
+## Run checks
 
-```bash
-PYTHONPATH=. pytest -q
+From the repository root with the environment active:
+
+```text
+python -m ruff check app tests scripts
+python -m pytest -q --ignore=tests/e2e
 python -m compileall -q app
 ```
 
-PowerShell:
+Unit/integration tests use fake embedders and must not download real models. Real-model benchmarks
+are separate explicit experiments; see [evaluation tooling](tests/eval/README.md).
+Native filesystem/lifecycle suites have platform-specific behavior; report actual skips and failures.
 
-```powershell
-$env:PYTHONPATH = "."
-pytest -q
-python -m compileall -q app
+Dashboard regression checks need Chromium:
+
+```text
+python -m playwright install chromium
+python -m pytest -q tests/e2e --browser=chromium --tracing=retain-on-failure --output=test-results/playwright
 ```
 
-Tests must use fake embedders and must not download the real embedding model.
+Use `python scripts/agent_check.py --dry-run` to inspect change-aware selection and
+`python scripts/agent_finish.py --task-file path/to/task.md` for completion. A failed or required-but-
+unavailable check is incomplete; manual reminders and independent CI remain separate requirements.
 
-## Docker
+## Run a disposable application
 
-```bash
-docker compose config
-docker compose up -d --build
-curl http://127.0.0.1:8765/health
-```
+Follow [Docker setup](docs/DOCKER.md) with a synthetic vault path and a generated throwaway key.
+Use [named setup](docs/KNOWLEDGE_SPACES.md) only when the task requires it; generic Compose does not
+forward named JSON automatically. Do not use a real user vault or an existing production data layout.
+Do not paste resolved Compose configuration, credentials or environment dumps into an issue.
 
-## Verify semantic search after startup
-
-Startup synchronizes the semantic index in the background. Wait for `/health` to report `semantic_index_ready: true`, then run:
-
-Before the first index is ready, semantic search returns no results while indexing and HTTP `503`
-after a failed initial synchronization. Restarting the application retries synchronization.
-
-```bash
-curl -X POST http://127.0.0.1:8765/api/v1/notes/related \
-  -H "Authorization: Bearer $API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"text":"professional courses and certifications","limit":5}'
-```
-
-## Pull request scope
-
-Prefer one backlog item per PR. Refactors and feature changes should not be mixed unless one strictly enables the other.
+For a model-enabled experiment, wait for `/health/ready` and inspect `/health` diagnostics;
+liveness alone does not establish semantic availability. Compatible prior indexes can remain
+searchable while a refresh is indexing or has failed. See the [API/health guide](docs/API.md).
+Stop serving/stdio before CLI writes or maintenance on the same writable semantic state.
