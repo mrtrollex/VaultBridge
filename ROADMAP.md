@@ -1,6 +1,6 @@
 # VaultBridge product roadmap
 
-Updated 2026-11-19, after v1.5.0 publication.
+Updated 2026-11-20, with the accepted VB-156A named Dashboard design after v1.5.0 publication.
 This is product direction, not authorization to implement a feature or publish a release.
 [BACKLOG.md](BACKLOG.md) owns task contracts and acceptance criteria.
 
@@ -51,6 +51,17 @@ the [architecture](ARCHITECTURE.md) and [Knowledge Spaces guide](docs/KNOWLEDGE_
 The following priorities are **candidates**. They do not allocate new task IDs, approve scope,
 set release dates or override existing acceptance criteria. Choose one bounded issue at a time.
 
+### Accepted design for future capability — Named Knowledge Spaces Dashboard
+
+VB-156A completes the accepted design of a practical read-only first-party Dashboard for explicit
+named-space browsing, qualified note reading, federated search, Knowledge Query and local relationships. Its
+[accepted ADR 0011](docs/adr/0011-named-knowledge-spaces-dashboard.md) defines browser-session,
+policy-filtered discovery, selected-status, privacy and legacy compatibility contracts, followed by
+future B–E slices in [BACKLOG.md](BACKLOG.md#accepted-named-knowledge-spaces-dashboard-design).
+The fresh independent architecture/security review returned APPROVE; the owner accepted the reviewed
+design on 2026-11-20. Named Dashboard remains unavailable in the current runtime. B–E require separate
+implementation authorization and acceptance; design acceptance promises no release/date or shipment.
+
 ### P0 — Documentation and productization
 
 - Keep stable release claims consistent with authoritative GitHub/GHCR metadata.
@@ -75,8 +86,8 @@ handoff; future upkeep should change the owning document instead of repeating st
 - Complete remaining TrueNAS lifecycle evidence on an explicitly authorized disposable installation.
   Catalog form/migration delivery and lifecycle validation remain independent work.
 
-Release qualification and coverage diagnostics precede optional expansion: they directly affect
-whether operators can understand and trust the capabilities already shipped.
+Release qualification and coverage diagnostics remain priorities alongside the future Dashboard:
+they directly affect whether operators can understand and trust the capabilities already shipped.
 TrueNAS lifecycle work may proceed independently when an operator environment is available.
 
 ### P2 — Performance and maintainability
@@ -96,7 +107,6 @@ See the [maintainability audit](docs/MAINTAINABILITY_AUDIT.md) for bounded propo
 
 | Candidate | Required decision before implementation |
 | --- | --- |
-| Named-mode Dashboard | Explicit scope UX, session/policy behavior and privacy design |
 | Safe section updates | VB-032 design/ADR before VB-033; conflict and byte-preservation rules |
 | Verified backlink writes | VB-034 opt-in write contract, ambiguity and retry safety |
 | Additional deployment architectures | Measured operator need and explicit ownership/coordination design |
@@ -108,7 +118,8 @@ or adopt infrastructure/API expansion merely because it appears in this table.
 
 ## 5. Next release themes
 
-Prefer a focused reliability/productization increment over another broad capability milestone.
+Prefer focused reliability/productization increments and the independently reviewable named Dashboard
+future slices defined above over another broad capability milestone.
 The release number and included tasks remain undecided until issues are scoped and accepted.
 
 A useful next release should make at least one existing operator workflow demonstrably easier:

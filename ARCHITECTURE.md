@@ -9,6 +9,12 @@ VaultBridge exposes a deliberately small API over an Obsidian Markdown vault. It
 This is the current ownership/compatibility reference. Detailed lifecycle sections retain slice IDs
 as provenance; their internal/private constructors do not mean public named mode is unavailable.
 Named REST/MCP/CLI composition ships in v1.5.0. The Dashboard remains legacy-only.
+The [ACCEPTED ADR 0011](docs/adr/0011-named-knowledge-spaces-dashboard.md) defines VB-156A's
+future named Dashboard session, discovery/status, scope and compatibility contracts. Its fresh
+independent architecture/security review returned APPROVE and the owner accepted the design on
+2026-11-20. VB-156A is complete for architecture/design only; current runtime behavior is unchanged.
+VB-156B–E remain future implementation tasks requiring separate authorization. The named UI/cookie/
+discovery exclusions below remain in force until follow-up implementation replaces them.
 Release status and image evidence belong in [the release ledger](docs/RELEASE_CHECKLIST.md), not here.
 
 - [Current architecture](#current-architecture) and [HTTP compatibility](#http-api-versioning)
