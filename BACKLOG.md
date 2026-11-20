@@ -14,18 +14,18 @@ Legend:
 
 ## Current-work entry point
 
-Updated 2026-11-19 after published stable **v1.5.0**. This navigation does not alter any task's
+Updated 2026-11-20 for accepted VB-156A design after published stable **v1.5.0**. This navigation does not alter any task's
 acceptance criteria or infer missing operator validation from code or release publication.
 The [release ledger](docs/RELEASE_CHECKLIST.md#v150-release-evidence) owns publication/image facts;
 [PROJECT_STATE.md](PROJECT_STATE.md) owns the compact current snapshot.
 
 | Work class | Current boundary / where to start |
 | --- | --- |
-| Active | Post-v1.5.0 documentation/productization cleanup in this scope; fresh independent review pending. Select another implementation task only from an explicitly scoped issue/contract. |
+| Active | VB-156A architecture/design is complete and accepted; VB-156B–E remain future implementation tasks requiring separate authorization. The prior post-v1.5.0 documentation cleanup retains its separate review boundary. Select implementation only from an explicitly scoped, accepted contract. |
 | Blocked on external/operator evidence | VB-082 remains partial. Edit App persistence, host reboot, generated-catalog upgrade, rollback/recovery and ixVolume retain/remove need authorized disposable TrueNAS evidence. |
 | Separate downstream delivery | VB-106 package-source MCP fields and legacy migration preparation exist; upstream form delivery and lifecycle validation remain separate. Refresh upstream before any delivery task. |
 | Deferred | VB-032 design/ADR and VB-033 section update endpoint; neither is authorized by this cleanup. |
-| Optional candidates | VB-034 verified backlink insertion and VB-055 multi-arch remain optional. Diagnostics, qualification tooling, measured refactors and named Dashboard are roadmap candidates requiring contracts. |
+| Optional candidates | VB-034 verified backlink insertion and VB-055 multi-arch remain optional. Diagnostics, qualification tooling and measured refactors are roadmap candidates requiring contracts. Named Dashboard has the accepted VB-156A design contract below; no implementation is authorized. |
 | Completed / historical | VB-001–VB-031 foundation/retrieval (where marked), VB-040–VB-060 (except VB-055), Dashboard/MCP/relationship/PKM/Query/Capture/Hygiene work, and accepted VB-150/VB-151/VB-152 remain under their existing contracts below. See dated evidence rather than treating old sequences as next-task advice. |
 
 Application publication is complete for v1.5.0. This does not complete every release-qualification,
@@ -39,6 +39,88 @@ The P0 legend above describes the original v1.0 task taxonomy; current candidate
 The specifications below preserve task IDs, acceptance criteria, design-only/runtime distinctions
 and dated execution notes. A missing checkmark is not by itself an open-work instruction; consult
 the task's explicit status/evidence. Historical release plans are not authority to reuse a tag.
+
+## Accepted named Knowledge Spaces Dashboard design
+
+### VB-156A — Knowledge Spaces Dashboard architecture and security design — P1
+
+**Status:** ✅ Completed and ACCEPTED on 2026-11-20 for architecture/design only, after the fresh
+independent architecture/security review returned APPROVE and the owner accepted the reviewed design.
+Owner acceptance covers all six decisions in ADR 0011 section 16, including the journal exception,
+fail-closed recovery, stateless session limits and whole-hostname deployment trust.
+No Dashboard implementation, publication or deployment is claimed. VB-156B–E remain future work.
+The first independent architecture/security review returned FIXES REQUIRED for two HIGH findings:
+cross-tab cookie resurrection and the hostname/port cookie trust boundary. The documentation-only
+repairs were approved by the second fresh independent review; the owner accepted those reviewed decisions.
+
+**Goal:** define a practical read-only first-party named Dashboard using existing domain owners,
+with precise authentication, discovery, selection, compatibility, security and phased UX contracts.
+Current named `/ui`/assets/session 404 and named REST cookie rejection remain unchanged.
+
+**Design:** [ADR 0011 — ACCEPTED](docs/adr/0011-named-knowledge-spaces-dashboard.md).
+The accepted design replaces only VB-152's named UI/cookie/discovery exclusions through separately
+authorized implementation; its current runtime constraints remain in force until that implementation.
+
+**Scope and acceptance criteria:**
+
+- Inspect repository guidance, current state, ADRs 0003/0009, actual UI/session/authentication,
+  registry/runtime/operations/REST Query and nearest backend/browser tests. Distinguish implemented
+  behavior from accepted invariants, superseded sessionStorage history and proposed additions.
+- Specify `/ui/` unlock/restore/logout, readable-space selection, one-space browsing/raw Markdown
+  reader, explicit federated literal/semantic search, practical typed Query filters, local verified
+  wikilink relationships, and honest capabilities/status/coverage with accessible failure states.
+- Resolve current-format signed cookie reuse, current/previous-key rotation, exact named read-route
+  validation, CSRF/origin, rate/error semantics, HTTPS/proxy prefixes, logout/401/cancellation races,
+  no-store/history/BFCache privacy and stateless revocation limits. Tokens confer no space grants.
+- Address the confirmed session finding with validation-only named GET (no Set-Cookie/renewal),
+  origin-wide Web Locks for explicit POST/DELETE, and two bounded nonsecret lifecycle records to
+  quarantine abandoned cookie mutations across reload/tab closure. BroadcastChannel is optional
+  notification, never the ordering authority. Missing required features disables protected named UI;
+  no per-tab fallback, browser-held Bearer or automatic uncertainty reset. Copied/orphaned tokens
+  remain valid until expiry/effective current-key rotation; browser deletion is not server revocation.
+- Address the confirmed deployment finding with a dedicated VaultBridge hostname and trust of all
+  its ports/proxy routes, one canonical session issuer and drained legacy-session handover. Secure,
+  HttpOnly, SameSite=Strict, Path=/ and host-only cookies provide no TCP-port isolation. Preserve
+  trusted HTTPS/proxy-prefix compatibility; legacy/local HTTP runtime contracts are unchanged.
+- Require the [session and hostname regression matrix](docs/adr/0011-named-knowledge-spaces-dashboard.md#required-cross-tab-session-regression-and-browser-qualification)
+  on Chromium, Firefox and WebKit, including a GET response held before headers until after another
+  tab completes logout, cookie-jar/header assertions, concurrent login/401 and orphan POST/DELETE,
+  unsupported-browser fallback and same-host/different-HTTPS-port cookie-delivery demonstrations.
+  Explicit owner acceptance of the narrow journal exception, fail-closed recovery and whole-hostname
+  deployment trust is required; passing source tests cannot certify live listeners or revoke tokens.
+- Compare manual IDs, filtered discovery and hybrid selection. Specify exactly the proposed named-only
+  GET `/api/v1/knowledge/spaces` and GET `/api/v1/knowledge/spaces/status` contracts, response fields,
+  errors/cache and policy-first zero-probe rules. No labels/roots/denied IDs/counts or implicit all.
+- Preserve 1–8 configured spaces/exactly one default, default-only omission, complete authorization
+  before owner/index/filesystem work, unknown=denied errors, whole mixed-selection denial, qualified
+  identities, local relationship boundaries and all legacy REST/MCP/CLI/index/deployment contracts.
+- Include a diagram, component responsibilities, request cancellation/stale-response design and
+  concrete threat scenarios with current/proposed protections and automated regression tests.
+- Define independently reviewable B–E slices with user outcomes, exact modules/contracts, positive/
+  negative acceptance, tests, dependencies, exclusions and definition of done. A separate session
+  must be able to implement B without inventing authentication/discovery/authorization semantics.
+- Validate local Markdown links/fragments, IDs, source schema names, current/proposed claims, privacy
+  and documentation-only scope. Run task/finish workflow and create the fresh review packet; do not
+  perform independent review in this session or mark this task complete from packet generation.
+
+**Future implementation tasks, not implementation authority:**
+
+| Slice | Outcome and contract owner | Dependency |
+| --- | --- | --- |
+| VB-156B | Named session foundation, policy-filtered choices, explicit selection and selected status; [exact contract](docs/adr/0011-named-knowledge-spaces-dashboard.md#vb-156b--named-session-foundation-and-authorized-space-selection) | Accepted ADR 0011/A and separately authorized B |
+| VB-156C | Scoped browsing, qualified reader and federated Search; [exact contract](docs/adr/0011-named-knowledge-spaces-dashboard.md#vb-156c--scoped-browsing-reader-and-federated-search) | Approved B |
+| VB-156D | Typed Knowledge Query and local relationship views; [exact contract](docs/adr/0011-named-knowledge-spaces-dashboard.md#vb-156d--knowledge-query-and-local-relationship-views) | Approved C |
+| VB-156E | Integrated Playwright, accessibility, proxy/privacy and release-source hardening; [exact contract](docs/adr/0011-named-knowledge-spaces-dashboard.md#vb-156e--integrated-browser-accessibility-and-release-hardening) | Approved B–D; security/browser tests already required per slice |
+
+**Explicit non-goals:** application/test/dependency/CI/Docker/TrueNAS/release changes in A; B–E
+implementation, general editing/writes, arbitrary files, cross-space promotion/graphs, accounts/RBAC/
+OAuth/session database, frontend service/build dependency, label publication, named Hygiene UI or
+maintenance. No commit, push, publish, deploy, reviewer launch or accepted-ADR rewrite.
+
+**Definition of done:** architecture documentation and applicable checks, the fresh review packet,
+the separate independent APPROVE review and owner acceptance establish VB-156A design completion.
+Those review/owner gates are satisfied on 2026-11-20. B–E implementation, browser/security qualification,
+release and deployment retain their separate authorization and acceptance gates.
 
 ## Foundation
 
