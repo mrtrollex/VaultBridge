@@ -1,0 +1,653 @@
+FFFF                                                                     [100%]
+================================== FAILURES ===================================
+____ test_native_cookie_scope_and_samesite[webkit-application-root-https] _____
+
+browser = <Browser type=<BrowserType name=webkit executable_path=<USER_HOME>\AppData\Local\ms-playwright\webkit-2359\Playwright.exe> version=26.6>
+new_context = <function new_context.<locals>._new_context at 0x00000223C6D2A520>
+tmp_path = WindowsPath('<USER_HOME>/AppData/Local/Temp/pytest-of-<USER>/pytest-2017/test_native_cookie_scope_and_s0')
+prefix = '', issuer = 'application'
+
+    @pytest.mark.parametrize("prefix", ["", "/proxy"], ids=["root-https", "prefix-https"])
+    @pytest.mark.parametrize("issuer", ["application", "control"])
+    def test_native_cookie_scope_and_samesite(browser, new_context, tmp_path, prefix, issuer):
+        received = []
+        control_name = "synthetic_strict_control"
+
+        async def receiver(scope, receive, send):
+            if scope["type"] == "lifespan":
+                while True:
+                    event = await receive()
+                    await send({"type": event["type"] + ".complete"})
+                    if event["type"] == "lifespan.shutdown":
+                        return
+            else:
+                received.append(
+                    {
+                        "path": scope["path"],
+                        "query": scope["query_string"],
+                        "method": scope["method"],
+                        "headers": dict(scope["headers"]),
+                    }
+                )
+                response = HTMLResponse(
+                    "<!doctype html><title>Disposable cookie receiver</title>",
+                    headers={"Connection": "close", "Cache-Control": "no-store"},
+                )
+                if scope["path"] == "/issue":
+                    response.set_cookie(
+                        control_name,
+                        "<SYNTHETIC_COOKIE_VALUE_REDACTED>",
+                        max_age=604800,
+                        secure=True,
+                        httponly=True,
+                        samesite="strict",
+                        path="/",
+                    )
+                await response(scope, receive, send)
+
+        with named_server(tmp_path, prefix) as deployment:
+            with serve(receiver, deployment["cert"], deployment["key"]) as tls_port, serve(receiver) as http_port:
+                context = new_context(ignore_https_errors=True, proxy=deployment["proxy"])
+                try:
+                    page = open_page(context, deployment)
+                    receiver_origin = f"https://vaultbridge.example.test:{tls_port}"
+                    if issuer == "application":
+                        with page.expect_response(
+                            lambda r: r.request.method == "POST" and r.url.endswith("/ui/session")
+                        ) as issued:
+                            login(page)
+                        response = issued.value
+                        cookie_name = COOKIE
+                        destination = deployment["url"] + "/health/live"
+                        other_port = receiver_origin + "/probe"
+                    else:
+                        response = page.goto(receiver_origin + "/issue")
+                        cookie_name = control_name
+                        destination = receiver_origin + "/probe"
+                        other_port = deployment["url"] + "/health/live"
+                    header = response.header_value("set-cookie").lower()
+                    assert all(
+                        flag in header for flag in ("httponly", "secure", "samesite=strict", "path=/", "max-age=604800")
+                    )
+                    assert "domain=" not in header
+                    (cookie,) = [c for c in context.cookies() if c["name"] == cookie_name]
+                    assert cookie["httpOnly"] and cookie["secure"] and cookie["domain"] == "vaultbridge.example.test"
+                    sibling = f"https://other.example.test:{tls_port}/probe"
+                    foreign = f"https://foreign.invalid.test:{tls_port}/probe"
+                    insecure = f"http://vaultbridge.example.test:{http_port}/probe"
+                    cases = [
+                        ("same-host-other-port-navigation", destination, other_port, "navigation", True),
+                        ("different-host-same-site-navigation", destination, sibling, "navigation", False),
+                        ("same-site-sibling-to-issuer-navigation", sibling, destination, "navigation", True),
+                        ("cross-site-navigation", foreign, destination, "navigation", False),
+                        ("same-host-other-port-fetch", destination, other_port, "fetch", True),
+                        ("same-site-sibling-to-issuer-fetch", sibling, destination, "fetch", True),
+                        ("cross-site-fetch", foreign, destination, "fetch", False),
+                        ("different-host-same-site-fetch", destination, sibling, "fetch", False),
+                        ("secure-cookie-over-http", destination, insecure, "navigation", False),
+                    ]
+                    facts, mismatches = [], []
+                    for name, source, target, action, expected in cases:
+                        page.goto(source)
+                        assert cookie_name not in page.evaluate("document.cookie")
+                        target += "?case=" + name
+                        if action == "navigation":
+                            page.evaluate(
+                                "url => {const a=document.createElement('a'); a.id='probe-link'; "
+                                "a.href=url; a.textContent='Navigate'; document.body.append(a)}",
+                                target,
+                            )
+                            page.locator("#probe-link").click()
+                        else:
+                            page.evaluate(
+                                "url => fetch(url,{credentials:'include',mode:'no-cors',cache:'no-store'}).then(r=>r.type)",
+                                target,
+                            )
+                        observations = deployment["observations"] + received
+                        (observed,) = [r for r in observations if r["query"] == ("case=" + name).encode()]
+                        # Assert actual receiving-server headers, not document.cookie
+                        # or a browser inspection API's interpretation of SameSite.
+                        headers = observed["headers"]
+                        present = cookie_name.encode() + b"=" in headers.get(b"cookie", b"")
+                        facts.append(
+                            dict(
+                                case=name,
+                                cookie_received=present,
+                                origin=headers.get(b"origin", b"").decode(),
+                                fetch_site=headers.get(b"sec-fetch-site", b"").decode(),
+                            )
+                        )
+                        if present != expected:
+                            mismatches.append(name)
+                    print(
+                        json.dumps(
+                            dict(issuer=issuer, browser=browser.version, stored_same_site=cookie["sameSite"], cases=facts),
+                            sort_keys=True,
+                        )
+                    )
+>                   assert not mismatches, f"Native cookie delivery violated Strict/host-only/Secure: {mismatches}"
+E                   AssertionError: Native cookie delivery violated Strict/host-only/Secure: ['cross-site-navigation', 'cross-site-fetch']
+E                   assert not ['cross-site-navigation', 'cross-site-fetch']
+
+tests\e2e\test_named_cookie_delivery.py:134: AssertionError
+---------------------------- Captured stdout call -----------------------------
+{"browser": "26.6", "cases": [{"case": "same-host-other-port-navigation", "cookie_received": true, "fetch_site": "same-site", "origin": ""}, {"case": "different-host-same-site-navigation", "cookie_received": false, "fetch_site": "same-site", "origin": ""}, {"case": "same-site-sibling-to-issuer-navigation", "cookie_received": true, "fetch_site": "same-site", "origin": ""}, {"case": "cross-site-navigation", "cookie_received": true, "fetch_site": "cross-site", "origin": ""}, {"case": "same-host-other-port-fetch", "cookie_received": true, "fetch_site": "same-site", "origin": ""}, {"case": "same-site-sibling-to-issuer-fetch", "cookie_received": true, "fetch_site": "same-site", "origin": ""}, {"case": "cross-site-fetch", "cookie_received": true, "fetch_site": "cross-site", "origin": ""}, {"case": "different-host-same-site-fetch", "cookie_received": false, "fetch_site": "same-site", "origin": ""}, {"case": "secure-cookie-over-http", "cookie_received": false, "fetch_site": "", "origin": ""}], "issuer": "application", "stored_same_site": "None"}
+---------------------------- Captured stderr call -----------------------------
+{"timestamp":"2026-11-21T08:27:54.627Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"000e02a6c11b4291899ec42e3f63b0f7","method":"GET"}
+{"timestamp":"2026-11-21T08:27:54.659Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"000e02a6c11b4291899ec42e3f63b0f7","method":"GET","route":"/ui/","status_code":200,"duration_ms":31.922}
+{"timestamp":"2026-11-21T08:27:54.682Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"0d65eaf295154c9daecb17c54f319bfd","method":"GET"}
+{"timestamp":"2026-11-21T08:27:54.685Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"0d65eaf295154c9daecb17c54f319bfd","method":"GET","route":"/ui/assets/app.css","status_code":200,"duration_ms":2.783}
+{"timestamp":"2026-11-21T08:27:54.703Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"4896ebb40ed6489cb75dd145a0dc06b4","method":"GET"}
+{"timestamp":"2026-11-21T08:27:54.705Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"4896ebb40ed6489cb75dd145a0dc06b4","method":"GET","route":"/ui/assets/named-app.js","status_code":200,"duration_ms":2.565}
+{"timestamp":"2026-11-21T08:27:54.713Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"a80201fe46e24b748e41429751e0a451","method":"GET"}
+{"timestamp":"2026-11-21T08:27:54.716Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"a80201fe46e24b748e41429751e0a451","method":"GET","route":"/ui/assets/vaultbridge-logo.webp","status_code":200,"duration_ms":2.885}
+{"timestamp":"2026-11-21T08:27:54.755Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"769dd968930a4e3dbc94870075e85a49","method":"GET"}
+{"timestamp":"2026-11-21T08:27:54.758Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"8653245c58204b63a94b8d10e7bc6abe","method":"GET"}
+{"timestamp":"2026-11-21T08:27:54.764Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"769dd968930a4e3dbc94870075e85a49","method":"GET","route":"/ui/assets/named-session.js","status_code":200,"duration_ms":9.548}
+{"timestamp":"2026-11-21T08:27:54.765Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"8653245c58204b63a94b8d10e7bc6abe","method":"GET","route":"/ui/assets/scoped-client.js","status_code":200,"duration_ms":7.187}
+{"timestamp":"2026-11-21T08:27:54.773Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"ff39cc0c8cb04179859d8c7d688c0b83","method":"GET"}
+{"timestamp":"2026-11-21T08:27:54.775Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"ff39cc0c8cb04179859d8c7d688c0b83","method":"GET","route":"/ui/assets/spaces.js","status_code":200,"duration_ms":2.034}
+{"timestamp":"2026-11-21T08:27:55.006Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"3f3e55a8898f4d628e488a0b0d689ac1","method":"POST"}
+{"timestamp":"2026-11-21T08:27:55.008Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"3f3e55a8898f4d628e488a0b0d689ac1","method":"POST","route":"/ui/session","status_code":200,"duration_ms":1.761}
+{"timestamp":"2026-11-21T08:27:55.023Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"eec464dec3a24898bc14d60858845595","method":"GET"}
+{"timestamp":"2026-11-21T08:27:55.029Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"eec464dec3a24898bc14d60858845595","method":"GET","route":"/api/v1/knowledge/spaces","status_code":200,"duration_ms":4.952}
+{"timestamp":"2026-11-21T08:27:55.054Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"be5d63d075cd456e841dc6b85be1911d","method":"GET"}
+{"timestamp":"2026-11-21T08:27:55.058Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"be5d63d075cd456e841dc6b85be1911d","method":"GET","route":"/api/v1/knowledge/spaces/status","status_code":200,"duration_ms":3.324}
+{"timestamp":"2026-11-21T08:27:55.092Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"0ff4e3a7cc9f47d790daedb2a25f9ee6","method":"GET"}
+{"timestamp":"2026-11-21T08:27:55.093Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"0ff4e3a7cc9f47d790daedb2a25f9ee6","method":"GET","route":"/health/live","status_code":200,"duration_ms":1.33}
+{"timestamp":"2026-11-21T08:27:55.314Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"f05ee61fb6574b03ac9baac1bc9d7118","method":"GET"}
+{"timestamp":"2026-11-21T08:27:55.315Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"f05ee61fb6574b03ac9baac1bc9d7118","method":"GET","route":"/health/live","status_code":200,"duration_ms":0.87}
+{"timestamp":"2026-11-21T08:27:55.665Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"92fc55f40c3244aabdb74e0f250c1695","method":"GET"}
+{"timestamp":"2026-11-21T08:27:55.666Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"92fc55f40c3244aabdb74e0f250c1695","method":"GET","route":"/health/live","status_code":200,"duration_ms":0.795}
+{"timestamp":"2026-11-21T08:27:56.007Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"7d8803e6deb7438484838f34a5f9e5c3","method":"GET"}
+{"timestamp":"2026-11-21T08:27:56.008Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"7d8803e6deb7438484838f34a5f9e5c3","method":"GET","route":"/health/live","status_code":200,"duration_ms":0.761}
+{"timestamp":"2026-11-21T08:27:56.042Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"3d86f73499ac4418936793b500795a8e","method":"GET"}
+{"timestamp":"2026-11-21T08:27:56.044Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"3d86f73499ac4418936793b500795a8e","method":"GET","route":"/health/live","status_code":200,"duration_ms":0.871}
+{"timestamp":"2026-11-21T08:27:56.166Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"99f51e36b3e04ffa9aeaee141dcd3979","method":"GET"}
+{"timestamp":"2026-11-21T08:27:56.167Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"99f51e36b3e04ffa9aeaee141dcd3979","method":"GET","route":"/health/live","status_code":200,"duration_ms":0.929}
+{"timestamp":"2026-11-21T08:27:56.269Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"9fcc78c7d5a84599a88aab3ab34b086a","method":"GET"}
+{"timestamp":"2026-11-21T08:27:56.269Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"9fcc78c7d5a84599a88aab3ab34b086a","method":"GET","route":"/health/live","status_code":200,"duration_ms":0.845}
+{"timestamp":"2026-11-21T08:27:56.362Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"66fb7f9074c4484c8d2b4174ad4f326b","method":"GET"}
+{"timestamp":"2026-11-21T08:27:56.363Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"66fb7f9074c4484c8d2b4174ad4f326b","method":"GET","route":"/health/live","status_code":200,"duration_ms":0.838}
+{"timestamp":"2026-11-21T08:27:56.454Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"9042fbe4cdda449a94c22eb2df3b377a","method":"GET"}
+{"timestamp":"2026-11-21T08:27:56.455Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"9042fbe4cdda449a94c22eb2df3b377a","method":"GET","route":"/health/live","status_code":200,"duration_ms":0.856}
+___ test_native_cookie_scope_and_samesite[webkit-application-prefix-https] ____
+
+browser = <Browser type=<BrowserType name=webkit executable_path=<USER_HOME>\AppData\Local\ms-playwright\webkit-2359\Playwright.exe> version=26.6>
+new_context = <function new_context.<locals>._new_context at 0x00000223C703B920>
+tmp_path = WindowsPath('<USER_HOME>/AppData/Local/Temp/pytest-of-<USER>/pytest-2017/test_native_cookie_scope_and_s1')
+prefix = '/proxy', issuer = 'application'
+
+    @pytest.mark.parametrize("prefix", ["", "/proxy"], ids=["root-https", "prefix-https"])
+    @pytest.mark.parametrize("issuer", ["application", "control"])
+    def test_native_cookie_scope_and_samesite(browser, new_context, tmp_path, prefix, issuer):
+        received = []
+        control_name = "synthetic_strict_control"
+
+        async def receiver(scope, receive, send):
+            if scope["type"] == "lifespan":
+                while True:
+                    event = await receive()
+                    await send({"type": event["type"] + ".complete"})
+                    if event["type"] == "lifespan.shutdown":
+                        return
+            else:
+                received.append(
+                    {
+                        "path": scope["path"],
+                        "query": scope["query_string"],
+                        "method": scope["method"],
+                        "headers": dict(scope["headers"]),
+                    }
+                )
+                response = HTMLResponse(
+                    "<!doctype html><title>Disposable cookie receiver</title>",
+                    headers={"Connection": "close", "Cache-Control": "no-store"},
+                )
+                if scope["path"] == "/issue":
+                    response.set_cookie(
+                        control_name,
+                        "<SYNTHETIC_COOKIE_VALUE_REDACTED>",
+                        max_age=604800,
+                        secure=True,
+                        httponly=True,
+                        samesite="strict",
+                        path="/",
+                    )
+                await response(scope, receive, send)
+
+        with named_server(tmp_path, prefix) as deployment:
+            with serve(receiver, deployment["cert"], deployment["key"]) as tls_port, serve(receiver) as http_port:
+                context = new_context(ignore_https_errors=True, proxy=deployment["proxy"])
+                try:
+                    page = open_page(context, deployment)
+                    receiver_origin = f"https://vaultbridge.example.test:{tls_port}"
+                    if issuer == "application":
+                        with page.expect_response(
+                            lambda r: r.request.method == "POST" and r.url.endswith("/ui/session")
+                        ) as issued:
+                            login(page)
+                        response = issued.value
+                        cookie_name = COOKIE
+                        destination = deployment["url"] + "/health/live"
+                        other_port = receiver_origin + "/probe"
+                    else:
+                        response = page.goto(receiver_origin + "/issue")
+                        cookie_name = control_name
+                        destination = receiver_origin + "/probe"
+                        other_port = deployment["url"] + "/health/live"
+                    header = response.header_value("set-cookie").lower()
+                    assert all(
+                        flag in header for flag in ("httponly", "secure", "samesite=strict", "path=/", "max-age=604800")
+                    )
+                    assert "domain=" not in header
+                    (cookie,) = [c for c in context.cookies() if c["name"] == cookie_name]
+                    assert cookie["httpOnly"] and cookie["secure"] and cookie["domain"] == "vaultbridge.example.test"
+                    sibling = f"https://other.example.test:{tls_port}/probe"
+                    foreign = f"https://foreign.invalid.test:{tls_port}/probe"
+                    insecure = f"http://vaultbridge.example.test:{http_port}/probe"
+                    cases = [
+                        ("same-host-other-port-navigation", destination, other_port, "navigation", True),
+                        ("different-host-same-site-navigation", destination, sibling, "navigation", False),
+                        ("same-site-sibling-to-issuer-navigation", sibling, destination, "navigation", True),
+                        ("cross-site-navigation", foreign, destination, "navigation", False),
+                        ("same-host-other-port-fetch", destination, other_port, "fetch", True),
+                        ("same-site-sibling-to-issuer-fetch", sibling, destination, "fetch", True),
+                        ("cross-site-fetch", foreign, destination, "fetch", False),
+                        ("different-host-same-site-fetch", destination, sibling, "fetch", False),
+                        ("secure-cookie-over-http", destination, insecure, "navigation", False),
+                    ]
+                    facts, mismatches = [], []
+                    for name, source, target, action, expected in cases:
+                        page.goto(source)
+                        assert cookie_name not in page.evaluate("document.cookie")
+                        target += "?case=" + name
+                        if action == "navigation":
+                            page.evaluate(
+                                "url => {const a=document.createElement('a'); a.id='probe-link'; "
+                                "a.href=url; a.textContent='Navigate'; document.body.append(a)}",
+                                target,
+                            )
+                            page.locator("#probe-link").click()
+                        else:
+                            page.evaluate(
+                                "url => fetch(url,{credentials:'include',mode:'no-cors',cache:'no-store'}).then(r=>r.type)",
+                                target,
+                            )
+                        observations = deployment["observations"] + received
+                        (observed,) = [r for r in observations if r["query"] == ("case=" + name).encode()]
+                        # Assert actual receiving-server headers, not document.cookie
+                        # or a browser inspection API's interpretation of SameSite.
+                        headers = observed["headers"]
+                        present = cookie_name.encode() + b"=" in headers.get(b"cookie", b"")
+                        facts.append(
+                            dict(
+                                case=name,
+                                cookie_received=present,
+                                origin=headers.get(b"origin", b"").decode(),
+                                fetch_site=headers.get(b"sec-fetch-site", b"").decode(),
+                            )
+                        )
+                        if present != expected:
+                            mismatches.append(name)
+                    print(
+                        json.dumps(
+                            dict(issuer=issuer, browser=browser.version, stored_same_site=cookie["sameSite"], cases=facts),
+                            sort_keys=True,
+                        )
+                    )
+>                   assert not mismatches, f"Native cookie delivery violated Strict/host-only/Secure: {mismatches}"
+E                   AssertionError: Native cookie delivery violated Strict/host-only/Secure: ['cross-site-navigation', 'cross-site-fetch']
+E                   assert not ['cross-site-navigation', 'cross-site-fetch']
+
+tests\e2e\test_named_cookie_delivery.py:134: AssertionError
+---------------------------- Captured stdout call -----------------------------
+{"browser": "26.6", "cases": [{"case": "same-host-other-port-navigation", "cookie_received": true, "fetch_site": "same-site", "origin": ""}, {"case": "different-host-same-site-navigation", "cookie_received": false, "fetch_site": "same-site", "origin": ""}, {"case": "same-site-sibling-to-issuer-navigation", "cookie_received": true, "fetch_site": "same-site", "origin": ""}, {"case": "cross-site-navigation", "cookie_received": true, "fetch_site": "cross-site", "origin": ""}, {"case": "same-host-other-port-fetch", "cookie_received": true, "fetch_site": "same-site", "origin": ""}, {"case": "same-site-sibling-to-issuer-fetch", "cookie_received": true, "fetch_site": "same-site", "origin": ""}, {"case": "cross-site-fetch", "cookie_received": true, "fetch_site": "cross-site", "origin": ""}, {"case": "different-host-same-site-fetch", "cookie_received": false, "fetch_site": "same-site", "origin": ""}, {"case": "secure-cookie-over-http", "cookie_received": false, "fetch_site": "", "origin": ""}], "issuer": "application", "stored_same_site": "None"}
+---------------------------- Captured stderr call -----------------------------
+{"timestamp":"2026-11-21T08:27:57.601Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"c1fae7f882aa4cd6af9a1af52f545009","method":"GET"}
+{"timestamp":"2026-11-21T08:27:57.630Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"c1fae7f882aa4cd6af9a1af52f545009","method":"GET","route":"/ui/","status_code":200,"duration_ms":29.062}
+{"timestamp":"2026-11-21T08:27:57.649Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"25ad17fc63cf404a916e64b87ff42aa7","method":"GET"}
+{"timestamp":"2026-11-21T08:27:57.652Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"25ad17fc63cf404a916e64b87ff42aa7","method":"GET","route":"/ui/assets/app.css","status_code":200,"duration_ms":1.856}
+{"timestamp":"2026-11-21T08:27:57.659Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"8185fca6a43a43b69f7de001aa1b2406","method":"GET"}
+{"timestamp":"2026-11-21T08:27:57.661Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"8185fca6a43a43b69f7de001aa1b2406","method":"GET","route":"/ui/assets/named-app.js","status_code":200,"duration_ms":2.143}
+{"timestamp":"2026-11-21T08:27:57.674Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"05b2f2d884244b1aa74b09c7b12c4bba","method":"GET"}
+{"timestamp":"2026-11-21T08:27:57.676Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"05b2f2d884244b1aa74b09c7b12c4bba","method":"GET","route":"/ui/assets/vaultbridge-logo.webp","status_code":200,"duration_ms":2.041}
+{"timestamp":"2026-11-21T08:27:57.731Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"177edb1ed7744107b51504d21e182a83","method":"GET"}
+{"timestamp":"2026-11-21T08:27:57.733Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"177edb1ed7744107b51504d21e182a83","method":"GET","route":"/ui/assets/named-session.js","status_code":200,"duration_ms":2.507}
+{"timestamp":"2026-11-21T08:27:57.744Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"33f72130dc6a4702bd13194510a53691","method":"GET"}
+{"timestamp":"2026-11-21T08:27:57.745Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"8af20d0566364b4195d4fe4507a3649b","method":"GET"}
+{"timestamp":"2026-11-21T08:27:57.747Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"33f72130dc6a4702bd13194510a53691","method":"GET","route":"/ui/assets/scoped-client.js","status_code":200,"duration_ms":3.084}
+{"timestamp":"2026-11-21T08:27:57.747Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"8af20d0566364b4195d4fe4507a3649b","method":"GET","route":"/ui/assets/spaces.js","status_code":200,"duration_ms":2.609}
+{"timestamp":"2026-11-21T08:27:57.967Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"322f50bf3aa24f3d92c86d67bd8efc60","method":"POST"}
+{"timestamp":"2026-11-21T08:27:57.968Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"322f50bf3aa24f3d92c86d67bd8efc60","method":"POST","route":"/ui/session","status_code":200,"duration_ms":0.785}
+{"timestamp":"2026-11-21T08:27:57.981Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"2bb9e94b6879460192d6a41760e3b3e3","method":"GET"}
+{"timestamp":"2026-11-21T08:27:57.987Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"2bb9e94b6879460192d6a41760e3b3e3","method":"GET","route":"/api/v1/knowledge/spaces","status_code":200,"duration_ms":5.174}
+{"timestamp":"2026-11-21T08:27:58.007Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"6ec8664f92ea42628ac13e591ccdcbda","method":"GET"}
+{"timestamp":"2026-11-21T08:27:58.009Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"6ec8664f92ea42628ac13e591ccdcbda","method":"GET","route":"/api/v1/knowledge/spaces/status","status_code":200,"duration_ms":1.988}
+{"timestamp":"2026-11-21T08:27:58.054Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"39df30ed81834241b47a9955377ddabb","method":"GET"}
+{"timestamp":"2026-11-21T08:27:58.055Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"39df30ed81834241b47a9955377ddabb","method":"GET","route":"/health/live","status_code":200,"duration_ms":0.913}
+{"timestamp":"2026-11-21T08:27:58.271Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"f1f52c984e0c4d5491189dbce1961990","method":"GET"}
+{"timestamp":"2026-11-21T08:27:58.272Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"f1f52c984e0c4d5491189dbce1961990","method":"GET","route":"/health/live","status_code":200,"duration_ms":0.892}
+{"timestamp":"2026-11-21T08:27:58.667Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"86653d4c96424faebc17c5af94138a6d","method":"GET"}
+{"timestamp":"2026-11-21T08:27:58.668Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"86653d4c96424faebc17c5af94138a6d","method":"GET","route":"/health/live","status_code":200,"duration_ms":0.896}
+{"timestamp":"2026-11-21T08:27:59.063Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"fdbf4febf6d143ce93f14140fd52660a","method":"GET"}
+{"timestamp":"2026-11-21T08:27:59.064Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"fdbf4febf6d143ce93f14140fd52660a","method":"GET","route":"/health/live","status_code":200,"duration_ms":0.927}
+{"timestamp":"2026-11-21T08:27:59.123Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"cedc789e7bbf4aa4b95cddb2f5e338e5","method":"GET"}
+{"timestamp":"2026-11-21T08:27:59.124Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"cedc789e7bbf4aa4b95cddb2f5e338e5","method":"GET","route":"/health/live","status_code":200,"duration_ms":1.1}
+{"timestamp":"2026-11-21T08:27:59.281Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"0080f51c959d4e22835688dbde421c8e","method":"GET"}
+{"timestamp":"2026-11-21T08:27:59.282Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"0080f51c959d4e22835688dbde421c8e","method":"GET","route":"/health/live","status_code":200,"duration_ms":0.829}
+{"timestamp":"2026-11-21T08:27:59.394Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"da3b658c3cc741b2a9a3f40fc2df2ed2","method":"GET"}
+{"timestamp":"2026-11-21T08:27:59.395Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"da3b658c3cc741b2a9a3f40fc2df2ed2","method":"GET","route":"/health/live","status_code":200,"duration_ms":0.906}
+{"timestamp":"2026-11-21T08:27:59.478Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"77e83675cc5c4bcb9462a35671ed674d","method":"GET"}
+{"timestamp":"2026-11-21T08:27:59.479Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"77e83675cc5c4bcb9462a35671ed674d","method":"GET","route":"/health/live","status_code":200,"duration_ms":0.924}
+{"timestamp":"2026-11-21T08:27:59.592Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"bb58448a72744e0c9aa1bad75a33765c","method":"GET"}
+{"timestamp":"2026-11-21T08:27:59.592Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"bb58448a72744e0c9aa1bad75a33765c","method":"GET","route":"/health/live","status_code":200,"duration_ms":0.842}
+______ test_native_cookie_scope_and_samesite[webkit-control-root-https] _______
+
+browser = <Browser type=<BrowserType name=webkit executable_path=<USER_HOME>\AppData\Local\ms-playwright\webkit-2359\Playwright.exe> version=26.6>
+new_context = <function new_context.<locals>._new_context at 0x00000223C70D2160>
+tmp_path = WindowsPath('<USER_HOME>/AppData/Local/Temp/pytest-of-<USER>/pytest-2017/test_native_cookie_scope_and_s2')
+prefix = '', issuer = 'control'
+
+    @pytest.mark.parametrize("prefix", ["", "/proxy"], ids=["root-https", "prefix-https"])
+    @pytest.mark.parametrize("issuer", ["application", "control"])
+    def test_native_cookie_scope_and_samesite(browser, new_context, tmp_path, prefix, issuer):
+        received = []
+        control_name = "synthetic_strict_control"
+
+        async def receiver(scope, receive, send):
+            if scope["type"] == "lifespan":
+                while True:
+                    event = await receive()
+                    await send({"type": event["type"] + ".complete"})
+                    if event["type"] == "lifespan.shutdown":
+                        return
+            else:
+                received.append(
+                    {
+                        "path": scope["path"],
+                        "query": scope["query_string"],
+                        "method": scope["method"],
+                        "headers": dict(scope["headers"]),
+                    }
+                )
+                response = HTMLResponse(
+                    "<!doctype html><title>Disposable cookie receiver</title>",
+                    headers={"Connection": "close", "Cache-Control": "no-store"},
+                )
+                if scope["path"] == "/issue":
+                    response.set_cookie(
+                        control_name,
+                        "<SYNTHETIC_COOKIE_VALUE_REDACTED>",
+                        max_age=604800,
+                        secure=True,
+                        httponly=True,
+                        samesite="strict",
+                        path="/",
+                    )
+                await response(scope, receive, send)
+
+        with named_server(tmp_path, prefix) as deployment:
+            with serve(receiver, deployment["cert"], deployment["key"]) as tls_port, serve(receiver) as http_port:
+                context = new_context(ignore_https_errors=True, proxy=deployment["proxy"])
+                try:
+                    page = open_page(context, deployment)
+                    receiver_origin = f"https://vaultbridge.example.test:{tls_port}"
+                    if issuer == "application":
+                        with page.expect_response(
+                            lambda r: r.request.method == "POST" and r.url.endswith("/ui/session")
+                        ) as issued:
+                            login(page)
+                        response = issued.value
+                        cookie_name = COOKIE
+                        destination = deployment["url"] + "/health/live"
+                        other_port = receiver_origin + "/probe"
+                    else:
+                        response = page.goto(receiver_origin + "/issue")
+                        cookie_name = control_name
+                        destination = receiver_origin + "/probe"
+                        other_port = deployment["url"] + "/health/live"
+                    header = response.header_value("set-cookie").lower()
+                    assert all(
+                        flag in header for flag in ("httponly", "secure", "samesite=strict", "path=/", "max-age=604800")
+                    )
+                    assert "domain=" not in header
+                    (cookie,) = [c for c in context.cookies() if c["name"] == cookie_name]
+                    assert cookie["httpOnly"] and cookie["secure"] and cookie["domain"] == "vaultbridge.example.test"
+                    sibling = f"https://other.example.test:{tls_port}/probe"
+                    foreign = f"https://foreign.invalid.test:{tls_port}/probe"
+                    insecure = f"http://vaultbridge.example.test:{http_port}/probe"
+                    cases = [
+                        ("same-host-other-port-navigation", destination, other_port, "navigation", True),
+                        ("different-host-same-site-navigation", destination, sibling, "navigation", False),
+                        ("same-site-sibling-to-issuer-navigation", sibling, destination, "navigation", True),
+                        ("cross-site-navigation", foreign, destination, "navigation", False),
+                        ("same-host-other-port-fetch", destination, other_port, "fetch", True),
+                        ("same-site-sibling-to-issuer-fetch", sibling, destination, "fetch", True),
+                        ("cross-site-fetch", foreign, destination, "fetch", False),
+                        ("different-host-same-site-fetch", destination, sibling, "fetch", False),
+                        ("secure-cookie-over-http", destination, insecure, "navigation", False),
+                    ]
+                    facts, mismatches = [], []
+                    for name, source, target, action, expected in cases:
+                        page.goto(source)
+                        assert cookie_name not in page.evaluate("document.cookie")
+                        target += "?case=" + name
+                        if action == "navigation":
+                            page.evaluate(
+                                "url => {const a=document.createElement('a'); a.id='probe-link'; "
+                                "a.href=url; a.textContent='Navigate'; document.body.append(a)}",
+                                target,
+                            )
+                            page.locator("#probe-link").click()
+                        else:
+                            page.evaluate(
+                                "url => fetch(url,{credentials:'include',mode:'no-cors',cache:'no-store'}).then(r=>r.type)",
+                                target,
+                            )
+                        observations = deployment["observations"] + received
+                        (observed,) = [r for r in observations if r["query"] == ("case=" + name).encode()]
+                        # Assert actual receiving-server headers, not document.cookie
+                        # or a browser inspection API's interpretation of SameSite.
+                        headers = observed["headers"]
+                        present = cookie_name.encode() + b"=" in headers.get(b"cookie", b"")
+                        facts.append(
+                            dict(
+                                case=name,
+                                cookie_received=present,
+                                origin=headers.get(b"origin", b"").decode(),
+                                fetch_site=headers.get(b"sec-fetch-site", b"").decode(),
+                            )
+                        )
+                        if present != expected:
+                            mismatches.append(name)
+                    print(
+                        json.dumps(
+                            dict(issuer=issuer, browser=browser.version, stored_same_site=cookie["sameSite"], cases=facts),
+                            sort_keys=True,
+                        )
+                    )
+>                   assert not mismatches, f"Native cookie delivery violated Strict/host-only/Secure: {mismatches}"
+E                   AssertionError: Native cookie delivery violated Strict/host-only/Secure: ['cross-site-navigation', 'cross-site-fetch']
+E                   assert not ['cross-site-navigation', 'cross-site-fetch']
+
+tests\e2e\test_named_cookie_delivery.py:134: AssertionError
+---------------------------- Captured stdout call -----------------------------
+{"browser": "26.6", "cases": [{"case": "same-host-other-port-navigation", "cookie_received": true, "fetch_site": "same-site", "origin": ""}, {"case": "different-host-same-site-navigation", "cookie_received": false, "fetch_site": "same-site", "origin": ""}, {"case": "same-site-sibling-to-issuer-navigation", "cookie_received": true, "fetch_site": "same-site", "origin": ""}, {"case": "cross-site-navigation", "cookie_received": true, "fetch_site": "cross-site", "origin": ""}, {"case": "same-host-other-port-fetch", "cookie_received": true, "fetch_site": "same-site", "origin": ""}, {"case": "same-site-sibling-to-issuer-fetch", "cookie_received": true, "fetch_site": "same-site", "origin": ""}, {"case": "cross-site-fetch", "cookie_received": true, "fetch_site": "cross-site", "origin": ""}, {"case": "different-host-same-site-fetch", "cookie_received": false, "fetch_site": "same-site", "origin": ""}, {"case": "secure-cookie-over-http", "cookie_received": false, "fetch_site": "", "origin": ""}], "issuer": "control", "stored_same_site": "None"}
+---------------------------- Captured stderr call -----------------------------
+{"timestamp":"2026-11-21T08:28:01.039Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"fe984c31c7a9432a84b58e99aca56fd5","method":"GET"}
+{"timestamp":"2026-11-21T08:28:01.067Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"fe984c31c7a9432a84b58e99aca56fd5","method":"GET","route":"/ui/","status_code":200,"duration_ms":28.117}
+{"timestamp":"2026-11-21T08:28:01.099Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"e7e0e2cae040439189743de0398904ec","method":"GET"}
+{"timestamp":"2026-11-21T08:28:01.101Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"e7e0e2cae040439189743de0398904ec","method":"GET","route":"/ui/assets/app.css","status_code":200,"duration_ms":2.348}
+{"timestamp":"2026-11-21T08:28:01.104Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"07b1e6ae658e434681bb77e2a78cf87a","method":"GET"}
+{"timestamp":"2026-11-21T08:28:01.106Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"07b1e6ae658e434681bb77e2a78cf87a","method":"GET","route":"/ui/assets/named-app.js","status_code":200,"duration_ms":1.722}
+{"timestamp":"2026-11-21T08:28:01.120Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"5cab290f06ed439d974d63514981e51a","method":"GET"}
+{"timestamp":"2026-11-21T08:28:01.123Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"5cab290f06ed439d974d63514981e51a","method":"GET","route":"/ui/assets/vaultbridge-logo.webp","status_code":200,"duration_ms":2.085}
+{"timestamp":"2026-11-21T08:28:01.139Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"e8d38be39b80436da22b193db8568bb3","method":"GET"}
+{"timestamp":"2026-11-21T08:28:01.142Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"e8d38be39b80436da22b193db8568bb3","method":"GET","route":"/ui/assets/named-session.js","status_code":200,"duration_ms":3.004}
+{"timestamp":"2026-11-21T08:28:01.152Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"977b6f062b7540b0b4b612ec52d016cf","method":"GET"}
+{"timestamp":"2026-11-21T08:28:01.153Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"7bc4a37de6c1468f9ad3e1e47250587a","method":"GET"}
+{"timestamp":"2026-11-21T08:28:01.155Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"977b6f062b7540b0b4b612ec52d016cf","method":"GET","route":"/ui/assets/scoped-client.js","status_code":200,"duration_ms":2.8}
+{"timestamp":"2026-11-21T08:28:01.168Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"7bc4a37de6c1468f9ad3e1e47250587a","method":"GET","route":"/ui/assets/spaces.js","status_code":200,"duration_ms":15.481}
+{"timestamp":"2026-11-21T08:28:01.475Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"d104fd539c93499887a62616fde7d578","method":"GET"}
+{"timestamp":"2026-11-21T08:28:01.476Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"d104fd539c93499887a62616fde7d578","method":"GET","route":"/health/live","status_code":200,"duration_ms":0.792}
+{"timestamp":"2026-11-21T08:28:02.332Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"2a17699af3954ee28b13a9028485c69a","method":"GET"}
+{"timestamp":"2026-11-21T08:28:02.333Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"2a17699af3954ee28b13a9028485c69a","method":"GET","route":"/health/live","status_code":200,"duration_ms":0.836}
+_____ test_native_cookie_scope_and_samesite[webkit-control-prefix-https] ______
+
+browser = <Browser type=<BrowserType name=webkit executable_path=<USER_HOME>\AppData\Local\ms-playwright\webkit-2359\Playwright.exe> version=26.6>
+new_context = <function new_context.<locals>._new_context at 0x00000223C71A54E0>
+tmp_path = WindowsPath('<USER_HOME>/AppData/Local/Temp/pytest-of-<USER>/pytest-2017/test_native_cookie_scope_and_s3')
+prefix = '/proxy', issuer = 'control'
+
+    @pytest.mark.parametrize("prefix", ["", "/proxy"], ids=["root-https", "prefix-https"])
+    @pytest.mark.parametrize("issuer", ["application", "control"])
+    def test_native_cookie_scope_and_samesite(browser, new_context, tmp_path, prefix, issuer):
+        received = []
+        control_name = "synthetic_strict_control"
+
+        async def receiver(scope, receive, send):
+            if scope["type"] == "lifespan":
+                while True:
+                    event = await receive()
+                    await send({"type": event["type"] + ".complete"})
+                    if event["type"] == "lifespan.shutdown":
+                        return
+            else:
+                received.append(
+                    {
+                        "path": scope["path"],
+                        "query": scope["query_string"],
+                        "method": scope["method"],
+                        "headers": dict(scope["headers"]),
+                    }
+                )
+                response = HTMLResponse(
+                    "<!doctype html><title>Disposable cookie receiver</title>",
+                    headers={"Connection": "close", "Cache-Control": "no-store"},
+                )
+                if scope["path"] == "/issue":
+                    response.set_cookie(
+                        control_name,
+                        "<SYNTHETIC_COOKIE_VALUE_REDACTED>",
+                        max_age=604800,
+                        secure=True,
+                        httponly=True,
+                        samesite="strict",
+                        path="/",
+                    )
+                await response(scope, receive, send)
+
+        with named_server(tmp_path, prefix) as deployment:
+            with serve(receiver, deployment["cert"], deployment["key"]) as tls_port, serve(receiver) as http_port:
+                context = new_context(ignore_https_errors=True, proxy=deployment["proxy"])
+                try:
+                    page = open_page(context, deployment)
+                    receiver_origin = f"https://vaultbridge.example.test:{tls_port}"
+                    if issuer == "application":
+                        with page.expect_response(
+                            lambda r: r.request.method == "POST" and r.url.endswith("/ui/session")
+                        ) as issued:
+                            login(page)
+                        response = issued.value
+                        cookie_name = COOKIE
+                        destination = deployment["url"] + "/health/live"
+                        other_port = receiver_origin + "/probe"
+                    else:
+                        response = page.goto(receiver_origin + "/issue")
+                        cookie_name = control_name
+                        destination = receiver_origin + "/probe"
+                        other_port = deployment["url"] + "/health/live"
+                    header = response.header_value("set-cookie").lower()
+                    assert all(
+                        flag in header for flag in ("httponly", "secure", "samesite=strict", "path=/", "max-age=604800")
+                    )
+                    assert "domain=" not in header
+                    (cookie,) = [c for c in context.cookies() if c["name"] == cookie_name]
+                    assert cookie["httpOnly"] and cookie["secure"] and cookie["domain"] == "vaultbridge.example.test"
+                    sibling = f"https://other.example.test:{tls_port}/probe"
+                    foreign = f"https://foreign.invalid.test:{tls_port}/probe"
+                    insecure = f"http://vaultbridge.example.test:{http_port}/probe"
+                    cases = [
+                        ("same-host-other-port-navigation", destination, other_port, "navigation", True),
+                        ("different-host-same-site-navigation", destination, sibling, "navigation", False),
+                        ("same-site-sibling-to-issuer-navigation", sibling, destination, "navigation", True),
+                        ("cross-site-navigation", foreign, destination, "navigation", False),
+                        ("same-host-other-port-fetch", destination, other_port, "fetch", True),
+                        ("same-site-sibling-to-issuer-fetch", sibling, destination, "fetch", True),
+                        ("cross-site-fetch", foreign, destination, "fetch", False),
+                        ("different-host-same-site-fetch", destination, sibling, "fetch", False),
+                        ("secure-cookie-over-http", destination, insecure, "navigation", False),
+                    ]
+                    facts, mismatches = [], []
+                    for name, source, target, action, expected in cases:
+                        page.goto(source)
+                        assert cookie_name not in page.evaluate("document.cookie")
+                        target += "?case=" + name
+                        if action == "navigation":
+                            page.evaluate(
+                                "url => {const a=document.createElement('a'); a.id='probe-link'; "
+                                "a.href=url; a.textContent='Navigate'; document.body.append(a)}",
+                                target,
+                            )
+                            page.locator("#probe-link").click()
+                        else:
+                            page.evaluate(
+                                "url => fetch(url,{credentials:'include',mode:'no-cors',cache:'no-store'}).then(r=>r.type)",
+                                target,
+                            )
+                        observations = deployment["observations"] + received
+                        (observed,) = [r for r in observations if r["query"] == ("case=" + name).encode()]
+                        # Assert actual receiving-server headers, not document.cookie
+                        # or a browser inspection API's interpretation of SameSite.
+                        headers = observed["headers"]
+                        present = cookie_name.encode() + b"=" in headers.get(b"cookie", b"")
+                        facts.append(
+                            dict(
+                                case=name,
+                                cookie_received=present,
+                                origin=headers.get(b"origin", b"").decode(),
+                                fetch_site=headers.get(b"sec-fetch-site", b"").decode(),
+                            )
+                        )
+                        if present != expected:
+                            mismatches.append(name)
+                    print(
+                        json.dumps(
+                            dict(issuer=issuer, browser=browser.version, stored_same_site=cookie["sameSite"], cases=facts),
+                            sort_keys=True,
+                        )
+                    )
+>                   assert not mismatches, f"Native cookie delivery violated Strict/host-only/Secure: {mismatches}"
+E                   AssertionError: Native cookie delivery violated Strict/host-only/Secure: ['cross-site-navigation', 'cross-site-fetch']
+E                   assert not ['cross-site-navigation', 'cross-site-fetch']
+
+tests\e2e\test_named_cookie_delivery.py:134: AssertionError
+---------------------------- Captured stdout call -----------------------------
+{"browser": "26.6", "cases": [{"case": "same-host-other-port-navigation", "cookie_received": true, "fetch_site": "same-site", "origin": ""}, {"case": "different-host-same-site-navigation", "cookie_received": false, "fetch_site": "same-site", "origin": ""}, {"case": "same-site-sibling-to-issuer-navigation", "cookie_received": true, "fetch_site": "same-site", "origin": ""}, {"case": "cross-site-navigation", "cookie_received": true, "fetch_site": "cross-site", "origin": ""}, {"case": "same-host-other-port-fetch", "cookie_received": true, "fetch_site": "same-site", "origin": ""}, {"case": "same-site-sibling-to-issuer-fetch", "cookie_received": true, "fetch_site": "same-site", "origin": ""}, {"case": "cross-site-fetch", "cookie_received": true, "fetch_site": "cross-site", "origin": ""}, {"case": "different-host-same-site-fetch", "cookie_received": false, "fetch_site": "same-site", "origin": ""}, {"case": "secure-cookie-over-http", "cookie_received": false, "fetch_site": "", "origin": ""}], "issuer": "control", "stored_same_site": "None"}
+---------------------------- Captured stderr call -----------------------------
+{"timestamp":"2026-11-21T08:28:04.242Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"42e4efc0ce5f491b9a3f589388c4972c","method":"GET"}
+{"timestamp":"2026-11-21T08:28:04.269Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"42e4efc0ce5f491b9a3f589388c4972c","method":"GET","route":"/ui/","status_code":200,"duration_ms":27.823}
+{"timestamp":"2026-11-21T08:28:04.289Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"0424e35cb340417990ac9ae72bf722be","method":"GET"}
+{"timestamp":"2026-11-21T08:28:04.291Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"0424e35cb340417990ac9ae72bf722be","method":"GET","route":"/ui/assets/app.css","status_code":200,"duration_ms":1.901}
+{"timestamp":"2026-11-21T08:28:04.298Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"466743516c4d4e1ab4367f822eec0dd0","method":"GET"}
+{"timestamp":"2026-11-21T08:28:04.300Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"466743516c4d4e1ab4367f822eec0dd0","method":"GET","route":"/ui/assets/named-app.js","status_code":200,"duration_ms":1.897}
+{"timestamp":"2026-11-21T08:28:04.308Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"f4063714f93c4ab7b71472fcd8d61408","method":"GET"}
+{"timestamp":"2026-11-21T08:28:04.310Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"f4063714f93c4ab7b71472fcd8d61408","method":"GET","route":"/ui/assets/vaultbridge-logo.webp","status_code":200,"duration_ms":2.107}
+{"timestamp":"2026-11-21T08:28:04.359Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"3c0a2d27efa44e82b21f7159ed367133","method":"GET"}
+{"timestamp":"2026-11-21T08:28:04.362Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"3c0a2d27efa44e82b21f7159ed367133","method":"GET","route":"/ui/assets/named-session.js","status_code":200,"duration_ms":2.6}
+{"timestamp":"2026-11-21T08:28:04.377Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"aeddfe3d1c2c46968c20eec4ef3985c0","method":"GET"}
+{"timestamp":"2026-11-21T08:28:04.380Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"aeddfe3d1c2c46968c20eec4ef3985c0","method":"GET","route":"/ui/assets/scoped-client.js","status_code":200,"duration_ms":2.549}
+{"timestamp":"2026-11-21T08:28:04.383Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"3d9ecf2383ba450392cb708ace1d5be1","method":"GET"}
+{"timestamp":"2026-11-21T08:28:04.385Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"3d9ecf2383ba450392cb708ace1d5be1","method":"GET","route":"/ui/assets/spaces.js","status_code":200,"duration_ms":1.737}
+{"timestamp":"2026-11-21T08:28:04.666Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"ee694989d84d418a9cfc80c809ff2155","method":"GET"}
+{"timestamp":"2026-11-21T08:28:04.667Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"ee694989d84d418a9cfc80c809ff2155","method":"GET","route":"/health/live","status_code":200,"duration_ms":0.864}
+{"timestamp":"2026-11-21T08:28:05.610Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"6ca54c8c85c841cbae5eee86de54cdfd","method":"GET"}
+{"timestamp":"2026-11-21T08:28:05.610Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"6ca54c8c85c841cbae5eee86de54cdfd","method":"GET","route":"/health/live","status_code":200,"duration_ms":0.878}
+- generated xml file: <VB156B_SOURCE>\.agent\vb156b-windows-webkit-control.xml -
+=========================== short test summary info ===========================
+FAILED tests/e2e/test_named_cookie_delivery.py::test_native_cookie_scope_and_samesite[webkit-application-root-https]
+FAILED tests/e2e/test_named_cookie_delivery.py::test_native_cookie_scope_and_samesite[webkit-application-prefix-https]
+FAILED tests/e2e/test_named_cookie_delivery.py::test_native_cookie_scope_and_samesite[webkit-control-root-https]
+FAILED tests/e2e/test_named_cookie_delivery.py::test_native_cookie_scope_and_samesite[webkit-control-prefix-https]
+4 failed in 13.55s

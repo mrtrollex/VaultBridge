@@ -1,0 +1,485 @@
+[
+  {
+    "attributes": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "36",
+      "time": "63.238",
+      "timestamp": "2026-11-21T10:09:53.456446+01:00"
+    },
+    "properties": [
+      {
+        "name": "test_native_authenticated_history_qualification[root-https-chromium-clean]-back",
+        "value": "{\"ready\":\"complete\",\"message\":\"Browser session verified. Selection stays in memory only.\",\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[{\"key\":\"vaultbridge.named-ui-session.journal.v1\",\"phase\":\"restorable\"}],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":{\"src\":null,\"id\":null,\"url\":\"https://vaultbridge.example.test:64283/ui/\",\"name\":null,\"reasons\":[{\"reason\":\"masked\"},{\"reason\":\"response-cache-control-no-store\"},{\"reason\":\"response-cache-control-no-store-with-js-network-request\"}],\"children\":[]}}]}"
+      },
+      {
+        "name": "test_native_authenticated_history_qualification[root-https-chromium-clean]-forward-back",
+        "value": "{\"ready\":\"complete\",\"message\":\"Browser session verified. Selection stays in memory only.\",\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[{\"key\":\"vaultbridge.named-ui-session.journal.v1\",\"phase\":\"restorable\"}],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":{\"src\":null,\"id\":null,\"url\":\"https://vaultbridge.example.test:64283/ui/\",\"name\":null,\"reasons\":[{\"reason\":\"masked\"},{\"reason\":\"response-cache-control-no-store\"},{\"reason\":\"response-cache-control-no-store-with-js-network-request\"}],\"children\":[]}}]}"
+      },
+      {
+        "name": "test_native_bfcache_public_control[root-https-chromium-no-store]",
+        "value": "{\"ready\":\"complete\",\"message\":null,\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":{\"src\":null,\"id\":null,\"url\":\"https://vaultbridge.example.test:56842/public\",\"name\":null,\"reasons\":[{\"reason\":\"masked\"}],\"children\":[]}}]}"
+      },
+      {
+        "name": "test_native_authenticated_history_qualification[root-https-chromium-logout-away]-back",
+        "value": "{\"ready\":\"complete\",\"message\":\"Page locked. Enter the existing API key to unlock.\",\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[{\"key\":\"vaultbridge.named-ui-session.intent.v1\",\"phase\":null},{\"key\":\"vaultbridge.named-ui-session.journal.v1\",\"phase\":\"locked\"}],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":{\"src\":null,\"id\":null,\"url\":\"https://vaultbridge.example.test:50180/ui/\",\"name\":null,\"reasons\":[{\"reason\":\"masked\"},{\"reason\":\"response-cache-control-no-store\"},{\"reason\":\"response-cache-control-no-store-with-js-network-request\"}],\"children\":[]}}]}"
+      },
+      {
+        "name": "test_native_authenticated_history_qualification[root-https-chromium-logout-away]-forward-back",
+        "value": "{\"ready\":\"complete\",\"message\":\"Page locked. Enter the existing API key to unlock.\",\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[{\"key\":\"vaultbridge.named-ui-session.intent.v1\",\"phase\":null},{\"key\":\"vaultbridge.named-ui-session.journal.v1\",\"phase\":\"locked\"}],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":{\"src\":null,\"id\":null,\"url\":\"https://vaultbridge.example.test:50180/ui/\",\"name\":null,\"reasons\":[{\"reason\":\"masked\"}],\"children\":[]}}]}"
+      },
+      {
+        "name": "test_native_bfcache_public_control[root-https-chromium-max-age=60]",
+        "value": "{\"ready\":\"complete\",\"message\":null,\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":{\"src\":null,\"id\":null,\"url\":\"https://vaultbridge.example.test:53337/public\",\"name\":null,\"reasons\":[{\"reason\":\"masked\"}],\"children\":[]}}]}"
+      },
+      {
+        "name": "test_native_authenticated_history_qualification[root-https-firefox-clean]-back",
+        "value": "{\"ready\":\"complete\",\"message\":\"Browser session verified. Selection stays in memory only.\",\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[{\"key\":\"vaultbridge.named-ui-session.journal.v1\",\"phase\":\"restorable\"}],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":null}]}"
+      },
+      {
+        "name": "test_native_authenticated_history_qualification[root-https-firefox-clean]-forward-back",
+        "value": "{\"ready\":\"complete\",\"message\":\"Browser session verified. Selection stays in memory only.\",\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[{\"key\":\"vaultbridge.named-ui-session.journal.v1\",\"phase\":\"restorable\"}],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":null}]}"
+      },
+      {
+        "name": "test_native_bfcache_public_control[root-https-firefox-no-store]",
+        "value": "{\"ready\":\"complete\",\"message\":null,\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":null}]}"
+      },
+      {
+        "name": "test_native_authenticated_history_qualification[root-https-firefox-logout-away]-back",
+        "value": "{\"ready\":\"complete\",\"message\":\"Page locked. Enter the existing API key to unlock.\",\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[{\"key\":\"vaultbridge.named-ui-session.intent.v1\",\"phase\":null},{\"key\":\"vaultbridge.named-ui-session.journal.v1\",\"phase\":\"locked\"}],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":null}]}"
+      },
+      {
+        "name": "test_native_authenticated_history_qualification[root-https-firefox-logout-away]-forward-back",
+        "value": "{\"ready\":\"complete\",\"message\":\"Page locked. Enter the existing API key to unlock.\",\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[{\"key\":\"vaultbridge.named-ui-session.intent.v1\",\"phase\":null},{\"key\":\"vaultbridge.named-ui-session.journal.v1\",\"phase\":\"locked\"}],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":null}]}"
+      },
+      {
+        "name": "test_native_bfcache_public_control[root-https-firefox-max-age=60]",
+        "value": "{\"ready\":\"complete\",\"message\":null,\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":null}]}"
+      },
+      {
+        "name": "test_native_authenticated_history_qualification[root-https-webkit-clean]-back",
+        "value": "{\"ready\":\"complete\",\"message\":\"Browser session verified. Selection stays in memory only.\",\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[{\"key\":\"vaultbridge.named-ui-session.journal.v1\",\"phase\":\"restorable\"}],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":null}]}"
+      },
+      {
+        "name": "test_native_authenticated_history_qualification[root-https-webkit-clean]-forward-back",
+        "value": "{\"ready\":\"complete\",\"message\":\"Browser session verified. Selection stays in memory only.\",\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[{\"key\":\"vaultbridge.named-ui-session.journal.v1\",\"phase\":\"restorable\"}],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":null}]}"
+      },
+      {
+        "name": "test_native_bfcache_public_control[root-https-webkit-no-store]",
+        "value": "{\"ready\":\"complete\",\"message\":null,\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":null}]}"
+      },
+      {
+        "name": "test_native_authenticated_history_qualification[root-https-webkit-logout-away]-back",
+        "value": "{\"ready\":\"complete\",\"message\":\"Page locked. Enter the existing API key to unlock.\",\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[{\"key\":\"vaultbridge.named-ui-session.intent.v1\",\"phase\":null},{\"key\":\"vaultbridge.named-ui-session.journal.v1\",\"phase\":\"locked\"}],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":null}]}"
+      },
+      {
+        "name": "test_native_authenticated_history_qualification[root-https-webkit-logout-away]-forward-back",
+        "value": "{\"ready\":\"complete\",\"message\":\"Page locked. Enter the existing API key to unlock.\",\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[{\"key\":\"vaultbridge.named-ui-session.intent.v1\",\"phase\":null},{\"key\":\"vaultbridge.named-ui-session.journal.v1\",\"phase\":\"locked\"}],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":null}]}"
+      },
+      {
+        "name": "test_native_bfcache_public_control[root-https-webkit-max-age=60]",
+        "value": "{\"ready\":\"complete\",\"message\":null,\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":null}]}"
+      },
+      {
+        "name": "test_native_authenticated_history_qualification[prefix-https-chromium-clean]-back",
+        "value": "{\"ready\":\"complete\",\"message\":\"Browser session verified. Selection stays in memory only.\",\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[{\"key\":\"vaultbridge.named-ui-session.journal.v1\",\"phase\":\"restorable\"}],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":{\"src\":null,\"id\":null,\"url\":\"https://vaultbridge.example.test:65470/proxy/ui/\",\"name\":null,\"reasons\":[{\"reason\":\"masked\"},{\"reason\":\"response-cache-control-no-store\"},{\"reason\":\"response-cache-control-no-store-with-js-network-request\"}],\"children\":[]}}]}"
+      },
+      {
+        "name": "test_native_authenticated_history_qualification[prefix-https-chromium-clean]-forward-back",
+        "value": "{\"ready\":\"complete\",\"message\":\"Browser session verified. Selection stays in memory only.\",\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[{\"key\":\"vaultbridge.named-ui-session.journal.v1\",\"phase\":\"restorable\"}],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":{\"src\":null,\"id\":null,\"url\":\"https://vaultbridge.example.test:65470/proxy/ui/\",\"name\":null,\"reasons\":[{\"reason\":\"masked\"},{\"reason\":\"response-cache-control-no-store\"},{\"reason\":\"response-cache-control-no-store-with-js-network-request\"}],\"children\":[]}}]}"
+      },
+      {
+        "name": "test_native_bfcache_public_control[prefix-https-chromium-no-store]",
+        "value": "{\"ready\":\"complete\",\"message\":null,\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":{\"src\":null,\"id\":null,\"url\":\"https://vaultbridge.example.test:58823/public\",\"name\":null,\"reasons\":[{\"reason\":\"masked\"}],\"children\":[]}}]}"
+      },
+      {
+        "name": "test_native_authenticated_history_qualification[prefix-https-chromium-logout-away]-back",
+        "value": "{\"ready\":\"complete\",\"message\":\"Page locked. Enter the existing API key to unlock.\",\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[{\"key\":\"vaultbridge.named-ui-session.intent.v1\",\"phase\":null},{\"key\":\"vaultbridge.named-ui-session.journal.v1\",\"phase\":\"locked\"}],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":{\"src\":null,\"id\":null,\"url\":\"https://vaultbridge.example.test:53762/proxy/ui/\",\"name\":null,\"reasons\":[{\"reason\":\"masked\"},{\"reason\":\"response-cache-control-no-store\"},{\"reason\":\"response-cache-control-no-store-with-js-network-request\"}],\"children\":[]}}]}"
+      },
+      {
+        "name": "test_native_authenticated_history_qualification[prefix-https-chromium-logout-away]-forward-back",
+        "value": "{\"ready\":\"complete\",\"message\":\"Page locked. Enter the existing API key to unlock.\",\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[{\"key\":\"vaultbridge.named-ui-session.intent.v1\",\"phase\":null},{\"key\":\"vaultbridge.named-ui-session.journal.v1\",\"phase\":\"locked\"}],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":{\"src\":null,\"id\":null,\"url\":\"https://vaultbridge.example.test:53762/proxy/ui/\",\"name\":null,\"reasons\":[{\"reason\":\"masked\"}],\"children\":[]}}]}"
+      },
+      {
+        "name": "test_native_bfcache_public_control[prefix-https-chromium-max-age=60]",
+        "value": "{\"ready\":\"complete\",\"message\":null,\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":{\"src\":null,\"id\":null,\"url\":\"https://vaultbridge.example.test:63793/public\",\"name\":null,\"reasons\":[{\"reason\":\"masked\"}],\"children\":[]}}]}"
+      },
+      {
+        "name": "test_native_authenticated_history_qualification[prefix-https-firefox-clean]-back",
+        "value": "{\"ready\":\"complete\",\"message\":\"Browser session verified. Selection stays in memory only.\",\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[{\"key\":\"vaultbridge.named-ui-session.journal.v1\",\"phase\":\"restorable\"}],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":null}]}"
+      },
+      {
+        "name": "test_native_authenticated_history_qualification[prefix-https-firefox-clean]-forward-back",
+        "value": "{\"ready\":\"complete\",\"message\":\"Browser session verified. Selection stays in memory only.\",\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[{\"key\":\"vaultbridge.named-ui-session.journal.v1\",\"phase\":\"restorable\"}],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":null}]}"
+      },
+      {
+        "name": "test_native_bfcache_public_control[prefix-https-firefox-no-store]",
+        "value": "{\"ready\":\"complete\",\"message\":null,\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":null}]}"
+      },
+      {
+        "name": "test_native_authenticated_history_qualification[prefix-https-firefox-logout-away]-back",
+        "value": "{\"ready\":\"complete\",\"message\":\"Page locked. Enter the existing API key to unlock.\",\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[{\"key\":\"vaultbridge.named-ui-session.intent.v1\",\"phase\":null},{\"key\":\"vaultbridge.named-ui-session.journal.v1\",\"phase\":\"locked\"}],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":null}]}"
+      },
+      {
+        "name": "test_native_authenticated_history_qualification[prefix-https-firefox-logout-away]-forward-back",
+        "value": "{\"ready\":\"complete\",\"message\":\"Page locked. Enter the existing API key to unlock.\",\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[{\"key\":\"vaultbridge.named-ui-session.intent.v1\",\"phase\":null},{\"key\":\"vaultbridge.named-ui-session.journal.v1\",\"phase\":\"locked\"}],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":null}]}"
+      },
+      {
+        "name": "test_native_bfcache_public_control[prefix-https-firefox-max-age=60]",
+        "value": "{\"ready\":\"complete\",\"message\":null,\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":null}]}"
+      },
+      {
+        "name": "test_native_authenticated_history_qualification[prefix-https-webkit-clean]-back",
+        "value": "{\"ready\":\"complete\",\"message\":\"Browser session verified. Selection stays in memory only.\",\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[{\"key\":\"vaultbridge.named-ui-session.journal.v1\",\"phase\":\"restorable\"}],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":null}]}"
+      },
+      {
+        "name": "test_native_authenticated_history_qualification[prefix-https-webkit-clean]-forward-back",
+        "value": "{\"ready\":\"complete\",\"message\":\"Browser session verified. Selection stays in memory only.\",\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[{\"key\":\"vaultbridge.named-ui-session.journal.v1\",\"phase\":\"restorable\"}],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":null}]}"
+      },
+      {
+        "name": "test_native_bfcache_public_control[prefix-https-webkit-no-store]",
+        "value": "{\"ready\":\"complete\",\"message\":null,\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":null}]}"
+      },
+      {
+        "name": "test_native_authenticated_history_qualification[prefix-https-webkit-logout-away]-back",
+        "value": "{\"ready\":\"complete\",\"message\":\"Page locked. Enter the existing API key to unlock.\",\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[{\"key\":\"vaultbridge.named-ui-session.intent.v1\",\"phase\":null},{\"key\":\"vaultbridge.named-ui-session.journal.v1\",\"phase\":\"locked\"}],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":null}]}"
+      },
+      {
+        "name": "test_native_authenticated_history_qualification[prefix-https-webkit-logout-away]-forward-back",
+        "value": "{\"ready\":\"complete\",\"message\":\"Page locked. Enter the existing API key to unlock.\",\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[{\"key\":\"vaultbridge.named-ui-session.intent.v1\",\"phase\":null},{\"key\":\"vaultbridge.named-ui-session.journal.v1\",\"phase\":\"locked\"}],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":true,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":null}]}"
+      },
+      {
+        "name": "test_native_bfcache_public_control[prefix-https-webkit-max-age=60]",
+        "value": "{\"ready\":\"complete\",\"message\":null,\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":null}]}"
+      }
+    ],
+    "cases": [
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_bootstrap_module_dependency_barrier[root-https-chromium]",
+          "time": "1.064"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_bootstrap_native_lock_barrier[root-https-chromium]",
+          "time": "0.805"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_authenticated_history_qualification[root-https-chromium-clean]",
+          "time": "1.108"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_bfcache_public_control[root-https-chromium-no-store]",
+          "time": "0.755"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_bootstrap_module_dependency_barrier[root-https-firefox]",
+          "time": "3.002"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_bootstrap_native_lock_barrier[root-https-firefox]",
+          "time": "1.298"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_authenticated_history_qualification[root-https-chromium-logout-away]",
+          "time": "1.564"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_bfcache_public_control[root-https-chromium-max-age=60]",
+          "time": "0.773"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_bootstrap_module_dependency_barrier[root-https-webkit]",
+          "time": "1.154"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_bootstrap_native_lock_barrier[root-https-webkit]",
+          "time": "1.345"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_authenticated_history_qualification[root-https-firefox-clean]",
+          "time": "2.600"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_bfcache_public_control[root-https-firefox-no-store]",
+          "time": "2.401"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_bootstrap_module_dependency_barrier[prefix-https-chromium]",
+          "time": "0.778"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_bootstrap_native_lock_barrier[prefix-https-chromium]",
+          "time": "0.838"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_authenticated_history_qualification[root-https-firefox-logout-away]",
+          "time": "3.949"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_bfcache_public_control[root-https-firefox-max-age=60]",
+          "time": "2.409"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_bootstrap_module_dependency_barrier[prefix-https-firefox]",
+          "time": "2.927"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_bootstrap_native_lock_barrier[prefix-https-firefox]",
+          "time": "1.409"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_authenticated_history_qualification[root-https-webkit-clean]",
+          "time": "2.057"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_bfcache_public_control[root-https-webkit-no-store]",
+          "time": "0.914"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_bootstrap_module_dependency_barrier[prefix-https-webkit]",
+          "time": "1.223"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_bootstrap_native_lock_barrier[prefix-https-webkit]",
+          "time": "1.515"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_authenticated_history_qualification[root-https-webkit-logout-away]",
+          "time": "2.198"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_bfcache_public_control[root-https-webkit-max-age=60]",
+          "time": "0.944"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_authenticated_history_qualification[prefix-https-chromium-clean]",
+          "time": "1.304"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_bfcache_public_control[prefix-https-chromium-no-store]",
+          "time": "0.800"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_authenticated_history_qualification[prefix-https-chromium-logout-away]",
+          "time": "1.286"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_bfcache_public_control[prefix-https-chromium-max-age=60]",
+          "time": "0.822"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_authenticated_history_qualification[prefix-https-firefox-clean]",
+          "time": "4.194"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_bfcache_public_control[prefix-https-firefox-no-store]",
+          "time": "2.795"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_authenticated_history_qualification[prefix-https-firefox-logout-away]",
+          "time": "4.204"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_bfcache_public_control[prefix-https-firefox-max-age=60]",
+          "time": "2.805"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_authenticated_history_qualification[prefix-https-webkit-clean]",
+          "time": "1.822"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_bfcache_public_control[prefix-https-webkit-no-store]",
+          "time": "0.985"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_authenticated_history_qualification[prefix-https-webkit-logout-away]",
+          "time": "2.097"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_bfcache_public_control[prefix-https-webkit-max-age=60]",
+          "time": "0.997"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      }
+    ]
+  }
+]

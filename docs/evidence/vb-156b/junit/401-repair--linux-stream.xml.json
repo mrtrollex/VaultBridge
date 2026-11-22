@@ -1,0 +1,104 @@
+[
+  {
+    "attributes": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "4",
+      "skipped": "0",
+      "tests": "4",
+      "time": "28.373",
+      "timestamp": "2026-11-21T15:39:37.477084+01:00"
+    },
+    "properties": [],
+    "cases": [
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_native_protected_read_401_before_truncated_body[root-https-webkit-discovery]",
+          "time": "7.273"
+        },
+        "outcome": "failure",
+        "diagnostics": [
+          {
+            "kind": "properties",
+            "attributes": {},
+            "text": ""
+          },
+          {
+            "kind": "failure",
+            "attributes": {
+              "message": "playwright._impl._errors.TimeoutError: Page.wait_for_function: Timeout 5000ms exceeded."
+            },
+            "text": "named_context = <BrowserContext browser=<Browser type=<BrowserType name=webkit executable_path=<USER_HOME>/.cache/ms-playwright/webkit-2370/pw_run.sh> version=27.2>>\nnamed = {'app': <app.main.VaultBridgeApplication object at 0x717867210050>, 'barrier': <tests.e2e.named_server.Barrier object ...ui/assets/vaultbridge-logo.webp', b''), ('/ui/assets/spaces.js', b''), ('/ui/assets/scoped-client.js', b''), ...], ...}\noperation = 'discovery'\n\n    @pytest.mark.parametrize(\"operation\", [\"discovery\", \"status\"])\n    def test_native_protected_read_401_before_truncated_body(named_context, named, operation):\n        page = open_page(named_context, named)\n        login(page)\n        observe_protected_reads(page)\n        target, trigger = protected_read_target(page, named, operation)\n        barrier = named[\"barrier\"]\n        # Actual HTTP headers and one incomplete JSON byte arrive before the rest\n        # is held, then cut at the connection, not just in its JSON syntax.\n        barrier.arm(\"GET\", 401, path=urlsplit(target).path, stage=\"body\", truncate=True, body_prefix=1)\n        trigger.click()\n        assert barrier.entered.wait(10)\n        assert b\"set-cookie\" not in barrier.headers\n>       page.wait_for_function(\"() => window.protectedResponses.includes(401)\", timeout=5000)\n\ntests/e2e/test_named_dashboard.py:533:\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n<USER_HOME>/.venvs/vaultbridge-d1-verification/lib/python3.14/site-packages/playwright/sync_api/_generated.py:21235: in wait_for_function\n    self._sync(\n<USER_HOME>/.venvs/vaultbridge-d1-verification/lib/python3.14/site-packages/playwright/_impl/_page.py:1158: in wait_for_function\n    return await self._main_frame.wait_for_function(**locals_to_params(locals()))\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<USER_HOME>/.venvs/vaultbridge-d1-verification/lib/python3.14/site-packages/playwright/_impl/_frame.py:945: in wait_for_function\n    await self._channel.send(\"waitForFunction\", self._timeout, params)\n<USER_HOME>/.venvs/vaultbridge-d1-verification/lib/python3.14/site-packages/playwright/_impl/_connection.py:78: in send\n    return await self._connection.wrap_api_call(\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\nself = <playwright._impl._connection.Connection object at 0x717866fa8050>\ncb = <function Channel.send.<locals>.<lambda> at 0x7178673f2b90>\nis_internal = False, title = None\n\n    async def wrap_api_call(\n        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None\n    ) -> Any:\n        if self._api_zone.get():\n            return await cb()\n        task = asyncio.current_task(self._loop)\n        parsed_st = _attach_api_call_information(\n            getattr(task, \"__pw_stack__\", None) or _capture_stack_trace(),\n            is_internal,\n            title,\n        )\n        self._api_zone.set(parsed_st)\n        try:\n            return await cb()\n        except Exception as error:\n>           raise rewrite_error(error, f\"{parsed_st['apiName']}: {error}\") from None\nE           playwright._impl._errors.TimeoutError: Page.wait_for_function: Timeout 5000ms exceeded.\n\n<USER_HOME>/.venvs/vaultbridge-d1-verification/lib/python3.14/site-packages/playwright/_impl/_connection.py:636: TimeoutError"
+          }
+        ]
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_native_protected_read_401_before_truncated_body[root-https-webkit-status]",
+          "time": "6.364"
+        },
+        "outcome": "failure",
+        "diagnostics": [
+          {
+            "kind": "properties",
+            "attributes": {},
+            "text": ""
+          },
+          {
+            "kind": "failure",
+            "attributes": {
+              "message": "playwright._impl._errors.TimeoutError: Page.wait_for_function: Timeout 5000ms exceeded."
+            },
+            "text": "named_context = <BrowserContext browser=<Browser type=<BrowserType name=webkit executable_path=<USER_HOME>/.cache/ms-playwright/webkit-2370/pw_run.sh> version=27.2>>\nnamed = {'app': <app.main.VaultBridgeApplication object at 0x717867213ed0>, 'barrier': <tests.e2e.named_server.Barrier object ...ui/assets/vaultbridge-logo.webp', b''), ('/ui/assets/scoped-client.js', b''), ('/ui/assets/spaces.js', b''), ...], ...}\noperation = 'status'\n\n    @pytest.mark.parametrize(\"operation\", [\"discovery\", \"status\"])\n    def test_native_protected_read_401_before_truncated_body(named_context, named, operation):\n        page = open_page(named_context, named)\n        login(page)\n        observe_protected_reads(page)\n        target, trigger = protected_read_target(page, named, operation)\n        barrier = named[\"barrier\"]\n        # Actual HTTP headers and one incomplete JSON byte arrive before the rest\n        # is held, then cut at the connection, not just in its JSON syntax.\n        barrier.arm(\"GET\", 401, path=urlsplit(target).path, stage=\"body\", truncate=True, body_prefix=1)\n        trigger.click()\n        assert barrier.entered.wait(10)\n        assert b\"set-cookie\" not in barrier.headers\n>       page.wait_for_function(\"() => window.protectedResponses.includes(401)\", timeout=5000)\n\ntests/e2e/test_named_dashboard.py:533:\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n<USER_HOME>/.venvs/vaultbridge-d1-verification/lib/python3.14/site-packages/playwright/sync_api/_generated.py:21235: in wait_for_function\n    self._sync(\n<USER_HOME>/.venvs/vaultbridge-d1-verification/lib/python3.14/site-packages/playwright/_impl/_page.py:1158: in wait_for_function\n    return await self._main_frame.wait_for_function(**locals_to_params(locals()))\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<USER_HOME>/.venvs/vaultbridge-d1-verification/lib/python3.14/site-packages/playwright/_impl/_frame.py:945: in wait_for_function\n    await self._channel.send(\"waitForFunction\", self._timeout, params)\n<USER_HOME>/.venvs/vaultbridge-d1-verification/lib/python3.14/site-packages/playwright/_impl/_connection.py:78: in send\n    return await self._connection.wrap_api_call(\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\nself = <playwright._impl._connection.Connection object at 0x717866fa8050>\ncb = <function Channel.send.<locals>.<lambda> at 0x7178640b33d0>\nis_internal = False, title = None\n\n    async def wrap_api_call(\n        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None\n    ) -> Any:\n        if self._api_zone.get():\n            return await cb()\n        task = asyncio.current_task(self._loop)\n        parsed_st = _attach_api_call_information(\n            getattr(task, \"__pw_stack__\", None) or _capture_stack_trace(),\n            is_internal,\n            title,\n        )\n        self._api_zone.set(parsed_st)\n        try:\n            return await cb()\n        except Exception as error:\n>           raise rewrite_error(error, f\"{parsed_st['apiName']}: {error}\") from None\nE           playwright._impl._errors.TimeoutError: Page.wait_for_function: Timeout 5000ms exceeded.\n\n<USER_HOME>/.venvs/vaultbridge-d1-verification/lib/python3.14/site-packages/playwright/_impl/_connection.py:636: TimeoutError"
+          }
+        ]
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_native_protected_read_401_before_truncated_body[prefix-https-webkit-discovery]",
+          "time": "6.319"
+        },
+        "outcome": "failure",
+        "diagnostics": [
+          {
+            "kind": "properties",
+            "attributes": {},
+            "text": ""
+          },
+          {
+            "kind": "failure",
+            "attributes": {
+              "message": "playwright._impl._errors.TimeoutError: Page.wait_for_function: Timeout 5000ms exceeded."
+            },
+            "text": "named_context = <BrowserContext browser=<Browser type=<BrowserType name=webkit executable_path=<USER_HOME>/.cache/ms-playwright/webkit-2370/pw_run.sh> version=27.2>>\nnamed = {'app': <app.main.VaultBridgeApplication object at 0x7178673b0410>, 'barrier': <tests.e2e.named_server.Barrier object ...ge-logo.webp', b''), ('/proxy/ui/assets/named-session.js', b''), ('/proxy/ui/assets/scoped-client.js', b''), ...], ...}\noperation = 'discovery'\n\n    @pytest.mark.parametrize(\"operation\", [\"discovery\", \"status\"])\n    def test_native_protected_read_401_before_truncated_body(named_context, named, operation):\n        page = open_page(named_context, named)\n        login(page)\n        observe_protected_reads(page)\n        target, trigger = protected_read_target(page, named, operation)\n        barrier = named[\"barrier\"]\n        # Actual HTTP headers and one incomplete JSON byte arrive before the rest\n        # is held, then cut at the connection, not just in its JSON syntax.\n        barrier.arm(\"GET\", 401, path=urlsplit(target).path, stage=\"body\", truncate=True, body_prefix=1)\n        trigger.click()\n        assert barrier.entered.wait(10)\n        assert b\"set-cookie\" not in barrier.headers\n>       page.wait_for_function(\"() => window.protectedResponses.includes(401)\", timeout=5000)\n\ntests/e2e/test_named_dashboard.py:533:\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n<USER_HOME>/.venvs/vaultbridge-d1-verification/lib/python3.14/site-packages/playwright/sync_api/_generated.py:21235: in wait_for_function\n    self._sync(\n<USER_HOME>/.venvs/vaultbridge-d1-verification/lib/python3.14/site-packages/playwright/_impl/_page.py:1158: in wait_for_function\n    return await self._main_frame.wait_for_function(**locals_to_params(locals()))\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<USER_HOME>/.venvs/vaultbridge-d1-verification/lib/python3.14/site-packages/playwright/_impl/_frame.py:945: in wait_for_function\n    await self._channel.send(\"waitForFunction\", self._timeout, params)\n<USER_HOME>/.venvs/vaultbridge-d1-verification/lib/python3.14/site-packages/playwright/_impl/_connection.py:78: in send\n    return await self._connection.wrap_api_call(\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\nself = <playwright._impl._connection.Connection object at 0x717866fa8050>\ncb = <function Channel.send.<locals>.<lambda> at 0x717864086da0>\nis_internal = False, title = None\n\n    async def wrap_api_call(\n        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None\n    ) -> Any:\n        if self._api_zone.get():\n            return await cb()\n        task = asyncio.current_task(self._loop)\n        parsed_st = _attach_api_call_information(\n            getattr(task, \"__pw_stack__\", None) or _capture_stack_trace(),\n            is_internal,\n            title,\n        )\n        self._api_zone.set(parsed_st)\n        try:\n            return await cb()\n        except Exception as error:\n>           raise rewrite_error(error, f\"{parsed_st['apiName']}: {error}\") from None\nE           playwright._impl._errors.TimeoutError: Page.wait_for_function: Timeout 5000ms exceeded.\n\n<USER_HOME>/.venvs/vaultbridge-d1-verification/lib/python3.14/site-packages/playwright/_impl/_connection.py:636: TimeoutError"
+          }
+        ]
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_native_protected_read_401_before_truncated_body[prefix-https-webkit-status]",
+          "time": "6.353"
+        },
+        "outcome": "failure",
+        "diagnostics": [
+          {
+            "kind": "properties",
+            "attributes": {},
+            "text": ""
+          },
+          {
+            "kind": "failure",
+            "attributes": {
+              "message": "playwright._impl._errors.TimeoutError: Page.wait_for_function: Timeout 5000ms exceeded."
+            },
+            "text": "named_context = <BrowserContext browser=<Browser type=<BrowserType name=webkit executable_path=<USER_HOME>/.cache/ms-playwright/webkit-2370/pw_run.sh> version=27.2>>\nnamed = {'app': <app.main.VaultBridgeApplication object at 0x71786744c190>, 'barrier': <tests.e2e.named_server.Barrier object ...ultbridge-logo.webp', b''), ('/proxy/ui/assets/named-session.js', b''), ('/proxy/ui/assets/spaces.js', b''), ...], ...}\noperation = 'status'\n\n    @pytest.mark.parametrize(\"operation\", [\"discovery\", \"status\"])\n    def test_native_protected_read_401_before_truncated_body(named_context, named, operation):\n        page = open_page(named_context, named)\n        login(page)\n        observe_protected_reads(page)\n        target, trigger = protected_read_target(page, named, operation)\n        barrier = named[\"barrier\"]\n        # Actual HTTP headers and one incomplete JSON byte arrive before the rest\n        # is held, then cut at the connection, not just in its JSON syntax.\n        barrier.arm(\"GET\", 401, path=urlsplit(target).path, stage=\"body\", truncate=True, body_prefix=1)\n        trigger.click()\n        assert barrier.entered.wait(10)\n        assert b\"set-cookie\" not in barrier.headers\n>       page.wait_for_function(\"() => window.protectedResponses.includes(401)\", timeout=5000)\n\ntests/e2e/test_named_dashboard.py:533:\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n<USER_HOME>/.venvs/vaultbridge-d1-verification/lib/python3.14/site-packages/playwright/sync_api/_generated.py:21235: in wait_for_function\n    self._sync(\n<USER_HOME>/.venvs/vaultbridge-d1-verification/lib/python3.14/site-packages/playwright/_impl/_page.py:1158: in wait_for_function\n    return await self._main_frame.wait_for_function(**locals_to_params(locals()))\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<USER_HOME>/.venvs/vaultbridge-d1-verification/lib/python3.14/site-packages/playwright/_impl/_frame.py:945: in wait_for_function\n    await self._channel.send(\"waitForFunction\", self._timeout, params)\n<USER_HOME>/.venvs/vaultbridge-d1-verification/lib/python3.14/site-packages/playwright/_impl/_connection.py:78: in send\n    return await self._connection.wrap_api_call(\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\nself = <playwright._impl._connection.Connection object at 0x717866fa8050>\ncb = <function Channel.send.<locals>.<lambda> at 0x7178640a21f0>\nis_internal = False, title = None\n\n    async def wrap_api_call(\n        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None\n    ) -> Any:\n        if self._api_zone.get():\n            return await cb()\n        task = asyncio.current_task(self._loop)\n        parsed_st = _attach_api_call_information(\n            getattr(task, \"__pw_stack__\", None) or _capture_stack_trace(),\n            is_internal,\n            title,\n        )\n        self._api_zone.set(parsed_st)\n        try:\n            return await cb()\n        except Exception as error:\n>           raise rewrite_error(error, f\"{parsed_st['apiName']}: {error}\") from None\nE           playwright._impl._errors.TimeoutError: Page.wait_for_function: Timeout 5000ms exceeded.\n\n<USER_HOME>/.venvs/vaultbridge-d1-verification/lib/python3.14/site-packages/playwright/_impl/_connection.py:636: TimeoutError"
+          }
+        ]
+      }
+    ]
+  }
+]

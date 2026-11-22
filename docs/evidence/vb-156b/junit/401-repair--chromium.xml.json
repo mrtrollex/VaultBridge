@@ -1,0 +1,736 @@
+[
+  {
+    "attributes": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "9",
+      "skipped": "0",
+      "tests": "72",
+      "time": "82.342",
+      "timestamp": "2026-11-21T15:23:51.921077+01:00"
+    },
+    "properties": [],
+    "cases": [
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_selected_status_failure_states[root-https-chromium-403-Reload spaces explicitly]",
+          "time": "1.204"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_current_protected_read_401_erases_before_cleanup[root-https-chromium-json-discovery]",
+          "time": "1.309"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-chromium-json-discovery]",
+          "time": "1.227"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_delayed_protected_read_401_during_logout[root-https-chromium-json]",
+          "time": "0.713"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_protected_read_401_failed_coordinated_delete[root-https-chromium-429-logout_pending]",
+          "time": "0.902"
+        },
+        "outcome": "failure",
+        "diagnostics": [
+          {
+            "kind": "failure",
+            "attributes": {
+              "message": "playwright._impl._errors.Error: Page.wait_for_function: EvalError: Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: script-src 'self'\".\n\n    at eval (<anonymous>)\n    at predicate (eval at evaluate (:311:30), <anonymous>:4:60)\n    at next (eval at evaluate (:311:30), <anonymous>:29:33)"
+            },
+            "text": "named_context = <BrowserContext browser=<Browser type=<BrowserType name=chromium executable_path=<USER_HOME>\\AppData\\Local\\ms-playwright\\chromium-1243\\chrome-win64\\chrome.exe> version=153.0.8010.12>>\nnamed = {'app': <app.main.VaultBridgeApplication object at 0x000001A3A4D5FEC0>, 'barrier': <tests.e2e.named_server.Barrier obj...b''), ('/ui/assets/named-app.js', b''), ('/ui/assets/named-session.js', b''), ('/ui/assets/spaces.js', b''), ...], ...}\ndelete_status = 429, phase = 'logout_pending'\n\n    @pytest.mark.parametrize(\"delete_status,phase\", [(429, \"logout_pending\"), (503, \"uncertain\")])\n    def test_protected_read_401_failed_coordinated_delete(named_context, named, delete_status, phase):\n        page = open_page(named_context, named)\n        login(page)\n        observe_protected_reads(page)\n        original = session_cookie(named_context)\n        target, trigger = protected_read_target(page, named, \"status\")\n        page.route(target, lambda route: fulfill_protected_401(route, \"truncated\"), times=1)\n        barrier = named[\"barrier\"]\n        barrier.arm(\"DELETE\", delete_status)\n        barrier.release.set()\n        trigger.click()\n>       page.wait_for_function(\"protectedReads[0].done\")\n\ntests\\e2e\\test_named_dashboard.py:530:\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\sync_api\\_generated.py:12809: in wait_for_function\n    self._sync(\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_page.py:1153: in wait_for_function\n    return await self._main_frame.wait_for_function(**locals_to_params(locals()))\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_frame.py:941: in wait_for_function\n    await self._channel.send(\"waitForFunction\", self._timeout, params)\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_connection.py:76: in send\n    return await self._connection.wrap_api_call(\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\nself = <playwright._impl._connection.Connection object at 0x000001A3A35EFDA0>\ncb = <function Channel.send.<locals>.<lambda> at 0x000001A3A4F680E0>\nis_internal = False, title = None\n\n    async def wrap_api_call(\n        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None\n    ) -> Any:\n        if self._api_zone.get():\n            return await cb()\n        task = asyncio.current_task(self._loop)\n        parsed_st = _attach_api_call_information(\n            getattr(task, \"__pw_stack__\", None) or _capture_stack_trace(),\n            is_internal,\n            title,\n        )\n        self._api_zone.set(parsed_st)\n        try:\n            return await cb()\n        except Exception as error:\n>           raise rewrite_error(error, f\"{parsed_st['apiName']}: {error}\") from None\nE           playwright._impl._errors.Error: Page.wait_for_function: EvalError: Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: script-src 'self'\".\nE\nE               at eval (<anonymous>)\nE               at predicate (eval at evaluate (:311:30), <anonymous>:4:60)\nE               at next (eval at evaluate (:311:30), <anonymous>:29:33)\n\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_connection.py:632: Error"
+          }
+        ]
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_protected_read_non_json_non_401_is_safe_unavailability[root-https-chromium-403]",
+          "time": "0.729"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_selected_status_failure_states[root-https-chromium-429-Rate limited]",
+          "time": "0.702"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_current_protected_read_401_erases_before_cleanup[root-https-chromium-json-status]",
+          "time": "1.281"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-chromium-json-status]",
+          "time": "1.275"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_delayed_protected_read_401_during_logout[root-https-chromium-empty]",
+          "time": "1.242"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_protected_read_401_failed_coordinated_delete[root-https-chromium-503-uncertain]",
+          "time": "0.953"
+        },
+        "outcome": "failure",
+        "diagnostics": [
+          {
+            "kind": "failure",
+            "attributes": {
+              "message": "playwright._impl._errors.Error: Page.wait_for_function: EvalError: Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: script-src 'self'\".\n\n    at eval (<anonymous>)\n    at predicate (eval at evaluate (:311:30), <anonymous>:4:60)\n    at next (eval at evaluate (:311:30), <anonymous>:29:33)"
+            },
+            "text": "named_context = <BrowserContext browser=<Browser type=<BrowserType name=chromium executable_path=<USER_HOME>\\AppData\\Local\\ms-playwright\\chromium-1243\\chrome-win64\\chrome.exe> version=153.0.8010.12>>\nnamed = {'app': <app.main.VaultBridgeApplication object at 0x000001A3A5590CE0>, 'barrier': <tests.e2e.named_server.Barrier obj...ts/vaultbridge-logo.webp', b''), ('/ui/assets/named-session.js', b''), ('/ui/assets/scoped-client.js', b''), ...], ...}\ndelete_status = 503, phase = 'uncertain'\n\n    @pytest.mark.parametrize(\"delete_status,phase\", [(429, \"logout_pending\"), (503, \"uncertain\")])\n    def test_protected_read_401_failed_coordinated_delete(named_context, named, delete_status, phase):\n        page = open_page(named_context, named)\n        login(page)\n        observe_protected_reads(page)\n        original = session_cookie(named_context)\n        target, trigger = protected_read_target(page, named, \"status\")\n        page.route(target, lambda route: fulfill_protected_401(route, \"truncated\"), times=1)\n        barrier = named[\"barrier\"]\n        barrier.arm(\"DELETE\", delete_status)\n        barrier.release.set()\n        trigger.click()\n>       page.wait_for_function(\"protectedReads[0].done\")\n\ntests\\e2e\\test_named_dashboard.py:530:\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\sync_api\\_generated.py:12809: in wait_for_function\n    self._sync(\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_page.py:1153: in wait_for_function\n    return await self._main_frame.wait_for_function(**locals_to_params(locals()))\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_frame.py:941: in wait_for_function\n    await self._channel.send(\"waitForFunction\", self._timeout, params)\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_connection.py:76: in send\n    return await self._connection.wrap_api_call(\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\nself = <playwright._impl._connection.Connection object at 0x000001A3A35EFDA0>\ncb = <function Channel.send.<locals>.<lambda> at 0x000001A3A516BCE0>\nis_internal = False, title = None\n\n    async def wrap_api_call(\n        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None\n    ) -> Any:\n        if self._api_zone.get():\n            return await cb()\n        task = asyncio.current_task(self._loop)\n        parsed_st = _attach_api_call_information(\n            getattr(task, \"__pw_stack__\", None) or _capture_stack_trace(),\n            is_internal,\n            title,\n        )\n        self._api_zone.set(parsed_st)\n        try:\n            return await cb()\n        except Exception as error:\n>           raise rewrite_error(error, f\"{parsed_st['apiName']}: {error}\") from None\nE           playwright._impl._errors.Error: Page.wait_for_function: EvalError: Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: script-src 'self'\".\nE\nE               at eval (<anonymous>)\nE               at predicate (eval at evaluate (:311:30), <anonymous>:4:60)\nE               at next (eval at evaluate (:311:30), <anonymous>:29:33)\n\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_connection.py:632: Error"
+          }
+        ]
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_protected_read_non_json_non_401_is_safe_unavailability[root-https-chromium-429]",
+          "time": "0.760"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_selected_status_failure_states[root-https-chromium-500-Spaces unavailable]",
+          "time": "0.728"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_current_protected_read_401_erases_before_cleanup[root-https-chromium-empty-discovery]",
+          "time": "1.308"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-chromium-empty-discovery]",
+          "time": "1.207"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_delayed_protected_read_401_during_logout[root-https-chromium-malformed]",
+          "time": "0.715"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_protected_read_401_failed_coordinated_delete[prefix-https-chromium-429-logout_pending]",
+          "time": "1.055"
+        },
+        "outcome": "failure",
+        "diagnostics": [
+          {
+            "kind": "failure",
+            "attributes": {
+              "message": "playwright._impl._errors.Error: Page.wait_for_function: EvalError: Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: script-src 'self'\".\n\n    at eval (<anonymous>)\n    at predicate (eval at evaluate (:311:30), <anonymous>:4:60)\n    at next (eval at evaluate (:311:30), <anonymous>:29:33)"
+            },
+            "text": "named_context = <BrowserContext browser=<Browser type=<BrowserType name=chromium executable_path=<USER_HOME>\\AppData\\Local\\ms-playwright\\chromium-1243\\chrome-win64\\chrome.exe> version=153.0.8010.12>>\nnamed = {'app': <app.main.VaultBridgeApplication object at 0x000001A3A476BFB0>, 'barrier': <tests.e2e.named_server.Barrier obj...ge-logo.webp', b''), ('/proxy/ui/assets/named-session.js', b''), ('/proxy/ui/assets/scoped-client.js', b''), ...], ...}\ndelete_status = 429, phase = 'logout_pending'\n\n    @pytest.mark.parametrize(\"delete_status,phase\", [(429, \"logout_pending\"), (503, \"uncertain\")])\n    def test_protected_read_401_failed_coordinated_delete(named_context, named, delete_status, phase):\n        page = open_page(named_context, named)\n        login(page)\n        observe_protected_reads(page)\n        original = session_cookie(named_context)\n        target, trigger = protected_read_target(page, named, \"status\")\n        page.route(target, lambda route: fulfill_protected_401(route, \"truncated\"), times=1)\n        barrier = named[\"barrier\"]\n        barrier.arm(\"DELETE\", delete_status)\n        barrier.release.set()\n        trigger.click()\n>       page.wait_for_function(\"protectedReads[0].done\")\n\ntests\\e2e\\test_named_dashboard.py:530:\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\sync_api\\_generated.py:12809: in wait_for_function\n    self._sync(\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_page.py:1153: in wait_for_function\n    return await self._main_frame.wait_for_function(**locals_to_params(locals()))\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_frame.py:941: in wait_for_function\n    await self._channel.send(\"waitForFunction\", self._timeout, params)\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_connection.py:76: in send\n    return await self._connection.wrap_api_call(\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\nself = <playwright._impl._connection.Connection object at 0x000001A3A35EFDA0>\ncb = <function Channel.send.<locals>.<lambda> at 0x000001A3A4D7AAC0>\nis_internal = False, title = None\n\n    async def wrap_api_call(\n        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None\n    ) -> Any:\n        if self._api_zone.get():\n            return await cb()\n        task = asyncio.current_task(self._loop)\n        parsed_st = _attach_api_call_information(\n            getattr(task, \"__pw_stack__\", None) or _capture_stack_trace(),\n            is_internal,\n            title,\n        )\n        self._api_zone.set(parsed_st)\n        try:\n            return await cb()\n        except Exception as error:\n>           raise rewrite_error(error, f\"{parsed_st['apiName']}: {error}\") from None\nE           playwright._impl._errors.Error: Page.wait_for_function: EvalError: Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: script-src 'self'\".\nE\nE               at eval (<anonymous>)\nE               at predicate (eval at evaluate (:311:30), <anonymous>:4:60)\nE               at next (eval at evaluate (:311:30), <anonymous>:29:33)\n\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_connection.py:632: Error"
+          }
+        ]
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_protected_read_non_json_non_401_is_safe_unavailability[root-https-chromium-500]",
+          "time": "1.085"
+        },
+        "outcome": "failure",
+        "diagnostics": [
+          {
+            "kind": "failure",
+            "attributes": {
+              "message": "playwright._impl._errors.Error: Page.wait_for_function: EvalError: Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: script-src 'self'\".\n\n    at eval (<anonymous>)\n    at predicate (eval at evaluate (:311:30), <anonymous>:4:60)\n    at next (eval at evaluate (:311:30), <anonymous>:29:33)"
+            },
+            "text": "named_context = <BrowserContext browser=<Browser type=<BrowserType name=chromium executable_path=<USER_HOME>\\AppData\\Local\\ms-playwright\\chromium-1243\\chrome-win64\\chrome.exe> version=153.0.8010.12>>\nnamed = {'app': <app.main.VaultBridgeApplication object at 0x000001A3A469F110>, 'barrier': <tests.e2e.named_server.Barrier obj...ts/vaultbridge-logo.webp', b''), ('/ui/assets/named-session.js', b''), ('/ui/assets/scoped-client.js', b''), ...], ...}\nstatus = 500\n\n    @pytest.mark.parametrize(\"status\", [403, 429, 500, 503])\n    def test_protected_read_non_json_non_401_is_safe_unavailability(named_context, named, status):\n        page = open_page(named_context, named)\n        login(page)\n        observe_protected_reads(page)\n        original, clean = session_cookie(named_context), journal(page)\n        target, trigger = protected_read_target(page, named, \"status\")\n        page.route(target, lambda route: route.fulfill(\n            status=status, content_type=\"text/html\", body=\"<html>untrusted-error-body</html>\"), times=1)\n        trigger.click()\n>       page.wait_for_function(\"protectedReads[0].done\")\n\ntests\\e2e\\test_named_dashboard.py:558:\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\sync_api\\_generated.py:12809: in wait_for_function\n    self._sync(\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_page.py:1153: in wait_for_function\n    return await self._main_frame.wait_for_function(**locals_to_params(locals()))\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_frame.py:941: in wait_for_function\n    await self._channel.send(\"waitForFunction\", self._timeout, params)\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_connection.py:76: in send\n    return await self._connection.wrap_api_call(\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\nself = <playwright._impl._connection.Connection object at 0x000001A3A35EFDA0>\ncb = <function Channel.send.<locals>.<lambda> at 0x000001A3A4CD5A80>\nis_internal = False, title = None\n\n    async def wrap_api_call(\n        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None\n    ) -> Any:\n        if self._api_zone.get():\n            return await cb()\n        task = asyncio.current_task(self._loop)\n        parsed_st = _attach_api_call_information(\n            getattr(task, \"__pw_stack__\", None) or _capture_stack_trace(),\n            is_internal,\n            title,\n        )\n        self._api_zone.set(parsed_st)\n        try:\n            return await cb()\n        except Exception as error:\n>           raise rewrite_error(error, f\"{parsed_st['apiName']}: {error}\") from None\nE           playwright._impl._errors.Error: Page.wait_for_function: EvalError: Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: script-src 'self'\".\nE\nE               at eval (<anonymous>)\nE               at predicate (eval at evaluate (:311:30), <anonymous>:4:60)\nE               at next (eval at evaluate (:311:30), <anonymous>:29:33)\n\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_connection.py:632: Error"
+          }
+        ]
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_selected_status_failure_states[root-https-chromium-503-Spaces unavailable]",
+          "time": "0.750"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_current_protected_read_401_erases_before_cleanup[root-https-chromium-empty-status]",
+          "time": "1.288"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-chromium-empty-status]",
+          "time": "1.197"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_delayed_protected_read_401_during_logout[root-https-chromium-truncated]",
+          "time": "1.318"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_protected_read_401_failed_coordinated_delete[prefix-https-chromium-503-uncertain]",
+          "time": "1.081"
+        },
+        "outcome": "failure",
+        "diagnostics": [
+          {
+            "kind": "failure",
+            "attributes": {
+              "message": "playwright._impl._errors.Error: Page.wait_for_function: EvalError: Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: script-src 'self'\".\n\n    at eval (<anonymous>)\n    at predicate (eval at evaluate (:311:30), <anonymous>:4:60)\n    at next (eval at evaluate (:311:30), <anonymous>:29:33)"
+            },
+            "text": "named_context = <BrowserContext browser=<Browser type=<BrowserType name=chromium executable_path=<USER_HOME>\\AppData\\Local\\ms-playwright\\chromium-1243\\chrome-win64\\chrome.exe> version=153.0.8010.12>>\nnamed = {'app': <app.main.VaultBridgeApplication object at 0x000001A3A4D03F80>, 'barrier': <tests.e2e.named_server.Barrier obj...ge-logo.webp', b''), ('/proxy/ui/assets/named-session.js', b''), ('/proxy/ui/assets/scoped-client.js', b''), ...], ...}\ndelete_status = 503, phase = 'uncertain'\n\n    @pytest.mark.parametrize(\"delete_status,phase\", [(429, \"logout_pending\"), (503, \"uncertain\")])\n    def test_protected_read_401_failed_coordinated_delete(named_context, named, delete_status, phase):\n        page = open_page(named_context, named)\n        login(page)\n        observe_protected_reads(page)\n        original = session_cookie(named_context)\n        target, trigger = protected_read_target(page, named, \"status\")\n        page.route(target, lambda route: fulfill_protected_401(route, \"truncated\"), times=1)\n        barrier = named[\"barrier\"]\n        barrier.arm(\"DELETE\", delete_status)\n        barrier.release.set()\n        trigger.click()\n>       page.wait_for_function(\"protectedReads[0].done\")\n\ntests\\e2e\\test_named_dashboard.py:530:\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\sync_api\\_generated.py:12809: in wait_for_function\n    self._sync(\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_page.py:1153: in wait_for_function\n    return await self._main_frame.wait_for_function(**locals_to_params(locals()))\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_frame.py:941: in wait_for_function\n    await self._channel.send(\"waitForFunction\", self._timeout, params)\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_connection.py:76: in send\n    return await self._connection.wrap_api_call(\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\nself = <playwright._impl._connection.Connection object at 0x000001A3A35EFDA0>\ncb = <function Channel.send.<locals>.<lambda> at 0x000001A3A4F68040>\nis_internal = False, title = None\n\n    async def wrap_api_call(\n        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None\n    ) -> Any:\n        if self._api_zone.get():\n            return await cb()\n        task = asyncio.current_task(self._loop)\n        parsed_st = _attach_api_call_information(\n            getattr(task, \"__pw_stack__\", None) or _capture_stack_trace(),\n            is_internal,\n            title,\n        )\n        self._api_zone.set(parsed_st)\n        try:\n            return await cb()\n        except Exception as error:\n>           raise rewrite_error(error, f\"{parsed_st['apiName']}: {error}\") from None\nE           playwright._impl._errors.Error: Page.wait_for_function: EvalError: Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: script-src 'self'\".\nE\nE               at eval (<anonymous>)\nE               at predicate (eval at evaluate (:311:30), <anonymous>:4:60)\nE               at next (eval at evaluate (:311:30), <anonymous>:29:33)\n\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_connection.py:632: Error"
+          }
+        ]
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_protected_read_non_json_non_401_is_safe_unavailability[root-https-chromium-503]",
+          "time": "1.135"
+        },
+        "outcome": "failure",
+        "diagnostics": [
+          {
+            "kind": "failure",
+            "attributes": {
+              "message": "playwright._impl._errors.Error: Page.wait_for_function: EvalError: Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: script-src 'self'\".\n\n    at eval (<anonymous>)\n    at predicate (eval at evaluate (:311:30), <anonymous>:4:60)\n    at next (eval at evaluate (:311:30), <anonymous>:29:33)"
+            },
+            "text": "named_context = <BrowserContext browser=<Browser type=<BrowserType name=chromium executable_path=<USER_HOME>\\AppData\\Local\\ms-playwright\\chromium-1243\\chrome-win64\\chrome.exe> version=153.0.8010.12>>\nnamed = {'app': <app.main.VaultBridgeApplication object at 0x000001A3A4800C80>, 'barrier': <tests.e2e.named_server.Barrier obj...ts/vaultbridge-logo.webp', b''), ('/ui/assets/named-session.js', b''), ('/ui/assets/scoped-client.js', b''), ...], ...}\nstatus = 503\n\n    @pytest.mark.parametrize(\"status\", [403, 429, 500, 503])\n    def test_protected_read_non_json_non_401_is_safe_unavailability(named_context, named, status):\n        page = open_page(named_context, named)\n        login(page)\n        observe_protected_reads(page)\n        original, clean = session_cookie(named_context), journal(page)\n        target, trigger = protected_read_target(page, named, \"status\")\n        page.route(target, lambda route: route.fulfill(\n            status=status, content_type=\"text/html\", body=\"<html>untrusted-error-body</html>\"), times=1)\n        trigger.click()\n>       page.wait_for_function(\"protectedReads[0].done\")\n\ntests\\e2e\\test_named_dashboard.py:558:\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\sync_api\\_generated.py:12809: in wait_for_function\n    self._sync(\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_page.py:1153: in wait_for_function\n    return await self._main_frame.wait_for_function(**locals_to_params(locals()))\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_frame.py:941: in wait_for_function\n    await self._channel.send(\"waitForFunction\", self._timeout, params)\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_connection.py:76: in send\n    return await self._connection.wrap_api_call(\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\nself = <playwright._impl._connection.Connection object at 0x000001A3A35EFDA0>\ncb = <function Channel.send.<locals>.<lambda> at 0x000001A3A7683920>\nis_internal = False, title = None\n\n    async def wrap_api_call(\n        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None\n    ) -> Any:\n        if self._api_zone.get():\n            return await cb()\n        task = asyncio.current_task(self._loop)\n        parsed_st = _attach_api_call_information(\n            getattr(task, \"__pw_stack__\", None) or _capture_stack_trace(),\n            is_internal,\n            title,\n        )\n        self._api_zone.set(parsed_st)\n        try:\n            return await cb()\n        except Exception as error:\n>           raise rewrite_error(error, f\"{parsed_st['apiName']}: {error}\") from None\nE           playwright._impl._errors.Error: Page.wait_for_function: EvalError: Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: script-src 'self'\".\nE\nE               at eval (<anonymous>)\nE               at predicate (eval at evaluate (:311:30), <anonymous>:4:60)\nE               at next (eval at evaluate (:311:30), <anonymous>:29:33)\n\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_connection.py:632: Error"
+          }
+        ]
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_selected_status_failure_states[root-https-chromium-401-removal confirmed]",
+          "time": "0.730"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_current_protected_read_401_erases_before_cleanup[root-https-chromium-malformed-discovery]",
+          "time": "1.294"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-chromium-malformed-discovery]",
+          "time": "1.224"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_delayed_protected_read_401_during_logout[root-https-chromium-non-json]",
+          "time": "1.237"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_protected_read_non_json_non_401_is_safe_unavailability[prefix-https-chromium-403]",
+          "time": "1.123"
+        },
+        "outcome": "failure",
+        "diagnostics": [
+          {
+            "kind": "failure",
+            "attributes": {
+              "message": "playwright._impl._errors.Error: Page.wait_for_function: EvalError: Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: script-src 'self'\".\n\n    at eval (<anonymous>)\n    at predicate (eval at evaluate (:311:30), <anonymous>:4:60)\n    at next (eval at evaluate (:311:30), <anonymous>:29:33)"
+            },
+            "text": "named_context = <BrowserContext browser=<Browser type=<BrowserType name=chromium executable_path=<USER_HOME>\\AppData\\Local\\ms-playwright\\chromium-1243\\chrome-win64\\chrome.exe> version=153.0.8010.12>>\nnamed = {'app': <app.main.VaultBridgeApplication object at 0x000001A3A560E5D0>, 'barrier': <tests.e2e.named_server.Barrier obj...ge-logo.webp', b''), ('/proxy/ui/assets/named-session.js', b''), ('/proxy/ui/assets/scoped-client.js', b''), ...], ...}\nstatus = 403\n\n    @pytest.mark.parametrize(\"status\", [403, 429, 500, 503])\n    def test_protected_read_non_json_non_401_is_safe_unavailability(named_context, named, status):\n        page = open_page(named_context, named)\n        login(page)\n        observe_protected_reads(page)\n        original, clean = session_cookie(named_context), journal(page)\n        target, trigger = protected_read_target(page, named, \"status\")\n        page.route(target, lambda route: route.fulfill(\n            status=status, content_type=\"text/html\", body=\"<html>untrusted-error-body</html>\"), times=1)\n        trigger.click()\n>       page.wait_for_function(\"protectedReads[0].done\")\n\ntests\\e2e\\test_named_dashboard.py:558:\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\sync_api\\_generated.py:12809: in wait_for_function\n    self._sync(\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_page.py:1153: in wait_for_function\n    return await self._main_frame.wait_for_function(**locals_to_params(locals()))\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_frame.py:941: in wait_for_function\n    await self._channel.send(\"waitForFunction\", self._timeout, params)\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_connection.py:76: in send\n    return await self._connection.wrap_api_call(\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\nself = <playwright._impl._connection.Connection object at 0x000001A3A35EFDA0>\ncb = <function Channel.send.<locals>.<lambda> at 0x000001A3A4D7B880>\nis_internal = False, title = None\n\n    async def wrap_api_call(\n        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None\n    ) -> Any:\n        if self._api_zone.get():\n            return await cb()\n        task = asyncio.current_task(self._loop)\n        parsed_st = _attach_api_call_information(\n            getattr(task, \"__pw_stack__\", None) or _capture_stack_trace(),\n            is_internal,\n            title,\n        )\n        self._api_zone.set(parsed_st)\n        try:\n            return await cb()\n        except Exception as error:\n>           raise rewrite_error(error, f\"{parsed_st['apiName']}: {error}\") from None\nE           playwright._impl._errors.Error: Page.wait_for_function: EvalError: Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: script-src 'self'\".\nE\nE               at eval (<anonymous>)\nE               at predicate (eval at evaluate (:311:30), <anonymous>:4:60)\nE               at next (eval at evaluate (:311:30), <anonymous>:29:33)\n\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_connection.py:632: Error"
+          }
+        ]
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_selected_status_failure_states[prefix-https-chromium-403-Reload spaces explicitly]",
+          "time": "0.713"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_current_protected_read_401_erases_before_cleanup[root-https-chromium-malformed-status]",
+          "time": "1.287"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-chromium-malformed-status]",
+          "time": "1.238"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_delayed_protected_read_401_during_logout[prefix-https-chromium-json]",
+          "time": "0.791"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_protected_read_non_json_non_401_is_safe_unavailability[prefix-https-chromium-429]",
+          "time": "1.044"
+        },
+        "outcome": "failure",
+        "diagnostics": [
+          {
+            "kind": "failure",
+            "attributes": {
+              "message": "playwright._impl._errors.Error: Page.wait_for_function: EvalError: Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: script-src 'self'\".\n\n    at eval (<anonymous>)\n    at predicate (eval at evaluate (:311:30), <anonymous>:4:60)\n    at next (eval at evaluate (:311:30), <anonymous>:29:33)"
+            },
+            "text": "named_context = <BrowserContext browser=<Browser type=<BrowserType name=chromium executable_path=<USER_HOME>\\AppData\\Local\\ms-playwright\\chromium-1243\\chrome-win64\\chrome.exe> version=153.0.8010.12>>\nnamed = {'app': <app.main.VaultBridgeApplication object at 0x000001A3A352E420>, 'barrier': <tests.e2e.named_server.Barrier obj...ge-logo.webp', b''), ('/proxy/ui/assets/scoped-client.js', b''), ('/proxy/ui/assets/named-session.js', b''), ...], ...}\nstatus = 429\n\n    @pytest.mark.parametrize(\"status\", [403, 429, 500, 503])\n    def test_protected_read_non_json_non_401_is_safe_unavailability(named_context, named, status):\n        page = open_page(named_context, named)\n        login(page)\n        observe_protected_reads(page)\n        original, clean = session_cookie(named_context), journal(page)\n        target, trigger = protected_read_target(page, named, \"status\")\n        page.route(target, lambda route: route.fulfill(\n            status=status, content_type=\"text/html\", body=\"<html>untrusted-error-body</html>\"), times=1)\n        trigger.click()\n>       page.wait_for_function(\"protectedReads[0].done\")\n\ntests\\e2e\\test_named_dashboard.py:558:\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\sync_api\\_generated.py:12809: in wait_for_function\n    self._sync(\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_page.py:1153: in wait_for_function\n    return await self._main_frame.wait_for_function(**locals_to_params(locals()))\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_frame.py:941: in wait_for_function\n    await self._channel.send(\"waitForFunction\", self._timeout, params)\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_connection.py:76: in send\n    return await self._connection.wrap_api_call(\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\nself = <playwright._impl._connection.Connection object at 0x000001A3A35EFDA0>\ncb = <function Channel.send.<locals>.<lambda> at 0x000001A3A493E200>\nis_internal = False, title = None\n\n    async def wrap_api_call(\n        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None\n    ) -> Any:\n        if self._api_zone.get():\n            return await cb()\n        task = asyncio.current_task(self._loop)\n        parsed_st = _attach_api_call_information(\n            getattr(task, \"__pw_stack__\", None) or _capture_stack_trace(),\n            is_internal,\n            title,\n        )\n        self._api_zone.set(parsed_st)\n        try:\n            return await cb()\n        except Exception as error:\n>           raise rewrite_error(error, f\"{parsed_st['apiName']}: {error}\") from None\nE           playwright._impl._errors.Error: Page.wait_for_function: EvalError: Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: script-src 'self'\".\nE\nE               at eval (<anonymous>)\nE               at predicate (eval at evaluate (:311:30), <anonymous>:4:60)\nE               at next (eval at evaluate (:311:30), <anonymous>:29:33)\n\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_connection.py:632: Error"
+          }
+        ]
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_selected_status_failure_states[prefix-https-chromium-429-Rate limited]",
+          "time": "0.715"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_current_protected_read_401_erases_before_cleanup[root-https-chromium-truncated-discovery]",
+          "time": "1.291"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-chromium-truncated-discovery]",
+          "time": "1.227"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_delayed_protected_read_401_during_logout[prefix-https-chromium-empty]",
+          "time": "0.712"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_protected_read_non_json_non_401_is_safe_unavailability[prefix-https-chromium-500]",
+          "time": "0.730"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_selected_status_failure_states[prefix-https-chromium-500-Spaces unavailable]",
+          "time": "0.700"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_current_protected_read_401_erases_before_cleanup[root-https-chromium-truncated-status]",
+          "time": "1.157"
+        },
+        "outcome": "failure",
+        "diagnostics": [
+          {
+            "kind": "failure",
+            "attributes": {
+              "message": "playwright._impl._errors.Error: Page.wait_for_function: EvalError: Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: script-src 'self'\".\n\n    at eval (<anonymous>)\n    at predicate (eval at evaluate (:311:30), <anonymous>:4:60)\n    at next (eval at evaluate (:311:30), <anonymous>:29:33)"
+            },
+            "text": "named_context = <BrowserContext browser=<Browser type=<BrowserType name=chromium executable_path=<USER_HOME>\\AppData\\Local\\ms-playwright\\chromium-1243\\chrome-win64\\chrome.exe> version=153.0.8010.12>>\nnamed = {'app': <app.main.VaultBridgeApplication object at 0x000001A3A469DBB0>, 'barrier': <tests.e2e.named_server.Barrier obj...assets/named-app.js', b''), ('/ui/assets/vaultbridge-logo.webp', b''), ('/ui/assets/named-session.js', b''), ...], ...}\noperation = 'status', body_kind = 'truncated'\n\n    @pytest.mark.parametrize(\"operation\", [\"discovery\", \"status\"])\n    @pytest.mark.parametrize(\"body_kind\", PROTECTED_401_BODIES)\n    def test_current_protected_read_401_erases_before_cleanup(named_context, named, operation, body_kind):\n        owner = named_context.new_page()\n        owner.goto(named[\"url\"] + \"/health/live\")\n        page = open_page(named_context, named)\n        login(page)\n        page.locator(\"#choose-multiple\").click()\n        expect(page.locator(\"#space-options input\")).to_have_count(2)\n        observe_protected_reads(page)\n        original, clean = session_cookie(named_context), journal(page)\n        owner.evaluate(\"\"\"lock => {\n          window.lockEntered=false;\n          void navigator.locks.request(lock, () => new Promise(resolve => {\n            window.release401Lock=resolve; window.lockEntered=true;\n          }));\n        }\"\"\", LOCK)\n        owner.wait_for_function(\"lockEntered\")\n        barrier = named[\"barrier\"]\n        barrier.arm(\"DELETE\")\n        target, trigger = protected_read_target(page, named, operation)\n        page.route(target, lambda route: fulfill_protected_401(route, body_kind), times=1)\n        try:\n            trigger.click()\n            # The native mutation lock is unavailable: erasure cannot depend on\n            # acquiring it, a complete JSON body, or asynchronous cookie deletion.\n            assert_protected_ui_erased(page)\n            page.wait_for_function(\"\"\"async lock =>\n              (await navigator.locks.query()).pending.some(row=>row.name===lock)\"\"\", arg=LOCK)\n            assert not barrier.entered.is_set()\n            assert session_cookie(named_context) == original and journal(page) == clean\n            assert not any(method == \"DELETE\" for method, _ in named[\"inventory\"])\n            owner.evaluate(\"release401Lock()\")\n            assert barrier.entered.wait(10)\n            assert_protected_ui_erased(page)\n            assert journal(page)[\"phase\"] == \"deleting\" and session_cookie(named_context) == original\n            barrier.release.set()\n>           page.wait_for_function(\"protectedReads[0].done\")\n\ntests\\e2e\\test_named_dashboard.py:454:\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\sync_api\\_generated.py:12809: in wait_for_function\n    self._sync(\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_page.py:1153: in wait_for_function\n    return await self._main_frame.wait_for_function(**locals_to_params(locals()))\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_frame.py:941: in wait_for_function\n    await self._channel.send(\"waitForFunction\", self._timeout, params)\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_connection.py:76: in send\n    return await self._connection.wrap_api_call(\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\nself = <playwright._impl._connection.Connection object at 0x000001A3A35EFDA0>\ncb = <function Channel.send.<locals>.<lambda> at 0x000001A3A46FC720>\nis_internal = False, title = None\n\n    async def wrap_api_call(\n        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None\n    ) -> Any:\n        if self._api_zone.get():\n            return await cb()\n        task = asyncio.current_task(self._loop)\n        parsed_st = _attach_api_call_information(\n            getattr(task, \"__pw_stack__\", None) or _capture_stack_trace(),\n            is_internal,\n            title,\n        )\n        self._api_zone.set(parsed_st)\n        try:\n            return await cb()\n        except Exception as error:\n>           raise rewrite_error(error, f\"{parsed_st['apiName']}: {error}\") from None\nE           playwright._impl._errors.Error: Page.wait_for_function: EvalError: Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: script-src 'self'\".\nE\nE               at eval (<anonymous>)\nE               at predicate (eval at evaluate (:311:30), <anonymous>:4:60)\nE               at next (eval at evaluate (:311:30), <anonymous>:29:33)\n\n..\\VaultBridge\\.venv\\Lib\\site-packages\\playwright\\_impl\\_connection.py:632: Error"
+          }
+        ]
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-chromium-truncated-status]",
+          "time": "1.224"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_delayed_protected_read_401_during_logout[prefix-https-chromium-malformed]",
+          "time": "0.808"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_protected_read_non_json_non_401_is_safe_unavailability[prefix-https-chromium-503]",
+          "time": "0.666"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_selected_status_failure_states[prefix-https-chromium-503-Spaces unavailable]",
+          "time": "0.740"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_current_protected_read_401_erases_before_cleanup[root-https-chromium-non-json-discovery]",
+          "time": "1.247"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-chromium-non-json-discovery]",
+          "time": "2.138"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_delayed_protected_read_401_during_logout[prefix-https-chromium-truncated]",
+          "time": "0.842"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_selected_status_failure_states[prefix-https-chromium-401-removal confirmed]",
+          "time": "0.733"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_current_protected_read_401_erases_before_cleanup[root-https-chromium-non-json-status]",
+          "time": "1.311"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-chromium-non-json-status]",
+          "time": "1.242"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_delayed_protected_read_401_during_logout[prefix-https-chromium-non-json]",
+          "time": "1.319"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_current_protected_read_401_erases_before_cleanup[prefix-https-chromium-json-discovery]",
+          "time": "1.316"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-chromium-json-discovery]",
+          "time": "1.363"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_current_protected_read_401_erases_before_cleanup[prefix-https-chromium-json-status]",
+          "time": "1.398"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-chromium-json-status]",
+          "time": "1.305"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_current_protected_read_401_erases_before_cleanup[prefix-https-chromium-empty-discovery]",
+          "time": "1.321"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-chromium-empty-discovery]",
+          "time": "1.243"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_current_protected_read_401_erases_before_cleanup[prefix-https-chromium-empty-status]",
+          "time": "1.303"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-chromium-empty-status]",
+          "time": "1.213"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_current_protected_read_401_erases_before_cleanup[prefix-https-chromium-malformed-discovery]",
+          "time": "1.283"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-chromium-malformed-discovery]",
+          "time": "1.226"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_current_protected_read_401_erases_before_cleanup[prefix-https-chromium-malformed-status]",
+          "time": "1.284"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-chromium-malformed-status]",
+          "time": "1.339"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_current_protected_read_401_erases_before_cleanup[prefix-https-chromium-truncated-discovery]",
+          "time": "1.334"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-chromium-truncated-discovery]",
+          "time": "1.238"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_current_protected_read_401_erases_before_cleanup[prefix-https-chromium-truncated-status]",
+          "time": "1.276"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-chromium-truncated-status]",
+          "time": "1.256"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_current_protected_read_401_erases_before_cleanup[prefix-https-chromium-non-json-discovery]",
+          "time": "1.293"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-chromium-non-json-discovery]",
+          "time": "1.216"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_current_protected_read_401_erases_before_cleanup[prefix-https-chromium-non-json-status]",
+          "time": "1.305"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-chromium-non-json-status]",
+          "time": "1.384"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      }
+    ]
+  }
+]

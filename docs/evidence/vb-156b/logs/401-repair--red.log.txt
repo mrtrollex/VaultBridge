@@ -1,0 +1,100 @@
+F                                                                        [100%]
+================================== FAILURES ===================================
+_ test_current_protected_read_401_erases_before_cleanup[root-https-chromium-malformed-status] _
+
+named_context = <BrowserContext browser=<Browser type=<BrowserType name=chromium executable_path=<USER_HOME>\AppData\Local\ms-playwright\chromium-1243\chrome-win64\chrome.exe> version=153.0.8010.12>>
+named = {'app': <app.main.VaultBridgeApplication object at 0x000001F6703B61B0>, 'barrier': <tests.e2e.named_server.Barrier obj...assets/named-app.js', b''), ('/ui/assets/vaultbridge-logo.webp', b''), ('/ui/assets/named-session.js', b''), ...], ...}
+operation = 'status', body_kind = 'malformed'
+
+    @pytest.mark.parametrize("operation", ["discovery", "status"])
+    @pytest.mark.parametrize("body_kind", PROTECTED_401_BODIES)
+    def test_current_protected_read_401_erases_before_cleanup(named_context, named, operation, body_kind):
+        owner = named_context.new_page()
+        owner.goto(named["url"] + "/health/live")
+        page = open_page(named_context, named)
+        login(page)
+        page.locator("#choose-multiple").click()
+        expect(page.locator("#space-options input")).to_have_count(2)
+        observe_protected_reads(page)
+        original, clean = session_cookie(named_context), journal(page)
+        owner.evaluate("""lock => {
+          window.lockEntered=false;
+          void navigator.locks.request(lock, () => new Promise(resolve => {
+            window.release401Lock=resolve; window.lockEntered=true;
+          }));
+        }""", LOCK)
+        owner.wait_for_function("lockEntered")
+        barrier = named["barrier"]
+        barrier.arm("DELETE")
+        target, trigger = protected_read_target(page, named, operation)
+        page.route(target, lambda route: fulfill_protected_401(route, body_kind), times=1)
+        try:
+            trigger.click()
+            # The native mutation lock is unavailable: erasure cannot depend on
+            # acquiring it, a complete JSON body, or asynchronous cookie deletion.
+>           assert_protected_ui_erased(page)
+
+tests\e2e\test_named_dashboard.py:442:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+page = <Page url='https://vaultbridge.example.test:62196/ui/'>
+
+    def assert_protected_ui_erased(page):
+>       expect(page.locator("#spaces")).to_be_hidden()
+E       AssertionError: Locator expected to be hidden
+E       Actual value: visible
+E       Call log:
+E         - Expect "to_be_hidden" locator("#spaces") with timeout 5000ms
+E         - waiting for locator("#spaces")
+E           - locator resolved to <section id="spaces" class="panel" aria-busy="true" aria-labelledby="spaces-heading">�</section>
+E           13 � unexpected value "visible"
+E              - locator resolved to <section id="spaces" class="panel" aria-busy="false" aria-labelledby="spaces-heading">�</section>
+E           - unexpected value "visible"
+E
+E       Aria snapshot:
+E       - region "Spaces":
+E         - heading "Spaces" [level=2]
+E         - status: Spaces unavailable. Retry explicitly.
+E         - button "Reload spaces"
+E         - text: Single space
+E         - combobox "Single space"
+E         - button "Choose multiple spaces"
+E         - group "Explicit selection for future federated operations"
+E         - button "Apply"
+E         - button "Cancel"
+E         - paragraph: "Active selection: default"
+E         - heading "Read capabilities" [level=3]
+E         - paragraph: "default: permitted reads: knowledge_query, list_notes, literal_search, read_note, relationships, semantic_retrieval. Relationship dialects: markdown_link, obsidian_wikilink. Indexing policy: disabled."
+E         - heading "Selected semantic index status" [level=3]
+E         - button "Refresh status"
+
+tests\e2e\test_named_dashboard.py:393: AssertionError
+---------------------------- Captured stderr call -----------------------------
+{"timestamp":"2026-11-21T14:23:15.712Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"3da8d1b8b25f4f9eb66fd05b99b95fc9","method":"GET"}
+{"timestamp":"2026-11-21T14:23:15.772Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"3da8d1b8b25f4f9eb66fd05b99b95fc9","method":"GET","route":"/health/live","status_code":200,"duration_ms":60.12}
+{"timestamp":"2026-11-21T14:23:15.835Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"4f89ee46d7d84735bceef9e4840c4f40","method":"GET"}
+{"timestamp":"2026-11-21T14:23:15.856Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"4f89ee46d7d84735bceef9e4840c4f40","method":"GET","route":"/ui/","status_code":200,"duration_ms":20.656}
+{"timestamp":"2026-11-21T14:23:15.862Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"5127f715975e43be8e6f975977953eab","method":"GET"}
+{"timestamp":"2026-11-21T14:23:15.864Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"5127f715975e43be8e6f975977953eab","method":"GET","route":"/ui/assets/app.css","status_code":200,"duration_ms":2.452}
+{"timestamp":"2026-11-21T14:23:15.865Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"65de8900a70c4bd083d668b8d6253495","method":"GET"}
+{"timestamp":"2026-11-21T14:23:15.870Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"65de8900a70c4bd083d668b8d6253495","method":"GET","route":"/ui/assets/named-app.js","status_code":200,"duration_ms":5.152}
+{"timestamp":"2026-11-21T14:23:15.871Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"72802e77c9a44fe1b7075ce8f98376f5","method":"GET"}
+{"timestamp":"2026-11-21T14:23:15.874Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"72802e77c9a44fe1b7075ce8f98376f5","method":"GET","route":"/ui/assets/vaultbridge-logo.webp","status_code":200,"duration_ms":3.674}
+{"timestamp":"2026-11-21T14:23:15.903Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"aead97cd00274159b878880ebaeef186","method":"GET"}
+{"timestamp":"2026-11-21T14:23:15.905Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"2cf839358a9c40e68779039dd47d3808","method":"GET"}
+{"timestamp":"2026-11-21T14:23:15.915Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"aead97cd00274159b878880ebaeef186","method":"GET","route":"/ui/assets/named-session.js","status_code":200,"duration_ms":11.468}
+{"timestamp":"2026-11-21T14:23:15.915Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"b200c1f218664138886e47db6834c6f3","method":"GET"}
+{"timestamp":"2026-11-21T14:23:15.917Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"b200c1f218664138886e47db6834c6f3","method":"GET","route":"/ui/assets/spaces.js","status_code":200,"duration_ms":2.117}
+{"timestamp":"2026-11-21T14:23:15.918Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"2cf839358a9c40e68779039dd47d3808","method":"GET","route":"/ui/assets/scoped-client.js","status_code":200,"duration_ms":12.449}
+{"timestamp":"2026-11-21T14:23:16.015Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"e2177b4a4e2948f08612f58ad899d51e","method":"POST"}
+{"timestamp":"2026-11-21T14:23:16.016Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"e2177b4a4e2948f08612f58ad899d51e","method":"POST","route":"/ui/session","status_code":200,"duration_ms":1.832}
+{"timestamp":"2026-11-21T14:23:16.020Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"909741cf24ee4f1394b00c35ec7b8b17","method":"GET"}
+{"timestamp":"2026-11-21T14:23:16.025Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"909741cf24ee4f1394b00c35ec7b8b17","method":"GET","route":"/api/v1/knowledge/spaces","status_code":200,"duration_ms":4.958}
+{"timestamp":"2026-11-21T14:23:16.028Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"f87960834e83445fb4e66e4a53fac4f9","method":"GET"}
+{"timestamp":"2026-11-21T14:23:16.030Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"f87960834e83445fb4e66e4a53fac4f9","method":"GET","route":"/api/v1/knowledge/spaces/status","status_code":200,"duration_ms":1.868}
+-------------------------- Captured stdout teardown ---------------------------
+Native qualification events: .agent/remaining-qualification/native-events/b049950344874d938c0c466be9d37fc1.json
+- generated xml file: <VB156B_SOURCE>\.agent\401-repair\red.xml -
+=========================== short test summary info ===========================
+FAILED tests/e2e/test_named_dashboard.py::test_current_protected_read_401_erases_before_cleanup[root-https-chromium-malformed-status]
+1 failed in 7.09s

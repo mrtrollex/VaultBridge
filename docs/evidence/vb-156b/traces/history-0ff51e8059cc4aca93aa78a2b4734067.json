@@ -1,0 +1,86 @@
+{
+  "raw_trace_sha256": "8eaef97335512d7f209625b52822a435a92184a93ee7c498085e97297ceb704b",
+  "original_trace": "VB156B_SOURCE/.agent/remaining-qualification/native-traces/0ff51e8059cc4aca93aa78a2b4734067.zip",
+  "members": [
+    {
+      "member": "trace.trace",
+      "sha256": "be7e2aade81f4d4b0bfee816a718b7613f4f0e7143f31d022490509b106d8fcb",
+      "events": [
+        {
+          "type": "context-options",
+          "browserName": "webkit",
+          "playwrightVersion": "1.63.0",
+          "platform": "win32",
+          "wallTime": 1795253056978,
+          "title": null
+        }
+      ]
+    },
+    {
+      "member": "trace.network",
+      "sha256": "69273ab14578295c0fb7f3995f627d2f936da5e34a51f3884a4841d1a50c698f",
+      "events": [
+        {
+          "line": 1,
+          "startedDateTime": "2026-11-21T09:24:17.112Z",
+          "request": {
+            "method": "GET",
+            "scheme": "https",
+            "host": "vaultbridge.example.test",
+            "port": 52862,
+            "path": "/public",
+            "case": null,
+            "cookie_header_present": false,
+            "cookie_names": [],
+            "sec_fetch_site": "none",
+            "origin_present": false
+          },
+          "response": {
+            "status": 200,
+            "set_cookie": []
+          }
+        },
+        {
+          "line": 2,
+          "startedDateTime": "2026-11-21T09:24:17.281Z",
+          "request": {
+            "method": "GET",
+            "scheme": "https",
+            "host": "vaultbridge.example.test",
+            "port": 52859,
+            "path": "/proxy/health/live",
+            "case": null,
+            "cookie_header_present": false,
+            "cookie_names": [],
+            "sec_fetch_site": "same-site",
+            "origin_present": false
+          },
+          "response": {
+            "status": 200,
+            "set_cookie": []
+          }
+        },
+        {
+          "line": 3,
+          "startedDateTime": "2026-11-21T09:24:17.330Z",
+          "request": {
+            "method": "GET",
+            "scheme": "https",
+            "host": "vaultbridge.example.test",
+            "port": 52862,
+            "path": "/public",
+            "case": null,
+            "cookie_header_present": false,
+            "cookie_names": [],
+            "sec_fetch_site": "none",
+            "origin_present": false
+          },
+          "response": {
+            "status": 200,
+            "set_cookie": []
+          }
+        }
+      ]
+    }
+  ]
+}

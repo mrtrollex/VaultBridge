@@ -1,0 +1,7 @@
+Source: https://github.com/microsoft/playwright/blob/v1.64.0/browser_patches/webkit/patches/bootstrap.diff
+[
+  {
+    "line": 11593,
+    "context": "+    preferences.setDeveloperExtrasEnabled(true);\n+\n+    // Navigation to cached pages doesn't fire some of the events (e.g. execution context created)\n+    // that inspector depends on. So we disable the cache when front-end connects.\n+    preferences.setUsesBackForwardCache(false);\n+\n+    // Enable popup debugging.\n+    // TODO: allow to set preferences over the inspector protocol or find a better place for this.\n+    preferences.setJavaScriptCanOpenWindowsAutomatically(true);"
+  }
+]

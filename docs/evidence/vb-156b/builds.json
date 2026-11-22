@@ -1,0 +1,66 @@
+{
+  "windows": {
+    "playwright": "1.63.0",
+    "browsers": [
+      {
+        "name": "chromium",
+        "revision": "1243",
+        "installByDefault": true,
+        "browserVersion": "153.0.8010.12",
+        "title": "Chrome for Testing"
+      },
+      {
+        "name": "firefox",
+        "revision": "1543",
+        "installByDefault": true,
+        "browserVersion": "155.0",
+        "title": "Firefox"
+      },
+      {
+        "name": "webkit",
+        "revision": "2359",
+        "installByDefault": true,
+        "revisionOverrides": {
+          "mac14": "2251",
+          "mac14-arm64": "2251"
+        },
+        "browserVersion": "26.6",
+        "title": "WebKit"
+      }
+    ]
+  },
+  "linux": {
+    "playwright": "1.64.0",
+    "browsers": [
+      {
+        "name": "chromium",
+        "revision": "1248",
+        "installByDefault": true,
+        "browserVersion": "156.0.8078.4",
+        "title": "Chrome for Testing"
+      },
+      {
+        "name": "firefox",
+        "revision": "1555",
+        "installByDefault": true,
+        "browserVersion": "157.0",
+        "title": "Firefox"
+      },
+      {
+        "name": "webkit",
+        "revision": "2370",
+        "installByDefault": true,
+        "revisionOverrides": {
+          "mac14": "2251",
+          "mac14-arm64": "2251"
+        },
+        "browserVersion": "27.2",
+        "title": "WebKit"
+      }
+    ]
+  },
+  "platform_notes": {
+    "windows": "Windows-11-10.0.26300-SP0",
+    "linux": "Actual WSL/Linux per native logs/review; distro/kernel not recorded in the preserved run manifests. No generic Linux OS qualification or Safari claim."
+  }
+}

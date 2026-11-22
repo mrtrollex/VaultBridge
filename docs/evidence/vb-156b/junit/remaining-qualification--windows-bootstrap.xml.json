@@ -1,0 +1,124 @@
+[
+  {
+    "attributes": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "12",
+      "time": "19.690",
+      "timestamp": "2026-11-21T10:19:28.110018+01:00"
+    },
+    "properties": [],
+    "cases": [
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_bootstrap_module_dependency_barrier[root-https-chromium]",
+          "time": "1.072"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_bootstrap_native_lock_barrier[root-https-chromium]",
+          "time": "1.305"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_bootstrap_module_dependency_barrier[root-https-firefox]",
+          "time": "3.016"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_bootstrap_native_lock_barrier[root-https-firefox]",
+          "time": "1.409"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_bootstrap_module_dependency_barrier[root-https-webkit]",
+          "time": "1.844"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_bootstrap_native_lock_barrier[root-https-webkit]",
+          "time": "1.695"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_bootstrap_module_dependency_barrier[prefix-https-chromium]",
+          "time": "0.842"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_bootstrap_native_lock_barrier[prefix-https-chromium]",
+          "time": "0.917"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_bootstrap_module_dependency_barrier[prefix-https-firefox]",
+          "time": "2.841"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_bootstrap_native_lock_barrier[prefix-https-firefox]",
+          "time": "1.492"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_bootstrap_module_dependency_barrier[prefix-https-webkit]",
+          "time": "1.717"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_bootstrap_native_lock_barrier[prefix-https-webkit]",
+          "time": "1.451"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      }
+    ]
+  }
+]

@@ -1,0 +1,375 @@
+"""Disposable production TLS app, pre-header barriers and local CONNECT mapping.
+
+The proxy resolves test hostnames locally for all three native browser engines;
+it is test transport, never an authorization substitute or deployment validator.
+"""
+
+import asyncio
+import json
+import os
+import select
+import shutil
+import socket
+import socketserver
+import subprocess
+import threading
+from contextlib import contextmanager
+from pathlib import Path
+from urllib.parse import urlsplit
+
+import uvicorn
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+
+from app.core.config import Settings
+from app.main import create_app
+from app.services.knowledge_spaces import Capability, Dialect
+
+KEY = "<TEST_CREDENTIAL_REDACTED>"
+COOKIE = "vaultbridge_ui_session"
+INTENT = "vaultbridge.named-ui-session.intent.v1"
+JOURNAL = "vaultbridge.named-ui-session.journal.v1"
+
+
+class Barrier:
+    def __init__(self):
+        self.entered = threading.Event()
+        self.release = threading.Event()
+        self.method = None
+        self.headers = None
+        self.failure = None
+        self.path = "/ui/session"
+        self.stage = "headers"
+        self.truncate = False
+        self.finished = threading.Event()
+        self.repeat = False
+        self.captured_headers = []
+
+    def arm(self, method, failure=None, path="/ui/session", *, stage="headers", truncate=False, repeat=False):
+        self.entered.clear()
+        self.release.clear()
+        self.method = method
+        self.failure = failure
+        self.headers = None
+        self.path = path
+        self.stage = stage
+        self.truncate = truncate
+        self.finished.clear()
+        self.repeat = repeat
+        self.captured_headers.clear()
+
+    async def __call__(self, app, scope, receive, send):
+        held = (
+            self.method is not None
+            and scope["path"].endswith(self.path)
+            and scope["method"] == self.method
+            and (not self.repeat or not self.release.is_set())
+        )
+        failure = self.failure if held else None
+        if held and not self.repeat:
+            self.method = None
+
+        async def intercept(message):
+            if held and message["type"] == "http.response.start":
+                self.headers = dict(message["headers"])
+                self.captured_headers.append(self.headers)
+            stopping = held and (
+                (self.stage == "headers" and message["type"] == "http.response.start")
+                or (self.stage == "body" and message["type"] == "http.response.body")
+            )
+            if stopping:
+                self.entered.set()
+                assert await asyncio.to_thread(self.release.wait, 20), "Test did not release response headers"
+                if self.truncate and message["type"] == "http.response.body":
+                    await send({**message, "body": message["body"][:1], "more_body": True})
+                    raise RuntimeError("Synthetic truncated HTTP response")
+            await send(message)
+
+        try:
+            if failure is not None:
+                from starlette.responses import JSONResponse
+
+                await JSONResponse(
+                    {"detail": "test_failure"}, status_code=failure, headers={"Cache-Control": "no-store"}
+                )(scope, receive, intercept)
+            else:
+                await app(scope, receive, intercept)
+        finally:
+            if held:
+                self.finished.set()
+
+
+class _Tunnel(socketserver.StreamRequestHandler):
+    # Never buffer TLS bytes sent immediately after CONNECT headers: bytes
+    # prefetched by rfile would be invisible to the socket forwarding loop.
+    rbufsize = 0
+
+    def handle(self):
+        with self.server.mutex:
+            if self.server.failed:
+                return
+        first = self.rfile.readline().decode("ascii").strip().split()
+        if len(first) != 3:
+            return
+        connect = first[0] == "CONNECT"
+        target = urlsplit(first[1]) if not connect else None
+        host, port = first[1].rsplit(":", 1) if connect else (target.hostname, target.port or 80)
+        if host not in {"vaultbridge.example.test", "other.example.test", "foreign.invalid.test"}:
+            return
+        headers = []
+        while (line := self.rfile.readline()) not in {b"\r\n", b"\n", b""}:
+            if line.split(b":", 1)[0].lower() not in {b"connection", b"proxy-connection"}:
+                headers.append(line)
+        with socket.create_connection(("127.0.0.1", int(port)), timeout=5) as peer:
+            if connect:
+                self.wfile.write(b"HTTP/1.1 200 Connection established\r\n\r\n")
+                self.wfile.flush()
+            else:
+                assert target.scheme == "http"
+                path = target.path or "/"
+                if target.query:
+                    path += "?" + target.query
+                peer.sendall(
+                    f"{first[0]} {path} {first[2]}\r\n".encode() + b"".join(headers) + b"Connection: close\r\n\r\n"
+                )
+            self.connection.settimeout(20)
+            peer.settimeout(20)
+            with self.server.mutex:
+                self.server.tunnels.add(self.connection)
+            try:
+                while True:
+                    ready, _, _ = select.select([self.connection, peer], [], [], 20)
+                    if not ready:
+                        return
+                    for source in ready:
+                        try:
+                            data = source.recv(65536)
+                            if not data:
+                                return
+                            (peer if source is self.connection else self.connection).sendall(data)
+                        except OSError:
+                            return
+            finally:
+                with self.server.mutex:
+                    self.server.tunnels.discard(self.connection)
+
+
+class _Proxy(socketserver.ThreadingTCPServer):
+    allow_reuse_address = True
+    daemon_threads = True
+
+    def __init__(self, *args):
+        self.mutex = threading.Lock()
+        self.tunnels = set()
+        self.failed = False
+        super().__init__(*args)
+
+    def disconnect(self):
+        """Actual TCP failure; no browser fetch/response mock."""
+        with self.mutex:
+            self.failed = True
+            for connection in self.tunnels:
+                try:
+                    connection.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
+
+    def recover(self):
+        with self.mutex:
+            self.failed = False
+
+
+def certificate(root):
+    executable = shutil.which("openssl")
+    if executable is None and os.name == "nt":
+        executable = str(Path(os.environ["ProgramFiles"]) / "Git/usr/bin/openssl.exe")
+    cert, key = root / "cert.pem", root / "key.pem"
+    result = subprocess.run(
+        [
+            executable,
+            "req",
+            "-x509",
+            "-newkey",
+            "rsa:2048",
+            "-nodes",
+            "-keyout",
+            str(key),
+            "-out",
+            str(cert),
+            "-days",
+            "1",
+            "-subj",
+            "/CN=vaultbridge.example.test",
+            "-addext",
+            "subjectAltName=DNS:vaultbridge.example.test,DNS:other.example.test,IP:127.0.0.1",
+        ],
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, "Disposable TLS certificate generation unavailable"
+    return cert, key
+
+
+@contextmanager
+def serve(app, cert=None, key=None):
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    listener.listen()
+    port = listener.getsockname()[1]
+    ready = threading.Event()
+
+    class ReadyServer(uvicorn.Server):
+        async def startup(self, sockets=None):
+            await super().startup(sockets=sockets)
+            if self.started:
+                ready.set()
+
+    server = ReadyServer(
+        uvicorn.Config(
+            app,
+            access_log=False,
+            log_level="error",
+            lifespan="on",
+            ssl_certfile=str(cert) if cert else None,
+            ssl_keyfile=str(key) if key else None,
+            proxy_headers=False,
+        )
+    )
+    thread = threading.Thread(target=server.run, kwargs={"sockets": [listener]}, daemon=True)
+    thread.start()
+    try:
+        assert ready.wait(10), "Disposable server startup did not complete"
+        yield port
+    finally:
+        server.should_exit = True
+        thread.join(10)
+        listener.close()
+        assert not thread.is_alive(), "Disposable TLS server did not stop"
+
+
+@contextmanager
+def named_server(root, prefix, *, denied=(), plain=False, termination=False, trust_proxy=True):
+    records = []
+    for sid in ("default", "research"):
+        vault = root / sid
+        vault.mkdir()
+        records.append(
+            dict(
+                space_id=sid,
+                root=str(vault),
+                semantic_data_path=str(root / (sid + "-data")),
+                read="deny" if sid in denied else "allow",
+                write="deny",
+                indexing="disabled",
+                dialects=[d.value for d in Dialect],
+                capabilities=[c.value for c in Capability],
+            )
+        )
+    settings = Settings(
+        API_KEY=KEY,
+        VAULT_PATH=records[0]["root"],
+        SEMANTIC_DATA_PATH=records[0]["semantic_data_path"],
+        KNOWLEDGE_SPACES_JSON=json.dumps(dict(version=1, spaces=records)),
+        RATE_LIMIT_ENABLED=False,
+        SEMANTIC_WATCH_ENABLED=False,
+    )
+    app = create_app(settings=settings)
+    barrier = Barrier()
+    inventory = []
+    deliveries = []
+    observations = []
+
+    async def wrapper(scope, receive, send):
+        if scope["type"] == "http":
+            inventory.append((scope["method"], scope["path"]))
+            deliveries.append((scope["path"], dict(scope["headers"]).get(b"cookie", b"")))
+            observations.append(
+                {
+                    "path": scope["path"],
+                    "query": scope["query_string"],
+                    "method": scope["method"],
+                    "headers": dict(scope["headers"]),
+                    "scheme": scope["scheme"],
+                }
+            )
+            if scope["path"].startswith(prefix + "/"):
+                scope = {**scope, "root_path": prefix}
+        await barrier(app, scope, receive, send)
+
+    cert, key = certificate(root)
+    proxy = _Proxy(("127.0.0.1", 0), _Tunnel)
+    thread = threading.Thread(target=proxy.serve_forever, daemon=True)
+    thread.start()
+    try:
+
+        def result(port):
+            return dict(
+                url=f"{'http' if plain else 'https'}://vaultbridge.example.test:{port}{prefix}",
+                origin=f"{'http' if plain else 'https'}://vaultbridge.example.test:{port}",
+                app=app,
+                barrier=barrier,
+                proxy={"server": f"http://127.0.0.1:{proxy.server_address[1]}"},
+                inventory=inventory,
+                deliveries=deliveries,
+                observations=observations,
+                proxy_server=proxy,
+                cert=cert,
+                key=key,
+            )
+
+        if termination:
+            # Real TLS edge -> real plaintext backend, with an explicit trusted
+            # direct-peer profile. Never trust client-supplied forwarded values.
+            import httpx
+            from starlette.requests import Request
+
+            backend = ProxyHeadersMiddleware(wrapper, trusted_hosts=["127.0.0.1"] if trust_proxy else ["192.0.2.10"])
+            with serve(backend) as backend_port:
+
+                async def edge(scope, receive, send):
+                    if scope["type"] == "lifespan":
+                        while True:
+                            event = await receive()
+                            await send({"type": event["type"] + ".complete"})
+                            if event["type"] == "lifespan.shutdown":
+                                return
+                    else:
+                        body = await Request(scope, receive).body()
+                        headers = [
+                            (k, v)
+                            for k, v in scope["headers"]
+                            if k.lower()
+                            not in {
+                                b"x-forwarded-proto",
+                                b"x-forwarded-for",
+                                b"x-forwarded-host",
+                                b"forwarded",
+                                b"connection",
+                                b"transfer-encoding",
+                            }
+                        ]
+                        headers.append((b"x-forwarded-proto", b"https"))
+                        target = f"http://127.0.0.1:{backend_port}" + scope["path"]
+                        if scope["query_string"]:
+                            target += "?" + scope["query_string"].decode("ascii")
+                        async with httpx.AsyncClient(trust_env=False) as upstream:
+                            response = await upstream.request(scope["method"], target, content=body, headers=headers)
+                        response_headers = [
+                            (k, v)
+                            for k, v in response.headers.raw
+                            if k.lower() not in {b"connection", b"transfer-encoding"}
+                        ]
+                        await send(
+                            {"type": "http.response.start", "status": response.status_code, "headers": response_headers}
+                        )
+                        await send({"type": "http.response.body", "body": response.content})
+
+                with serve(edge, cert, key) as port:
+                    yield result(port)
+        else:
+            with serve(wrapper, None if plain else cert, None if plain else key) as port:
+                yield result(port)
+    finally:
+        barrier.release.set()
+        proxy.shutdown()
+        proxy.server_close()
+        thread.join(5)

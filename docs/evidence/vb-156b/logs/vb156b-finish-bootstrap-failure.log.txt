@@ -1,0 +1,293 @@
+Change base: refs/remotes/origin/main (merge base 90886af56f91)
+Changed files:
+  ARCHITECTURE.md
+  BACKLOG.md
+  app/api/dependencies.py
+  app/api/knowledge_spaces.py
+  app/api/private_reads.py
+  app/core/ui_session.py
+  app/main.py
+  app/repositories/semantic.py
+  app/services/knowledge_spaces.py
+  app/services/semantic_scheduler.py
+  app/services/semantic_search.py
+  app/services/space_operations.py
+  app/services/space_runtime.py
+  app/ui/assets/app.css
+  app/ui/assets/named-app.js
+  app/ui/assets/named-session.js
+  app/ui/assets/scoped-client.js
+  app/ui/assets/spaces.js
+  app/ui/named.html
+  app/ui/named_fence.py
+  app/ui/named_router.py
+  docs/DASHBOARD.md
+  docs/KNOWLEDGE_SPACES.md
+  docs/VB156B_QUALIFICATION.md
+  tests/e2e/named_server.py
+  tests/e2e/test_named_cookie_delivery.py
+  tests/e2e/test_named_dashboard.py
+  tests/test_named_dashboard.py
+  tests/test_policy_read_adapters.py
+  tests/test_public_space_composition.py
+  tests/test_ui.py
+Detected areas:
+  docs
+  python
+  semantic
+  api
+  ui
+  mcp
+Automated checks:
+  SELECTED ruff
+  SELECTED pytest (unit/integration, includes tests/eval)
+  SELECTED compileall
+  SELECTED Playwright E2E (Chromium)
+  SELECTED docker build
+  SELECTED MCP dependency in image
+  SELECTED MCP stdio container smoke
+  SELECTED MCP HTTP container smoke
+Agent verification:
+  SKIP / NOT REQUIRED manual verification
+RUN ruff: <USER_HOME>\Desktop\VaultBridge\.venv\Scripts\python.exe -m ruff check app tests scripts
+All checks passed!
+RUN pytest (unit/integration, includes tests/eval): <USER_HOME>\Desktop\VaultBridge\.venv\Scripts\python.exe -m pytest -q --ignore=tests/e2e
+........................................................................ [  1%]
+....s............................s............s......................... [  3%]
+...............s....s................................................... [  4%]
+........................................................................ [  6%]
+........................................................................ [  8%]
+........................................................................ [  9%]
+........................................................................ [ 11%]
+............................................sss......................... [ 13%]
+........ss.s.s......s......................................s............ [ 14%]
+........................................................................ [ 16%]
+.........................................................s.............. [ 18%]
+.s...................................................................... [ 19%]
+........................................................................ [ 21%]
+............sssssssssssssssssss.........ssss..........................ss [ 23%]
+s....................................................................s.. [ 24%]
+........................................................................ [ 26%]
+........................................................................ [ 28%]
+........................................................................ [ 29%]
+........................................................................ [ 31%]
+..................................sssss................................. [ 32%]
+.........................................................s.............. [ 34%]
+........................................................................ [ 36%]
+........................................................................ [ 37%]
+........................................................................ [ 39%]
+........................................................................ [ 41%]
+s....................................................................... [ 42%]
+.........................................................ss............. [ 44%]
+........................................................................ [ 46%]
+.......................................................................s [ 47%]
+ss...................................................................... [ 49%]
+........................................................................ [ 51%]
+..........................................ss...........ss.s..s.......... [ 52%]
+........................................................................ [ 54%]
+............................s............ss...........s................. [ 56%]
+..................ssss.................................................. [ 57%]
+.....................................................s...s.............. [ 59%]
+...............................s........................................ [ 60%]
+........................................................................ [ 62%]
+.........................................ssss..............ss........... [ 64%]
+........ss......s....................................................... [ 65%]
+........................................................................ [ 67%]
+........................................................................ [ 69%]
+............s........................................................... [ 70%]
+........................................................................ [ 72%]
+....................................................sss................. [ 74%]
+........................................................................ [ 75%]
+..................s....................................s......s......... [ 77%]
+.........sss..s..........................s.............................. [ 79%]
+...sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss [ 80%]
+........sssss...s....ssssssssss.sssss........sssss..sssssssss....s...... [ 82%]
+...............ssssssssssssssssssssssssssssssss...................sss..s [ 84%]
+ssssssssssssssssssssssssssssssssssssssssssssss.......................... [ 85%]
+...............................................................s........ [ 87%]
+...............ss....................................................... [ 88%]
+........................................................................ [ 90%]
+.......................................................................s [ 92%]
+ss.......ssss...s.ssssss...........ss.............s...........s......... [ 93%]
+.....s..ss......................................................s....... [ 95%]
+........................................................................ [ 97%]
+........................................................................ [ 98%]
+.....s................sssssss................sss.                        [100%]
+4053 passed, 316 skipped in 849.35s (0:14:09)
+RUN compileall: <USER_HOME>\Desktop\VaultBridge\.venv\Scripts\python.exe -m compileall -q app
+RUN Playwright E2E (Chromium): <USER_HOME>\Desktop\VaultBridge\.venv\Scripts\python.exe -m pytest -q tests/e2e --browser=chromium --tracing=retain-on-failure --output=test-results/playwright
+............................................................F........... [ 48%]
+........................................................................ [ 97%]
+....                                                                     [100%]
+================================== FAILURES ===================================
+_____ test_orphan_mutation_quarantined[root-https-chromium-close-DELETE] ______
+
+named_context = <BrowserContext browser=<Browser type=<BrowserType name=chromium executable_path=<USER_HOME>\AppData\Local\ms-playwright\chromium-1243\chrome-win64\chrome.exe> version=153.0.8010.12>>
+named = {'app': <app.main.VaultBridgeApplication object at 0x0000028277702F90>, 'barrier': <tests.e2e.named_server.Barrier obj.../assets/vaultbridge-logo.webp', b''), ('/ui/assets/named-session.js', b''), ('/ui/assets/scoped-client.js', b'')], ...}
+method = 'DELETE', termination = 'close'
+
+    @pytest.mark.parametrize("method", ["POST", "DELETE"])
+    @pytest.mark.parametrize("termination", ["close", "reload"])
+    def test_orphan_mutation_quarantined(named_context, named, method, termination):
+        a = open_page(named_context, named)
+        if method == "DELETE":
+>           login(a)
+
+tests\e2e\test_named_dashboard.py:161:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\e2e\test_named_dashboard.py:62: in login
+    page.locator("#api-key").fill(KEY)
+..\VaultBridge\.venv\Lib\site-packages\playwright\sync_api\_generated.py:18398: in fill
+    self._sync(
+..\VaultBridge\.venv\Lib\site-packages\playwright\_impl\_locator.py:219: in fill
+    return await self._frame.fill(self._selector, strict=True, **params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\VaultBridge\.venv\Lib\site-packages\playwright\_impl\_frame.py:637: in fill
+    await self._fill(**locals_to_params(locals()))
+..\VaultBridge\.venv\Lib\site-packages\playwright\_impl\_frame.py:649: in _fill
+    await self._channel.send("fill", self._timeout, locals_to_params(locals()))
+..\VaultBridge\.venv\Lib\site-packages\playwright\_impl\_connection.py:76: in send
+    return await self._connection.wrap_api_call(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <playwright._impl._connection.Connection object at 0x0000028275215EB0>
+cb = <function Channel.send.<locals>.<lambda> at 0x0000028277693F60>
+is_internal = False, title = None
+
+    async def wrap_api_call(
+        self, cb: Callable[[], Any], is_internal: bool = False, title: str = None
+    ) -> Any:
+        if self._api_zone.get():
+            return await cb()
+        task = asyncio.current_task(self._loop)
+        parsed_st = _attach_api_call_information(
+            getattr(task, "__pw_stack__", None) or _capture_stack_trace(),
+            is_internal,
+            title,
+        )
+        self._api_zone.set(parsed_st)
+        try:
+            return await cb()
+        except Exception as error:
+>           raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+E           playwright._impl._errors.TimeoutError: Locator.fill: Timeout 30000ms exceeded.
+E           Call log:
+E             - waiting for locator("#api-key")
+E               - locator resolved to <input required="" id="api-key" type="password" autocomplete="off" spellcheck="false"/>
+E               - fill("<TEST_CREDENTIAL_REDACTED>")
+E             - attempting fill action
+E               2 � waiting for element to be visible, enabled and editable
+E                 - element is not visible
+E               - retrying fill action
+E               - waiting 20ms
+E               2 � waiting for element to be visible, enabled and editable
+E                 - element is not visible
+E               - retrying fill action
+E                 - waiting 100ms
+E               59 � waiting for element to be visible, enabled and editable
+E                  - element is not visible
+E                - retrying fill action
+E                  - waiting 500ms
+
+..\VaultBridge\.venv\Lib\site-packages\playwright\_impl\_connection.py:632: TimeoutError
+---------------------------- Captured stdout call -----------------------------
+Unlock readiness: Checking browser support�
+---------------------------- Captured stderr call -----------------------------
+{"timestamp":"2026-11-21T08:19:20.997Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"6f44e6141b4448f99ef0016216d69a52","method":"GET"}
+{"timestamp":"2026-11-21T08:19:21.025Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"6f44e6141b4448f99ef0016216d69a52","method":"GET","route":"/ui/","status_code":200,"duration_ms":27.434}
+{"timestamp":"2026-11-21T08:19:21.030Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"6efcc27348f4445988fdae946cde8767","method":"GET"}
+{"timestamp":"2026-11-21T08:19:21.033Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"6efcc27348f4445988fdae946cde8767","method":"GET","route":"/ui/assets/app.css","status_code":200,"duration_ms":2.444}
+{"timestamp":"2026-11-21T08:19:21.033Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"4fe574bbd9ab464d84c0401d991c3ce8","method":"GET"}
+{"timestamp":"2026-11-21T08:19:21.035Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"4fe574bbd9ab464d84c0401d991c3ce8","method":"GET","route":"/ui/assets/named-app.js","status_code":200,"duration_ms":1.798}
+{"timestamp":"2026-11-21T08:19:21.035Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"a59c0bfe0e4347c4a870c7ce06fe13ef","method":"GET"}
+{"timestamp":"2026-11-21T08:19:21.038Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"a59c0bfe0e4347c4a870c7ce06fe13ef","method":"GET","route":"/ui/assets/vaultbridge-logo.webp","status_code":200,"duration_ms":2.987}
+{"timestamp":"2026-11-21T08:19:21.039Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"8dee67322a2a45cc964135e199775773","method":"GET"}
+{"timestamp":"2026-11-21T08:19:21.041Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"8dee67322a2a45cc964135e199775773","method":"GET","route":"/ui/assets/named-session.js","status_code":200,"duration_ms":2.23}
+{"timestamp":"2026-11-21T08:19:21.042Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"6760d83b79d94926afcb32ab6659f421","method":"GET"}
+{"timestamp":"2026-11-21T08:19:21.046Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"6760d83b79d94926afcb32ab6659f421","method":"GET","route":"/ui/assets/scoped-client.js","status_code":200,"duration_ms":4.486}
+=========================== short test summary info ===========================
+FAILED tests/e2e/test_named_dashboard.py::test_orphan_mutation_quarantined[root-https-chromium-close-DELETE]
+1 failed, 147 passed in 167.27s (0:02:47)
+RUN docker build: docker build -t vaultbridge:agent-check .
+python.exe : #0 building with "desktop-linux" instance using docker driver
+At line:6 char:1
++ & ../VaultBridge/.venv/Scripts/python.exe scripts/agent_finish.py --t ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (#0 building wit...g docker driver:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 690B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/python:3.12-slim
+#2 DONE 0.8s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 409B done
+#3 DONE 0.0s
+
+#4 [1/7] FROM docker.io/library/python:3.12-slim@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5
+b
+#4 resolve docker.io/library/python:3.12-slim@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b 0
+.0s done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 91.52kB 0.0s done
+#5 DONE 0.0s
+
+#6 [3/7] RUN apt-get update &&     apt-get install -y --no-install-recommends libgomp1 &&     rm -rf /var/lib/apt/lists
+/*
+#6 CACHED
+
+#7 [4/7] COPY requirements.txt .
+#7 CACHED
+
+#8 [2/7] WORKDIR /app
+#8 CACHED
+
+#9 [5/7] RUN pip install --no-cache-dir -r requirements.txt
+#9 CACHED
+
+#10 [6/7] COPY --chown=568:568 app ./app
+#10 DONE 0.1s
+
+#11 [7/7] RUN mkdir -p /data/huggingface && chown -R 568:568 /data &&     find /app -type d -exec chmod 755 {} \; &&
+  find /app -type f -exec chmod 644 {} \;
+#11 DONE 0.8s
+
+#12 exporting to image
+#12 exporting layers
+#12 exporting layers 0.2s done
+#12 exporting manifest sha256:5e50344d6b2c68c527f9fe96a562f04febf468e1d2a6a65451e9545e1a0642a8 0.0s done
+#12 exporting config sha256:1ef45ccbfe93d8afc726c4fc49bceacb2e4764b8ecc2a203bf961f0fa5cb16d9 done
+#12 exporting attestation manifest sha256:f37213c97820815f864de46fea1e616883a7eec5ec1a7238216573d969d1c59e 0.0s done
+#12 exporting manifest list sha256:6fc25d5b0ddd52477a866612bd9b3aacbdbd1fa3b2c6815575ade1f22b2400ea 0.0s done
+#12 naming to docker.io/library/vaultbridge:agent-check done
+#12 unpacking to docker.io/library/vaultbridge:agent-check 0.1s done
+#12 DONE 0.4s
+RUN MCP dependency in image: docker run --rm --entrypoint python vaultbridge:agent-check -c "from importlib.metadata import version; import app.mcp_server; print(version('mcp'))"
+2.3.0
+RUN MCP stdio container smoke: docker run --rm -i --entrypoint sh vaultbridge:agent-check -c "mkdir -p /tmp/vault /tmp/data && VAULT_PATH=/tmp/vault SEMANTIC_DATA_PATH=/tmp/data python -m app.mcp_server </dev/null"
+{"timestamp":"2026-11-21T08:21:20.081Z","level":"INFO","logger":"vaultbridge.mcp","event":"mcp_server_started","message
+":"VaultBridge MCP stdio server started","transport":"stdio"}
+{"timestamp":"2026-11-21T08:21:20.092Z","level":"INFO","logger":"vaultbridge.mcp","event":"mcp_server_stopped","message
+":"VaultBridge MCP stdio server stopped","transport":"stdio"}
+RUN MCP HTTP container smoke: <USER_HOME>\Desktop\VaultBridge\.venv\Scripts\python.exe scripts/smoke_mcp_http.py --image vaultbridge:agent-check
+Disposable root: <USER_HOME>\AppData\Local\Temp\vaultbridge-vb093-tcm_mitp
+Disposable cleanup: PASS (<USER_HOME>\AppData\Local\Temp\vaultbridge-vb093-tcm_mitp)
+VaultBridge MCP HTTP read-only and write-enabled container smoke: PASS
+Result summary:
+  PASS ruff (exit 0)
+  PASS pytest (unit/integration, includes tests/eval) (exit 0)
+  PASS compileall (exit 0)
+  FAIL Playwright E2E (Chromium) (exit 1)
+  PASS docker build (exit 0)
+  PASS MCP dependency in image (exit 0)
+  PASS MCP stdio container smoke (exit 0)
+  PASS MCP HTTP container smoke (exit 0)
+  SKIP / NOT REQUIRED manual verification
+Overall: FAIL
+Verification: FAIL (exit 1)

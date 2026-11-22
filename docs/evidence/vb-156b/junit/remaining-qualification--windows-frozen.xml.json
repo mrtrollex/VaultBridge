@@ -1,0 +1,50 @@
+[
+  {
+    "attributes": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "2",
+      "skipped": "0",
+      "tests": "2",
+      "time": "4.335",
+      "timestamp": "2026-11-21T10:16:41.634399+01:00"
+    },
+    "properties": [],
+    "cases": [
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_frozen_tab_logout[root-https]",
+          "time": "2.429"
+        },
+        "outcome": "failure",
+        "diagnostics": [
+          {
+            "kind": "failure",
+            "attributes": {
+              "message": "AssertionError: assert [] == ['freeze', 'resume']\n\n  Right contains 2 more items, first extra item: 'freeze'\n  Use -v to get more diff"
+            },
+            "text": "playwright = <playwright._impl._playwright.Playwright object at 0x0000021293758FE0>\nnamed = {'app': <app.main.VaultBridgeApplication object at 0x00000212935E61B0>, 'barrier': <tests.e2e.named_server.Barrier obj...ts/vaultbridge-logo.webp', b''), ('/ui/assets/named-session.js', b''), ('/ui/assets/scoped-client.js', b''), ...], ...}\nrequest = <FixtureRequest for <Function test_native_frozen_tab_logout[root-https]>>\n\n    def test_native_frozen_tab_logout(playwright, named, request):\n        \"\"\"Native Chromium suspension, distinct from authenticated BFCache admission.\"\"\"\n        browser = playwright.chromium.launch(channel=\"chromium\")\n        context = browser.new_context(ignore_https_errors=True, proxy=named[\"proxy\"])\n        evidence = NativeEvidence(context, request.node.nodeid)\n        try:\n            a = open_page(context, named)\n            login(a)\n            a.locator(\"#single-space\").select_option(\"research\")\n            expect(a.locator(\"#index-status\")).to_contain_text(\"research: disabled\")\n            b = open_page(context, named)\n            expect(b.locator(\"#index-status\")).to_contain_text(\"default: disabled\")\n            a.evaluate(\"\"\"() => {\n              window.nativeSuspension=[];\n              for (const type of ['freeze','resume'])\n                document.addEventListener(type, () => nativeSuspension.push(type));\n            }\"\"\")\n            cdp = context.new_cdp_session(a)\n            cdp.send(\"Page.setWebLifecycleState\", {\"state\": \"frozen\"})\n            evidence.record(\"native-freeze-command-completed\")\n            b.get_by_role(\"button\", name=\"Log out\", exact=True).click()\n            expect(b.locator(\"#session-message\")).to_contain_text(\"removal confirmed\")\n            assert not session_cookie(context)\n            start = len(named[\"inventory\"])\n            cdp.send(\"Page.setWebLifecycleState\", {\"state\": \"active\"})\n            a.bring_to_front()\n            # A missed storage notification can conservatively leave this old page\n            # logout_pending even though the other tab settled the shared journal.\n            # ADR 0011 permits this locked state; it must never auto-replay a DELETE.\n            expect(a.locator(\"#session-message\")).to_contain_text(\"Page locked; session removal not confirmed\")\n            expect(a.locator(\"#unlock-form\")).to_be_hidden()\n            expect(a.locator(\"#spaces\")).to_be_hidden()\n            expect(a.locator(\"#single-space\")).to_have_value(\"\")\n            expect(a.locator(\"#index-status\")).to_be_empty()\n>           assert a.evaluate(\"nativeSuspension\") == [\"freeze\", \"resume\"]\nE           AssertionError: assert [] == ['freeze', 'resume']\nE\nE             Right contains 2 more items, first extra item: 'freeze'\nE             Use -v to get more diff\n\ntests\\e2e\\test_named_qualification.py:121: AssertionError"
+          }
+        ]
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_frozen_tab_logout[prefix-https]",
+          "time": "1.511"
+        },
+        "outcome": "failure",
+        "diagnostics": [
+          {
+            "kind": "failure",
+            "attributes": {
+              "message": "AssertionError: assert [] == ['freeze', 'resume']\n\n  Right contains 2 more items, first extra item: 'freeze'\n  Use -v to get more diff"
+            },
+            "text": "playwright = <playwright._impl._playwright.Playwright object at 0x0000021293758FE0>\nnamed = {'app': <app.main.VaultBridgeApplication object at 0x0000021294C00B30>, 'barrier': <tests.e2e.named_server.Barrier obj...ge-logo.webp', b''), ('/proxy/ui/assets/named-session.js', b''), ('/proxy/ui/assets/scoped-client.js', b''), ...], ...}\nrequest = <FixtureRequest for <Function test_native_frozen_tab_logout[prefix-https]>>\n\n    def test_native_frozen_tab_logout(playwright, named, request):\n        \"\"\"Native Chromium suspension, distinct from authenticated BFCache admission.\"\"\"\n        browser = playwright.chromium.launch(channel=\"chromium\")\n        context = browser.new_context(ignore_https_errors=True, proxy=named[\"proxy\"])\n        evidence = NativeEvidence(context, request.node.nodeid)\n        try:\n            a = open_page(context, named)\n            login(a)\n            a.locator(\"#single-space\").select_option(\"research\")\n            expect(a.locator(\"#index-status\")).to_contain_text(\"research: disabled\")\n            b = open_page(context, named)\n            expect(b.locator(\"#index-status\")).to_contain_text(\"default: disabled\")\n            a.evaluate(\"\"\"() => {\n              window.nativeSuspension=[];\n              for (const type of ['freeze','resume'])\n                document.addEventListener(type, () => nativeSuspension.push(type));\n            }\"\"\")\n            cdp = context.new_cdp_session(a)\n            cdp.send(\"Page.setWebLifecycleState\", {\"state\": \"frozen\"})\n            evidence.record(\"native-freeze-command-completed\")\n            b.get_by_role(\"button\", name=\"Log out\", exact=True).click()\n            expect(b.locator(\"#session-message\")).to_contain_text(\"removal confirmed\")\n            assert not session_cookie(context)\n            start = len(named[\"inventory\"])\n            cdp.send(\"Page.setWebLifecycleState\", {\"state\": \"active\"})\n            a.bring_to_front()\n            # A missed storage notification can conservatively leave this old page\n            # logout_pending even though the other tab settled the shared journal.\n            # ADR 0011 permits this locked state; it must never auto-replay a DELETE.\n            expect(a.locator(\"#session-message\")).to_contain_text(\"Page locked; session removal not confirmed\")\n            expect(a.locator(\"#unlock-form\")).to_be_hidden()\n            expect(a.locator(\"#spaces\")).to_be_hidden()\n            expect(a.locator(\"#single-space\")).to_have_value(\"\")\n            expect(a.locator(\"#index-status\")).to_be_empty()\n>           assert a.evaluate(\"nativeSuspension\") == [\"freeze\", \"resume\"]\nE           AssertionError: assert [] == ['freeze', 'resume']\nE\nE             Right contains 2 more items, first extra item: 'freeze'\nE             Use -v to get more diff\n\ntests\\e2e\\test_named_qualification.py:121: AssertionError"
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,52 @@
+[
+  {
+    "attributes": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "4",
+      "time": "8.245",
+      "timestamp": "2026-11-21T15:41:44.886929+01:00"
+    },
+    "properties": [],
+    "cases": [
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_native_protected_read_401_truncated_body[root-https-webkit-discovery]",
+          "time": "2.901"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_native_protected_read_401_truncated_body[root-https-webkit-status]",
+          "time": "1.675"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_native_protected_read_401_truncated_body[prefix-https-webkit-discovery]",
+          "time": "1.770"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_native_protected_read_401_truncated_body[prefix-https-webkit-status]",
+          "time": "1.222"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      }
+    ]
+  }
+]

@@ -1,0 +1,64 @@
+{
+  "checks": [
+    {
+      "command": [
+        "git",
+        "log",
+        "-6",
+        "--format=%H %s"
+      ],
+      "stdout": "90886af56f911b7708c9749bf63ab2f17816408b docs: accept named Knowledge Spaces Dashboard architecture (#156)\n7150319d83125cf360d05da9bd86f8551ba72892 docs: consolidate roadmap and post-v1.5 documentation (#155)\n90ec06fefe6d4f9ea77b090787b794861ef57235 chore(release): prepare VaultBridge v1.5.0 stable metadata (#154)\nc753b42400dc1232714172546d8b3ad1c39cc652 chore(release): align candidate metadata to 1.5.0-rc.2\nda9ea5fb3acb918aefd82f17a32321ebddaf3b81 fix: harden MCP schema compatibility and stopped SQLite lifecycle\n9076482a768cb6db316f8c191118c7069d77208f Merge pull request #153 from <USER>/release/vb-154-v150-rc1-prep"
+    },
+    {
+      "command": [
+        "git",
+        "reflog",
+        "show",
+        "feature/vb-156b-named-dashboard-foundation",
+        "--date=iso-strict",
+        "--format=%H %gd %gs"
+      ],
+      "stdout": "90886af56f911b7708c9749bf63ab2f17816408b feature/vb-156b-named-dashboard-foundation@{2026-11-20T17:22:14+01:00} branch: Created from origin/main"
+    },
+    {
+      "command": [
+        "git",
+        "reflog",
+        "show",
+        "HEAD",
+        "--date=iso-strict",
+        "--format=%H %gd %gs",
+        "-10"
+      ],
+      "stdout": "90886af56f911b7708c9749bf63ab2f17816408b HEAD@{2026-11-20T17:22:14+01:00} reset: moving to HEAD\n90886af56f911b7708c9749bf63ab2f17816408b HEAD@{2026-11-20T17:22:14+01:00}"
+    },
+    {
+      "command": [
+        "git",
+        "stash",
+        "list",
+        "--format=%H %gs"
+      ],
+      "stdout": ""
+    },
+    {
+      "command": [
+        "git",
+        "log",
+        "--all",
+        "--since=2026-11-19",
+        "--format=%H %s",
+        "--",
+        "app/ui/assets/scoped-client.js",
+        "tests/e2e/test_named_qualification.py"
+      ],
+      "stdout": ""
+    }
+  ],
+  "conclusion": "No implementation commit, stash or reflog source snapshot was found. The branch/HEAD reflogs contain the design baseline only. Retained task packet is clean preflight, not implementation source. Two partial hash manifests and final repair scope exist; none is a complete contemporaneous snapshot of the original bootstrap/Strict runs. Original WebKit trace archives contain network/stacks but no source text members. Historical full source linkage remains UNVERIFIED and blocks independent acceptance; no current-code reconstruction is presented as contemporaneous.",
+  "classification": {
+    "verified": "Pre-401 production hash map plus final 401 scope hashes match independently recorded reviewer checks and current capture.",
+    "incomplete_source_provenance": "Original/intermediate execution results remain preserved with timestamp, exact available commands and artifacts; complete tree identity not recoverable.",
+    "genuinely_unavailable": "Original failing bootstrap browser-side trace/events were not recorded. Complete contemporaneous source manifests for early/intermediate runs were not found."
+  }
+}

@@ -1,0 +1,288 @@
+[
+  {
+    "artifact": "junit/vb156b-windows-webkit-control.xml.json",
+    "timestamp": "2026-11-21T09:27:53.645899+01:00",
+    "counts": {
+      "tests": 4,
+      "failures": 4,
+      "errors": 0,
+      "skipped": 0
+    },
+    "status": "historical-unresolved; final complete repair runs linked separately"
+  },
+  {
+    "artifact": "junit/remaining-qualification--backend.xml.json",
+    "timestamp": "2026-11-21T10:13:07.408730+01:00",
+    "counts": {
+      "tests": 110,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "status": "historical-unresolved; final complete repair runs linked separately"
+  },
+  {
+    "artifact": "junit/remaining-qualification--linux-final.xml.json",
+    "timestamp": "2026-11-21T10:14:20.078399+01:00",
+    "counts": {
+      "tests": 368,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "status": "historical-unresolved; final complete repair runs linked separately"
+  },
+  {
+    "artifact": "junit/remaining-qualification--linux-frozen.xml.json",
+    "timestamp": "2026-11-21T10:16:41.362211+01:00",
+    "counts": {
+      "tests": 2,
+      "failures": 2,
+      "errors": 0,
+      "skipped": 0
+    },
+    "status": "historical-unresolved; final complete repair runs linked separately"
+  },
+  {
+    "artifact": "junit/remaining-qualification--linux-history-traced.xml.json",
+    "timestamp": "2026-11-21T10:24:39.194882+01:00",
+    "counts": {
+      "tests": 24,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "status": "historical-unresolved; final complete repair runs linked separately"
+  },
+  {
+    "artifact": "junit/remaining-qualification--linux-qualification.xml.json",
+    "timestamp": "2026-11-21T10:10:19.184988+01:00",
+    "counts": {
+      "tests": 36,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "status": "historical-unresolved; final complete repair runs linked separately"
+  },
+  {
+    "artifact": "junit/remaining-qualification--windows-bootstrap.xml.json",
+    "timestamp": "2026-11-21T10:19:28.110018+01:00",
+    "counts": {
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "status": "historical-unresolved; final complete repair runs linked separately"
+  },
+  {
+    "artifact": "junit/remaining-qualification--windows-chromium.xml.json",
+    "timestamp": "2026-11-21T10:09:02.557750+01:00",
+    "counts": {
+      "tests": 12,
+      "failures": 4,
+      "errors": 0,
+      "skipped": 0
+    },
+    "status": "historical-unresolved; final complete repair runs linked separately"
+  },
+  {
+    "artifact": "junit/remaining-qualification--windows-final.xml.json",
+    "timestamp": "2026-11-21T10:14:52.574221+01:00",
+    "counts": {
+      "tests": 246,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "status": "historical-unresolved; final complete repair runs linked separately"
+  },
+  {
+    "artifact": "junit/remaining-qualification--windows-frozen-form-expectation.xml.json",
+    "timestamp": "2026-11-21T10:15:32.512143+01:00",
+    "counts": {
+      "tests": 2,
+      "failures": 2,
+      "errors": 0,
+      "skipped": 0
+    },
+    "status": "historical-unresolved; final complete repair runs linked separately"
+  },
+  {
+    "artifact": "junit/remaining-qualification--windows-frozen.xml.json",
+    "timestamp": "2026-11-21T10:16:41.634399+01:00",
+    "counts": {
+      "tests": 2,
+      "failures": 2,
+      "errors": 0,
+      "skipped": 0
+    },
+    "status": "historical-unresolved; final complete repair runs linked separately"
+  },
+  {
+    "artifact": "junit/remaining-qualification--windows-history-traced.xml.json",
+    "timestamp": "2026-11-21T10:23:30.216721+01:00",
+    "counts": {
+      "tests": 24,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "status": "historical-unresolved; final complete repair runs linked separately"
+  },
+  {
+    "artifact": "junit/remaining-qualification--windows-history.xml.json",
+    "timestamp": "2026-11-21T10:11:42.548137+01:00",
+    "counts": {
+      "tests": 24,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "status": "historical-unresolved; final complete repair runs linked separately"
+  },
+  {
+    "artifact": "junit/remaining-qualification--windows-qualification.xml.json",
+    "timestamp": "2026-11-21T10:09:53.456446+01:00",
+    "counts": {
+      "tests": 36,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "status": "historical-unresolved; final complete repair runs linked separately"
+  },
+  {
+    "artifact": "junit/401-repair--chromium.xml.json",
+    "timestamp": "2026-11-21T15:23:51.921077+01:00",
+    "counts": {
+      "tests": 72,
+      "failures": 9,
+      "errors": 0,
+      "skipped": 0
+    },
+    "status": "historical-unresolved; final complete repair runs linked separately"
+  },
+  {
+    "artifact": "junit/401-repair--linux-complete.xml.json",
+    "timestamp": "2026-11-21T15:42:59.979484+01:00",
+    "counts": {
+      "tests": 300,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "status": "401-repaired-reviewed"
+  },
+  {
+    "artifact": "junit/401-repair--linux-native-final.xml.json",
+    "timestamp": "2026-11-21T15:41:44.886929+01:00",
+    "counts": {
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "status": "historical-unresolved; final complete repair runs linked separately"
+  },
+  {
+    "artifact": "junit/401-repair--linux-qualified.xml.json",
+    "timestamp": "2026-11-21T15:30:10.277784+01:00",
+    "counts": {
+      "tests": 240,
+      "failures": 4,
+      "errors": 0,
+      "skipped": 0
+    },
+    "status": "historical-unresolved; final complete repair runs linked separately"
+  },
+  {
+    "artifact": "junit/401-repair--linux-shared-guard.xml.json",
+    "timestamp": "2026-11-21T15:37:33.800626+01:00",
+    "counts": {
+      "tests": 60,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "status": "historical-unresolved; final complete repair runs linked separately"
+  },
+  {
+    "artifact": "junit/401-repair--linux-stream.xml.json",
+    "timestamp": "2026-11-21T15:39:37.477084+01:00",
+    "counts": {
+      "tests": 4,
+      "failures": 4,
+      "errors": 0,
+      "skipped": 0
+    },
+    "status": "historical-unresolved; final complete repair runs linked separately"
+  },
+  {
+    "artifact": "junit/401-repair--native-partial.xml.json",
+    "timestamp": "2026-11-21T15:24:43.481729+01:00",
+    "counts": {
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "status": "historical-unresolved; final complete repair runs linked separately"
+  },
+  {
+    "artifact": "junit/401-repair--prefix-probe.xml.json",
+    "timestamp": "2026-11-21T15:28:40.053182+01:00",
+    "counts": {
+      "tests": 36,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "status": "historical-unresolved; final complete repair runs linked separately"
+  },
+  {
+    "artifact": "junit/401-repair--red.xml.json",
+    "timestamp": "2026-11-21T15:23:15.007835+01:00",
+    "counts": {
+      "tests": 1,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0
+    },
+    "status": "historical-unresolved; final complete repair runs linked separately"
+  },
+  {
+    "artifact": "junit/401-repair--windows-complete.xml.json",
+    "timestamp": "2026-11-21T15:42:56.757157+01:00",
+    "counts": {
+      "tests": 300,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "status": "401-repaired-reviewed"
+  },
+  {
+    "artifact": "junit/401-repair--windows-qualified.xml.json",
+    "timestamp": "2026-11-21T15:30:06.145650+01:00",
+    "counts": {
+      "tests": 240,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0
+    },
+    "status": "historical-unresolved; final complete repair runs linked separately"
+  },
+  {
+    "artifact": "junit/401-repair--windows-shared-guard.xml.json",
+    "timestamp": "2026-11-21T15:37:34.087760+01:00",
+    "counts": {
+      "tests": 60,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "status": "historical-unresolved; final complete repair runs linked separately"
+  }
+]

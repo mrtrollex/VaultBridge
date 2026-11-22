@@ -1,0 +1,23 @@
+"""Structured arguments preserve the selected native qualification on both OSes."""
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+root = Path('.agent/401-repair')
+platform = ('windows' if os.name == 'nt' else 'linux') + '-complete'
+browsers = ['chromium', 'firefox', 'webkit']
+command = [sys.executable, '-m', 'pytest', 'tests/e2e/test_named_dashboard.py', '-k',
+           'protected_read or selected_status_failure_states or old_401 or current_401_rotation',
+           '-o', 'addopts=', '-q', '--tracing', 'retain-on-failure', '--output',
+           str(root / (platform + '-traces')), '--junitxml', str(root / (platform + '.xml'))]
+for browser in browsers:
+    command += ['--browser', browser]
+with (root / (platform + '.log')).open('wb') as output:
+    output.write((repr(command) + '\n').encode())
+    output.flush()
+    result = subprocess.run(command, stdout=output, stderr=subprocess.STDOUT, check=False)
+(root / (platform + '.exit')).write_text(str(result.returncode))
+print(platform, 'native browser focus exit:', result.returncode)
+print((root / (platform + '.log')).read_text(encoding='utf-8')[-2500:])
+sys.exit(result.returncode)

@@ -1,0 +1,4 @@
+........................................................................ [ 65%]
+......................................                                   [100%]
+- generated xml file: <VB156B_SOURCE>\.agent\remaining-qualification\backend.xml -
+110 passed in 8.16s

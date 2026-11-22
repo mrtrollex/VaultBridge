@@ -1,0 +1,173 @@
+[
+  {
+    "attributes": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "4",
+      "skipped": "0",
+      "tests": "12",
+      "time": "10.341",
+      "timestamp": "2026-11-21T10:09:02.557750+01:00"
+    },
+    "properties": [
+      {
+        "name": "test_native_bfcache_public_control[root-https-chromium-no-store]",
+        "value": "{\"ready\":\"complete\",\"message\":null,\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":{\"src\":null,\"id\":null,\"url\":\"https://vaultbridge.example.test:58127/public\",\"name\":null,\"reasons\":[{\"reason\":\"masked\"}],\"children\":[]}}]}"
+      },
+      {
+        "name": "test_native_bfcache_public_control[root-https-chromium-max-age=60]",
+        "value": "{\"ready\":\"complete\",\"message\":null,\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":{\"src\":null,\"id\":null,\"url\":\"https://vaultbridge.example.test:54918/public\",\"name\":null,\"reasons\":[{\"reason\":\"masked\"}],\"children\":[]}}]}"
+      },
+      {
+        "name": "test_native_bfcache_public_control[prefix-https-chromium-no-store]",
+        "value": "{\"ready\":\"complete\",\"message\":null,\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":{\"src\":null,\"id\":null,\"url\":\"https://vaultbridge.example.test:60246/public\",\"name\":null,\"reasons\":[{\"reason\":\"masked\"}],\"children\":[]}}]}"
+      },
+      {
+        "name": "test_native_bfcache_public_control[prefix-https-chromium-max-age=60]",
+        "value": "{\"ready\":\"complete\",\"message\":null,\"locks\":{\"held\":[],\"pending\":[]},\"phases\":[],\"events\":[{\"type\":\"DOMContentLoaded\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"load\",\"persisted\":null,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true},{\"type\":\"pageshow\",\"persisted\":false,\"hidden\":false,\"privateHidden\":null,\"statusEmpty\":true,\"selectionEmpty\":true,\"keyEmpty\":true}],\"navigation\":[{\"type\":\"back_forward\",\"notRestoredReasons\":{\"src\":null,\"id\":null,\"url\":\"https://vaultbridge.example.test:60365/public\",\"name\":null,\"reasons\":[{\"reason\":\"masked\"}],\"children\":[]}}]}"
+      }
+    ],
+    "cases": [
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_bootstrap_module_dependency_barrier[root-https-chromium]",
+          "time": "1.100"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_bootstrap_native_lock_barrier[root-https-chromium]",
+          "time": "0.790"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_authenticated_history_qualification[root-https-chromium-clean]",
+          "time": "1.074"
+        },
+        "outcome": "failure",
+        "diagnostics": [
+          {
+            "kind": "failure",
+            "attributes": {
+              "message": "assert ([])"
+            },
+            "text": "playwright = <playwright._impl._playwright.Playwright object at 0x000002206DCE9EB0>\nbrowser_name = 'chromium'\nnamed = {'app': <app.main.VaultBridgeApplication object at 0x000002206DEE6210>, 'barrier': <tests.e2e.named_server.Barrier obj...ts/vaultbridge-logo.webp', b''), ('/ui/assets/named-session.js', b''), ('/ui/assets/scoped-client.js', b''), ...], ...}\nrequest = <FixtureRequest for <Function test_native_authenticated_history_qualification[root-https-chromium-clean]>>\nrecord_testsuite_property = <bound method LogXML.add_global_property of <_pytest.junitxml.LogXML object at 0x000002206CBB96D0>>\nlogout_away = False\n\n    @pytest.mark.parametrize(\"logout_away\", [False, True], ids=[\"clean\", \"logout-away\"])\n    def test_native_authenticated_history_qualification(playwright, browser_name, named, request,\n                                                       record_testsuite_property, logout_away):\n        options = {\"ignore_default_args\": [\"--disable-back-forward-cache\"]} if browser_name == \"chromium\" else {}\n        browser = getattr(playwright, browser_name).launch(**options)\n        context = browser.new_context(ignore_https_errors=True, proxy=named[\"proxy\"])\n        evidence = NativeEvidence(context, request.node.nodeid)\n        barrier = named[\"barrier\"]\n        try:\n            page = open_page(context, named)\n            login(page)\n            page.locator(\"#single-space\").select_option(\"research\")\n            expect(page.locator(\"#index-status\")).to_contain_text(\"research: disabled\")\n            clean, cookie = journal(page), session_cookie(context)\n            leave(page, named[\"url\"] + \"/health/live\")\n            # pagehide was observed natively, even if admission was refused.\n            hides = [e[\"data\"] for e in evidence.events if e[\"event\"] == \"lifecycle\"\n                     and e[\"data\"][\"type\"] == \"pagehide\" and e[\"data\"][\"privateHidden\"] is not None]\n>           assert hides and all(h[\"privateHidden\"] and h[\"statusEmpty\"] and h[\"selectionEmpty\"] for h in hides)\nE           assert ([])\n\ntests\\e2e\\test_named_qualification.py:103: AssertionError"
+          }
+        ]
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_bfcache_public_control[root-https-chromium-no-store]",
+          "time": "0.759"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_bootstrap_module_dependency_barrier[prefix-https-chromium]",
+          "time": "0.714"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_bootstrap_native_lock_barrier[prefix-https-chromium]",
+          "time": "0.851"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_authenticated_history_qualification[root-https-chromium-logout-away]",
+          "time": "0.741"
+        },
+        "outcome": "failure",
+        "diagnostics": [
+          {
+            "kind": "failure",
+            "attributes": {
+              "message": "assert ([])"
+            },
+            "text": "playwright = <playwright._impl._playwright.Playwright object at 0x000002206DCE9EB0>\nbrowser_name = 'chromium'\nnamed = {'app': <app.main.VaultBridgeApplication object at 0x000002206E5A0530>, 'barrier': <tests.e2e.named_server.Barrier obj...ts/vaultbridge-logo.webp', b''), ('/ui/assets/named-session.js', b''), ('/ui/assets/scoped-client.js', b''), ...], ...}\nrequest = <FixtureRequest for <Function test_native_authenticated_history_qualification[root-https-chromium-logout-away]>>\nrecord_testsuite_property = <bound method LogXML.add_global_property of <_pytest.junitxml.LogXML object at 0x000002206CBB96D0>>\nlogout_away = True\n\n    @pytest.mark.parametrize(\"logout_away\", [False, True], ids=[\"clean\", \"logout-away\"])\n    def test_native_authenticated_history_qualification(playwright, browser_name, named, request,\n                                                       record_testsuite_property, logout_away):\n        options = {\"ignore_default_args\": [\"--disable-back-forward-cache\"]} if browser_name == \"chromium\" else {}\n        browser = getattr(playwright, browser_name).launch(**options)\n        context = browser.new_context(ignore_https_errors=True, proxy=named[\"proxy\"])\n        evidence = NativeEvidence(context, request.node.nodeid)\n        barrier = named[\"barrier\"]\n        try:\n            page = open_page(context, named)\n            login(page)\n            page.locator(\"#single-space\").select_option(\"research\")\n            expect(page.locator(\"#index-status\")).to_contain_text(\"research: disabled\")\n            clean, cookie = journal(page), session_cookie(context)\n            leave(page, named[\"url\"] + \"/health/live\")\n            # pagehide was observed natively, even if admission was refused.\n            hides = [e[\"data\"] for e in evidence.events if e[\"event\"] == \"lifecycle\"\n                     and e[\"data\"][\"type\"] == \"pagehide\" and e[\"data\"][\"privateHidden\"] is not None]\n>           assert hides and all(h[\"privateHidden\"] and h[\"statusEmpty\"] and h[\"selectionEmpty\"] for h in hides)\nE           assert ([])\n\ntests\\e2e\\test_named_qualification.py:103: AssertionError"
+          }
+        ]
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_bfcache_public_control[root-https-chromium-max-age=60]",
+          "time": "0.804"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_authenticated_history_qualification[prefix-https-chromium-clean]",
+          "time": "0.829"
+        },
+        "outcome": "failure",
+        "diagnostics": [
+          {
+            "kind": "failure",
+            "attributes": {
+              "message": "assert ([])"
+            },
+            "text": "playwright = <playwright._impl._playwright.Playwright object at 0x000002206DCE9EB0>\nbrowser_name = 'chromium'\nnamed = {'app': <app.main.VaultBridgeApplication object at 0x000002206E73A3C0>, 'barrier': <tests.e2e.named_server.Barrier obj...ge-logo.webp', b''), ('/proxy/ui/assets/named-session.js', b''), ('/proxy/ui/assets/scoped-client.js', b''), ...], ...}\nrequest = <FixtureRequest for <Function test_native_authenticated_history_qualification[prefix-https-chromium-clean]>>\nrecord_testsuite_property = <bound method LogXML.add_global_property of <_pytest.junitxml.LogXML object at 0x000002206CBB96D0>>\nlogout_away = False\n\n    @pytest.mark.parametrize(\"logout_away\", [False, True], ids=[\"clean\", \"logout-away\"])\n    def test_native_authenticated_history_qualification(playwright, browser_name, named, request,\n                                                       record_testsuite_property, logout_away):\n        options = {\"ignore_default_args\": [\"--disable-back-forward-cache\"]} if browser_name == \"chromium\" else {}\n        browser = getattr(playwright, browser_name).launch(**options)\n        context = browser.new_context(ignore_https_errors=True, proxy=named[\"proxy\"])\n        evidence = NativeEvidence(context, request.node.nodeid)\n        barrier = named[\"barrier\"]\n        try:\n            page = open_page(context, named)\n            login(page)\n            page.locator(\"#single-space\").select_option(\"research\")\n            expect(page.locator(\"#index-status\")).to_contain_text(\"research: disabled\")\n            clean, cookie = journal(page), session_cookie(context)\n            leave(page, named[\"url\"] + \"/health/live\")\n            # pagehide was observed natively, even if admission was refused.\n            hides = [e[\"data\"] for e in evidence.events if e[\"event\"] == \"lifecycle\"\n                     and e[\"data\"][\"type\"] == \"pagehide\" and e[\"data\"][\"privateHidden\"] is not None]\n>           assert hides and all(h[\"privateHidden\"] and h[\"statusEmpty\"] and h[\"selectionEmpty\"] for h in hides)\nE           assert ([])\n\ntests\\e2e\\test_named_qualification.py:103: AssertionError"
+          }
+        ]
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_bfcache_public_control[prefix-https-chromium-no-store]",
+          "time": "0.774"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_authenticated_history_qualification[prefix-https-chromium-logout-away]",
+          "time": "0.767"
+        },
+        "outcome": "failure",
+        "diagnostics": [
+          {
+            "kind": "failure",
+            "attributes": {
+              "message": "assert ([])"
+            },
+            "text": "playwright = <playwright._impl._playwright.Playwright object at 0x000002206DCE9EB0>\nbrowser_name = 'chromium'\nnamed = {'app': <app.main.VaultBridgeApplication object at 0x000002206E7AD100>, 'barrier': <tests.e2e.named_server.Barrier obj...ge-logo.webp', b''), ('/proxy/ui/assets/named-session.js', b''), ('/proxy/ui/assets/scoped-client.js', b''), ...], ...}\nrequest = <FixtureRequest for <Function test_native_authenticated_history_qualification[prefix-https-chromium-logout-away]>>\nrecord_testsuite_property = <bound method LogXML.add_global_property of <_pytest.junitxml.LogXML object at 0x000002206CBB96D0>>\nlogout_away = True\n\n    @pytest.mark.parametrize(\"logout_away\", [False, True], ids=[\"clean\", \"logout-away\"])\n    def test_native_authenticated_history_qualification(playwright, browser_name, named, request,\n                                                       record_testsuite_property, logout_away):\n        options = {\"ignore_default_args\": [\"--disable-back-forward-cache\"]} if browser_name == \"chromium\" else {}\n        browser = getattr(playwright, browser_name).launch(**options)\n        context = browser.new_context(ignore_https_errors=True, proxy=named[\"proxy\"])\n        evidence = NativeEvidence(context, request.node.nodeid)\n        barrier = named[\"barrier\"]\n        try:\n            page = open_page(context, named)\n            login(page)\n            page.locator(\"#single-space\").select_option(\"research\")\n            expect(page.locator(\"#index-status\")).to_contain_text(\"research: disabled\")\n            clean, cookie = journal(page), session_cookie(context)\n            leave(page, named[\"url\"] + \"/health/live\")\n            # pagehide was observed natively, even if admission was refused.\n            hides = [e[\"data\"] for e in evidence.events if e[\"event\"] == \"lifecycle\"\n                     and e[\"data\"][\"type\"] == \"pagehide\" and e[\"data\"][\"privateHidden\"] is not None]\n>           assert hides and all(h[\"privateHidden\"] and h[\"statusEmpty\"] and h[\"selectionEmpty\"] for h in hides)\nE           assert ([])\n\ntests\\e2e\\test_named_qualification.py:103: AssertionError"
+          }
+        ]
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_qualification",
+          "name": "test_native_bfcache_public_control[prefix-https-chromium-max-age=60]",
+          "time": "0.812"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      }
+    ]
+  }
+]

@@ -1,0 +1,3 @@
+['<USER_HOME>/.venvs/vaultbridge-d1-verification/bin/python', '-m', 'pytest', 'tests/e2e/test_named_dashboard.py', '-k', 'protected_read or selected_status_failure_states or old_401 or current_401_rotation', '-o', 'addopts=', '-q', '--tracing', 'retain-on-failure', '--output', '.agent/401-repair/linux-final-traces', '--junitxml', '.agent/401-repair/linux-final.xml', '--browser', 'chromium', '--browser', 'firefox', '--browser', 'webkit']
+........................................................................ [ 30%]
+..

@@ -1,0 +1,24 @@
+import importlib.metadata
+import json
+import pathlib
+import subprocess
+import sys
+
+import playwright
+
+root = pathlib.Path('.agent/remaining-qualification')
+manifest = json.loads((pathlib.Path(playwright.__file__).parent / 'driver/package/browsers.json').read_text())
+(root / 'browser-builds-linux.json').write_text(json.dumps(dict(
+    playwright=importlib.metadata.version('playwright'),
+    browsers=[b for b in manifest['browsers'] if b['name'] in ('chromium', 'firefox', 'webkit')]), indent=2))
+command = [sys.executable, '-m', 'pytest', 'tests/e2e/test_named_qualification.py', '-k',
+           'history or public_control', '--browser', 'chromium', '--browser', 'firefox',
+           '--browser', 'webkit', '-o', 'addopts=', '-q', '--junitxml',
+           str(root / 'linux-history-traced.xml')]
+with (root / 'linux-history-traced.log').open('wb') as output:
+    output.write((json.dumps(command) + '\n').encode())
+    output.flush()
+    result = subprocess.run(command, stdout=output, stderr=subprocess.STDOUT, check=False)
+print('Native Linux history diagnostics exit:', result.returncode)
+print((root / 'linux-history-traced.log').read_text()[-1200:])
+sys.exit(result.returncode)

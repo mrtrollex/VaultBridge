@@ -1,0 +1,316 @@
+diff --git "a/.agent\\401-repair\\scoped-client.before.js" b/app/ui/assets/scoped-client.js
+index 973499b..5b19c51 100644
+--- "a/.agent\\401-repair\\scoped-client.before.js"
++++ b/app/ui/assets/scoped-client.js
+@@ -10,9 +10,14 @@ export class ScopedClient {
+     url.search = new URLSearchParams(params).toString();
+     const response = await fetch(url, {signal, cache: "no-store", credentials: "same-origin", redirect: "error",
+       headers: {"X-VaultBridge-UI-Request": "1"}});
++    // Authentication failure is authoritative even when its body is unreadable.
++    // Keep the captured session guards before the coordinated, synchronous blank.
++    if (response.status === 401) {
++      if (epoch !== this.session.epoch || !this.session.check(snapshot)) throw Error("stale");
++      await this.session.unauthorized(snapshot); throw Error("session");
++    }
+     const data = await response.json();
+     if (epoch !== this.session.epoch || !this.session.check(snapshot)) throw Error("stale");
+-    if (response.status === 401) { await this.session.unauthorized(snapshot); throw Error("session"); }
+     if (!response.ok) {
+       const error = Error(({403: "denied", 429: "rate_limited", 503: "unavailable"})[response.status] || "unavailable");
+       const retry = response.headers.get("Retry-After");
+diff --git "a/.agent\\401-repair\\test_named_dashboard.before.py" b/tests/e2e/test_named_dashboard.py
+index e753f01..a6ab8cc 100644
+--- "a/.agent\\401-repair\\test_named_dashboard.before.py"
++++ b/tests/e2e/test_named_dashboard.py
+@@ -337,7 +337,8 @@ def test_queued_old_login_cancelled_by_logout_intent(named_context, named):
+
+ @pytest.mark.parametrize(
+     "status,message",
+-    [(403, "Reload spaces explicitly"), (429, "Rate limited"), (503, "Spaces unavailable"), (401, "removal confirmed")],
++    [(403, "Reload spaces explicitly"), (429, "Rate limited"), (500, "Spaces unavailable"),
++     (503, "Spaces unavailable"), (401, "removal confirmed")],
+ )
+ def test_selected_status_failure_states(named_context, named, status, message):
+     page = open_page(named_context, named)
+@@ -360,6 +361,281 @@ def test_selected_status_failure_states(named_context, named, status, message):
+             expect(page.locator("#active-selection")).to_have_text("Active selection: default")
+
+
++PROTECTED_401_BODIES = {
++    "json": ('{"detail":"untrusted-401-body"}', "application/json"),
++    "empty": ("", "application/json"),
++    "malformed": ("not-json-untrusted-401-body", "application/json"),
++    "truncated": ('{"detail":"untrusted-401-body', "application/json"),
++    "non-json": ("<html>untrusted-401-body</html>", "text/html"),
++}
++
++
++def observe_protected_reads(page):
++    # Observe completion and actual controller memory using the real modules;
++    # do not replace their session, parsing, authorization or rendering behavior.
++    page.evaluate("""async () => {
++      const {ScopedClient}=await import(new URL('./assets/scoped-client.js', document.baseURI));
++      const {Spaces}=await import(new URL('./assets/spaces.js', document.baseURI));
++      window.protectedReads=[];
++      window.protectedResponses=[];
++      const nativeFetch=window.fetch;
++      window.fetch=(...args) => nativeFetch(...args).then(response => {
++        if (new URL(response.url).pathname.includes('/api/v1/knowledge/spaces'))
++          protectedResponses.push(response.status);
++        return response;
++      });
++      const get=ScopedClient.prototype.get, reset=Spaces.prototype.reset;
++      ScopedClient.prototype.get=async function(...args) {
++        const row={done:false}; protectedReads.push(row);
++        try { return await get.apply(this,args); } finally { row.done=true; }
++      };
++      Spaces.prototype.reset=function() {
++        reset.call(this);
++        window.erasedPrivate={choices:this.choices.length, selected:this.selected.length};
++      };
++      AbortController.prototype.abort=function() {};
++    }""")
++
++
++def assert_protected_ui_erased(page):
++    expect(page.locator("#spaces")).to_be_hidden()
++    for selector in ("#capabilities", "#space-options", "#index-status", "#spaces-message"):
++        expect(page.locator(selector)).to_be_empty()
++    expect(page.locator("#active-selection")).to_have_text("No spaces selected")
++    expect(page.locator("#single-space")).to_have_value("")
++    expect(page.locator("#single-space option")).to_have_count(1)
++    expect(page.locator("#selection-form")).to_be_hidden()
++    expect(page.locator("#api-key")).to_have_value("")
++    assert page.evaluate("erasedPrivate") == {"choices": 0, "selected": 0}
++    assert "untrusted-401-body" not in page.locator("body").inner_text()
++
++
++def protected_read_target(page, named, operation):
++    if operation == "discovery":
++        return named["url"] + "/api/v1/knowledge/spaces", page.locator("#reload-spaces")
++    return named["url"] + "/api/v1/knowledge/spaces/status?spaces=default", page.locator("#refresh-status")
++
++
++def fulfill_protected_401(route, body_kind):
++    body, content_type = PROTECTED_401_BODIES[body_kind]
++    route.fulfill(status=401, body=body, content_type=content_type, headers={"Cache-Control": "no-store"})
++
++
++def hold_protected_401(page, target):
++    held = []
++    page.evaluate("window.protected401Held=false")
++
++    def intercept(route):
++        held.append(route)
++        route.request.frame.evaluate("window.protected401Held=true")
++
++    page.route(target, intercept, times=1)
++    return held
++
++
++@pytest.mark.parametrize("operation", ["discovery", "status"])
++@pytest.mark.parametrize("body_kind", PROTECTED_401_BODIES)
++def test_current_protected_read_401_erases_before_cleanup(named_context, named, operation, body_kind):
++    owner = named_context.new_page()
++    owner.goto(named["url"] + "/health/live")
++    page = open_page(named_context, named)
++    login(page)
++    page.locator("#choose-multiple").click()
++    expect(page.locator("#space-options input")).to_have_count(2)
++    observe_protected_reads(page)
++    original, clean = session_cookie(named_context), journal(page)
++    owner.evaluate("""lock => {
++      window.lockEntered=false;
++      void navigator.locks.request(lock, () => new Promise(resolve => {
++        window.release401Lock=resolve; window.lockEntered=true;
++      }));
++    }""", LOCK)
++    owner.wait_for_function("() => window.lockEntered")
++    barrier = named["barrier"]
++    barrier.arm("DELETE")
++    target, trigger = protected_read_target(page, named, operation)
++    page.route(target, lambda route: fulfill_protected_401(route, body_kind), times=1)
++    try:
++        trigger.click()
++        # The native mutation lock is unavailable: erasure cannot depend on
++        # acquiring it, a complete JSON body, or asynchronous cookie deletion.
++        assert_protected_ui_erased(page)
++        page.wait_for_function("""async lock =>
++          (await navigator.locks.query()).pending.some(row=>row.name===lock)""", arg=LOCK)
++        assert not barrier.entered.is_set()
++        assert session_cookie(named_context) == original and journal(page) == clean
++        assert not any(method == "DELETE" for method, _ in named["inventory"])
++        owner.evaluate("release401Lock()")
++        assert barrier.entered.wait(10)
++        assert_protected_ui_erased(page)
++        assert journal(page)["phase"] == "deleting" and session_cookie(named_context) == original
++        barrier.release.set()
++        page.wait_for_function("() => window.protectedReads[0].done")
++        expect(page.locator("#session-message")).to_contain_text("removal confirmed")
++        assert_protected_ui_erased(page)
++        assert not session_cookie(named_context) and journal(page)["phase"] == "locked"
++        assert sum(method == "DELETE" for method, _ in named["inventory"]) == 1
++    finally:
++        owner.evaluate("release401Lock()")
++        barrier.release.set()
++
++
++@pytest.mark.parametrize("reauthenticate_elsewhere", [False, True], ids=["same_tab", "other_tab"])
++@pytest.mark.parametrize("operation", ["discovery", "status"])
++@pytest.mark.parametrize("body_kind", PROTECTED_401_BODIES)
++def test_stale_protected_read_401_after_reauthentication(
++    named_context, named, operation, body_kind, reauthenticate_elsewhere
++):
++    page = open_page(named_context, named)
++    login(page)
++    observe_protected_reads(page)
++    actor = page
++    if reauthenticate_elsewhere:
++        # Keep the old tab's epoch/snapshot unchanged: the shared intent/revision
++        # check, independently of notifications and epochs, must fence its 401.
++        page.evaluate(DROP_NOTIFICATIONS)
++        actor = open_page(named_context, named)
++        expect(actor.locator("#index-status")).to_contain_text("default: disabled")
++    target, trigger = protected_read_target(page, named, operation)
++    held = hold_protected_401(page, target)
++    trigger.click()
++    page.wait_for_function("() => window.protected401Held")
++    assert len(held) == 1
++    actor.locator("#logout").click()
++    expect(actor.locator("#session-message")).to_contain_text("removal confirmed")
++    login(actor)
++    current, clean = session_cookie(named_context), journal(actor)
++    deletes = sum(method == "DELETE" for method, _ in named["inventory"])
++    fulfill_protected_401(held.pop(), body_kind)
++    page.wait_for_function("() => window.protectedReads[0].done")
++    expect(actor.locator("#spaces")).to_be_visible()
++    expect(actor.locator("#index-status")).to_contain_text("default: disabled")
++    expect(actor.locator("#active-selection")).to_have_text("Active selection: default")
++    if reauthenticate_elsewhere:
++        assert_protected_ui_erased(page)
++    assert session_cookie(named_context) == current and journal(actor) == clean
++    assert sum(method == "DELETE" for method, _ in named["inventory"]) == deletes
++
++
++@pytest.mark.parametrize("operation", ["discovery", "status"])
++def test_native_protected_read_401_truncated_body(named_context, named, operation):
++    owner = named_context.new_page()
++    owner.goto(named["url"] + "/health/live")
++    page = open_page(named_context, named)
++    login(page)
++    observe_protected_reads(page)
++    original, clean = session_cookie(named_context), journal(page)
++    owner.evaluate("""lock => {
++      window.lockEntered=false;
++      void navigator.locks.request(lock, () => new Promise(resolve => {
++        window.release401Lock=resolve; window.lockEntered=true;
++      }));
++    }""", LOCK)
++    owner.wait_for_function("() => window.lockEntered")
++    target, trigger = protected_read_target(page, named, operation)
++    barrier = named["barrier"]
++    barrier.arm("GET", 401, path=urlsplit(target).path, stage="body", truncate=True)
++    try:
++        trigger.click()
++        assert barrier.entered.wait(10)
++        assert b"set-cookie" not in barrier.headers
++        # Engines may expose fetch's Response only after receiving body bytes.
++        # Cut the actual HTTP body, then synchronize on the native fetch result.
++        barrier.release.set()
++        assert barrier.finished.wait(10)
++        page.wait_for_function("() => window.protectedResponses.includes(401)", timeout=5000)
++        assert_protected_ui_erased(page)
++        page.wait_for_function("""async lock =>
++          (await navigator.locks.query()).pending.some(row=>row.name===lock)""", arg=LOCK)
++        assert session_cookie(named_context) == original and journal(page) == clean
++        assert not any(method == "DELETE" for method, _ in named["inventory"])
++        owner.evaluate("release401Lock()")
++        page.wait_for_function("() => window.protectedReads[0].done")
++        assert_protected_ui_erased(page)
++        assert not session_cookie(named_context) and journal(page)["phase"] == "locked"
++        assert sum(method == "DELETE" for method, _ in named["inventory"]) == 1
++    finally:
++        owner.evaluate("release401Lock()")
++        barrier.release.set()
++
++
++@pytest.mark.parametrize("body_kind", PROTECTED_401_BODIES)
++def test_delayed_protected_read_401_during_logout(named_context, named, body_kind):
++    page = open_page(named_context, named)
++    login(page)
++    observe_protected_reads(page)
++    target, trigger = protected_read_target(page, named, "status")
++    held = hold_protected_401(page, target)
++    trigger.click()
++    page.wait_for_function("() => window.protected401Held")
++    assert len(held) == 1
++    original = session_cookie(named_context)
++    barrier = named["barrier"]
++    barrier.arm("DELETE")
++    page.locator("#logout").click()
++    assert barrier.entered.wait(10)
++    deleting = journal(page)
++    fulfill_protected_401(held.pop(), body_kind)
++    page.wait_for_function("() => window.protectedReads[0].done")
++    assert_protected_ui_erased(page)
++    assert journal(page) == deleting and session_cookie(named_context) == original
++    assert sum(method == "DELETE" for method, _ in named["inventory"]) == 1
++    barrier.release.set()
++    expect(page.locator("#session-message")).to_contain_text("removal confirmed")
++    assert not session_cookie(named_context) and journal(page)["phase"] == "locked"
++    assert sum(method == "DELETE" for method, _ in named["inventory"]) == 1
++
++
++@pytest.mark.parametrize("delete_status,phase", [(429, "logout_pending"), (503, "uncertain")])
++def test_protected_read_401_failed_coordinated_delete(named_context, named, delete_status, phase):
++    page = open_page(named_context, named)
++    login(page)
++    observe_protected_reads(page)
++    original = session_cookie(named_context)
++    target, trigger = protected_read_target(page, named, "status")
++    page.route(target, lambda route: fulfill_protected_401(route, "truncated"), times=1)
++    barrier = named["barrier"]
++    barrier.arm("DELETE", delete_status)
++    barrier.release.set()
++    trigger.click()
++    page.wait_for_function("() => window.protectedReads[0].done")
++    assert_protected_ui_erased(page)
++    assert journal(page)["phase"] == phase and session_cookie(named_context) == original
++    expect(page.locator("#session-message")).to_contain_text(
++        "removal not confirmed" if delete_status == 429 else "Session outcome uncertain")
++    assert sum(method == "DELETE" for method, _ in named["inventory"]) == 1
++    page.reload()
++    expect(page.locator("#spaces")).to_be_hidden()
++    expect(page.locator("#unlock-form")).to_be_hidden()
++    assert session_cookie(named_context) == original and journal(page)["phase"] == phase
++    assert sum(method == "DELETE" for method, _ in named["inventory"]) == 1
++    if delete_status == 429:
++        page.get_by_role("button", name="Retry logout", exact=True).click()
++        expect(page.locator("#session-message")).to_contain_text("removal confirmed")
++        assert not session_cookie(named_context) and journal(page)["phase"] == "locked"
++        assert sum(method == "DELETE" for method, _ in named["inventory"]) == 2
++
++
++@pytest.mark.parametrize("status", [403, 429, 500, 503])
++def test_protected_read_non_json_non_401_is_safe_unavailability(named_context, named, status):
++    page = open_page(named_context, named)
++    login(page)
++    observe_protected_reads(page)
++    original, clean = session_cookie(named_context), journal(page)
++    target, trigger = protected_read_target(page, named, "status")
++    page.route(target, lambda route: route.fulfill(
++        status=status, content_type="text/html", body="<html>untrusted-error-body</html>"), times=1)
++    trigger.click()
++    page.wait_for_function("() => window.protectedReads[0].done")
++    expect(page.locator("#spaces-message")).to_contain_text("Spaces unavailable")
++    expect(page.locator("#spaces")).to_be_visible()
++    expect(page.locator("#active-selection")).to_have_text("Active selection: default")
++    expect(page.locator("#index-status")).to_be_empty()
++    assert "untrusted-error-body" not in page.locator("body").inner_text()
++    assert session_cookie(named_context) == original and journal(page) == clean
++    assert not any(method == "DELETE" for method, _ in named["inventory"])
++
++
+ def test_cookie_without_history_is_not_silently_adopted(named_context, named, browser):
+     page = open_page(named_context, named)
+     login(page)

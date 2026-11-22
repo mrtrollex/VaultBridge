@@ -1,0 +1,8 @@
+['<USER_HOME>/.venvs/vaultbridge-d1-verification/bin/python', '-m', 'pytest', 'tests/e2e/test_named_dashboard.py', '-k', 'protected_read or selected_status_failure_states or old_401 or current_401_rotation', '-o', 'addopts=', '-q', '--tracing', 'retain-on-failure', '--output', '.agent/401-repair/linux-complete-traces', '--junitxml', '.agent/401-repair/linux-complete.xml', '--browser', 'chromium', '--browser', 'firefox', '--browser', 'webkit']
+........................................................................ [ 24%]
+........................................................................ [ 48%]
+........................................................................ [ 72%]
+........................................................................ [ 96%]
+............                                                             [100%]
+- generated xml file: <VB156B_SOURCE>/.agent/401-repair/linux-complete.xml -
+300 passed, 284 deselected in 578.51s (0:09:38)

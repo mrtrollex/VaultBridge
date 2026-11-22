@@ -1,0 +1,7 @@
+[
+  {
+    "timestamp": "2026-11-21T15:14:57.550Z",
+    "hash_verification_script_prefix": "text(await tools.exec_command({cmd:\"@'\\nimport {readFileSync} from 'node:fs';\\nimport {createHash} from 'node:crypto';\\nimport assert from 'node:assert/strict';\\nconst hash = p => createHash('sha256').update(readFileSync(p)).digest('hex');\\nconst baseline = JSON.parse(readFileSync('.agent/remaining-qualification/source-snapshot.json'));\\nconst changes = Object.entries(baseline.production).filter(([p,h]) => hash(p)!==h).map(([p])=>p);\\nassert.deepEqual(changes,['app/ui/assets/scoped-client.js']);\\nassert.equal(hash('docs/adr/0011-named-knowledge-spaces-dashboard.md'),baseline.retained['docs/adr/0011-named-knowledge-spaces-dashboard.md']);\\nconst scope=JSON.parse(readFileSync('.agent/401-repair/scope.json'));\\nfor(const [p,h] of Object.entries(scope.files)) assert.equal(hash(p),h,p);\\n",
+    "complete_tool_output": "[{'type': 'input_text', 'text': 'Script completed\\nWall time 0.4 seconds\\nOutput:\\n'}, {'type': 'input_text', 'text': '{\"chunk_id\":\"d8b9af\",\"wall_time_seconds\":0.1203546,\"exit_code\":0,\"original_token_count\":42,\"output\":\"{\\\\\"productionDeltaVerified\\\\\":[\\\\\"app/ui/assets/scoped-client.js\\\\\"],\\\\\"adrUnchanged\\\\\":true,\\\\\"repairHashesMatch\\\\\":true,\\\\\"inMemoryChecksPassed\\\\\":21,\\\\\"originalFailureReproduced\\\\\":true}\\\\n\"}'}]"
+  }
+]

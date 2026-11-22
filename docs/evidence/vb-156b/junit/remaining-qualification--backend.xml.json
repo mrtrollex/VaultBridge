@@ -1,0 +1,1006 @@
+[
+  {
+    "attributes": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "110",
+      "time": "8.149",
+      "timestamp": "2026-11-21T10:13:07.408730+01:00"
+    },
+    "properties": [],
+    "cases": [
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_nonrenewing_and_rotation",
+          "time": "0.072"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers0-GET]",
+          "time": "0.036"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers0-POST]",
+          "time": "0.034"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers0-DELETE]",
+          "time": "0.033"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers1-GET]",
+          "time": "0.032"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers1-POST]",
+          "time": "0.033"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers1-DELETE]",
+          "time": "0.036"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers2-GET]",
+          "time": "0.033"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers2-POST]",
+          "time": "0.093"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers2-DELETE]",
+          "time": "0.034"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers3-GET]",
+          "time": "0.032"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers3-POST]",
+          "time": "0.033"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers3-DELETE]",
+          "time": "0.034"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers4-GET]",
+          "time": "0.036"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers4-POST]",
+          "time": "0.034"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers4-DELETE]",
+          "time": "0.034"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers5-GET]",
+          "time": "0.036"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers5-POST]",
+          "time": "0.033"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers5-DELETE]",
+          "time": "0.036"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers6-GET]",
+          "time": "0.033"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers6-POST]",
+          "time": "0.035"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers6-DELETE]",
+          "time": "0.032"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers7-GET]",
+          "time": "0.034"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers7-POST]",
+          "time": "0.036"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers7-DELETE]",
+          "time": "0.035"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers8-GET]",
+          "time": "0.037"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers8-POST]",
+          "time": "0.033"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers8-DELETE]",
+          "time": "0.037"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers9-GET]",
+          "time": "0.039"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers9-POST]",
+          "time": "0.035"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers9-DELETE]",
+          "time": "0.037"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers10-GET]",
+          "time": "0.034"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers10-POST]",
+          "time": "0.034"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_session_guard_before_issuance[headers10-DELETE]",
+          "time": "0.040"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_invalid_get_never_mutates[forged]",
+          "time": "0.041"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_invalid_get_never_mutates[]",
+          "time": "0.125"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_invalid_get_never_mutates[expired]",
+          "time": "0.039"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_unlock_safe_errors[text/plain-{}-415]",
+          "time": "0.043"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_unlock_safe_errors[application/json; boundary=unexpected-{}-415]",
+          "time": "0.042"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_unlock_safe_errors[application/x-www-form-urlencoded-api_key=secret-415]",
+          "time": "0.041"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_unlock_safe_errors[application/json-{\"api_key\":\"PRIVATE\",\"extra\":true}-422]",
+          "time": "0.043"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_unlock_safe_errors[application/json-{broken PRIVATE-422]",
+          "time": "0.043"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_json_optional_charset[application/json; charset=utf-8]",
+          "time": "0.044"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_json_optional_charset[application/json; charset=\"UTF-8\"]",
+          "time": "0.043"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_cookie_exact_boundary[/api/v1/notes/list-GET-200]",
+          "time": "0.037"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_cookie_exact_boundary[/notes/list-GET-401]",
+          "time": "0.034"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_cookie_exact_boundary[/api/v1/notes-POST-401]",
+          "time": "0.031"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_cookie_exact_boundary[/api/v1/notes/append-POST-401]",
+          "time": "0.030"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_cookie_exact_boundary[/api/v1/notes/duplicates-POST-401]",
+          "time": "0.041"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_cookie_exact_boundary[/api/v1/knowledge/hygiene/scan-POST-401]",
+          "time": "0.037"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_route_matrix[GET-]",
+          "time": "0.060"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_route_matrix[GET-/proxy]",
+          "time": "0.061"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_route_matrix[HEAD-]",
+          "time": "0.050"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_route_matrix[HEAD-/proxy]",
+          "time": "0.049"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_route_matrix[POST-]",
+          "time": "0.048"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_route_matrix[POST-/proxy]",
+          "time": "0.047"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_route_matrix[DELETE-]",
+          "time": "0.055"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_route_matrix[DELETE-/proxy]",
+          "time": "0.048"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_route_matrix[PUT-]",
+          "time": "0.022"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_route_matrix[PUT-/proxy]",
+          "time": "0.021"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_route_matrix[OPTIONS-]",
+          "time": "0.022"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_named_route_matrix[OPTIONS-/proxy]",
+          "time": "0.022"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_discovery_policy_only[denied0]",
+          "time": "0.046"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_discovery_policy_only[denied1]",
+          "time": "0.046"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_discovery_policy_only[denied2]",
+          "time": "0.053"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_discovery_status_strict_cache_auth_and_zero_probes",
+          "time": "0.078"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_status_whole_selection_denied_before_owner",
+          "time": "0.127"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_session_limiter_once_guard_before_body",
+          "time": "0.048"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_status_cancelled_and_stopped",
+          "time": "0.015"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_no_semantic_capability_zero_probes",
+          "time": "0.078"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_native_status_readonly_mapping_and_lock_order",
+          "time": "0.347"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_wal_observation_never_opens_or_creates_coordination_files",
+          "time": "0.316"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_additive_openapi_and_legacy_no_discovery",
+          "time": "0.885"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_every_allowed_cookie_read_never_mutates[/api/v1/notes/list?spaces=default-GET-None]",
+          "time": "0.045"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_every_allowed_cookie_read_never_mutates[/api/v1/notes/read?space=default&path=same.md-GET-None]",
+          "time": "0.038"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_every_allowed_cookie_read_never_mutates[/api/v1/notes/links?space=default&path=same.md-GET-None]",
+          "time": "0.041"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_every_allowed_cookie_read_never_mutates[/api/v1/notes/backlinks?space=default&path=same.md-GET-None]",
+          "time": "0.132"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_every_allowed_cookie_read_never_mutates[/api/v1/notes/search-POST-payload4]",
+          "time": "0.060"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_every_allowed_cookie_read_never_mutates[/api/v1/notes/related-POST-payload5]",
+          "time": "0.043"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_every_allowed_cookie_read_never_mutates[/api/v1/knowledge/query-POST-payload6]",
+          "time": "0.054"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_cookie_cannot_authenticate_mcp",
+          "time": "0.109"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_metadata_previous_bearer_no_cookie_fallback_and_safe_projection",
+          "time": "0.049"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_scheduler_observation_wait_is_cancellable_before_admission",
+          "time": "0.293"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_named_dashboard",
+          "name": "test_status_binding_loss_between_root_guard_and_observation",
+          "time": "0.277"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_ui_session",
+          "name": "test_unsupported_session_methods_are_non_cacheable[PUT]",
+          "time": "0.034"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_ui_session",
+          "name": "test_unsupported_session_methods_are_non_cacheable[OPTIONS]",
+          "time": "0.032"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_ui_session",
+          "name": "test_trailing_slash_session_redirects_are_non_cacheable[GET]",
+          "time": "0.036"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_ui_session",
+          "name": "test_trailing_slash_session_redirects_are_non_cacheable[POST]",
+          "time": "0.033"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_ui_session",
+          "name": "test_unrelated_routing_response_does_not_gain_session_cache_policy",
+          "time": "0.035"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_ui_session",
+          "name": "test_current_and_previous_api_keys_create_current_key_session[synthetic-current-key]",
+          "time": "0.038"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_ui_session",
+          "name": "test_current_and_previous_api_keys_create_current_key_session[synthetic-previous-key]",
+          "time": "0.035"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_ui_session",
+          "name": "test_invalid_unlock_is_private_non_cacheable_and_does_not_set_cookie",
+          "time": "0.036"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_ui_session",
+          "name": "test_invalid_session_request_shapes_are_generic_private_and_non_cacheable[payload0]",
+          "time": "0.032"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_ui_session",
+          "name": "test_invalid_session_request_shapes_are_generic_private_and_non_cacheable[payload1]",
+          "time": "0.036"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_ui_session",
+          "name": "test_invalid_session_request_shapes_are_generic_private_and_non_cacheable[payload2]",
+          "time": "0.035"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_ui_session",
+          "name": "test_invalid_session_request_shapes_are_generic_private_and_non_cacheable[payload3]",
+          "time": "0.034"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_ui_session",
+          "name": "test_malformed_session_json_is_generic_private_and_non_cacheable",
+          "time": "0.034"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_ui_session",
+          "name": "test_session_cookie_has_bounded_security_attributes_and_https_secure_flag",
+          "time": "0.067"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_ui_session",
+          "name": "test_session_survives_new_app_instance_with_same_key_and_rotation_invalidates_it",
+          "time": "0.102"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_ui_session",
+          "name": "test_malformed_and_unsupported_session_tokens_are_rejected[]",
+          "time": "0.034"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_ui_session",
+          "name": "test_malformed_and_unsupported_session_tokens_are_rejected[malformed]",
+          "time": "0.037"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_ui_session",
+          "name": "test_malformed_and_unsupported_session_tokens_are_rejected[v2.100.604900.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA]",
+          "time": "0.034"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_ui_session",
+          "name": "test_malformed_and_unsupported_session_tokens_are_rejected[v1.not-a-time.604900.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA]",
+          "time": "0.034"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_ui_session",
+          "name": "test_malformed_and_unsupported_session_tokens_are_rejected[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]",
+          "time": "0.037"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_ui_session",
+          "name": "test_tampered_and_expired_session_tokens_are_rejected",
+          "time": "0.038"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_ui_session",
+          "name": "test_session_restore_slides_token_lifetime",
+          "time": "0.038"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_ui_session",
+          "name": "test_logout_is_idempotent_and_clears_session_cookie",
+          "time": "0.041"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_ui_session",
+          "name": "test_ui_cookie_requires_marker_and_marker_requires_valid_cookie",
+          "time": "0.147"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_ui_session",
+          "name": "test_unlock_and_protected_requests_share_peer_rate_limit",
+          "time": "0.073"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.test_ui_session",
+          "name": "test_unrelated_api_validation_keeps_default_fastapi_diagnostics",
+          "time": "0.020"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      }
+    ]
+  }
+]

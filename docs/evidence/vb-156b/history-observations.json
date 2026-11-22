@@ -1,0 +1,2002 @@
+[
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_bfcache_public_control[root-https-webkit-max-age=60]",
+    "platform": "Windows",
+    "browser": "26.6",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "public-cache-policy-control",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": []
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_bfcache_public_control[root-https-webkit-max-age=60]",
+    "platform": "Linux",
+    "browser": "27.2",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "public-cache-policy-control",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": []
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[prefix-https-firefox-logout-away]",
+    "platform": "Windows",
+    "browser": "155.0",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "native-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[prefix-https-firefox-logout-away]",
+    "platform": "Windows",
+    "browser": "155.0",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "native-forward-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[root-https-chromium-logout-away]",
+    "platform": "Linux",
+    "browser": "156.0.8078.4",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "native-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": {
+          "src": null,
+          "id": null,
+          "url": "https://vaultbridge.example.test:41035/ui/",
+          "name": null,
+          "reasons": [
+            {
+              "reason": "masked"
+            },
+            {
+              "reason": "response-cache-control-no-store"
+            },
+            {
+              "reason": "response-cache-control-no-store-with-js-network-request"
+            }
+          ],
+          "children": []
+        }
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[root-https-chromium-logout-away]",
+    "platform": "Linux",
+    "browser": "156.0.8078.4",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "native-forward-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": {
+          "src": null,
+          "id": null,
+          "url": "https://vaultbridge.example.test:41035/ui/",
+          "name": null,
+          "reasons": [
+            {
+              "reason": "masked"
+            }
+          ],
+          "children": []
+        }
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[prefix-https-chromium-clean]",
+    "platform": "Linux",
+    "browser": "156.0.8078.4",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "native-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": {
+          "src": null,
+          "id": null,
+          "url": "https://vaultbridge.example.test:41133/proxy/ui/",
+          "name": null,
+          "reasons": [
+            {
+              "reason": "masked"
+            },
+            {
+              "reason": "response-cache-control-no-store"
+            },
+            {
+              "reason": "response-cache-control-no-store-with-js-network-request"
+            }
+          ],
+          "children": []
+        }
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[prefix-https-chromium-clean]",
+    "platform": "Linux",
+    "browser": "156.0.8078.4",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "native-forward-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": {
+          "src": null,
+          "id": null,
+          "url": "https://vaultbridge.example.test:41133/proxy/ui/",
+          "name": null,
+          "reasons": [
+            {
+              "reason": "masked"
+            },
+            {
+              "reason": "response-cache-control-no-store"
+            },
+            {
+              "reason": "response-cache-control-no-store-with-js-network-request"
+            }
+          ],
+          "children": []
+        }
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[prefix-https-chromium-logout-away]",
+    "platform": "Linux",
+    "browser": "156.0.8078.4",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "native-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": {
+          "src": null,
+          "id": null,
+          "url": "https://vaultbridge.example.test:40085/proxy/ui/",
+          "name": null,
+          "reasons": [
+            {
+              "reason": "masked"
+            },
+            {
+              "reason": "response-cache-control-no-store"
+            },
+            {
+              "reason": "response-cache-control-no-store-with-js-network-request"
+            }
+          ],
+          "children": []
+        }
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[prefix-https-chromium-logout-away]",
+    "platform": "Linux",
+    "browser": "156.0.8078.4",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "native-forward-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": {
+          "src": null,
+          "id": null,
+          "url": "https://vaultbridge.example.test:40085/proxy/ui/",
+          "name": null,
+          "reasons": [
+            {
+              "reason": "masked"
+            }
+          ],
+          "children": []
+        }
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_bfcache_public_control[root-https-firefox-no-store]",
+    "platform": "Linux",
+    "browser": "157.0",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "public-cache-policy-control",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": []
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_bfcache_public_control[prefix-https-chromium-no-store]",
+    "platform": "Linux",
+    "browser": "156.0.8078.4",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "public-cache-policy-control",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": {
+          "src": null,
+          "id": null,
+          "url": "https://vaultbridge.example.test:49673/public",
+          "name": null,
+          "reasons": [
+            {
+              "reason": "masked"
+            },
+            {
+              "reason": "response-cache-control-no-store"
+            },
+            {
+              "reason": "response-cache-control-no-store-with-js-network-request"
+            }
+          ],
+          "children": []
+        }
+      }
+    ],
+    "departure_erasure": []
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[root-https-firefox-logout-away]",
+    "platform": "Windows",
+    "browser": "155.0",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "native-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[root-https-firefox-logout-away]",
+    "platform": "Windows",
+    "browser": "155.0",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "native-forward-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_bfcache_public_control[root-https-firefox-max-age=60]",
+    "platform": "Linux",
+    "browser": "157.0",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "public-cache-policy-control",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": []
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[root-https-webkit-clean]",
+    "platform": "Windows",
+    "browser": "26.6",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "native-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[root-https-webkit-clean]",
+    "platform": "Windows",
+    "browser": "26.6",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "native-forward-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_bfcache_public_control[root-https-webkit-no-store]",
+    "platform": "Windows",
+    "browser": "26.6",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "public-cache-policy-control",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": []
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[prefix-https-firefox-logout-away]",
+    "platform": "Linux",
+    "browser": "157.0",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "native-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[prefix-https-firefox-logout-away]",
+    "platform": "Linux",
+    "browser": "157.0",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "native-forward-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_bfcache_public_control[root-https-chromium-no-store]",
+    "platform": "Windows",
+    "browser": "153.0.8010.12",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "public-cache-policy-control",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": {
+          "src": null,
+          "id": null,
+          "url": "https://vaultbridge.example.test:56740/public",
+          "name": null,
+          "reasons": [
+            {
+              "reason": "masked"
+            },
+            {
+              "reason": "response-cache-control-no-store"
+            },
+            {
+              "reason": "response-cache-control-no-store-with-js-network-request"
+            }
+          ],
+          "children": []
+        }
+      }
+    ],
+    "departure_erasure": []
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_bfcache_public_control[prefix-https-chromium-max-age=60]",
+    "platform": "Linux",
+    "browser": "156.0.8078.4",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "public-cache-policy-control",
+    "pageshow_persisted": [
+      false,
+      true
+    ],
+    "navigation": [
+      {
+        "type": "navigate",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": []
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_bfcache_public_control[prefix-https-firefox-max-age=60]",
+    "platform": "Linux",
+    "browser": "157.0",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "public-cache-policy-control",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": []
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_bfcache_public_control[prefix-https-firefox-no-store]",
+    "platform": "Linux",
+    "browser": "157.0",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "public-cache-policy-control",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": []
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[prefix-https-chromium-logout-away]",
+    "platform": "Windows",
+    "browser": "153.0.8010.12",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "native-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": {
+          "src": null,
+          "id": null,
+          "url": "https://vaultbridge.example.test:61066/proxy/ui/",
+          "name": null,
+          "reasons": [
+            {
+              "reason": "masked"
+            },
+            {
+              "reason": "response-cache-control-no-store"
+            },
+            {
+              "reason": "response-cache-control-no-store-with-js-network-request"
+            }
+          ],
+          "children": []
+        }
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[prefix-https-chromium-logout-away]",
+    "platform": "Windows",
+    "browser": "153.0.8010.12",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "native-forward-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": {
+          "src": null,
+          "id": null,
+          "url": "https://vaultbridge.example.test:61066/proxy/ui/",
+          "name": null,
+          "reasons": [
+            {
+              "reason": "masked"
+            }
+          ],
+          "children": []
+        }
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[prefix-https-firefox-clean]",
+    "platform": "Linux",
+    "browser": "157.0",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "native-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[prefix-https-firefox-clean]",
+    "platform": "Linux",
+    "browser": "157.0",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "native-forward-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_bfcache_public_control[prefix-https-webkit-no-store]",
+    "platform": "Linux",
+    "browser": "27.2",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "public-cache-policy-control",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": []
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[prefix-https-webkit-clean]",
+    "platform": "Windows",
+    "browser": "26.6",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "native-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[prefix-https-webkit-clean]",
+    "platform": "Windows",
+    "browser": "26.6",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "native-forward-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_bfcache_public_control[root-https-webkit-no-store]",
+    "platform": "Linux",
+    "browser": "27.2",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "public-cache-policy-control",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": []
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_bfcache_public_control[prefix-https-webkit-max-age=60]",
+    "platform": "Windows",
+    "browser": "26.6",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "public-cache-policy-control",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": []
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_bfcache_public_control[prefix-https-firefox-max-age=60]",
+    "platform": "Windows",
+    "browser": "155.0",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "public-cache-policy-control",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": []
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[root-https-webkit-clean]",
+    "platform": "Linux",
+    "browser": "27.2",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "native-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[root-https-webkit-clean]",
+    "platform": "Linux",
+    "browser": "27.2",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "native-forward-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_bfcache_public_control[prefix-https-firefox-no-store]",
+    "platform": "Windows",
+    "browser": "155.0",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "public-cache-policy-control",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": []
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_bfcache_public_control[root-https-chromium-max-age=60]",
+    "platform": "Linux",
+    "browser": "156.0.8078.4",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "public-cache-policy-control",
+    "pageshow_persisted": [
+      false,
+      true
+    ],
+    "navigation": [
+      {
+        "type": "navigate",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": []
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[root-https-chromium-clean]",
+    "platform": "Linux",
+    "browser": "156.0.8078.4",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "native-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": {
+          "src": null,
+          "id": null,
+          "url": "https://vaultbridge.example.test:42611/ui/",
+          "name": null,
+          "reasons": [
+            {
+              "reason": "masked"
+            },
+            {
+              "reason": "response-cache-control-no-store"
+            },
+            {
+              "reason": "response-cache-control-no-store-with-js-network-request"
+            }
+          ],
+          "children": []
+        }
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[root-https-chromium-clean]",
+    "platform": "Linux",
+    "browser": "156.0.8078.4",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "native-forward-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": {
+          "src": null,
+          "id": null,
+          "url": "https://vaultbridge.example.test:42611/ui/",
+          "name": null,
+          "reasons": [
+            {
+              "reason": "masked"
+            },
+            {
+              "reason": "response-cache-control-no-store"
+            },
+            {
+              "reason": "response-cache-control-no-store-with-js-network-request"
+            }
+          ],
+          "children": []
+        }
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[root-https-firefox-logout-away]",
+    "platform": "Linux",
+    "browser": "157.0",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "native-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[root-https-firefox-logout-away]",
+    "platform": "Linux",
+    "browser": "157.0",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "native-forward-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[prefix-https-chromium-clean]",
+    "platform": "Windows",
+    "browser": "153.0.8010.12",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "native-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": {
+          "src": null,
+          "id": null,
+          "url": "https://vaultbridge.example.test:59756/proxy/ui/",
+          "name": null,
+          "reasons": [
+            {
+              "reason": "masked"
+            },
+            {
+              "reason": "response-cache-control-no-store"
+            },
+            {
+              "reason": "response-cache-control-no-store-with-js-network-request"
+            }
+          ],
+          "children": []
+        }
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[prefix-https-chromium-clean]",
+    "platform": "Windows",
+    "browser": "153.0.8010.12",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "native-forward-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": {
+          "src": null,
+          "id": null,
+          "url": "https://vaultbridge.example.test:59756/proxy/ui/",
+          "name": null,
+          "reasons": [
+            {
+              "reason": "masked"
+            },
+            {
+              "reason": "response-cache-control-no-store"
+            },
+            {
+              "reason": "response-cache-control-no-store-with-js-network-request"
+            }
+          ],
+          "children": []
+        }
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[root-https-chromium-clean]",
+    "platform": "Windows",
+    "browser": "153.0.8010.12",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "native-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": {
+          "src": null,
+          "id": null,
+          "url": "https://vaultbridge.example.test:61063/ui/",
+          "name": null,
+          "reasons": [
+            {
+              "reason": "masked"
+            },
+            {
+              "reason": "response-cache-control-no-store"
+            },
+            {
+              "reason": "response-cache-control-no-store-with-js-network-request"
+            }
+          ],
+          "children": []
+        }
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[root-https-chromium-clean]",
+    "platform": "Windows",
+    "browser": "153.0.8010.12",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "native-forward-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": {
+          "src": null,
+          "id": null,
+          "url": "https://vaultbridge.example.test:61063/ui/",
+          "name": null,
+          "reasons": [
+            {
+              "reason": "masked"
+            },
+            {
+              "reason": "response-cache-control-no-store"
+            },
+            {
+              "reason": "response-cache-control-no-store-with-js-network-request"
+            }
+          ],
+          "children": []
+        }
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[prefix-https-firefox-clean]",
+    "platform": "Windows",
+    "browser": "155.0",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "native-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[prefix-https-firefox-clean]",
+    "platform": "Windows",
+    "browser": "155.0",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "native-forward-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_bfcache_public_control[root-https-firefox-no-store]",
+    "platform": "Windows",
+    "browser": "155.0",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "public-cache-policy-control",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": []
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_bfcache_public_control[prefix-https-webkit-no-store]",
+    "platform": "Windows",
+    "browser": "26.6",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "public-cache-policy-control",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": []
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[prefix-https-webkit-logout-away]",
+    "platform": "Windows",
+    "browser": "26.6",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "native-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[prefix-https-webkit-logout-away]",
+    "platform": "Windows",
+    "browser": "26.6",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "native-forward-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[root-https-webkit-logout-away]",
+    "platform": "Linux",
+    "browser": "27.2",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "native-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[root-https-webkit-logout-away]",
+    "platform": "Linux",
+    "browser": "27.2",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "native-forward-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[root-https-webkit-logout-away]",
+    "platform": "Windows",
+    "browser": "26.6",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "native-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[root-https-webkit-logout-away]",
+    "platform": "Windows",
+    "browser": "26.6",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "native-forward-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_bfcache_public_control[root-https-chromium-max-age=60]",
+    "platform": "Windows",
+    "browser": "153.0.8010.12",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "public-cache-policy-control",
+    "pageshow_persisted": [
+      false,
+      true
+    ],
+    "navigation": [
+      {
+        "type": "navigate",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": []
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[prefix-https-webkit-clean]",
+    "platform": "Linux",
+    "browser": "27.2",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "native-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[prefix-https-webkit-clean]",
+    "platform": "Linux",
+    "browser": "27.2",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "native-forward-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_bfcache_public_control[prefix-https-chromium-no-store]",
+    "platform": "Windows",
+    "browser": "153.0.8010.12",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "public-cache-policy-control",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": {
+          "src": null,
+          "id": null,
+          "url": "https://vaultbridge.example.test:59071/public",
+          "name": null,
+          "reasons": [
+            {
+              "reason": "masked"
+            },
+            {
+              "reason": "response-cache-control-no-store"
+            },
+            {
+              "reason": "response-cache-control-no-store-with-js-network-request"
+            }
+          ],
+          "children": []
+        }
+      }
+    ],
+    "departure_erasure": []
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_bfcache_public_control[prefix-https-webkit-max-age=60]",
+    "platform": "Linux",
+    "browser": "27.2",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "public-cache-policy-control",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": []
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_bfcache_public_control[root-https-chromium-no-store]",
+    "platform": "Linux",
+    "browser": "156.0.8078.4",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "public-cache-policy-control",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": {
+          "src": null,
+          "id": null,
+          "url": "https://vaultbridge.example.test:58377/public",
+          "name": null,
+          "reasons": [
+            {
+              "reason": "masked"
+            },
+            {
+              "reason": "response-cache-control-no-store"
+            },
+            {
+              "reason": "response-cache-control-no-store-with-js-network-request"
+            }
+          ],
+          "children": []
+        }
+      }
+    ],
+    "departure_erasure": []
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_bfcache_public_control[root-https-firefox-max-age=60]",
+    "platform": "Windows",
+    "browser": "155.0",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "public-cache-policy-control",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": []
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_bfcache_public_control[prefix-https-chromium-max-age=60]",
+    "platform": "Windows",
+    "browser": "153.0.8010.12",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "public-cache-policy-control",
+    "pageshow_persisted": [
+      false,
+      true
+    ],
+    "navigation": [
+      {
+        "type": "navigate",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": []
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[root-https-chromium-logout-away]",
+    "platform": "Windows",
+    "browser": "153.0.8010.12",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "native-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": {
+          "src": null,
+          "id": null,
+          "url": "https://vaultbridge.example.test:49831/ui/",
+          "name": null,
+          "reasons": [
+            {
+              "reason": "masked"
+            },
+            {
+              "reason": "response-cache-control-no-store"
+            },
+            {
+              "reason": "response-cache-control-no-store-with-js-network-request"
+            }
+          ],
+          "children": []
+        }
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[root-https-chromium-logout-away]",
+    "platform": "Windows",
+    "browser": "153.0.8010.12",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "native-forward-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": {
+          "src": null,
+          "id": null,
+          "url": "https://vaultbridge.example.test:49831/ui/",
+          "name": null,
+          "reasons": [
+            {
+              "reason": "masked"
+            }
+          ],
+          "children": []
+        }
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[prefix-https-webkit-logout-away]",
+    "platform": "Linux",
+    "browser": "27.2",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "native-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[prefix-https-webkit-logout-away]",
+    "platform": "Linux",
+    "browser": "27.2",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "native-forward-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[root-https-firefox-clean]",
+    "platform": "Windows",
+    "browser": "155.0",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "native-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[root-https-firefox-clean]",
+    "platform": "Windows",
+    "browser": "155.0",
+    "playwright": "1.63.0",
+    "run": "windows-history-traced.xml",
+    "label": "native-forward-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[root-https-firefox-clean]",
+    "platform": "Linux",
+    "browser": "157.0",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "native-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  },
+  {
+    "nodeid": "tests/e2e/test_named_qualification.py::test_native_authenticated_history_qualification[root-https-firefox-clean]",
+    "platform": "Linux",
+    "browser": "157.0",
+    "playwright": "1.64.0",
+    "run": "linux-history-traced.xml",
+    "label": "native-forward-back-restoration",
+    "pageshow_persisted": [
+      false
+    ],
+    "navigation": [
+      {
+        "type": "back_forward",
+        "notRestoredReasons": null
+      }
+    ],
+    "departure_erasure": [
+      {
+        "persisted": false,
+        "privateHidden": true,
+        "statusEmpty": true,
+        "selectionEmpty": true,
+        "keyEmpty": true
+      }
+    ]
+  }
+]

@@ -1,0 +1,64 @@
+# VB-156B confirmed protected-read 401 repair
+
+The original `ScopedClient.get()` awaited `response.json()` before checking HTTP
+401. Empty, malformed, truncated or non-JSON bodies therefore threw before the
+coordinated cleanup, leaving selection/discovery/capability metadata authenticated.
+The actual-module/native-session malformed-status reproducer failed before the fix:
+`red.log`, `red.xml`, `red-traces/` (1 expected failing reproduction).
+
+The only production change is in `app/ui/assets/scoped-client.js`: handle HTTP 401
+before JSON parsing, first preserving the captured session epoch and intent/journal
+snapshot check, then invoking the unchanged NamedSession.unauthorized(snapshot).
+Its existing synchronous blank and under-Web-Lock revalidation/delete protocol
+remain the owners of state erasure and cookie cleanup. Non-401 parsing and status
+mapping, protected/session schemas, legacy controllers, cookie attributes, headers,
+CSRF guards and Bearer precedence are unchanged. No body text is displayed.
+
+The only other source change is `tests/e2e/test_named_dashboard.py`. The temporary
+native-server streaming experiments were fully reverted; `named_server.py` has no
+repair delta. `repair.patch` and `scope.json` record this pass separately from the
+large pre-existing VB-156B working tree. ADR 0011 and other production files match
+the retained source hashes.
+
+## Final focused evidence
+
+- `windows-complete.log/xml`: 300 passed, 0 skipped, Chromium/Firefox/WebKit, root/prefix HTTPS.
+- `linux-complete.log/xml`: 300 passed, 0 skipped, actual WSL/Linux Chromium/Firefox/WebKit, root/prefix HTTPS.
+- Five 401 bodies (valid JSON, empty, malformed JSON, syntactically truncated JSON,
+  non-JSON) during discovery and selected status. Hold the actual native Web Lock
+  and DELETE headers to prove DOM and real Spaces controller memory erasure before
+  asynchronous cookie cleanup, then assert exactly one settled coordinated DELETE.
+- Stale responses after explicit reauthentication in the same tab (epoch guard)
+  and another tab with notifications suppressed (shared intent/revision guard).
+  Assert the newer authenticated UI/cookie/journal survive, with no extra DELETE.
+- Delayed 401 during live logout; failed DELETE 429 and 503; durable fencing across
+  reload; explicit retry only for settled 429. Cookie/journal outcomes are asserted.
+- Actual truncated HTTP body/connection on a 401. Synchronize on fetch exposing the
+  native 401 Response, then prove erasure while a native lock prevents any DELETE;
+  release the lock and assert settled cleanup. This does not assume every engine
+  exposes Response before body bytes arrive.
+- Non-401 403/429/500/503, including invalid bodies, retain the existing safe
+  behavior and never display untrusted error text or trigger session deletion.
+
+## Retained diagnostic attempts
+
+Initial test-observer string predicates hit production CSP; function predicates
+fixed the observer without altering headers or security assertions. A request event
+was not a route-callback completion barrier; the final helper records completion
+from the actual interception callback. Incomplete-response experiments showed that
+Linux WebKit can withhold fetch's Response until body bytes arrive. The final
+native test synchronizes on observable status and holds the cleanup lock rather
+than assuming HTTP-server header emission means JavaScript has a Response. The
+failed experiments and their traces/logs remain retained; they are not application
+corrections or accepted qualification passes.
+
+`agent-finish-before-final-fixture.log/exit` retain an intentionally cancelled early
+canonical run. The final `agent-finish.log/exit` are authoritative for the settled
+source and the exact unchanged original inline VB-156B task. The previous managed
+review packet is retained as `review_packet.before.md`. The final workflow generates
+`.agent/review_packet.md` only after selected checks pass; no independent review is
+performed in this repair session.
+
+Previously documented Windows WebKit Strict delivery failure, unresolved Chromium
+bootstrap evidence, and unexercised authenticated BFCache/suspension qualification
+remain unchanged. This repair does not claim overall VB-156B acceptance.
