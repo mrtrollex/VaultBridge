@@ -1,0 +1,135 @@
+["<LINUX_PYTHON>", "-m", "pytest", "tests/e2e/test_hygiene.py", "-k", "all_evidence_grouping", "--browser", "firefox", "--browser", "webkit", "-o", "addopts=", "-q", "-s", "--tracing", "on", "--output", ".agent/two-findings/red-layout-traces", "--junitxml", ".agent/two-findings/linux-red-layout.xml"]
+{"timestamp":"2026-11-22T09:25:14.348Z","level":"INFO","logger":"vaultbridge.application","event":"application_starting","message":"VaultBridge application is starting"}
+{"timestamp":"2026-11-22T09:25:14.349Z","level":"INFO","logger":"vaultbridge.indexer","event":"semantic_full_sync_scheduled","message":"Full semantic synchronization was scheduled","operation":"full","full_sync_required":true}
+{"timestamp":"2026-11-22T09:25:14.349Z","level":"INFO","logger":"vaultbridge.application","event":"application_started","message":"VaultBridge application started","duration_ms":0.605,"full_sync_required":true}
+{"timestamp":"2026-11-22T09:25:14.349Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"296a2fe9fad64086a71a635763a48417","method":"GET"}
+{"timestamp":"2026-11-22T09:25:14.352Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"296a2fe9fad64086a71a635763a48417","method":"GET","route":"/health/live","status_code":200,"duration_ms":2.365}
+{"timestamp":"2026-11-22T09:25:15.936Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"207e6ddffbde4a249a99ff125c7efaa6","method":"GET"}
+{"timestamp":"2026-11-22T09:25:15.966Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"207e6ddffbde4a249a99ff125c7efaa6","method":"GET","route":"/ui/","status_code":200,"duration_ms":29.872}
+{"timestamp":"2026-11-22T09:25:16.120Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"2036cbce8f1a40ea9417ae9bfc8b673f","method":"GET"}
+{"timestamp":"2026-11-22T09:25:16.121Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"3a470cf31ffb4ec0843a6214e35313ea","method":"GET"}
+{"timestamp":"2026-11-22T09:25:16.123Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"499b0f2cdef14626819e407715a9fb01","method":"GET"}
+{"timestamp":"2026-11-22T09:25:16.125Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"2036cbce8f1a40ea9417ae9bfc8b673f","method":"GET","route":"/ui/assets/app.css","status_code":200,"duration_ms":5.038}
+{"timestamp":"2026-11-22T09:25:16.125Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"3a470cf31ffb4ec0843a6214e35313ea","method":"GET","route":"/ui/assets/app.js","status_code":200,"duration_ms":4.29}
+{"timestamp":"2026-11-22T09:25:16.127Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"499b0f2cdef14626819e407715a9fb01","method":"GET","route":"/ui/assets/vaultbridge-logo.webp","status_code":200,"duration_ms":4.217}
+{"timestamp":"2026-11-22T09:25:16.154Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"949100b4c5f94f6f9fc76f3bc41c8444","method":"GET"}
+{"timestamp":"2026-11-22T09:25:16.154Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"4eec1351b17d44948187f9cc30b8ff78","method":"GET"}
+{"timestamp":"2026-11-22T09:25:16.154Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"5b214fc11dad45f38436e4dfb4a704f8","method":"GET"}
+{"timestamp":"2026-11-22T09:25:16.158Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"4eec1351b17d44948187f9cc30b8ff78","method":"GET","route":"/ui/assets/search.js","status_code":200,"duration_ms":3.773}
+{"timestamp":"2026-11-22T09:25:16.158Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"949100b4c5f94f6f9fc76f3bc41c8444","method":"GET","route":"/ui/assets/overview.js","status_code":200,"duration_ms":4.458}
+{"timestamp":"2026-11-22T09:25:16.158Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"5b214fc11dad45f38436e4dfb4a704f8","method":"GET","route":"/ui/assets/hygiene.js","status_code":200,"duration_ms":3.759}
+{"timestamp":"2026-11-22T09:25:16.172Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"7c918db4ad62492db2f7765e9de3c173","method":"GET"}
+{"timestamp":"2026-11-22T09:25:16.172Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"99fe674dd52d40ca9d11f2f1d509bb87","method":"GET"}
+{"timestamp":"2026-11-22T09:25:16.174Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"99fe674dd52d40ca9d11f2f1d509bb87","method":"GET","route":"/ui/session","status_code":401,"duration_ms":2.062}
+{"timestamp":"2026-11-22T09:25:16.175Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"7c918db4ad62492db2f7765e9de3c173","method":"GET","route":"/health","status_code":200,"duration_ms":3.218}
+{"timestamp":"2026-11-22T09:25:16.189Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"6b8dbe22b84849c2828e574eb69d105b","method":"GET"}
+{"timestamp":"2026-11-22T09:25:16.190Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"6b8dbe22b84849c2828e574eb69d105b","method":"GET","route":"/ui/assets/vaultbridge-logo.webp","status_code":200,"duration_ms":1.715}
+{"timestamp":"2026-11-22T09:25:16.465Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"261321d6c4274c2f8fde37fb042b2f6c","method":"POST"}
+{"timestamp":"2026-11-22T09:25:16.466Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"261321d6c4274c2f8fde37fb042b2f6c","method":"POST","route":"/ui/session","status_code":200,"duration_ms":1.415}
+F{"timestamp":"2026-11-22T09:25:18.660Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"0f93c99a3c0148a09e47f283a1a3da6b","method":"GET"}
+{"timestamp":"2026-11-22T09:25:18.661Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"0f93c99a3c0148a09e47f283a1a3da6b","method":"GET","route":"/ui/","status_code":200,"duration_ms":1.22}
+{"timestamp":"2026-11-22T09:25:18.669Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"0ed848886fb447b390f045c2884645a0","method":"GET"}
+{"timestamp":"2026-11-22T09:25:18.670Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"40661310ff4e4400995753981c9305d0","method":"GET"}
+{"timestamp":"2026-11-22T09:25:18.672Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"0ed848886fb447b390f045c2884645a0","method":"GET","route":"/ui/assets/app.css","status_code":200,"duration_ms":2.953}
+{"timestamp":"2026-11-22T09:25:18.672Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"f324220aadc845718a2dcbb113ad21fb","method":"GET"}
+{"timestamp":"2026-11-22T09:25:18.673Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"40661310ff4e4400995753981c9305d0","method":"GET","route":"/ui/assets/app.js","status_code":200,"duration_ms":3.923}
+{"timestamp":"2026-11-22T09:25:18.675Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"f324220aadc845718a2dcbb113ad21fb","method":"GET","route":"/ui/assets/vaultbridge-logo.webp","status_code":200,"duration_ms":2.908}
+{"timestamp":"2026-11-22T09:25:18.710Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"3a3033bd436f4547805d2ddc6ee7d00b","method":"GET"}
+{"timestamp":"2026-11-22T09:25:18.710Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"05c8babdabdd45f282f675f9651848ac","method":"GET"}
+{"timestamp":"2026-11-22T09:25:18.711Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"e6c4102ee2b147479f2995298c33c548","method":"GET"}
+{"timestamp":"2026-11-22T09:25:18.714Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"e6c4102ee2b147479f2995298c33c548","method":"GET","route":"/ui/assets/hygiene.js","status_code":200,"duration_ms":3.242}
+{"timestamp":"2026-11-22T09:25:18.714Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"05c8babdabdd45f282f675f9651848ac","method":"GET","route":"/ui/assets/search.js","status_code":200,"duration_ms":3.946}
+{"timestamp":"2026-11-22T09:25:18.714Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"3a3033bd436f4547805d2ddc6ee7d00b","method":"GET","route":"/ui/assets/overview.js","status_code":200,"duration_ms":4.565}
+{"timestamp":"2026-11-22T09:25:18.720Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"a38f45d462894120ad9ab6db074d4998","method":"GET"}
+{"timestamp":"2026-11-22T09:25:18.720Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"a152c400377d45ec88496c6540029e9a","method":"GET"}
+{"timestamp":"2026-11-22T09:25:18.722Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"a152c400377d45ec88496c6540029e9a","method":"GET","route":"/ui/session","status_code":401,"duration_ms":1.465}
+{"timestamp":"2026-11-22T09:25:18.723Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"a38f45d462894120ad9ab6db074d4998","method":"GET","route":"/health","status_code":200,"duration_ms":2.827}
+{"timestamp":"2026-11-22T09:25:18.925Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"108620724b1e40f4bb7eafe00ab6fbd9","method":"POST"}
+{"timestamp":"2026-11-22T09:25:18.926Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"108620724b1e40f4bb7eafe00ab6fbd9","method":"POST","route":"/ui/session","status_code":200,"duration_ms":1.94}
+F{"timestamp":"2026-11-22T09:25:20.468Z","level":"INFO","logger":"vaultbridge.application","event":"application_stopping","message":"VaultBridge application is stopping"}
+{"timestamp":"2026-11-22T09:25:20.469Z","level":"INFO","logger":"vaultbridge.indexer","event":"semantic_indexer_shutdown_requested","message":"Semantic indexer shutdown was requested"}
+{"timestamp":"2026-11-22T09:25:20.469Z","level":"INFO","logger":"vaultbridge.indexer","event":"semantic_indexer_stopped","message":"Semantic indexer stopped"}
+{"timestamp":"2026-11-22T09:25:20.469Z","level":"INFO","logger":"vaultbridge.application","event":"application_stopped","message":"VaultBridge application stopped","duration_ms":1.127}
+
+=================================== FAILURES ===================================
+___ test_hygiene_all_evidence_grouping_bounds_inert_text_and_reflow[firefox] ___
+
+page = <Page url='http://<LOOPBACK_ORIGIN>/ui/'>
+e2e_server = E2EServer(base_url='http://<LOOPBACK_ORIGIN>', vault_path=PosixPath('/tmp/vaultbridge-e2e-pto1o2v_/vault'))
+browser_failures = <tests.e2e.conftest.BrowserFailureMonitor object at <OBJECT_ADDRESS>>
+
+    def test_hygiene_all_evidence_grouping_bounds_inert_text_and_reflow(page, e2e_server, browser_failures):
+        payload = wire_json(result_fixture("storage_unavailable"))
+        hostile = "Notes/<img src=x onerror=window.hygieneOwned=true>" + "long" * 100 + ".md"
+        payload["findings"][0]["primary_path"] = hostile
+        payload["findings"][0]["category"] = "<script>window.hygieneOwned=true</script>"
+        payload["findings"][0]["related_paths"] = [f"Related/{i}.md" for i in range(10)]
+        # Interleaved kinds preserve first-seen group order and server order within groups.
+        payload["findings"].append({**deepcopy(payload["findings"][0]), "primary_path": "second.md"})
+        payload["findings"].extend(deepcopy(payload["findings"][3]) for _ in range(500 - len(payload["findings"])))
+        page.route("**" + ENDPOINT, lambda route: respond(route, payload))
+        open_hygiene(page, e2e_server, browser_failures)
+        page.get_by_role("button", name="Run scan", exact=True).click()
+        expect(page.locator("#hygiene-status")).to_have_attribute("data-hygiene-state", "partial")
+        expect(page.locator("#hygiene-status")).to_contain_text("500 returned findings")
+        expect(page.locator("#hygiene-status")).to_contain_text("Findings truncated")
+        expect(page.locator(".hygiene-counts > li").first).to_have_text("missing relationship target: 2")
+        expect(page.locator(".hygiene-findings").first.locator(".hygiene-path")).to_have_text([hostile, "second.md"])
+        expect(page.locator(".hygiene-findings > li")).to_have_count(500)
+        expect(page.locator("#hygiene-results img, #hygiene-results script")).to_have_count(0)
+        assert page.evaluate("window.hygieneOwned") is None
+        for expected in ["Source order (zero-based)", "Line", "Column", "Field", "Source index (zero-based)",
+                         "Source indices (zero-based)", "Peer count", "Related paths truncated", "Vault-level diagnostic",
+                         "storage unavailable", "semantic unavailable", "relationship unavailable", "Related/9.md"]:
+            assert expected in page.locator("#hygiene-results").inner_text()
+        for width in [1280, 375, 320]:
+            page.set_viewport_size({"width": width, "height": 800})
+>           assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+E           AssertionError: assert False
+E            +  where False = evaluate('document.documentElement.scrollWidth <= window.innerWidth')
+E            +    where evaluate = <Page url='http://<LOOPBACK_ORIGIN>/ui/'>.evaluate
+
+tests/e2e/test_hygiene.py:139: AssertionError
+___ test_hygiene_all_evidence_grouping_bounds_inert_text_and_reflow[webkit] ____
+
+page = <Page url='http://<LOOPBACK_ORIGIN>/ui/'>
+e2e_server = E2EServer(base_url='http://<LOOPBACK_ORIGIN>', vault_path=PosixPath('/tmp/vaultbridge-e2e-pto1o2v_/vault'))
+browser_failures = <tests.e2e.conftest.BrowserFailureMonitor object at <OBJECT_ADDRESS>>
+
+    def test_hygiene_all_evidence_grouping_bounds_inert_text_and_reflow(page, e2e_server, browser_failures):
+        payload = wire_json(result_fixture("storage_unavailable"))
+        hostile = "Notes/<img src=x onerror=window.hygieneOwned=true>" + "long" * 100 + ".md"
+        payload["findings"][0]["primary_path"] = hostile
+        payload["findings"][0]["category"] = "<script>window.hygieneOwned=true</script>"
+        payload["findings"][0]["related_paths"] = [f"Related/{i}.md" for i in range(10)]
+        # Interleaved kinds preserve first-seen group order and server order within groups.
+        payload["findings"].append({**deepcopy(payload["findings"][0]), "primary_path": "second.md"})
+        payload["findings"].extend(deepcopy(payload["findings"][3]) for _ in range(500 - len(payload["findings"])))
+        page.route("**" + ENDPOINT, lambda route: respond(route, payload))
+        open_hygiene(page, e2e_server, browser_failures)
+        page.get_by_role("button", name="Run scan", exact=True).click()
+        expect(page.locator("#hygiene-status")).to_have_attribute("data-hygiene-state", "partial")
+        expect(page.locator("#hygiene-status")).to_contain_text("500 returned findings")
+        expect(page.locator("#hygiene-status")).to_contain_text("Findings truncated")
+        expect(page.locator(".hygiene-counts > li").first).to_have_text("missing relationship target: 2")
+        expect(page.locator(".hygiene-findings").first.locator(".hygiene-path")).to_have_text([hostile, "second.md"])
+        expect(page.locator(".hygiene-findings > li")).to_have_count(500)
+        expect(page.locator("#hygiene-results img, #hygiene-results script")).to_have_count(0)
+        assert page.evaluate("window.hygieneOwned") is None
+        for expected in ["Source order (zero-based)", "Line", "Column", "Field", "Source index (zero-based)",
+                         "Source indices (zero-based)", "Peer count", "Related paths truncated", "Vault-level diagnostic",
+                         "storage unavailable", "semantic unavailable", "relationship unavailable", "Related/9.md"]:
+            assert expected in page.locator("#hygiene-results").inner_text()
+        for width in [1280, 375, 320]:
+            page.set_viewport_size({"width": width, "height": 800})
+>           assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+E           AssertionError: assert False
+E            +  where False = evaluate('document.documentElement.scrollWidth <= window.innerWidth')
+E            +    where evaluate = <Page url='http://<LOOPBACK_ORIGIN>/ui/'>.evaluate
+
+tests/e2e/test_hygiene.py:139: AssertionError
+- generated xml file: <LINUX_SOURCE>/.agent/two-findings/linux-red-layout.xml -
+=========================== short test summary info ============================
+FAILED tests/e2e/test_hygiene.py::test_hygiene_all_evidence_grouping_bounds_inert_text_and_reflow[firefox]
+FAILED tests/e2e/test_hygiene.py::test_hygiene_all_evidence_grouping_bounds_inert_text_and_reflow[webkit]
+2 failed, 58 deselected in 6.24s

@@ -1,0 +1,77 @@
+class _Tunnel(socketserver.StreamRequestHandler):
+    # Never buffer TLS bytes sent immediately after CONNECT headers: bytes
+    # prefetched by rfile would be invisible to the socket forwarding loop.
+    rbufsize = 0
+
+    def handle(self):
+        with self.server.mutex:
+            if self.server.failed:
+                return
+        first = self.rfile.readline().decode("ascii").strip().split()
+        if len(first) != 3:
+            return
+        connect = first[0] == "CONNECT"
+        target = urlsplit(first[1]) if not connect else None
+        host, port = first[1].rsplit(":", 1) if connect else (target.hostname, target.port or 80)
+        if host not in {"vaultbridge.example.test", "other.example.test", "foreign.invalid.test"}:
+            return
+        headers = []
+        while (line := self.rfile.readline()) not in {b"\r\n", b"\n", b""}:
+            if line.split(b":", 1)[0].lower() not in {b"connection", b"proxy-connection"}:
+                headers.append(line)
+        with socket.create_connection(("<LOOPBACK>", int(port)), timeout=5) as peer:
+            if connect:
+                self.wfile.write(b"HTTP/1.1 200 Connection established\r\n\r\n")
+                self.wfile.flush()
+            else:
+                assert target.scheme == "http"
+                path = target.path or "/"
+                if target.query:
+                    path += "?" + target.query
+                peer.sendall(
+                    f"{first[0]} {path} {first[2]}\r\n".encode() + b"".join(headers) + b"Connection: close\r\n\r\n"
+                )
+            self.connection.settimeout(20)
+            peer.settimeout(20)
+            with self.server.mutex:
+                self.server.tunnels.add(self.connection)
+            try:
+                while True:
+                    ready, _, _ = select.select([self.connection, peer], [], [], 20)
+                    if not ready:
+                        return
+                    for source in ready:
+                        try:
+                            data = source.recv(65536)
+                            if not data:
+                                return
+                            (peer if source is self.connection else self.connection).sendall(data)
+                        except OSError:
+                            return
+            finally:
+                with self.server.mutex:
+                    self.server.tunnels.discard(self.connection)
+
+class _Proxy(socketserver.ThreadingTCPServer):
+    allow_reuse_address = True
+    daemon_threads = True
+
+    def __init__(self, *args):
+        self.mutex = threading.Lock()
+        self.tunnels = set()
+        self.failed = False
+        super().__init__(*args)
+
+    def disconnect(self):
+        """Actual TCP failure; no browser fetch/response mock."""
+        with self.mutex:
+            self.failed = True
+            for connection in self.tunnels:
+                try:
+                    connection.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
+
+    def recover(self):
+        with self.mutex:
+            self.failed = False

@@ -1,0 +1,38 @@
+{
+  "W": {
+    "status": "EXCLUDED / NOT QUALIFIED; not executed in final five-profile matrix",
+    "artifacts": [
+      "../vb-156b/junit/vb156b-windows-webkit-control.xml.json",
+      "../vb-156b/webkit-receiver-observations.json"
+    ]
+  },
+  "C": {
+    "status": "unresolved historical availability risk; final deterministic barriers do not establish a causal fix",
+    "artifacts": [
+      "../vb-156b/logs/vb156b-finish-bootstrap-failure.log.txt"
+    ],
+    "final_evidence": [
+      "native-browser/windows-events.jsonl",
+      "native-browser/linux-events.jsonl",
+      "validation/windows-browsers.json",
+      "validation/linux-browsers.json"
+    ]
+  },
+  "H": {
+    "status": "native non-BFCache history and combined alternative evidence only; authenticated admission/suspended logout UNQUALIFIED",
+    "class_1": "native authenticated history event records and original JUnit properties; actual pageshow.persisted preserved",
+    "class_2": "held validation, blanking, unchanged cookie/journal and logout-away assertions in passed pinned history tests; no issuing GET",
+    "class_3": "all deterministic lifecycle/stale-response/journal test identities in final JUnit, corresponding native events; injected events are not native admission",
+    "class_4": "native public controls and sanitized native trace extracts; existing version-matched harness configuration and failed suspension diagnostics below",
+    "historical_supplements": [
+      "../vb-156b/upstream/v1.63.0-firefox-content-main.excerpt.txt",
+      "../vb-156b/upstream/v1.64.0-firefox-content-main.excerpt.txt",
+      "../vb-156b/upstream/v1.64.0-firefox-playwright.cfg.excerpt.txt",
+      "../vb-156b/upstream/v1.64.0-webkit-bootstrap.diff.excerpt.txt",
+      "../vb-156b/junit/remaining-qualification--windows-frozen.xml.json",
+      "../vb-156b/junit/remaining-qualification--linux-frozen.xml.json",
+      "../vb-156b/source/remaining-qualification--native-freeze-probe.py.txt"
+    ],
+    "historical_source_limit": "supplements retain original/intermediate provenance limitations; no silent attribution to final source"
+  }
+}

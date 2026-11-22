@@ -7,6 +7,7 @@ from app.core.http_security import enforce_peer_rate_limit, verify_bearer_author
 from app.core.ui_session import (
     UI_REQUEST_HEADER_VALUE,
     UI_SESSION_COOKIE_NAME,
+    named_cookie_authenticated,
     validate_ui_session_token,
 )
 from app.services.duplicate_candidates import DuplicateCandidateService
@@ -84,6 +85,9 @@ def require_auth(
     request: Request = None,
     ui_request: str | None = Header(default=None, alias="X-VaultBridge-UI-Request"),
 ) -> None:
+    if (settings.knowledge_spaces_json is not None and request is not None
+            and authorization is None and named_cookie_authenticated(request, settings)):
+        return
     if (settings.knowledge_spaces_json is None and request is not None
             and authorization is None and ui_request == UI_REQUEST_HEADER_VALUE):
         token = request.cookies.get(UI_SESSION_COOKIE_NAME)

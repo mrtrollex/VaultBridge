@@ -1,0 +1,28 @@
+import datetime,hashlib,importlib.metadata,json,os,pathlib,re,subprocess,sys
+import playwright
+r=pathlib.Path.cwd();out=r/'.agent/two-findings';out.mkdir(exist_ok=True)
+system='windows' if os.name=='nt' else 'linux';label=system+'-'+sys.argv[1]
+def snapshot():
+ paths=sorted(p for base in ('app','tests','scripts') for p in (r/base).rglob('*') if p.is_file() and '__pycache__' not in p.parts and p.suffix not in ('.pyc','.pyo'))
+ paths += [r/p for p in ('Dockerfile','requirements.txt','requirements-dev.txt','pyproject.toml','.dockerignore')]
+ files={p.relative_to(r).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in paths}
+ return {'files':files,'sha256':hashlib.sha256(json.dumps(files,sort_keys=True,separators=(',',':')).encode()).hexdigest()}
+before=snapshot();(out/(label+'-source.json')).write_text(json.dumps(before,indent=2))
+manifest=json.loads((pathlib.Path(playwright.__file__).parent/'driver/package/browsers.json').read_text())
+(out/(system+'-builds.json')).write_text(json.dumps({'playwright':importlib.metadata.version('playwright'),'python':sys.version,'browsers':manifest['browsers']},indent=2))
+args=sys.argv[2:];cmd=[sys.executable,*args];started=datetime.datetime.now(datetime.timezone.utc).isoformat()
+if args[:1]==['scripts/agent_finish.py']:os.environ['PATH']=r'C:\Program Files\Docker\Docker\resources\bin'+os.pathsep+os.environ['PATH']
+with (out/(label+'.log')).open('wb') as log:
+ log.write((json.dumps(cmd)+'\n').encode());log.flush();code=subprocess.run(cmd,stdout=log,stderr=subprocess.STDOUT,check=False).returncode
+assert before==snapshot(),'source changed during run'
+record={'command':cmd,'started':started,'ended':datetime.datetime.now(datetime.timezone.utc).isoformat(),'exit':code,'source':before['sha256']}
+if args[:1]==['scripts/agent_finish.py'] and code==0:
+ text=(out/(label+'.log')).read_text(encoding='utf-8',errors='replace')
+ section=text.split('RUN pytest (unit/integration, includes tests/eval):',1)[1].split('RUN compileall:',1)[0]
+ progress=''.join(re.findall(r'^([.s]+)\s+\[\s*\d+%\]',section,re.MULTILINE))
+ assert len(progress)>4000
+ record['python_counts']={'passed':progress.count('.'),'skipped':progress.count('s')}
+ record['packet_created']=(r/'.agent/review_packet.md').is_file()
+(out/(label+'.result.json')).write_text(json.dumps(record,indent=2))
+print(label,'exit',code,flush=True);print((out/(label+'.log')).read_text(encoding='utf-8',errors='replace')[-2200:],flush=True)
+sys.exit(code)

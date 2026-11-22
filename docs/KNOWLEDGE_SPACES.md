@@ -93,11 +93,14 @@ GET list uses repeated parameters, for example
 `/api/v1/notes/read?space=research&path=Notes%2FExample.md`. Create and append keep their
 existing request fields with an optional singular `space`. Capture/promotion remain CLI-only.
 
-All protected requests require the existing current/previous Bearer key and share the direct-peer
-HTTP limiter. Credentials authenticate the deployment and confer no space permission.
-Dashboard cookies do not authenticate named REST or MCP. Unknown and denied selections have
+Bearer clients retain the existing current/previous key behavior and direct-peer HTTP limiter.
+Credentials authenticate the deployment and confer no space permission. The VB-156B source adds
+guarded Dashboard cookies only on ADR 0011 section 5's exact read-method/path allowlist;
+cookies never authenticate writes, legacy aliases, MCP, Hygiene, Capture/Promotion or maintenance.
+Unknown and denied selections have
 the same safe public error. A mixed allowed/denied selection fails wholly before owner work;
-availability coverage applies only after full authorization. There is no registry/label listing,
+availability coverage applies only after full authorization. Labels remain private. Policy-filtered
+readable-ID discovery is defined below; there is no anonymous registry,
 automatic scope expansion or fallback to another space. Equal paths in two spaces remain distinct.
 
 Scoped content responses use `Cache-Control: no-store`. GET path/scope parameters can appear
@@ -168,9 +171,50 @@ or uncertain commit, and 2 invalid/denied/capability/configuration/programming f
 
 ## Dashboard, health and recovery
 
-Named `/ui` and every `/ui/` path/method, including assets and session endpoints, return static
-404/no-store. There is no space selector or session creation/restoration/deletion. Proxy root
-prefixes preserve this fence. Choose legacy configuration to use the existing Dashboard.
+The VB-156B working source serves an isolated named `/ui/` Access / Spaces / Status foundation,
+with explicit bundled routes and safe 404/405/no-store boundaries. Its acceptance remains incomplete,
+including WebKit qualification; this is not functionality published in v1.5.0. Browsing content,
+Search, Query, Relationships and named Hygiene UI are outside this slice. Legacy UI/session renewal
+are retained. See [Dashboard sessions and entire-hostname trust](DASHBOARD.md#named-access--spaces--status)
+for secure-context/Web Locks/shared-storage requirements, nonrenewing restore, orphan quarantine,
+fixed expiry, recovery and copied-token limits. All ports/routes of a dedicated hostname must be
+trusted, with one canonical issuer and drained legacy handover; cookies have no port isolation.
+
+### Named discovery and selected status
+
+Both routes are named-only, authenticated, direct-peer limited and no-store on success/failure/method
+responses. They add no MCP tools or CLI commands. Current/previous Bearer and guarded named cookies
+are accepted. Legacy composition retains 404. No labels, roots, derived paths, write permissions,
+denied IDs/counts, operational internals or raw errors are returned.
+
+`GET /api/v1/knowledge/spaces` (`listKnowledgeSpacesV1`) accepts no query/body. It returns exactly
+`{"spaces":[{"space_id":"default","read_capabilities":["list_notes"],"relationship_dialects":[],"indexing":"disabled"}]}`.
+All row fields are required; there are 0–8 ASCII-ID-sorted entries. Capabilities are sorted subsets
+of `read_note`, `list_notes`, `literal_search`, `semantic_retrieval`, `knowledge_query`, `relationships`.
+Dialects are sorted `markdown_link`/`obsidian_wikilink` subsets only with relationships permission.
+Indexing is `enabled|disabled`. Projection is pure read-policy metadata through SpaceOperations and
+SpacePolicyResolver, with zero owner/filesystem/model/index probes. Unavailable readable spaces stay
+listed; all-read-denied returns `{"spaces":[]}`. Unexpected query/body is safe 422 `invalid_request`;
+unexpected failure is static 500 `internal_error`. Discovery is never an authorization grant.
+
+`GET /api/v1/knowledge/spaces/status` (`getKnowledgeSpaceStatusV1`) accepts only repeated `spaces`
+parameters, raw 1–8 valid IDs before deduplication. Omission retains default-only semantics. It returns
+exactly `{"spaces":[{"space_id":"default","index_state":"disabled","search_available":false,"refresh_required":false}]}`,
+one ASCII-sorted row per selected ID, all fields required. Complete read authorization precedes any
+owner inspection; unknown/denied mixtures fail wholly as 403 `scope_not_allowed`. Invalid selectors
+are 422 `invalid_scope`; other unexpected parameters/body are 422 `invalid_request`.
+
+Index state is `disabled|not_permitted|indexing|ready|unavailable`. Disabled indexing and disallowed
+semantic retrieval yield false/false with zero operational probes. Otherwise scheduler booleans are
+observed before cancellable admission, then guarded root/storage metadata and chunk existence are
+read without counts, walks, model initialization, schema writes, refresh or scheduler mutations.
+Ready requires searchable compatible ready lifecycle without debt; runnable work is indexing unless
+paused/failed. Recovery debt alone is unavailable. A compatible previous index can stay searchable
+while refresh is required. Observation/root/binding failure is unavailable/false/true. WAL storage
+currently receives that conservative row to avoid creating coordination files; a read-only open
+is not inherently filesystem-immutable. No immutable live-WAL shortcut is used. Stopped/saturated
+admission and cancellation retain safe 503 semantics. Observations are non-atomic and not promises
+of future search success. Selection/status never trigger search, repair or fallback to another space.
 
 `/health/live` remains public and dependency-free `{"ok":true}`. Named `/health` exposes only
 `{"ok":boolean}` for runtime admission. `/health/ready` keeps `{"ready":boolean}` and 200/503:

@@ -137,6 +137,31 @@ def test_hygiene_all_evidence_grouping_bounds_inert_text_and_reflow(page, e2e_se
     for width in [1280, 375, 320]:
         page.set_viewport_size({"width": width, "height": 800})
         assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+        heading = page.locator(".app-header__identity h1")
+        expect(heading).to_be_visible()
+        metrics = heading.evaluate("""element => {
+          const measure=()=>({width:element.getBoundingClientRect().width,
+            height:element.getBoundingClientRect().height,font:getComputedStyle(element).fontSize});
+          const fitted=measure(), old=element.style.overflowWrap;
+          element.style.overflowWrap='normal'; const baseline=measure(); element.style.overflowWrap=old;
+          return {innerWidth,clientWidth:document.documentElement.clientWidth,
+            scrollWidth:document.documentElement.scrollWidth,fitted,baseline};
+        }""")
+        assert metrics["innerWidth"] == width
+        assert metrics["scrollWidth"] <= metrics["clientWidth"]
+        if width >= 375:
+            assert metrics["fitted"] == metrics["baseline"], "normal-width brand layout changed"
+        print("Legacy header viewport:", json.dumps(metrics, sort_keys=True))
+        page.locator(".skip-link").focus()
+        expect(page.locator(".skip-link")).to_be_focused()
+        expect(page.locator(".skip-link")).to_be_in_viewport()
+        page.locator("#nav-hygiene").focus()
+        for _ in range(3):
+            page.keyboard.press("Tab")
+        refresh = page.get_by_role("button", name="Refresh scan", exact=True)
+        expect(refresh).to_be_focused()
+        expect(refresh).to_be_in_viewport()
+        assert refresh.evaluate("e => getComputedStyle(e).outlineStyle") != "none"
     browser_failures.assert_clean()
 
 

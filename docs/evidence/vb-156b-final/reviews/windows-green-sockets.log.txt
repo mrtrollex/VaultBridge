@@ -1,0 +1,44 @@
+["<WINDOWS_PYTHON>", "-m", "pytest", "tests/e2e/test_named_proxy.py", "-o", "addopts=", "-q", "-s", "--junitxml", ".agent/two-findings/windows-green-sockets.xml"]
+F.
+================================== FAILURES ===================================
+________________ test_pending_connect_cannot_escape_disconnect ________________
+
+    def test_pending_connect_cannot_escape_disconnect():
+        with servers() as (proxy, port, parsing, executed, release, requests):
+            with socket.create_connection(proxy.server_address, timeout=5) as client:
+                assert parsing.wait(5), "handler must already be blocked in CONNECT parsing"
+>               proxy.disconnect()
+
+tests\e2e\test_named_proxy.py:86: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tests.e2e.named_server._Proxy object at <OBJECT_ADDRESS>>
+
+    def disconnect(self):
+        """Fail this generation, interrupt all IO, and acknowledge actual release.
+    
+        Registration and every nonblocking send share this lock: after the
+        failure event there can be no successful forwarding, including retries.
+        Wake sockets interrupt select; shutdown interrupts blocking CONNECT reads.
+        Only worker cleanup acknowledges disposal, never invocation of disconnect.
+        """
+        with self.condition:
+            self.failed = True
+            self.record("disconnect-begin", outstanding=len(self.connections))
+            for connection in self.connections.values():
+                connection.wake[1].send(b"x")
+                for endpoint in (connection.client, connection.peer):
+                    if endpoint is not None:
+                        try:
+                            endpoint.shutdown(socket.SHUT_RDWR)
+                        except OSError:
+                            pass
+>           assert self.condition.wait_for(lambda: not self.connections, timeout=5), "Proxy teardown not acknowledged"
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Proxy teardown not acknowledged
+
+tests\e2e\named_server.py:289: AssertionError
+- generated xml file: <SOURCE>\.agent\two-findings\windows-green-sockets.xml -
+=========================== short test summary info ===========================
+FAILED tests/e2e/test_named_proxy.py::test_pending_connect_cannot_escape_disconnect
+1 failed, 1 passed in 6.81s

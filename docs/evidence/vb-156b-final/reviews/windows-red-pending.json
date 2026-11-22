@@ -1,0 +1,34 @@
+{
+  "format": "lossless test identities/outcomes/timing and suite attributes; hostname removed; properties parsed from original JSON where applicable",
+  "selection": "failures/skips only; original suite totals retained",
+  "suites": [
+    {
+      "attributes": {
+        "name": "pytest",
+        "errors": "0",
+        "failures": "1",
+        "skipped": "0",
+        "tests": "2",
+        "time": "1.721",
+        "timestamp": "2026-11-22T10:27:50.852467+01:00"
+      },
+      "properties": [],
+      "cases": [
+        {
+          "classname": "tests.e2e.test_named_proxy",
+          "name": "test_pending_connect_cannot_escape_disconnect",
+          "time": "0.527",
+          "outcome": "failure",
+          "original_identity_sha256": "2711eb35da96335310f2f41ffd00040bd130500eaaabe4421e56513a4a353981",
+          "identity_parameter_sanitized": false,
+          "failure": {
+            "attributes": {
+              "message": "assert b'{\"authenticated\":false}' not in b'HTTP/1.1 200 OK\\r\\nContent-Length: 23\\r\\n\\r\\n{\"authenticated\":false}'\n +  where b'HTTP/1.1 200 OK\\r\\nContent-Length: 23\\r\\n\\r\\n{\"authenticated\":false}' = read_available(<socket.socket fd=<SOCKET_HANDLE>, family=2, type=1, proto=0, laddr=<LOOPBACK_SOCKET>, raddr=<LOOPBACK_SOCKET>>)"
+            },
+            "text": "def test_pending_connect_cannot_escape_disconnect():\n        with servers() as (proxy, port, parsing, executed, release, requests):\n            with socket.create_connection(proxy.server_address, timeout=5) as client:\n                assert parsing.wait(5), \"handler must already be blocked in CONNECT parsing\"\n                proxy.disconnect()\n                try:\n                    client.sendall(connect_request(port))\n                    if client.recv(4096):\n                        client.sendall(b\"DELETE /ui/session HTTP/1.1\\r\\nHost: vaultbridge.example.test\\r\\n\\r\\n\")\n                except ConnectionError:\n                    pass\n>               assert b'{\"authenticated\":false}' not in read_available(client)\nE               assert b'{\"authenticated\":false}' not in b'HTTP/1.1 200 OK\\r\\nContent-Length: 23\\r\\n\\r\\n{\"authenticated\":false}'\nE                +  where b'HTTP/1.1 200 OK\\r\\nContent-Length: 23\\r\\n\\r\\n{\"authenticated\":false}' = read_available(<socket.socket fd=<SOCKET_HANDLE>, family=2, type=1, proto=0, laddr=<LOOPBACK_SOCKET>, raddr=<LOOPBACK_SOCKET>>)\n\ntests\\e2e\\test_named_proxy.py:93: AssertionError"
+          }
+        }
+      ]
+    }
+  ]
+}

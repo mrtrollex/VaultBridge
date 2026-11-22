@@ -27,6 +27,34 @@
 
 * { box-sizing: border-box; }
 
+/* Isolated named Access / Spaces / Status composition. */
+.named-foundation { max-width: 68rem; line-height: 1.6; }
+.named-foundation .panel {
+  margin-block: 1.5rem;
+  padding: clamp(1rem, 3vw, 2rem);
+  border: 1px solid var(--border-strong);
+  border-radius: 0.5rem;
+  background: var(--panel-background);
+  overflow-wrap: anywhere;
+}
+.named-foundation label { display: block; margin-block: 0.75rem 0.25rem; }
+.named-foundation input:not([type="checkbox"]), .named-foundation select {
+  width: 100%; max-width: 30rem; min-height: 2.75rem;
+  background: var(--card-background); color: var(--text);
+  border: 1px solid var(--border-strong); border-radius: 0.25rem; padding: 0.5rem;
+  font: inherit;
+}
+.named-foundation select:focus-visible { outline: 0.18rem solid var(--focus); outline-offset: 0.2rem; }
+.named-foundation button {
+  margin: 0.5rem 0.5rem 0.5rem 0; padding: 0.5rem 1rem;
+  max-width: 100%; white-space: normal; cursor: pointer;
+  background: var(--surface-raised); color: var(--text);
+  border: 1px solid var(--border-strong); border-radius: 0.25rem;
+}
+.named-foundation button:disabled { opacity: 0.65; cursor: default; }
+.named-foundation fieldset { min-width: 0; margin-block: 1rem; border: 1px solid var(--border-strong); }
+.named-foundation input[type="checkbox"] { width: 1.25rem; height: 1.25rem; margin-right: 0.75rem; }
+
 html {
   min-width: 18rem;
   background: var(--app-background);
@@ -114,6 +142,9 @@ a:focus-visible,
 }
 
 .app-header__identity { min-width: 0; }
+
+/* Keep the legacy brand inside its flex allocation on narrow viewports. */
+.app-header__identity h1 { overflow-wrap: anywhere; }
 
 .eyebrow {
   margin: 0 0 0.45rem;

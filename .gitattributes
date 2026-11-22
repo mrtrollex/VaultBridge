@@ -1,2 +1,5 @@
 # Preserve the accepted cross-platform evidence bytes from the Git blob.
 tests/fixtures/vb151_g_reference.json text eol=lf
+
+# Keep final qualification artifact bytes stable for the hash index on every OS.
+docs/evidence/vb-156b-final/** -text

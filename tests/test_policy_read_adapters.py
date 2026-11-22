@@ -255,8 +255,15 @@ def test_named_health_ui_cookie_fences(settings, runtime, monkeypatch):
     for path in ("/ui", "/ui/", "/ui/assets/app.js", "/ui/session", "/ui/session/"):
         for method in ("get", "post", "delete", "put"):
             response = getattr(client, method)(path)
-            assert response.status_code == 404
+            if path in {"/ui/assets/app.js", "/ui/session/"}:
+                expected = 404
+            elif path == "/ui/session":
+                expected = 403 if method in {"get", "post", "delete"} else 405
+            else:
+                expected = 200 if method == "get" else 405
+            assert response.status_code == expected
             assert response.headers["cache-control"] == "no-store"
+            assert "set-cookie" not in response.headers
     client.cookies.set("vaultbridge_ui_session", create_ui_session_token(settings))
     response = client.get("/notes/read?path=same.md", headers={"X-VaultBridge-UI-Request": "1"})
     assert response.status_code == 401
@@ -674,7 +681,9 @@ def test_disabled_semantics_denies_before_index_or_discovery(tmp_path, backend, 
 def test_named_ui_fence_handles_proxy_root_path(settings, runtime):
     client = TestClient(create_private_read_app(settings=settings, operations=runtime.operations), root_path="/proxy")
     response = client.post("/proxy/ui/session", content="PRIVATE")
-    assert response.status_code == 404 and response.headers["cache-control"] == "no-store"
+    assert response.status_code == 403 and response.json() == {"detail": "invalid_ui_request"}
+    assert response.headers["cache-control"] == "no-store" and "set-cookie" not in response.headers
+    assert client.get("/proxy/ui/assets/app.js").status_code == 404
 
 
 def test_legacy_registry_cannot_be_injected_into_private_named_adapter(settings, runtime):

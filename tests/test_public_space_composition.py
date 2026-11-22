@@ -220,7 +220,8 @@ def test_denied_unknown_and_mixed_no_operational_work(settings, monkeypatch, sel
 
 
 @pytest.mark.parametrize("prefix", ["", "/proxy"])
-@pytest.mark.parametrize("path", ["/ui", "/ui/", "/ui/session", "/ui/assets/dashboard.js", "/ui/unknown"])
+@pytest.mark.parametrize("path", ["/ui/session/", "/ui/assets/dashboard.js", "/ui/assets/app.js",
+                                  "/ui/assets/overview.js", "/ui/assets/search.js", "/ui/unknown"])
 @pytest.mark.parametrize("method", ["GET", "POST", "DELETE", "PUT", "OPTIONS", "HEAD"])
 def test_public_named_ui_static_fence(settings, prefix, path, method, monkeypatch):
     def forbidden(*args, **kwargs):

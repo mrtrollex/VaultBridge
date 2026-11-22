@@ -1,0 +1,216 @@
+"""Causal bootstrap barriers and native history qualification, with no cache overrides."""
+
+import json
+
+import pytest
+from playwright.sync_api import expect
+from starlette.responses import HTMLResponse
+
+from tests.e2e import test_named_dashboard as dashboard
+from tests.e2e.named_diagnostics import NativeEvidence
+from tests.e2e.named_server import serve
+from tests.e2e.test_named_dashboard import (
+    LOCK,
+    journal,
+    login,
+    open_page,
+    session_cookie,
+)
+
+named = dashboard.named
+named_context = dashboard.named_context
+
+
+def test_bootstrap_module_dependency_barrier(named_context, named, request):
+    """An unavailable static dependency precedes session construction/lock work."""
+    evidence = NativeEvidence(named_context, request.node.nodeid + "-dependency")
+    held = []
+    named_context.route("**/ui/assets/spaces.js", lambda route: held.append(route))
+    page = named_context.new_page()
+    try:
+        with page.expect_request(lambda r: r.url.endswith("spaces.js")):
+            page.goto(named["url"] + "/ui/", wait_until="commit")
+        expect(page.locator("#session-message")).to_contain_text("Checking browser support")
+        # Pump browser dispatch until the explicit route has been intercepted.
+        expect(page.locator("#unlock-form")).to_be_hidden()
+        assert len(held) == 1
+        state = evidence.snapshot(page, "static-dependency-held")
+        assert state["locks"] == {"held": [], "pending": []} and state["phases"] == []
+        assert not any(path.endswith("/ui/session") for _, path in named["inventory"])
+        held.pop().continue_()
+        expect(page.locator("#unlock-form")).to_be_visible()
+        evidence.snapshot(page, "dependency-completed-session-ready")
+        login(page)
+    finally:
+        for route in held:
+            route.abort()
+        evidence.save()
+
+
+def test_bootstrap_native_lock_barrier(named_context, named, request):
+    """Lock contention has a different readiness message than missing modules."""
+    evidence = NativeEvidence(named_context, request.node.nodeid + "-lock")
+    owner = open_page(named_context, named)
+    expect(owner.locator("#unlock-form")).to_be_visible()
+    owner.evaluate("""name => {
+      window.lockEntered=false;
+      void navigator.locks.request(name, () => new Promise(resolve => {
+        window.releaseQualificationLock=resolve; window.lockEntered=true;
+      }));
+    }""", LOCK)
+    owner.wait_for_function("window.lockEntered")
+    try:
+        page = open_page(named_context, named)
+        expect(page.locator("#session-message")).to_contain_text("Checking browser session")
+        state = evidence.snapshot(page, "native-lock-held-by-other-tab")
+        assert any(lock["name"] == LOCK for lock in state["locks"]["held"])
+        assert any(lock["name"] == LOCK for lock in state["locks"]["pending"])
+        assert state["phases"] == []
+        assert not any(path.endswith("/ui/session") for _, path in named["inventory"])
+        owner.evaluate("releaseQualificationLock()")
+        expect(page.locator("#unlock-form")).to_be_visible()
+        login(page)
+        evidence.snapshot(page, "lock-released-login-completed")
+    finally:
+        owner.evaluate("releaseQualificationLock()")
+        evidence.save()
+
+
+def leave(page, url):
+    page.evaluate("""url => {
+      const a=document.createElement('a'); a.id='qualification-leave';
+      a.href=url; a.textContent='Leave'; document.body.append(a);
+    }""", url)
+    page.locator("#qualification-leave").click()
+
+
+@pytest.mark.parametrize("logout_away", [False, True], ids=["clean", "logout-away"])
+def test_native_authenticated_history_qualification(playwright, browser_name, named, request,
+                                                   record_testsuite_property, logout_away):
+    options = {"channel": "chromium", "ignore_default_args": ["--disable-back-forward-cache"]} \
+        if browser_name == "chromium" else {}
+    browser = getattr(playwright, browser_name).launch(**options)
+    context = browser.new_context(ignore_https_errors=True, proxy=named["proxy"])
+    # These explicitly launched browsers bypass pytest-playwright's context
+    # factory; start/stop their native traces ourselves, including successes.
+    evidence = NativeEvidence(context, request.node.nodeid, trace=True)
+    barrier = named["barrier"]
+    try:
+        page = open_page(context, named)
+        login(page)
+        page.locator("#single-space").select_option("research")
+        expect(page.locator("#index-status")).to_contain_text("research: disabled")
+        clean, cookie = journal(page), session_cookie(context)
+        # Register after app initialization, so this observer runs after the
+        # production pagehide erasure. Console messages at document destruction
+        # can be dropped by the protocol; carry only public boolean observations
+        # across navigation in a test-only sessionStorage key, then remove it.
+        page.evaluate("""() => addEventListener('pagehide', event => {
+          sessionStorage.setItem('qualification-departure', JSON.stringify({
+            persisted:event.persisted, privateHidden:document.querySelector('#spaces').hidden,
+            statusEmpty:!document.querySelector('#index-status').textContent,
+            selectionEmpty:!document.querySelector('#single-space').value,
+            keyEmpty:!document.querySelector('#api-key').value
+          }));
+        }, {once:true})""")
+        leave(page, named["url"] + "/health/live")
+        # pagehide was observed natively, even if admission was refused.
+        departure = page.evaluate("""() => {
+          const row=JSON.parse(sessionStorage.getItem('qualification-departure'));
+          sessionStorage.removeItem('qualification-departure'); return row;
+        }""")
+        evidence.record("native-pagehide-after-erasure", data=departure)
+        assert departure and all(departure[k] for k in ("privateHidden", "statusEmpty", "selectionEmpty", "keyEmpty"))
+        if logout_away:
+            sibling = open_page(context, named)
+            expect(sibling.locator("#spaces")).to_be_visible()
+            sibling.get_by_role("button", name="Log out", exact=True).click()
+            expect(sibling.locator("#session-message")).to_contain_text("removal confirmed")
+            assert not session_cookie(context)
+            # The returned page must use the changed durable state, with no GET.
+            start = len(named["inventory"])
+            page.go_back(wait_until="commit")
+            expect(page.locator("#unlock-form")).to_be_visible()
+            expect(page.locator("#spaces")).to_be_hidden()
+            expect(page.locator("#single-space")).to_have_value("")
+            expect(page.locator("#index-status")).to_be_empty()
+            assert not any(path.endswith("/ui/session") for _, path in named["inventory"][start:])
+            assert not session_cookie(context)
+        else:
+            barrier.arm("GET", repeat=True)
+            page.go_back(wait_until="commit")
+            assert barrier.entered.wait(10)
+            expect(page.locator("#spaces")).to_be_hidden()
+            expect(page.locator("#single-space")).to_have_value("")
+            expect(page.locator("#index-status")).to_be_empty()
+            assert all(b"set-cookie" not in h for h in barrier.captured_headers)
+            assert session_cookie(context) == cookie and journal(page) == clean
+            barrier.release.set()
+            expect(page.locator("#index-status")).to_contain_text("default: disabled")
+            expect(page.locator("#single-space")).to_have_value("default")
+            assert session_cookie(context) == cookie and journal(page) == clean
+        page.wait_for_function("qualificationEvents.some(e=>e.type==='pageshow')")
+        state = evidence.snapshot(page, "native-back-restoration")
+        record_testsuite_property(request.node.name + "-back", json.dumps(state))
+        # Exercise native forward and another back, with no replay of research.
+        page.go_forward(wait_until="commit")
+        page.wait_for_url(named["url"] + "/health/live")
+        page.go_back(wait_until="commit")
+        if logout_away:
+            expect(page.locator("#unlock-form")).to_be_visible()
+            expect(page.locator("#spaces")).to_be_hidden()
+        else:
+            expect(page.locator("#index-status")).to_contain_text("default: disabled")
+        state = evidence.snapshot(page, "native-forward-back-restoration")
+        record_testsuite_property(request.node.name + "-forward-back", json.dumps(state))
+    finally:
+        barrier.release.set()
+        evidence.finish_trace()
+        context.close()
+        evidence.save()
+        browser.close()
+
+
+@pytest.mark.parametrize("cache_policy", ["no-store", "max-age=60"])
+def test_native_bfcache_public_control(playwright, browser_name, named, request, cache_policy,
+                                      record_testsuite_property):
+    """Independent public fixture isolates native caching policy from app/auth."""
+    async def control(scope, receive, send):
+        if scope["type"] == "lifespan":
+            while True:
+                event = await receive()
+                await send({"type": event["type"] + ".complete"})
+                if event["type"] == "lifespan.shutdown":
+                    return
+        else:
+            await HTMLResponse("<!doctype html><title>Public history control</title><p>Public cache policy control</p>",
+                               headers={"Cache-Control": cache_policy})(scope, receive, send)
+
+    options = {"channel": "chromium", "ignore_default_args": ["--disable-back-forward-cache"]} \
+        if browser_name == "chromium" else {}
+    browser = getattr(playwright, browser_name).launch(**options)
+    context = browser.new_context(ignore_https_errors=True, proxy=named["proxy"])
+    evidence = NativeEvidence(context, request.node.nodeid, trace=True)
+    try:
+        with serve(control, named["cert"], named["key"]) as port:
+            try:
+                page = context.new_page()
+                page.goto(f"https://vaultbridge.example.test:{port}/public")
+                leave(page, named["url"] + "/health/live")
+                page.go_back(wait_until="commit")
+                page.wait_for_function("qualificationEvents.some(e=>e.type==='pageshow')")
+                state = evidence.snapshot(page, "public-cache-policy-control")
+                record_testsuite_property(request.node.name, json.dumps(state))
+                # This is an observation, never a waiver of authenticated admission.
+                assert any(e["type"] == "pageshow" for e in state["events"])
+            finally:
+                # Stop the browser connection pool before the receiving server,
+                # including when an evidence assertion fails.
+                evidence.finish_trace()
+                context.close()
+    finally:
+        if context in browser.contexts:
+            evidence.finish_trace()
+            context.close()
+        evidence.save()
+        browser.close()

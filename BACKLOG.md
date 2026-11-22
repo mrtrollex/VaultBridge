@@ -14,18 +14,18 @@ Legend:
 
 ## Current-work entry point
 
-Updated 2026-11-20 for accepted VB-156A design after published stable **v1.5.0**. This navigation does not alter any task's
+Updated 2026-11-22 for final VB-156B implementation acceptance under accepted ADRs 0011 and 0012, after published stable **v1.5.0**. This navigation does not alter any task's
 acceptance criteria or infer missing operator validation from code or release publication.
 The [release ledger](docs/RELEASE_CHECKLIST.md#v150-release-evidence) owns publication/image facts;
 [PROJECT_STATE.md](PROJECT_STATE.md) owns the compact current snapshot.
 
 | Work class | Current boundary / where to start |
 | --- | --- |
-| Active | VB-156A architecture/design is complete and accepted; VB-156B–E remain future implementation tasks requiring separate authorization. The prior post-v1.5.0 documentation cleanup retains its separate review boundary. Select implementation only from an explicitly scoped, accepted contract. |
+| Active | VB-156A and ADR 0012 are accepted. VB-156B implementation is completed and owner-accepted on 2026-11-22 within its precise qualified scope, after final independent review APPROVE. PR preparation is authorized; PR creation, publication, release and deployment are not. VB-156C–E remain future tasks. The prior post-v1.5.0 documentation cleanup retains its separate review boundary. |
 | Blocked on external/operator evidence | VB-082 remains partial. Edit App persistence, host reboot, generated-catalog upgrade, rollback/recovery and ixVolume retain/remove need authorized disposable TrueNAS evidence. |
 | Separate downstream delivery | VB-106 package-source MCP fields and legacy migration preparation exist; upstream form delivery and lifecycle validation remain separate. Refresh upstream before any delivery task. |
 | Deferred | VB-032 design/ADR and VB-033 section update endpoint; neither is authorized by this cleanup. |
-| Optional candidates | VB-034 verified backlink insertion and VB-055 multi-arch remain optional. Diagnostics, qualification tooling and measured refactors are roadmap candidates requiring contracts. Named Dashboard has the accepted VB-156A design contract below; no implementation is authorized. |
+| Optional candidates | VB-034 verified backlink insertion and VB-055 multi-arch remain optional. Diagnostics, qualification tooling and measured refactors are roadmap candidates requiring contracts. Named Dashboard implementation is limited to the separately authorized VB-156B slice below. |
 | Completed / historical | VB-001–VB-031 foundation/retrieval (where marked), VB-040–VB-060 (except VB-055), Dashboard/MCP/relationship/PKM/Query/Capture/Hygiene work, and accepted VB-150/VB-151/VB-152 remain under their existing contracts below. See dated evidence rather than treating old sequences as next-task advice. |
 
 Application publication is complete for v1.5.0. This does not complete every release-qualification,
@@ -48,7 +48,8 @@ the task's explicit status/evidence. Historical release plans are not authority 
 independent architecture/security review returned APPROVE and the owner accepted the reviewed design.
 Owner acceptance covers all six decisions in ADR 0011 section 16, including the journal exception,
 fail-closed recovery, stateless session limits and whole-hostname deployment trust.
-No Dashboard implementation, publication or deployment is claimed. VB-156B–E remain future work.
+At VB-156A design acceptance, no Dashboard implementation, publication or deployment was claimed;
+VB-156B–E were future work. The later VB-156B implementation acceptance is recorded below.
 The first independent architecture/security review returned FIXES REQUIRED for two HIGH findings:
 cross-tab cookie resurrection and the hostname/port cookie trust boundary. The documentation-only
 repairs were approved by the second fresh independent review; the owner accepted those reviewed decisions.
@@ -119,10 +120,11 @@ exclude affected Windows Playwright WebKit builds until a corrected build passes
 tests; accept the unresolved historical Chromium bootstrap availability risk without a causal-fix
 claim; accept demonstrated safe non-BFCache history restoration as the current evidence, with
 unobserved authenticated BFCache admission/suspension remaining unqualified. The exact profile
-matrix, security invariants and reopening/removal criteria are preserved. **VB-156B final
-implementation integration and acceptance remain separate and incomplete.** The retained implementation
-review APPROVE is not full qualification. ADR 0011 remains ACCEPTED and technically unchanged; this design-baseline checkout
-does not import the separately reviewed implementation. The earlier future-task descriptions record
+matrix, security invariants and reopening/removal criteria are preserved. **At amendment acceptance,
+VB-156B final implementation integration and acceptance remained separate and incomplete.** The earlier
+implementation review APPROVE did not establish final-source qualification. ADR 0011 remains ACCEPTED
+and technically unchanged; the amendment merge itself did not import the separately reviewed
+implementation. The later B integration and final owner acceptance are recorded below. The earlier future-task descriptions record
 the VB-156A baseline, not a new implementation-status assessment. Release/deployment gates remain separate.
 All 150 artifacts in the [durable sanitized evidence record](docs/evidence/vb-156b/README.md) remain
 unchanged, including capture-time PROPOSED/PENDING wording, original failures, review verdicts and
@@ -140,6 +142,99 @@ maintenance. No commit, push, publish, deploy, reviewer launch or accepted-ADR r
 the separate independent APPROVE review and owner acceptance establish VB-156A design completion.
 Those review/owner gates are satisfied on 2026-11-20. B–E implementation, browser/security qualification,
 release and deployment retain their separate authorization and acceptance gates.
+
+### VB-156B — Named Knowledge Spaces Dashboard foundation — P1
+
+**Status:** ✅ Completed and owner-accepted on 2026-11-22 for the precisely qualified
+named session, policy-filtered discovery, explicit selection and selected-status foundation
+under accepted ADRs 0011 and 0012. The latest fresh final independent review returned **APPROVE**
+and closed the remaining HIGH evidence-durability finding; the project owner then explicitly
+accepted this implementation and authorized PR preparation. The reviewed source remains unchanged
+over accepted main at `8dd6f2a421f0`. The earlier TCP/DELETE fixture and legacy 320 px reflow
+repairs, original failures, both accepted ADRs, all 150 historical artifacts and the final-source
+evidence bundle are preserved. VB-156C/D/E remain unimplemented and outside this acceptance.
+
+**Accepted final-source evidence (2026-11-22):** [qualification and owner-acceptance record](docs/VB156B_QUALIFICATION.md).
+Windows Chromium/Firefox complete E2E: **501 passed**; native Linux Chromium/Firefox/WebKit:
+**749 passed**, neither with failures/skips. Full backend/Python suites including evaluation:
+Windows **4053 passed / 316 platform skips**; native Linux **4277 passed / 92 Windows-only skips**.
+HTTP 401 subsets: 200/300 passed; native TCP/truncated mutation cases:
+16/24; complete DELETE controls: 4/6; three deterministic socket regressions per platform.
+Raw code/check-input fingerprint: `cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e`.
+The final canonical Windows Python/Chromium/Docker/MCP and packet result is retained in
+[durable qualification bundle](docs/evidence/vb-156b-final/README.md), including original
+execution output/source maps and its hash index. Final independent review APPROVE and explicit
+owner acceptance cover this source; successful tooling alone did not establish acceptance. The
+original four integration browser failures remain historical records, not silently replaced or
+attributed to another source.
+
+**Qualified scope and residual risks:** Windows Playwright 1.63.0 Chromium 153.0.8010.12 / r1243
+and Firefox 155.0 / r1543; native WSL/Linux Playwright 1.64.0 Chromium 156.0.8078.4 / r1248,
+Firefox 157.0 / r1555 and WebKit 27.2 / r2370, within ADR 0012's tested top-level browser
+context/storage partition, root and `/proxy` HTTPS, native Web Locks/shared-localStorage and
+TLS/proxy trust boundaries. W: Windows Playwright WebKit 26.6 / r2359 remains **EXCLUDED / NOT
+QUALIFIED**, with all four original Strict failures retained; no Safari qualification. C: the
+Chromium bootstrap availability risk remains unresolved, with no causal fix claimed. H: all four
+alternative evidence classes are retained; authenticated BFCache admission and logout of an
+actually suspended authenticated page remain **UNQUALIFIED**. Security/privacy requirements and
+all ADR 0012 reopening/removal criteria remain unchanged. PR preparation does not authorize PR
+creation, a new release, publication or deployment; exact-source CI and release/image/operator
+acceptance remain separate future gates. No commit, push or PR has been made.
+
+**Contract:** [ADR 0011 sections 5, 6, 8, 9, 13 and 14](docs/adr/0011-named-knowledge-spaces-dashboard.md),
+preserved unchanged. Named-only discovery/status GETs, isolated shell/assets/session routes, exact
+read-cookie allowlist, nonrenewing restoration, current/previous unlock semantics, complete-scope
+authorization, explicit in-memory single/multiple Apply/Cancel selection and selected status.
+No content views, Search/Query/Relationships/Hygiene controls, new dependencies, storage formats,
+ranking, scheduler execution, MCP tools, CLI commands or packaging changes.
+
+**Implementation:** pure allowlisted discovery in SpacePolicyResolver through SpaceOperations;
+selected status snapshots scheduler booleans before scoped admission, then bound semantic metadata
+and chunk existence. Disabled/not-permitted policy rows have zero operational probes. Status does
+not count, walk, initialize, repair, refresh or write. WAL observations conservatively return
+unavailable/false/true: a mode=ro precheck cannot guarantee sidecar noncreation, and immutable mode
+is forbidden against live WAL. Compatible rollback-journal storage supports ready/indexing and
+previous-searchable/debt/error mapping. Legacy routes/controllers and renewal are retained.
+
+**Session security:** exact named browser guard and shared direct-peer limiter; only explicit POST
+issues and DELETE deletes cookies. Exclusive native Web Lock plus the two fixed bounded nonsecret
+records order mutations and quarantine abandonment. Logout intent fences older queued login and
+rendering; stale GET/401 cannot mutate a newer cookie. No in-page uncertainty reset, automatic retry,
+browser-readable key storage, selection persistence or copied-token revocation claim. Dedicated
+hostname trust includes every port/route and one canonical issuer with drained legacy handover.
+
+**Historical pre-integration verification snapshots (source linkage limits retained):** focused backend suite: 84 passed on native Windows. Actual
+WSL/Linux backend/UI focus: 144 passed, including guarded storage, binding loss and cancellable
+scheduler observation. Named Chromium/Firefox: 120 passed across root and prefixed HTTPS, including
+journal/empty-state cases; four additional concurrent-logout cases passed after the newer-intent
+completion fence. Full legacy plus named Chromium: 96 passed at its earlier snapshot. Ruff and
+`git diff --check` passed. Canonical `agent_finish.py` runs with the original task; its local output
+is retained in `.agent/vb156b-finish.log`. These snapshots do not replace final checks or any
+unavailable security gate. No skipped test substitutes for an acceptance gate.
+
+**Historical continuation qualification (2026-11-21; predates accepted ADR 0012):** [Detailed matrix and evidence](docs/VB156B_QUALIFICATION.md).
+Windows WebKit 26.6 still fails Strict-cookie delivery for both production unlock and an independent
+minimal issuer, at root and prefix (4 failed); receiving HTTP headers establish a browser-port
+failure, not a wrong port-isolation expectation. No assertion or cookie attribute is relaxed.
+Linux WebKit 27.2 dependencies are installed and native tests execute. Docker build and all three
+MCP container checks now pass. Final named suites: Windows Chromium/Firefox 214 passed plus 8
+subsequent origin-isolation cases; Linux Chromium/Firefox/WebKit 320 passed plus 12 origin-isolation
+cases, then 332 passed in a complete rerun with the recording fixture. Focused backend tests:
+84 passed per platform. Real native storage partitions/quota, missing notifications,
+partial HTTP bodies/TCP failure, persistent browser reopen, trusted/untrusted TLS termination,
+public Chromium BFCache admission and native non-BFCache authenticated history revalidation have focused tests.
+The continuation fixes verified reverse-order login/logout queuing and two failure-state defects.
+The full Windows Python snapshot has 4053 passed/316 skipped; all 316 exact platform/privilege
+skips passed as ordinary WSL user, with none hiding a named Dashboard gate. Final canonical
+results remain in `.agent/vb156b-finish.log`; separate browser logs retain the additional engine
+qualification. One canonical Chromium case also failed before orphan DELETE setup: the page stayed
+at Checking browser support and no spaces.js request was observed. Custom contexts now use the
+project trace recorder. Thirty exact-node runs, 300 contexts, 200 fresh server startups and a full
+148-case Chromium rerun passed, but no causal fix is established; the failure is not dismissed as
+flakiness. See the retained first finish failure and qualification matrix. Windows WebKit remains
+unqualified and overall acceptance INCOMPLETE. Synthetic
+hostname/port evidence does not certify real listeners or copied-token revocation. No independent
+review, deployment, release or TrueNAS validation is claimed.
 
 ## Foundation
 

@@ -1,0 +1,34 @@
+{
+  "format": "lossless test identities/outcomes/timing and suite attributes; hostname removed; properties parsed from original JSON where applicable",
+  "selection": "failures/skips only; original suite totals retained",
+  "suites": [
+    {
+      "attributes": {
+        "name": "pytest",
+        "errors": "0",
+        "failures": "1",
+        "skipped": "0",
+        "tests": "2",
+        "time": "6.780",
+        "timestamp": "2026-11-22T10:29:19.401118+01:00"
+      },
+      "properties": [],
+      "cases": [
+        {
+          "classname": "tests.e2e.test_named_proxy",
+          "name": "test_pending_connect_cannot_escape_disconnect",
+          "time": "5.566",
+          "outcome": "failure",
+          "original_identity_sha256": "2711eb35da96335310f2f41ffd00040bd130500eaaabe4421e56513a4a353981",
+          "identity_parameter_sanitized": false,
+          "failure": {
+            "attributes": {
+              "message": "AssertionError: Proxy teardown not acknowledged"
+            },
+            "text": "def test_pending_connect_cannot_escape_disconnect():\n        with servers() as (proxy, port, parsing, executed, release, requests):\n            with socket.create_connection(proxy.server_address, timeout=5) as client:\n                assert parsing.wait(5), \"handler must already be blocked in CONNECT parsing\"\n>               proxy.disconnect()\n\ntests\\e2e\\test_named_proxy.py:86: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\nself = <tests.e2e.named_server._Proxy object at <OBJECT_ADDRESS>>\n\n    def disconnect(self):\n        \"\"\"Fail this generation, interrupt all IO, and acknowledge actual release.\n    \n        Registration and every nonblocking send share this lock: after the\n        failure event there can be no successful forwarding, including retries.\n        Wake sockets interrupt select; shutdown interrupts blocking CONNECT reads.\n        Only worker cleanup acknowledges disposal, never invocation of disconnect.\n        \"\"\"\n        with self.condition:\n            self.failed = True\n            self.record(\"disconnect-begin\", outstanding=len(self.connections))\n            for connection in self.connections.values():\n                connection.wake[1].send(b\"x\")\n                for endpoint in (connection.client, connection.peer):\n                    if endpoint is not None:\n                        try:\n                            endpoint.shutdown(socket.SHUT_RDWR)\n                        except OSError:\n                            pass\n>           assert self.condition.wait_for(lambda: not self.connections, timeout=5), \"Proxy teardown not acknowledged\"\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE           AssertionError: Proxy teardown not acknowledged\n\ntests\\e2e\\named_server.py:289: AssertionError"
+          }
+        }
+      ]
+    }
+  ]
+}

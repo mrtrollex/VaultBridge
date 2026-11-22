@@ -1168,6 +1168,40 @@ class SemanticRepository(DescriptorDisposal):
                 storage_exists=True, error_kind="corrupt_storage",
             )
 
+    def observe_dashboard_status(self) -> SemanticAvailabilityStatus:
+        """Guarded live metadata/existence only; never create missing WAL sidecars.
+
+        WAL storage is unavailable to this observation: mode=ro may recreate
+        coordination files even after an existence precheck. Immutable mode
+        could ignore live WAL data and is not an alternative. Named rollback
+        storage uses ordinary read locking and never changes journal mode.
+        """
+        try:
+            if self._binding_storage_identity(immutable=False) is None:
+                raise IndexBindingUnavailableError
+            with self.db_path.open("rb") as stream:
+                header = stream.read(20)
+            if len(header) != 20 or header[:16] != b"SQLite format 3\x00":
+                raise IndexBindingUnavailableError
+            if Path(f"{self.db_path}-journal").exists():
+                raise IndexBindingUnavailableError
+            if header[18:20] != b"\x01\x01":
+                raise IndexBindingUnavailableError
+            with self._bound_read_connection() as connection:
+                tables = {row[0] for row in connection.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('meta','notes','chunks')")}
+                if tables != {"meta", "notes", "chunks"}:
+                    raise IndexBindingUnavailableError
+                metadata = dict(connection.execute(
+                    "SELECT key,value FROM meta WHERE key IN ('index_signature','index_state')"))
+                chunks = bool(connection.execute("SELECT EXISTS(SELECT 1 FROM chunks)").fetchone()[0])
+                return SemanticAvailabilityStatus(True, False, metadata.get("index_signature"),
+                                                  metadata.get("index_state"), chunks)
+        except sqlite3.ProgrammingError:
+            raise
+        except (OSError, sqlite3.DatabaseError, IndexBindingUnavailableError):
+            return SemanticAvailabilityStatus(False, True, None, None, False)
+
     def read_availability_status(self) -> SemanticAvailabilityStatus:
         """Read only the storage metadata needed to decide search availability."""
         if self._storage_protected:

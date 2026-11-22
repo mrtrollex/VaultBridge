@@ -1,0 +1,1 @@
+["<LINUX_PYTHON>", "-m", "compileall", "-q", "app"]
