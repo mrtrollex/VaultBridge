@@ -12,6 +12,7 @@ from starlette.types import ASGIApp
 from app.api.health import router as health_router
 from app.api.knowledge_hygiene import router as knowledge_hygiene_router
 from app.api.knowledge_query import router as knowledge_query_router
+from app.api.knowledge_spaces import router as knowledge_spaces_router
 from app.api.notes import router as notes_router
 from app.api.read_openapi import install_read_openapi
 from app.api.relationships import router as relationships_router
@@ -44,6 +45,7 @@ from app.services.vault import (
     VaultValidationError,
 )
 from app.ui.named_fence import NamedUIFence
+from app.ui.named_router import router as named_ui_router
 from app.ui.router import router as ui_router
 
 APP_TITLE = "VaultBridge"
@@ -58,7 +60,8 @@ class VaultBridgeApplication(FastAPI):
     """Keep request observability outside FastAPI's server-error boundary."""
 
     def build_middleware_stack(self) -> ASGIApp:
-        application = UISessionNoStoreMiddleware(super().build_middleware_stack())
+        application = UISessionNoStoreMiddleware(super().build_middleware_stack(),
+            named=self.state.settings.knowledge_spaces_json is not None)
         return RequestObservabilityMiddleware(application)
 
 
@@ -204,8 +207,11 @@ def _application(settings, operations):
     application.add_middleware(NamedUIFence, named=settings.knowledge_spaces_json is not None)
     application.add_exception_handler(VaultServiceError, handle_vault_service_error)
     for router in (health_router, notes_router, relationships_router, knowledge_hygiene_router,
-                   knowledge_query_router, search_router, ui_router):
+                   knowledge_query_router, search_router,
+                   named_ui_router if settings.knowledge_spaces_json is not None else ui_router):
         application.include_router(router)
+    if settings.knowledge_spaces_json is not None:
+        application.include_router(knowledge_spaces_router)
     install_read_openapi(application)
     return application
 

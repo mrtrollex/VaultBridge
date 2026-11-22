@@ -363,6 +363,26 @@ class SpaceRegistry(_PrivateImmutable):
 class SpacePolicyResolver:
     _registry: SpaceRegistry = field(repr=False)
 
+    def readable_metadata(self):
+        """Pure allowlisted policy projection. No bindings or operational probes."""
+        readable = {Capability.READ_NOTE, Capability.LIST_NOTES, Capability.LITERAL_SEARCH,
+                    Capability.SEMANTIC_RETRIEVAL, Capability.KNOWLEDGE_QUERY, Capability.RELATIONSHIPS}
+        return tuple({
+            "space_id": item.space_id.value,
+            "read_capabilities": sorted(c.value for c in item.policy.capabilities & readable),
+            "relationship_dialects": (sorted(d.value for d in item.policy.dialects)
+                                      if Capability.RELATIONSHIPS in item.policy.capabilities else []),
+            "indexing": item.policy.indexing,
+        } for item in self._registry._definitions if item.policy.read == "allow")
+
+    def authorize_read_metadata(self, scope: ReadScope | None):
+        """Read policy only; status is not a configurable operation capability."""
+        if scope is not None and type(scope) is not ReadScope:
+            raise SpaceError("invalid_scope")
+        ids = (DEFAULT_SPACE_ID,) if scope is None else scope.space_ids
+        self._select(ids)
+        return tuple(self._registry._binding(item) for item in ids)
+
     def _select(self, ids, *, write=False):
         selected = tuple(self._registry._by_id.get(item) for item in ids)
         if any(

@@ -1198,6 +1198,19 @@ class SemanticSearchService:
             has_chunks=storage.has_chunks,
         )
 
+    def observe_dashboard_status(self):
+        """Noninitializing lifecycle and availability, using already resolved evidence."""
+        self._validate_source_root(self.vault_root)
+        storage = self.repository.observe_dashboard_status()
+        available = self._search_available_from_storage(
+            storage_initialized=storage.storage_initialized, storage_error=storage.storage_error,
+            index_signature=storage.index_signature, index_state=storage.index_state,
+            has_chunks=storage.has_chunks,
+        )
+        ready = available and (storage.index_state == IndexState.READY.value
+                               or (storage.index_state is None and storage.has_chunks))
+        return storage.storage_initialized and not storage.storage_error, ready, available
+
     @_embedding_pipeline
     def use_persisted_index_for_read_only_search(self) -> bool:
         """Enable this instance to search a compatible persisted index without lifecycle writes."""

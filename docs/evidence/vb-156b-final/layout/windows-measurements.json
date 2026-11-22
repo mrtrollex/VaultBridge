@@ -1,0 +1,110 @@
+[
+  {
+    "log_line": 237,
+    "measurements": {
+      "baseline": {
+        "font": "50.4px",
+        "height": 47.875,
+        "width": 345.109375
+      },
+      "clientWidth": 1280,
+      "fitted": {
+        "font": "50.4px",
+        "height": 47.875,
+        "width": 345.109375
+      },
+      "innerWidth": 1280,
+      "scrollWidth": 1280
+    }
+  },
+  {
+    "log_line": 238,
+    "measurements": {
+      "baseline": {
+        "font": "34.4px",
+        "height": 32.671875,
+        "width": 229.21875
+      },
+      "clientWidth": 375,
+      "fitted": {
+        "font": "34.4px",
+        "height": 32.671875,
+        "width": 229.21875
+      },
+      "innerWidth": 375,
+      "scrollWidth": 375
+    }
+  },
+  {
+    "log_line": 239,
+    "measurements": {
+      "baseline": {
+        "font": "34.4px",
+        "height": 32.671875,
+        "width": 174.21875
+      },
+      "clientWidth": 320,
+      "fitted": {
+        "font": "34.4px",
+        "height": 32.671875,
+        "width": 174.21875
+      },
+      "innerWidth": 320,
+      "scrollWidth": 320
+    }
+  },
+  {
+    "log_line": 2264,
+    "measurements": {
+      "baseline": {
+        "font": "50.375px",
+        "height": 47.850006103515625,
+        "width": 344.8500061035156
+      },
+      "clientWidth": 1280,
+      "fitted": {
+        "font": "50.375px",
+        "height": 47.850006103515625,
+        "width": 344.8500061035156
+      },
+      "innerWidth": 1280,
+      "scrollWidth": 1280
+    }
+  },
+  {
+    "log_line": 2265,
+    "measurements": {
+      "baseline": {
+        "font": "34.375px",
+        "height": 32.649993896484375,
+        "width": 229.20001220703125
+      },
+      "clientWidth": 375,
+      "fitted": {
+        "font": "34.375px",
+        "height": 32.649993896484375,
+        "width": 229.20001220703125
+      },
+      "innerWidth": 375,
+      "scrollWidth": 375
+    }
+  },
+  {
+    "log_line": 2266,
+    "measurements": {
+      "baseline": {
+        "font": "34.375px",
+        "height": 32.649993896484375,
+        "width": 174.20001220703125
+      },
+      "clientWidth": 320,
+      "fitted": {
+        "font": "34.375px",
+        "height": 32.649993896484375,
+        "width": 174.20001220703125
+      },
+      "innerWidth": 320,
+      "scrollWidth": 320
+    }
+  }
+]

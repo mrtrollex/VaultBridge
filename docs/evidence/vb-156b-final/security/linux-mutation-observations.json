@@ -1,0 +1,818 @@
+[
+  {
+    "nodeid": "tests/e2e/test_named_dashboard.py::test_native_mutation_transport_failure_quarantines[root-https-chromium-tcp-POST]",
+    "source_fingerprint": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e",
+    "original_log_line": 6104,
+    "original_log": {
+      "identity": ".agent/two-findings/linux/two-findings/linux-browsers.log",
+      "sha256": "7478a825467595ed89bec888bea89e77746fd5ef45b2a8084939b3ee7f551d98"
+    },
+    "facts": {
+      "method": "POST",
+      "failure": "tcp",
+      "native": [
+        {
+          "method": "POST",
+          "error": "net::ERR_CONNECTION_RESET"
+        }
+      ],
+      "observations": [
+        {
+          "event": "fetch-failed",
+          "method": "POST"
+        }
+      ],
+      "cookie_present": false,
+      "phase": "uncertain"
+    }
+  },
+  {
+    "nodeid": "tests/e2e/test_named_dashboard.py::test_native_mutation_transport_failure_quarantines[root-https-chromium-tcp-DELETE]",
+    "source_fingerprint": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e",
+    "original_log_line": 6158,
+    "original_log": {
+      "identity": ".agent/two-findings/linux/two-findings/linux-browsers.log",
+      "sha256": "7478a825467595ed89bec888bea89e77746fd5ef45b2a8084939b3ee7f551d98"
+    },
+    "facts": {
+      "method": "DELETE",
+      "failure": "tcp",
+      "native": [
+        {
+          "method": "DELETE",
+          "error": "net::ERR_CONNECTION_RESET"
+        }
+      ],
+      "observations": [
+        {
+          "event": "headers",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "event": "complete-json",
+          "method": "POST"
+        },
+        {
+          "event": "fetch-failed",
+          "method": "DELETE"
+        }
+      ],
+      "cookie_present": true,
+      "phase": "uncertain"
+    }
+  },
+  {
+    "nodeid": "tests/e2e/test_named_dashboard.py::test_native_mutation_transport_failure_quarantines[root-https-chromium-partial-body-POST]",
+    "source_fingerprint": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e",
+    "original_log_line": 6280,
+    "original_log": {
+      "identity": ".agent/two-findings/linux/two-findings/linux-browsers.log",
+      "sha256": "7478a825467595ed89bec888bea89e77746fd5ef45b2a8084939b3ee7f551d98"
+    },
+    "facts": {
+      "method": "POST",
+      "failure": "partial-body",
+      "native": [
+        {
+          "method": "POST",
+          "error": "net::ERR_CONTENT_LENGTH_MISMATCH"
+        }
+      ],
+      "observations": [
+        {
+          "event": "headers",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "event": "body-failed",
+          "method": "POST"
+        }
+      ],
+      "cookie_present": true,
+      "phase": "uncertain"
+    }
+  },
+  {
+    "nodeid": "tests/e2e/test_named_dashboard.py::test_native_mutation_transport_failure_quarantines[root-https-chromium-partial-body-DELETE]",
+    "source_fingerprint": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e",
+    "original_log_line": 6408,
+    "original_log": {
+      "identity": ".agent/two-findings/linux/two-findings/linux-browsers.log",
+      "sha256": "7478a825467595ed89bec888bea89e77746fd5ef45b2a8084939b3ee7f551d98"
+    },
+    "facts": {
+      "method": "DELETE",
+      "failure": "partial-body",
+      "native": [
+        {
+          "method": "DELETE",
+          "error": "net::ERR_CONTENT_LENGTH_MISMATCH"
+        }
+      ],
+      "observations": [
+        {
+          "event": "headers",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "event": "complete-json",
+          "method": "POST"
+        },
+        {
+          "event": "headers",
+          "method": "DELETE",
+          "status": 200
+        },
+        {
+          "event": "body-failed",
+          "method": "DELETE"
+        }
+      ],
+      "cookie_present": false,
+      "phase": "uncertain"
+    }
+  },
+  {
+    "nodeid": "tests/e2e/test_named_dashboard.py::test_native_mutation_transport_failure_quarantines[prefix-https-chromium-tcp-POST]",
+    "source_fingerprint": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e",
+    "original_log_line": 6456,
+    "original_log": {
+      "identity": ".agent/two-findings/linux/two-findings/linux-browsers.log",
+      "sha256": "7478a825467595ed89bec888bea89e77746fd5ef45b2a8084939b3ee7f551d98"
+    },
+    "facts": {
+      "method": "POST",
+      "failure": "tcp",
+      "native": [
+        {
+          "method": "POST",
+          "error": "net::ERR_CONNECTION_RESET"
+        }
+      ],
+      "observations": [
+        {
+          "event": "fetch-failed",
+          "method": "POST"
+        }
+      ],
+      "cookie_present": false,
+      "phase": "uncertain"
+    }
+  },
+  {
+    "nodeid": "tests/e2e/test_named_dashboard.py::test_native_mutation_transport_failure_quarantines[prefix-https-chromium-tcp-DELETE]",
+    "source_fingerprint": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e",
+    "original_log_line": 6510,
+    "original_log": {
+      "identity": ".agent/two-findings/linux/two-findings/linux-browsers.log",
+      "sha256": "7478a825467595ed89bec888bea89e77746fd5ef45b2a8084939b3ee7f551d98"
+    },
+    "facts": {
+      "method": "DELETE",
+      "failure": "tcp",
+      "native": [
+        {
+          "method": "DELETE",
+          "error": "net::ERR_CONNECTION_RESET"
+        }
+      ],
+      "observations": [
+        {
+          "event": "headers",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "event": "complete-json",
+          "method": "POST"
+        },
+        {
+          "event": "fetch-failed",
+          "method": "DELETE"
+        }
+      ],
+      "cookie_present": true,
+      "phase": "uncertain"
+    }
+  },
+  {
+    "nodeid": "tests/e2e/test_named_dashboard.py::test_native_mutation_transport_failure_quarantines[prefix-https-chromium-partial-body-POST]",
+    "source_fingerprint": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e",
+    "original_log_line": 6632,
+    "original_log": {
+      "identity": ".agent/two-findings/linux/two-findings/linux-browsers.log",
+      "sha256": "7478a825467595ed89bec888bea89e77746fd5ef45b2a8084939b3ee7f551d98"
+    },
+    "facts": {
+      "method": "POST",
+      "failure": "partial-body",
+      "native": [
+        {
+          "method": "POST",
+          "error": "net::ERR_CONTENT_LENGTH_MISMATCH"
+        }
+      ],
+      "observations": [
+        {
+          "event": "headers",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "event": "body-failed",
+          "method": "POST"
+        }
+      ],
+      "cookie_present": true,
+      "phase": "uncertain"
+    }
+  },
+  {
+    "nodeid": "tests/e2e/test_named_dashboard.py::test_native_mutation_transport_failure_quarantines[prefix-https-chromium-partial-body-DELETE]",
+    "source_fingerprint": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e",
+    "original_log_line": 6760,
+    "original_log": {
+      "identity": ".agent/two-findings/linux/two-findings/linux-browsers.log",
+      "sha256": "7478a825467595ed89bec888bea89e77746fd5ef45b2a8084939b3ee7f551d98"
+    },
+    "facts": {
+      "method": "DELETE",
+      "failure": "partial-body",
+      "native": [
+        {
+          "method": "DELETE",
+          "error": "net::ERR_CONTENT_LENGTH_MISMATCH"
+        }
+      ],
+      "observations": [
+        {
+          "event": "headers",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "event": "complete-json",
+          "method": "POST"
+        },
+        {
+          "event": "headers",
+          "method": "DELETE",
+          "status": 200
+        },
+        {
+          "event": "body-failed",
+          "method": "DELETE"
+        }
+      ],
+      "cookie_present": false,
+      "phase": "uncertain"
+    }
+  },
+  {
+    "nodeid": "tests/e2e/test_named_dashboard.py::test_native_mutation_transport_failure_quarantines[root-https-firefox-tcp-POST]",
+    "source_fingerprint": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e",
+    "original_log_line": 15047,
+    "original_log": {
+      "identity": ".agent/two-findings/linux/two-findings/linux-browsers.log",
+      "sha256": "7478a825467595ed89bec888bea89e77746fd5ef45b2a8084939b3ee7f551d98"
+    },
+    "facts": {
+      "method": "POST",
+      "failure": "tcp",
+      "native": [
+        {
+          "method": "POST",
+          "error": "NS_ERROR_NET_RESET"
+        }
+      ],
+      "observations": [
+        {
+          "event": "fetch-failed",
+          "method": "POST"
+        }
+      ],
+      "cookie_present": false,
+      "phase": "uncertain"
+    }
+  },
+  {
+    "nodeid": "tests/e2e/test_named_dashboard.py::test_native_mutation_transport_failure_quarantines[root-https-firefox-tcp-DELETE]",
+    "source_fingerprint": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e",
+    "original_log_line": 15103,
+    "original_log": {
+      "identity": ".agent/two-findings/linux/two-findings/linux-browsers.log",
+      "sha256": "7478a825467595ed89bec888bea89e77746fd5ef45b2a8084939b3ee7f551d98"
+    },
+    "facts": {
+      "method": "DELETE",
+      "failure": "tcp",
+      "native": [
+        {
+          "method": "DELETE",
+          "error": "NS_ERROR_NET_RESET"
+        }
+      ],
+      "observations": [
+        {
+          "event": "headers",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "event": "complete-json",
+          "method": "POST"
+        },
+        {
+          "event": "fetch-failed",
+          "method": "DELETE"
+        }
+      ],
+      "cookie_present": true,
+      "phase": "uncertain"
+    }
+  },
+  {
+    "nodeid": "tests/e2e/test_named_dashboard.py::test_native_mutation_transport_failure_quarantines[root-https-firefox-partial-body-POST]",
+    "source_fingerprint": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e",
+    "original_log_line": 15227,
+    "original_log": {
+      "identity": ".agent/two-findings/linux/two-findings/linux-browsers.log",
+      "sha256": "7478a825467595ed89bec888bea89e77746fd5ef45b2a8084939b3ee7f551d98"
+    },
+    "facts": {
+      "method": "POST",
+      "failure": "partial-body",
+      "native": [
+        {
+          "method": "POST",
+          "error": "NS_ERROR_NET_PARTIAL_TRANSFER"
+        }
+      ],
+      "observations": [
+        {
+          "event": "headers",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "event": "body-failed",
+          "method": "POST"
+        }
+      ],
+      "cookie_present": true,
+      "phase": "uncertain"
+    }
+  },
+  {
+    "nodeid": "tests/e2e/test_named_dashboard.py::test_native_mutation_transport_failure_quarantines[root-https-firefox-partial-body-DELETE]",
+    "source_fingerprint": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e",
+    "original_log_line": 15357,
+    "original_log": {
+      "identity": ".agent/two-findings/linux/two-findings/linux-browsers.log",
+      "sha256": "7478a825467595ed89bec888bea89e77746fd5ef45b2a8084939b3ee7f551d98"
+    },
+    "facts": {
+      "method": "DELETE",
+      "failure": "partial-body",
+      "native": [
+        {
+          "method": "DELETE",
+          "error": "NS_ERROR_NET_PARTIAL_TRANSFER"
+        }
+      ],
+      "observations": [
+        {
+          "event": "headers",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "event": "complete-json",
+          "method": "POST"
+        },
+        {
+          "event": "headers",
+          "method": "DELETE",
+          "status": 200
+        },
+        {
+          "event": "body-failed",
+          "method": "DELETE"
+        }
+      ],
+      "cookie_present": false,
+      "phase": "uncertain"
+    }
+  },
+  {
+    "nodeid": "tests/e2e/test_named_dashboard.py::test_native_mutation_transport_failure_quarantines[prefix-https-firefox-tcp-POST]",
+    "source_fingerprint": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e",
+    "original_log_line": 15407,
+    "original_log": {
+      "identity": ".agent/two-findings/linux/two-findings/linux-browsers.log",
+      "sha256": "7478a825467595ed89bec888bea89e77746fd5ef45b2a8084939b3ee7f551d98"
+    },
+    "facts": {
+      "method": "POST",
+      "failure": "tcp",
+      "native": [
+        {
+          "method": "POST",
+          "error": "NS_ERROR_NET_RESET"
+        }
+      ],
+      "observations": [
+        {
+          "event": "fetch-failed",
+          "method": "POST"
+        }
+      ],
+      "cookie_present": false,
+      "phase": "uncertain"
+    }
+  },
+  {
+    "nodeid": "tests/e2e/test_named_dashboard.py::test_native_mutation_transport_failure_quarantines[prefix-https-firefox-tcp-DELETE]",
+    "source_fingerprint": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e",
+    "original_log_line": 15463,
+    "original_log": {
+      "identity": ".agent/two-findings/linux/two-findings/linux-browsers.log",
+      "sha256": "7478a825467595ed89bec888bea89e77746fd5ef45b2a8084939b3ee7f551d98"
+    },
+    "facts": {
+      "method": "DELETE",
+      "failure": "tcp",
+      "native": [
+        {
+          "method": "DELETE",
+          "error": "NS_ERROR_NET_RESET"
+        }
+      ],
+      "observations": [
+        {
+          "event": "headers",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "event": "complete-json",
+          "method": "POST"
+        },
+        {
+          "event": "fetch-failed",
+          "method": "DELETE"
+        }
+      ],
+      "cookie_present": true,
+      "phase": "uncertain"
+    }
+  },
+  {
+    "nodeid": "tests/e2e/test_named_dashboard.py::test_native_mutation_transport_failure_quarantines[prefix-https-firefox-partial-body-POST]",
+    "source_fingerprint": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e",
+    "original_log_line": 15587,
+    "original_log": {
+      "identity": ".agent/two-findings/linux/two-findings/linux-browsers.log",
+      "sha256": "7478a825467595ed89bec888bea89e77746fd5ef45b2a8084939b3ee7f551d98"
+    },
+    "facts": {
+      "method": "POST",
+      "failure": "partial-body",
+      "native": [
+        {
+          "method": "POST",
+          "error": "NS_ERROR_NET_PARTIAL_TRANSFER"
+        }
+      ],
+      "observations": [
+        {
+          "event": "headers",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "event": "body-failed",
+          "method": "POST"
+        }
+      ],
+      "cookie_present": true,
+      "phase": "uncertain"
+    }
+  },
+  {
+    "nodeid": "tests/e2e/test_named_dashboard.py::test_native_mutation_transport_failure_quarantines[prefix-https-firefox-partial-body-DELETE]",
+    "source_fingerprint": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e",
+    "original_log_line": 15717,
+    "original_log": {
+      "identity": ".agent/two-findings/linux/two-findings/linux-browsers.log",
+      "sha256": "7478a825467595ed89bec888bea89e77746fd5ef45b2a8084939b3ee7f551d98"
+    },
+    "facts": {
+      "method": "DELETE",
+      "failure": "partial-body",
+      "native": [
+        {
+          "method": "DELETE",
+          "error": "NS_ERROR_NET_PARTIAL_TRANSFER"
+        }
+      ],
+      "observations": [
+        {
+          "event": "headers",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "event": "complete-json",
+          "method": "POST"
+        },
+        {
+          "event": "headers",
+          "method": "DELETE",
+          "status": 200
+        },
+        {
+          "event": "body-failed",
+          "method": "DELETE"
+        }
+      ],
+      "cookie_present": false,
+      "phase": "uncertain"
+    }
+  },
+  {
+    "nodeid": "tests/e2e/test_named_dashboard.py::test_native_mutation_transport_failure_quarantines[root-https-webkit-tcp-POST]",
+    "source_fingerprint": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e",
+    "original_log_line": 23718,
+    "original_log": {
+      "identity": ".agent/two-findings/linux/two-findings/linux-browsers.log",
+      "sha256": "7478a825467595ed89bec888bea89e77746fd5ef45b2a8084939b3ee7f551d98"
+    },
+    "facts": {
+      "method": "POST",
+      "failure": "tcp",
+      "native": [
+        {
+          "method": "POST",
+          "error": "Connection terminated unexpectedly"
+        }
+      ],
+      "observations": [
+        {
+          "event": "fetch-failed",
+          "method": "POST"
+        }
+      ],
+      "cookie_present": false,
+      "phase": "uncertain"
+    }
+  },
+  {
+    "nodeid": "tests/e2e/test_named_dashboard.py::test_native_mutation_transport_failure_quarantines[root-https-webkit-tcp-DELETE]",
+    "source_fingerprint": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e",
+    "original_log_line": 23772,
+    "original_log": {
+      "identity": ".agent/two-findings/linux/two-findings/linux-browsers.log",
+      "sha256": "7478a825467595ed89bec888bea89e77746fd5ef45b2a8084939b3ee7f551d98"
+    },
+    "facts": {
+      "method": "DELETE",
+      "failure": "tcp",
+      "native": [
+        {
+          "method": "DELETE",
+          "error": "Connection terminated unexpectedly"
+        }
+      ],
+      "observations": [
+        {
+          "event": "headers",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "event": "complete-json",
+          "method": "POST"
+        },
+        {
+          "event": "fetch-failed",
+          "method": "DELETE"
+        }
+      ],
+      "cookie_present": true,
+      "phase": "uncertain"
+    }
+  },
+  {
+    "nodeid": "tests/e2e/test_named_dashboard.py::test_native_mutation_transport_failure_quarantines[root-https-webkit-partial-body-POST]",
+    "source_fingerprint": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e",
+    "original_log_line": 23894,
+    "original_log": {
+      "identity": ".agent/two-findings/linux/two-findings/linux-browsers.log",
+      "sha256": "7478a825467595ed89bec888bea89e77746fd5ef45b2a8084939b3ee7f551d98"
+    },
+    "facts": {
+      "method": "POST",
+      "failure": "partial-body",
+      "native": [
+        {
+          "method": "POST",
+          "error": "Connection terminated unexpectedly"
+        }
+      ],
+      "observations": [
+        {
+          "event": "headers",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "event": "body-failed",
+          "method": "POST"
+        }
+      ],
+      "cookie_present": true,
+      "phase": "uncertain"
+    }
+  },
+  {
+    "nodeid": "tests/e2e/test_named_dashboard.py::test_native_mutation_transport_failure_quarantines[root-https-webkit-partial-body-DELETE]",
+    "source_fingerprint": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e",
+    "original_log_line": 24022,
+    "original_log": {
+      "identity": ".agent/two-findings/linux/two-findings/linux-browsers.log",
+      "sha256": "7478a825467595ed89bec888bea89e77746fd5ef45b2a8084939b3ee7f551d98"
+    },
+    "facts": {
+      "method": "DELETE",
+      "failure": "partial-body",
+      "native": [
+        {
+          "method": "DELETE",
+          "error": "Connection terminated unexpectedly"
+        }
+      ],
+      "observations": [
+        {
+          "event": "headers",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "event": "complete-json",
+          "method": "POST"
+        },
+        {
+          "event": "headers",
+          "method": "DELETE",
+          "status": 200
+        },
+        {
+          "event": "body-failed",
+          "method": "DELETE"
+        }
+      ],
+      "cookie_present": false,
+      "phase": "uncertain"
+    }
+  },
+  {
+    "nodeid": "tests/e2e/test_named_dashboard.py::test_native_mutation_transport_failure_quarantines[prefix-https-webkit-tcp-POST]",
+    "source_fingerprint": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e",
+    "original_log_line": 24070,
+    "original_log": {
+      "identity": ".agent/two-findings/linux/two-findings/linux-browsers.log",
+      "sha256": "7478a825467595ed89bec888bea89e77746fd5ef45b2a8084939b3ee7f551d98"
+    },
+    "facts": {
+      "method": "POST",
+      "failure": "tcp",
+      "native": [
+        {
+          "method": "POST",
+          "error": "Connection terminated unexpectedly"
+        }
+      ],
+      "observations": [
+        {
+          "event": "fetch-failed",
+          "method": "POST"
+        }
+      ],
+      "cookie_present": false,
+      "phase": "uncertain"
+    }
+  },
+  {
+    "nodeid": "tests/e2e/test_named_dashboard.py::test_native_mutation_transport_failure_quarantines[prefix-https-webkit-tcp-DELETE]",
+    "source_fingerprint": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e",
+    "original_log_line": 24124,
+    "original_log": {
+      "identity": ".agent/two-findings/linux/two-findings/linux-browsers.log",
+      "sha256": "7478a825467595ed89bec888bea89e77746fd5ef45b2a8084939b3ee7f551d98"
+    },
+    "facts": {
+      "method": "DELETE",
+      "failure": "tcp",
+      "native": [
+        {
+          "method": "DELETE",
+          "error": "Error receiving data: Connection reset by peer"
+        }
+      ],
+      "observations": [
+        {
+          "event": "headers",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "event": "complete-json",
+          "method": "POST"
+        },
+        {
+          "event": "fetch-failed",
+          "method": "DELETE"
+        }
+      ],
+      "cookie_present": true,
+      "phase": "uncertain"
+    }
+  },
+  {
+    "nodeid": "tests/e2e/test_named_dashboard.py::test_native_mutation_transport_failure_quarantines[prefix-https-webkit-partial-body-POST]",
+    "source_fingerprint": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e",
+    "original_log_line": 24246,
+    "original_log": {
+      "identity": ".agent/two-findings/linux/two-findings/linux-browsers.log",
+      "sha256": "7478a825467595ed89bec888bea89e77746fd5ef45b2a8084939b3ee7f551d98"
+    },
+    "facts": {
+      "method": "POST",
+      "failure": "partial-body",
+      "native": [
+        {
+          "method": "POST",
+          "error": "Connection terminated unexpectedly"
+        }
+      ],
+      "observations": [
+        {
+          "event": "headers",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "event": "body-failed",
+          "method": "POST"
+        }
+      ],
+      "cookie_present": true,
+      "phase": "uncertain"
+    }
+  },
+  {
+    "nodeid": "tests/e2e/test_named_dashboard.py::test_native_mutation_transport_failure_quarantines[prefix-https-webkit-partial-body-DELETE]",
+    "source_fingerprint": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e",
+    "original_log_line": 24374,
+    "original_log": {
+      "identity": ".agent/two-findings/linux/two-findings/linux-browsers.log",
+      "sha256": "7478a825467595ed89bec888bea89e77746fd5ef45b2a8084939b3ee7f551d98"
+    },
+    "facts": {
+      "method": "DELETE",
+      "failure": "partial-body",
+      "native": [
+        {
+          "method": "DELETE",
+          "error": "Connection terminated unexpectedly"
+        }
+      ],
+      "observations": [
+        {
+          "event": "headers",
+          "method": "POST",
+          "status": 200
+        },
+        {
+          "event": "complete-json",
+          "method": "POST"
+        },
+        {
+          "event": "headers",
+          "method": "DELETE",
+          "status": 200
+        },
+        {
+          "event": "body-failed",
+          "method": "DELETE"
+        }
+      ],
+      "cookie_present": false,
+      "phase": "uncertain"
+    }
+  }
+]

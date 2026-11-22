@@ -1,0 +1,120 @@
+[
+  {
+    "platform": "windows",
+    "environment": "native Windows",
+    "run": {
+      "command": [
+        "<WINDOWS_PYTHON>",
+        "-m",
+        "pytest",
+        "tests/e2e",
+        "--browser",
+        "chromium",
+        "--browser",
+        "firefox",
+        "-o",
+        "addopts=",
+        "-q",
+        "-s",
+        "--tracing",
+        "retain-on-failure",
+        "--output",
+        ".agent/two-findings/browser-traces",
+        "--junitxml",
+        ".agent/two-findings/windows-browsers.xml"
+      ],
+      "started": "2026-11-22T09:36:32.199444+00:00",
+      "ended": "2026-11-22T09:50:13.496563+00:00",
+      "exit": 0,
+      "source": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e"
+    },
+    "builds": "native-browser/windows-builds.json",
+    "qualified_engines": [
+      "chromium",
+      "firefox"
+    ],
+    "evidence_junit": "validation/windows-browsers.json"
+  },
+  {
+    "platform": "linux",
+    "environment": "native WSL/Linux (owner/invocation identity; recorded browser platform is Linux)",
+    "run": {
+      "command": [
+        "<LINUX_PYTHON>",
+        "-m",
+        "pytest",
+        "tests/e2e",
+        "--browser",
+        "chromium",
+        "--browser",
+        "firefox",
+        "--browser",
+        "webkit",
+        "-o",
+        "addopts=",
+        "-q",
+        "-s",
+        "--tracing",
+        "retain-on-failure",
+        "--output",
+        ".agent/two-findings/browser-traces",
+        "--junitxml",
+        ".agent/two-findings/linux-browsers.xml"
+      ],
+      "started": "2026-11-22T09:38:19.386269+00:00",
+      "ended": "2026-11-22T09:56:10.030130+00:00",
+      "exit": 0,
+      "source": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e"
+    },
+    "builds": "native-browser/linux-builds.json",
+    "qualified_engines": [
+      "chromium",
+      "firefox",
+      "webkit"
+    ],
+    "evidence_junit": "validation/linux-browsers.json"
+  },
+  {
+    "platform": "linux",
+    "role": "supplementary focused run; never added to full-suite counts",
+    "run": {
+      "command": [
+        "<LINUX_PYTHON>",
+        "-m",
+        "pytest",
+        "tests/e2e/test_named_proxy.py",
+        "tests/e2e/test_named_dashboard.py",
+        "tests/e2e/test_hygiene.py",
+        "-k",
+        "native_mutation_transport_failure or native_complete_delete or responsive_keyboard or all_evidence_grouping or pending_connect or terminal_failure or disconnect_ack",
+        "--browser",
+        "chromium",
+        "--browser",
+        "firefox",
+        "--browser",
+        "webkit",
+        "-o",
+        "addopts=",
+        "-q",
+        "-s",
+        "--tracing",
+        "on",
+        "--output",
+        ".agent/two-findings/focused-final-traces",
+        "--junitxml",
+        ".agent/two-findings/linux-focused-final.xml"
+      ],
+      "started": "2026-11-22T09:36:45.957705+00:00",
+      "ended": "2026-11-22T09:37:59.225480+00:00",
+      "exit": 0,
+      "source": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e"
+    },
+    "builds": "native-browser/linux-builds.json",
+    "qualified_engines": [
+      "chromium",
+      "firefox",
+      "webkit"
+    ],
+    "evidence_junit": "validation/linux-focused-final.json"
+  }
+]

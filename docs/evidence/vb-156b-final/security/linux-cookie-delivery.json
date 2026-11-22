@@ -1,0 +1,770 @@
+[
+  {
+    "log_line": 822,
+    "observations": {
+      "browser": "156.0.8078.4",
+      "cases": [
+        {
+          "case": "same-host-other-port-navigation",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "different-host-same-site-navigation",
+          "cookie_received": false,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "same-site-sibling-to-issuer-navigation",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "cross-site-navigation",
+          "cookie_received": false,
+          "fetch_site": "cross-site",
+          "origin": ""
+        },
+        {
+          "case": "same-host-other-port-fetch",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "same-site-sibling-to-issuer-fetch",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "cross-site-fetch",
+          "cookie_received": false,
+          "fetch_site": "cross-site",
+          "origin": ""
+        },
+        {
+          "case": "different-host-same-site-fetch",
+          "cookie_received": false,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "secure-cookie-over-http",
+          "cookie_received": false,
+          "fetch_site": "",
+          "origin": ""
+        }
+      ],
+      "issuer": "application",
+      "stored_same_site": "Strict"
+    }
+  },
+  {
+    "log_line": 862,
+    "observations": {
+      "browser": "156.0.8078.4",
+      "cases": [
+        {
+          "case": "same-host-other-port-navigation",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "different-host-same-site-navigation",
+          "cookie_received": false,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "same-site-sibling-to-issuer-navigation",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "cross-site-navigation",
+          "cookie_received": false,
+          "fetch_site": "cross-site",
+          "origin": ""
+        },
+        {
+          "case": "same-host-other-port-fetch",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "same-site-sibling-to-issuer-fetch",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "cross-site-fetch",
+          "cookie_received": false,
+          "fetch_site": "cross-site",
+          "origin": ""
+        },
+        {
+          "case": "different-host-same-site-fetch",
+          "cookie_received": false,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "secure-cookie-over-http",
+          "cookie_received": false,
+          "fetch_site": "",
+          "origin": ""
+        }
+      ],
+      "issuer": "application",
+      "stored_same_site": "Strict"
+    }
+  },
+  {
+    "log_line": 882,
+    "observations": {
+      "browser": "156.0.8078.4",
+      "cases": [
+        {
+          "case": "same-host-other-port-navigation",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "different-host-same-site-navigation",
+          "cookie_received": false,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "same-site-sibling-to-issuer-navigation",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "cross-site-navigation",
+          "cookie_received": false,
+          "fetch_site": "cross-site",
+          "origin": ""
+        },
+        {
+          "case": "same-host-other-port-fetch",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "same-site-sibling-to-issuer-fetch",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "cross-site-fetch",
+          "cookie_received": false,
+          "fetch_site": "cross-site",
+          "origin": ""
+        },
+        {
+          "case": "different-host-same-site-fetch",
+          "cookie_received": false,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "secure-cookie-over-http",
+          "cookie_received": false,
+          "fetch_site": "",
+          "origin": ""
+        }
+      ],
+      "issuer": "control",
+      "stored_same_site": "Strict"
+    }
+  },
+  {
+    "log_line": 902,
+    "observations": {
+      "browser": "156.0.8078.4",
+      "cases": [
+        {
+          "case": "same-host-other-port-navigation",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "different-host-same-site-navigation",
+          "cookie_received": false,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "same-site-sibling-to-issuer-navigation",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "cross-site-navigation",
+          "cookie_received": false,
+          "fetch_site": "cross-site",
+          "origin": ""
+        },
+        {
+          "case": "same-host-other-port-fetch",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "same-site-sibling-to-issuer-fetch",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "cross-site-fetch",
+          "cookie_received": false,
+          "fetch_site": "cross-site",
+          "origin": ""
+        },
+        {
+          "case": "different-host-same-site-fetch",
+          "cookie_received": false,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "secure-cookie-over-http",
+          "cookie_received": false,
+          "fetch_site": "",
+          "origin": ""
+        }
+      ],
+      "issuer": "control",
+      "stored_same_site": "Strict"
+    }
+  },
+  {
+    "log_line": 9301,
+    "observations": {
+      "browser": "157.0",
+      "cases": [
+        {
+          "case": "same-host-other-port-navigation",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "different-host-same-site-navigation",
+          "cookie_received": false,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "same-site-sibling-to-issuer-navigation",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "cross-site-navigation",
+          "cookie_received": false,
+          "fetch_site": "cross-site",
+          "origin": ""
+        },
+        {
+          "case": "same-host-other-port-fetch",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "same-site-sibling-to-issuer-fetch",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "cross-site-fetch",
+          "cookie_received": false,
+          "fetch_site": "cross-site",
+          "origin": ""
+        },
+        {
+          "case": "different-host-same-site-fetch",
+          "cookie_received": false,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "secure-cookie-over-http",
+          "cookie_received": false,
+          "fetch_site": "",
+          "origin": ""
+        }
+      ],
+      "issuer": "application",
+      "stored_same_site": "Strict"
+    }
+  },
+  {
+    "log_line": 9343,
+    "observations": {
+      "browser": "157.0",
+      "cases": [
+        {
+          "case": "same-host-other-port-navigation",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "different-host-same-site-navigation",
+          "cookie_received": false,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "same-site-sibling-to-issuer-navigation",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "cross-site-navigation",
+          "cookie_received": false,
+          "fetch_site": "cross-site",
+          "origin": ""
+        },
+        {
+          "case": "same-host-other-port-fetch",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "same-site-sibling-to-issuer-fetch",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "cross-site-fetch",
+          "cookie_received": false,
+          "fetch_site": "cross-site",
+          "origin": ""
+        },
+        {
+          "case": "different-host-same-site-fetch",
+          "cookie_received": false,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "secure-cookie-over-http",
+          "cookie_received": false,
+          "fetch_site": "",
+          "origin": ""
+        }
+      ],
+      "issuer": "application",
+      "stored_same_site": "Strict"
+    }
+  },
+  {
+    "log_line": 9365,
+    "observations": {
+      "browser": "157.0",
+      "cases": [
+        {
+          "case": "same-host-other-port-navigation",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "different-host-same-site-navigation",
+          "cookie_received": false,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "same-site-sibling-to-issuer-navigation",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "cross-site-navigation",
+          "cookie_received": false,
+          "fetch_site": "cross-site",
+          "origin": ""
+        },
+        {
+          "case": "same-host-other-port-fetch",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "same-site-sibling-to-issuer-fetch",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "cross-site-fetch",
+          "cookie_received": false,
+          "fetch_site": "cross-site",
+          "origin": ""
+        },
+        {
+          "case": "different-host-same-site-fetch",
+          "cookie_received": false,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "secure-cookie-over-http",
+          "cookie_received": false,
+          "fetch_site": "",
+          "origin": ""
+        }
+      ],
+      "issuer": "control",
+      "stored_same_site": "Strict"
+    }
+  },
+  {
+    "log_line": 9387,
+    "observations": {
+      "browser": "157.0",
+      "cases": [
+        {
+          "case": "same-host-other-port-navigation",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "different-host-same-site-navigation",
+          "cookie_received": false,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "same-site-sibling-to-issuer-navigation",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "cross-site-navigation",
+          "cookie_received": false,
+          "fetch_site": "cross-site",
+          "origin": ""
+        },
+        {
+          "case": "same-host-other-port-fetch",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "same-site-sibling-to-issuer-fetch",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "cross-site-fetch",
+          "cookie_received": false,
+          "fetch_site": "cross-site",
+          "origin": ""
+        },
+        {
+          "case": "different-host-same-site-fetch",
+          "cookie_received": false,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "secure-cookie-over-http",
+          "cookie_received": false,
+          "fetch_site": "",
+          "origin": ""
+        }
+      ],
+      "issuer": "control",
+      "stored_same_site": "Strict"
+    }
+  },
+  {
+    "log_line": 18311,
+    "observations": {
+      "browser": "27.2",
+      "cases": [
+        {
+          "case": "same-host-other-port-navigation",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "different-host-same-site-navigation",
+          "cookie_received": false,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "same-site-sibling-to-issuer-navigation",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "cross-site-navigation",
+          "cookie_received": false,
+          "fetch_site": "cross-site",
+          "origin": ""
+        },
+        {
+          "case": "same-host-other-port-fetch",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "same-site-sibling-to-issuer-fetch",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "cross-site-fetch",
+          "cookie_received": false,
+          "fetch_site": "cross-site",
+          "origin": ""
+        },
+        {
+          "case": "different-host-same-site-fetch",
+          "cookie_received": false,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "secure-cookie-over-http",
+          "cookie_received": false,
+          "fetch_site": "",
+          "origin": ""
+        }
+      ],
+      "issuer": "application",
+      "stored_same_site": "Strict"
+    }
+  },
+  {
+    "log_line": 18351,
+    "observations": {
+      "browser": "27.2",
+      "cases": [
+        {
+          "case": "same-host-other-port-navigation",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "different-host-same-site-navigation",
+          "cookie_received": false,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "same-site-sibling-to-issuer-navigation",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "cross-site-navigation",
+          "cookie_received": false,
+          "fetch_site": "cross-site",
+          "origin": ""
+        },
+        {
+          "case": "same-host-other-port-fetch",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "same-site-sibling-to-issuer-fetch",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "cross-site-fetch",
+          "cookie_received": false,
+          "fetch_site": "cross-site",
+          "origin": ""
+        },
+        {
+          "case": "different-host-same-site-fetch",
+          "cookie_received": false,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "secure-cookie-over-http",
+          "cookie_received": false,
+          "fetch_site": "",
+          "origin": ""
+        }
+      ],
+      "issuer": "application",
+      "stored_same_site": "Strict"
+    }
+  },
+  {
+    "log_line": 18371,
+    "observations": {
+      "browser": "27.2",
+      "cases": [
+        {
+          "case": "same-host-other-port-navigation",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "different-host-same-site-navigation",
+          "cookie_received": false,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "same-site-sibling-to-issuer-navigation",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "cross-site-navigation",
+          "cookie_received": false,
+          "fetch_site": "cross-site",
+          "origin": ""
+        },
+        {
+          "case": "same-host-other-port-fetch",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "same-site-sibling-to-issuer-fetch",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "cross-site-fetch",
+          "cookie_received": false,
+          "fetch_site": "cross-site",
+          "origin": ""
+        },
+        {
+          "case": "different-host-same-site-fetch",
+          "cookie_received": false,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "secure-cookie-over-http",
+          "cookie_received": false,
+          "fetch_site": "",
+          "origin": ""
+        }
+      ],
+      "issuer": "control",
+      "stored_same_site": "Strict"
+    }
+  },
+  {
+    "log_line": 18391,
+    "observations": {
+      "browser": "27.2",
+      "cases": [
+        {
+          "case": "same-host-other-port-navigation",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "different-host-same-site-navigation",
+          "cookie_received": false,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "same-site-sibling-to-issuer-navigation",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "cross-site-navigation",
+          "cookie_received": false,
+          "fetch_site": "cross-site",
+          "origin": ""
+        },
+        {
+          "case": "same-host-other-port-fetch",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "same-site-sibling-to-issuer-fetch",
+          "cookie_received": true,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "cross-site-fetch",
+          "cookie_received": false,
+          "fetch_site": "cross-site",
+          "origin": ""
+        },
+        {
+          "case": "different-host-same-site-fetch",
+          "cookie_received": false,
+          "fetch_site": "same-site",
+          "origin": ""
+        },
+        {
+          "case": "secure-cookie-over-http",
+          "cookie_received": false,
+          "fetch_site": "",
+          "origin": ""
+        }
+      ],
+      "issuer": "control",
+      "stored_same_site": "Strict"
+    }
+  }
+]

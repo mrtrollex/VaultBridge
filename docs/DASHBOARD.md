@@ -1,8 +1,95 @@
-# Legacy Web Dashboard
+# Web Dashboard
 
-The bundled Dashboard is available only when `KNOWLEDGE_SPACES_JSON` is omitted. Named mode deliberately returns 404 for Dashboard, assets and session routes.
+The bundled `/ui/` Dashboard has separate legacy and named compositions. Published v1.5.0 retains
+the legacy-only Dashboard. This working source includes the VB-156B named Access / Spaces / Status
+foundation. The two confirmed final-integration findings are repaired: deterministic TCP-failure
+qualification and legacy heading reflow at 320 px. New five-profile browser qualification passes;
+final independent implementation review and owner acceptance remain pending. Accepted ADRs 0011
+and 0012 are unchanged. No release, deployment, TrueNAS upgrade or Safari qualification is claimed.
+See the [current source and qualification evidence](VB156B_QUALIFICATION.md).
 
+## Named Access / Spaces / Status
 
+With `KNOWLEDGE_SPACES_JSON`, `/ui/` serves a separate local document and exact bundled assets.
+It does not load legacy Overview, Search or Hygiene controllers. There is no note reader, Browse,
+Search, Query or Relationships UI in this slice. REST/MCP/CLI retain their existing capabilities.
+
+Unlock with the existing current or previous API key. POST `/ui/session` issues the existing
+current-key-signed HttpOnly cookie, host-only, Path=/, SameSite=Strict, Secure when ASGI sees HTTPS.
+Named GET `/ui/session` validates only: it never renews, sets or deletes cookies, including failures.
+The fixed expiry is seven days from explicit successful unlock; extending it requires key re-entry.
+POST/GET return `{"authenticated":true}`; DELETE returns `{"authenticated":false}`. All methods
+share the direct-peer limiter once. Named requests require `X-VaultBridge-UI-Request: 1`, reject
+duplicate marker/Origin/Fetch Metadata headers, verify supplied Origin against effective scheme,
+host and port, and accept only same-origin Fetch Metadata. Unlock requires JSON. No CORS is added.
+
+Named protected UI requires a top-level secure context, native Web Locks and working shared
+localStorage. Missing or rejected features leave the public shell with “Named browser sessions
+unavailable”; there is no per-tab/Bearer fallback. BroadcastChannel is not required. Browser profiles
+and storage partitions are separate sessions; private/embedded contexts are not universally qualified.
+The five eligible build-specific profiles and reopening conditions are defined in accepted
+[ADR 0012](adr/0012-vb-156b-qualification-amendment.md), with current outcomes in the
+[qualification record](VB156B_QUALIFICATION.md). Windows Playwright WebKit 26.6 fails native
+Strict-cookie delivery with both the production
+application and an independent minimal issuer; it is **not qualified**. Linux WebKit 27.2 now runs
+the native qualification after system dependencies were installed. Chromium/Firefox results do not
+substitute for WebKit, and Linux results do not certify the deficient Windows port. See the
+[qualification matrix and remaining gates](VB156B_QUALIFICATION.md), including native BFCache,
+storage partitions, real TLS termination and the audit of platform-skipped Python tests.
+
+Only explicit POST/DELETE mutate cookies. They hold the exclusive origin-wide Web Lock
+`vaultbridge.named-ui-session.v1` until a complete response is consumed. The only persistent browser
+coordination records are `vaultbridge.named-ui-session.intent.v1` and
+`vaultbridge.named-ui-session.journal.v1`, each at most 512 UTF-8 bytes. They contain only version,
+random lifecycle nonces, phase and revision, never credentials, tokens, IDs, paths or query data.
+Logout publishes intent before waiting, immediately blanks protected state, and cancels older queued
+logins. Unlock submitted during an unfinished logout cannot queue a new session after its completion;
+unlock requires a fresh deliberate action once removal is confirmed. Protected requests and rendering
+compare the clean shared revision/intent as well as epochs.
+A stale GET/401 cannot renew/delete a newer cookie. Clean reload/reopen validates without extending
+expiry; missing history requires explicit unlock. Nothing sends session requests during unload.
+
+A closed/reloaded issuer, network/stream failure or unresolved dirty mutation quarantines browser
+access across tabs and reloads. Lock availability does not prove that an abandoned HTTP response
+settled. There is no timeout reset or in-page recovery. After operator-confirmed draining/termination
+of old issuers/requests and current-key rotation when an old token may remain usable, clear browser
+cookies and both control records, then explicitly unlock. Clearing data before draining is unsafe.
+Failed DELETE keeps the page locked with “session removal not confirmed” and an explicit Retry logout.
+Deletion never revokes copied/orphaned signed tokens; they remain usable until expiry or effective
+current-key rotation. Previous-key overlap can still unlock a new current-signed session.
+
+Discovery displays readable logical IDs, read capabilities, relationship dialects and indexing policy.
+Unavailable readable spaces remain discoverable; a denied default does not select an alternate.
+Only a returned `default` is initially selected. Single selection and a separate multiple-choice
+Apply/Cancel workflow retain exact IDs in memory. Empty stays empty, never all/default. No Select all,
+persisted selection or implicit expansion. Policy permission is distinct from operational readiness.
+Selected status loads on selection and explicit Refresh only; 403 clears scope and offers Reload
+spaces. A current 401 clears protected DOM/controller state before parsing its body, including empty,
+malformed, truncated and non-JSON bodies, then uses the existing coordinated cookie cleanup. Epoch
+and shared-journal checks protect newer sessions from stale responses. Other failures require explicit retry. Status is a
+non-atomic observation, not search coverage or a freshness guarantee. The conservative observer
+reports WAL storage unavailable because opening it read-only may create coordination files;
+it never uses immutable mode against live WAL, repairs an index or initializes a model.
+
+### Dedicated hostname and proxy trust
+
+Use one canonical HTTPS origin on a dedicated VaultBridge hostname, for example
+`vaultbridge.example.test`. **Every port/listener and reverse-proxy route on that hostname must be
+trusted**, with one session issuer. Cookies are not isolated by TCP port: an unrelated HTTPS server
+on another port of that hostname can receive, replace or delete the cookie. Origin checks, Secure,
+HttpOnly, SameSite, Path and host-only attributes do not prevent this. A different hostname does not
+waive ordinary same-origin XSS, trusted proxy, parent-domain or OS trust. Operator acknowledgement
+and listener inventory remain deployment gates; synthetic browser tests cannot certify real listeners.
+Drain legacy pages and in-flight renewing session responses before switching to named composition.
+
+Trusted TLS termination must present the correct effective HTTPS scheme/host to ASGI; the guard does
+not trust arbitrary forwarded headers itself. Remote HTTP named sessions are unsupported by this UI's
+secure-context requirement. Existing legacy/local HTTP behavior is retained. Root and `/proxy/ui/`
+derive URLs from the entry document, while cookie Path=/ and lock/journal keys span the prefix.
+Protected/session fetches reject redirects and use same-origin credentials/no-store. GET scope/path
+parameters may reach independently operated proxy access logs; configure redaction there.
+
+## Legacy Dashboard (unchanged)
 
 - bundled same-origin `/ui/` entry point with no second frontend service
 - accessible Overview, Search, Hygiene, API / Integration, and About navigation

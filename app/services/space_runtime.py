@@ -78,6 +78,9 @@ class RuntimeSpaceIndexLifecycle(_PrivateImmutable):
     def status(self):
         return self._dispatch("status")
 
+    def observe_status(self, cancel=None):
+        return self._dispatch("observe_status", cancel)
+
 
 def _runtime_owners(definition, settings, resource, default_storage):
     vault = VaultService(vault_root=definition.root_binding, max_note_bytes=settings.max_note_bytes)

@@ -1,0 +1,25 @@
+["<WINDOWS_PYTHON>", "-m", "pytest", "tests/e2e/test_named_proxy.py", "-o", "addopts=", "-q", "-s", "--junitxml", ".agent/two-findings/windows-red-pending.xml"]
+F.
+================================== FAILURES ===================================
+________________ test_pending_connect_cannot_escape_disconnect ________________
+
+    def test_pending_connect_cannot_escape_disconnect():
+        with servers() as (proxy, port, parsing, executed, release, requests):
+            with socket.create_connection(proxy.server_address, timeout=5) as client:
+                assert parsing.wait(5), "handler must already be blocked in CONNECT parsing"
+                proxy.disconnect()
+                try:
+                    client.sendall(connect_request(port))
+                    if client.recv(4096):
+                        client.sendall(b"DELETE /ui/session HTTP/1.1\r\nHost: vaultbridge.example.test\r\n\r\n")
+                except ConnectionError:
+                    pass
+>               assert b'{"authenticated":false}' not in read_available(client)
+E               assert b'{"authenticated":false}' not in b'HTTP/1.1 200 OK\r\nContent-Length: 23\r\n\r\n{"authenticated":false}'
+E                +  where b'HTTP/1.1 200 OK\r\nContent-Length: 23\r\n\r\n{"authenticated":false}' = read_available(<socket.socket fd=<SOCKET_HANDLE>, family=2, type=1, proto=0, laddr=<LOOPBACK_SOCKET>, raddr=<LOOPBACK_SOCKET>>)
+
+tests\e2e\test_named_proxy.py:93: AssertionError
+- generated xml file: <SOURCE>\.agent\two-findings\windows-red-pending.xml -
+=========================== short test summary info ===========================
+FAILED tests/e2e/test_named_proxy.py::test_pending_connect_cannot_escape_disconnect
+1 failed, 1 passed in 1.76s

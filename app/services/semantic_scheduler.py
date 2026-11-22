@@ -48,6 +48,13 @@ class SchedulerStatus:
         return self.monitoring_error_type is not None
 
 
+@dataclass(frozen=True)
+class SchedulerObservation:
+    active_work: bool
+    refresh_required: bool
+    blocked: bool
+
+
 @dataclass
 class _Owner:
     binding: AuthorizedSpaceBinding
@@ -666,6 +673,27 @@ class SharedSemanticScheduler:
                     entry.continuation = None
                 entry.running = False
                 self._condition.notify_all()
+
+    def observe_status(self, binding: AuthorizedSpaceBinding, cancel=None) -> SchedulerObservation:
+        """Booleans only, without sorting/copying private pending paths."""
+        entry = self._entry(binding)
+        if cancel is not None:
+            cancel.check()
+        while not self._condition.acquire(timeout=0.05):
+            if cancel is not None:
+                cancel.check()
+        try:
+            if cancel is not None:
+                cancel.check()
+            work = bool(entry.running or entry.continuation is not None
+                        or entry.pending or entry.inflight or entry.deferred or entry.full_needed)
+            blocked = bool(self._closed or entry.paused or entry.error_type or entry.monitoring_error_type)
+            debt = bool(work or entry.full_needed or entry.full_again or entry.full_active
+                        or entry.coverage_reconciled != entry.coverage_revision
+                        or entry.monitoring_error_type or entry.watcher_callbacks or blocked)
+            return SchedulerObservation(work, debt, blocked)
+        finally:
+            self._condition.release()
 
     def status(self, binding: AuthorizedSpaceBinding) -> SchedulerStatus:
         entry = self._entry(binding)

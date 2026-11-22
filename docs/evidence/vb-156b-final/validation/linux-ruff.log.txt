@@ -1,0 +1,2 @@
+["<LINUX_PYTHON>", "-m", "ruff", "check", "app", "tests", "scripts"]
+All checks passed!

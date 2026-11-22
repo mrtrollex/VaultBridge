@@ -1,0 +1,122 @@
+["<WINDOWS_PYTHON>", "-m", "pytest", "tests/e2e/test_hygiene.py", "-k", "all_evidence_grouping", "--browser", "chromium", "--browser", "firefox", "-o", "addopts=", "-q", "-s", "--tracing", "on", "--output", ".agent/two-findings/layout-keyboard-traces", "--junitxml", ".agent/two-findings/windows-layout-keyboard.xml"]
+{"timestamp":"2026-11-22T09:34:53.988Z","level":"INFO","logger":"vaultbridge.application","event":"application_starting","message":"VaultBridge application is starting"}
+{"timestamp":"2026-11-22T09:34:53.988Z","level":"INFO","logger":"vaultbridge.indexer","event":"semantic_full_sync_scheduled","message":"Full semantic synchronization was scheduled","operation":"full","full_sync_required":true}
+{"timestamp":"2026-11-22T09:34:53.988Z","level":"INFO","logger":"vaultbridge.application","event":"application_started","message":"VaultBridge application started","duration_ms":0.634,"full_sync_required":false}
+{"timestamp":"2026-11-22T09:34:54.059Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"a3550fd29990471d8bb2d281c59adeb7","method":"GET"}
+{"timestamp":"2026-11-22T09:34:54.065Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"a3550fd29990471d8bb2d281c59adeb7","method":"GET","route":"/health/live","status_code":200,"duration_ms":3.098}
+{"timestamp":"2026-11-22T09:34:54.417Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"2ae7101aebe04489bc9695895f73378f","method":"GET"}
+{"timestamp":"2026-11-22T09:34:54.439Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"2ae7101aebe04489bc9695895f73378f","method":"GET","route":"/ui/","status_code":200,"duration_ms":21.793}
+{"timestamp":"2026-11-22T09:34:54.445Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"e11d7266ce754feb8c891de181d60ad4","method":"GET"}
+{"timestamp":"2026-11-22T09:34:54.446Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"028594e992c14512951078e134eb7e52","method":"GET"}
+{"timestamp":"2026-11-22T09:34:54.447Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"ea1f3cb2095149bca0da08c80cc1bb49","method":"GET"}
+{"timestamp":"2026-11-22T09:34:54.449Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"e11d7266ce754feb8c891de181d60ad4","method":"GET","route":"/ui/assets/app.css","status_code":200,"duration_ms":4.58}
+{"timestamp":"2026-11-22T09:34:54.451Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"ea1f3cb2095149bca0da08c80cc1bb49","method":"GET","route":"/ui/assets/vaultbridge-logo.webp","status_code":200,"duration_ms":4.015}
+{"timestamp":"2026-11-22T09:34:54.451Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"028594e992c14512951078e134eb7e52","method":"GET","route":"/ui/assets/app.js","status_code":200,"duration_ms":5.101}
+{"timestamp":"2026-11-22T09:34:54.497Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"c401f2d1200346ca8253c21874d22972","method":"GET"}
+{"timestamp":"2026-11-22T09:34:54.498Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"202354fb61e343b586da56b25c1b5066","method":"GET"}
+{"timestamp":"2026-11-22T09:34:54.498Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"bdfd1e3fca8442738fbf4611e2695e65","method":"GET"}
+{"timestamp":"2026-11-22T09:34:54.500Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"c401f2d1200346ca8253c21874d22972","method":"GET","route":"/ui/assets/overview.js","status_code":200,"duration_ms":3.437}
+{"timestamp":"2026-11-22T09:34:54.502Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"bdfd1e3fca8442738fbf4611e2695e65","method":"GET","route":"/ui/assets/hygiene.js","status_code":200,"duration_ms":2.901}
+{"timestamp":"2026-11-22T09:34:54.503Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"202354fb61e343b586da56b25c1b5066","method":"GET","route":"/ui/assets/search.js","status_code":200,"duration_ms":4.935}
+{"timestamp":"2026-11-22T09:34:54.516Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"d7217c86ea824d5f89db32499304d8a8","method":"GET"}
+{"timestamp":"2026-11-22T09:34:54.517Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"d9b5a2e5216a4944988f424644a13cbb","method":"GET"}
+{"timestamp":"2026-11-22T09:34:54.520Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"d9b5a2e5216a4944988f424644a13cbb","method":"GET","route":"/ui/session","status_code":401,"duration_ms":3.247}
+{"timestamp":"2026-11-22T09:34:54.523Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"d7217c86ea824d5f89db32499304d8a8","method":"GET","route":"/health","status_code":200,"duration_ms":6.999}
+{"timestamp":"2026-11-22T09:34:54.663Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"13675c655bbd47c3b5677ade2fae29e3","method":"POST"}
+{"timestamp":"2026-11-22T09:34:54.665Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"13675c655bbd47c3b5677ade2fae29e3","method":"POST","route":"/ui/session","status_code":200,"duration_ms":2.147}
+Legacy header viewport: {"baseline": {"font": "50.4px", "height": 47.875, "width": 345.109375}, "clientWidth": 1280, "fitted": {"font": "50.4px", "height": 47.875, "width": 345.109375}, "innerWidth": 1280, "scrollWidth": 1280}
+Legacy header viewport: {"baseline": {"font": "34.4px", "height": 32.671875, "width": 229.21875}, "clientWidth": 375, "fitted": {"font": "34.4px", "height": 32.671875, "width": 229.21875}, "innerWidth": 375, "scrollWidth": 375}
+Legacy header viewport: {"baseline": {"font": "34.4px", "height": 32.671875, "width": 174.21875}, "clientWidth": 320, "fitted": {"font": "34.4px", "height": 32.671875, "width": 174.21875}, "innerWidth": 320, "scrollWidth": 320}
+.{"timestamp":"2026-11-22T09:34:57.698Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"f80156c8dd5a4ed083a1109a370ca7b2","method":"GET"}
+{"timestamp":"2026-11-22T09:34:57.703Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"f80156c8dd5a4ed083a1109a370ca7b2","method":"GET","route":"/ui/","status_code":200,"duration_ms":1.769}
+{"timestamp":"2026-11-22T09:34:57.779Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"79addc3bdbc9498a89eeae932af7b31e","method":"GET"}
+{"timestamp":"2026-11-22T09:34:57.779Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"1fdb679a42a2444ea5cc5458b3a21d67","method":"GET"}
+{"timestamp":"2026-11-22T09:34:57.779Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"79addc3bdbc9498a89eeae932af7b31e","method":"GET","route":"/ui/assets/app.css","status_code":200,"duration_ms":2.438}
+{"timestamp":"2026-11-22T09:34:57.779Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"1fdb679a42a2444ea5cc5458b3a21d67","method":"GET","route":"/ui/assets/app.js","status_code":200,"duration_ms":1.752}
+{"timestamp":"2026-11-22T09:34:57.779Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"095e3501d1b24dffb3a4b975756ba14f","method":"GET"}
+{"timestamp":"2026-11-22T09:34:57.784Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"095e3501d1b24dffb3a4b975756ba14f","method":"GET","route":"/ui/assets/vaultbridge-logo.webp","status_code":200,"duration_ms":1.161}
+{"timestamp":"2026-11-22T09:34:57.878Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"99a47c0ac5c0433eab9c3e36f69636dd","method":"GET"}
+{"timestamp":"2026-11-22T09:34:57.879Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"6d9b8997e6dc40a79987a586920e16cd","method":"GET"}
+{"timestamp":"2026-11-22T09:34:57.880Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"f7f17bba7752470a8683f229cfabe338","method":"GET"}
+{"timestamp":"2026-11-22T09:34:57.882Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"99a47c0ac5c0433eab9c3e36f69636dd","method":"GET","route":"/ui/assets/overview.js","status_code":200,"duration_ms":4.037}
+{"timestamp":"2026-11-22T09:34:57.882Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"f7f17bba7752470a8683f229cfabe338","method":"GET","route":"/ui/assets/hygiene.js","status_code":200,"duration_ms":3.009}
+{"timestamp":"2026-11-22T09:34:57.883Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"6d9b8997e6dc40a79987a586920e16cd","method":"GET","route":"/ui/assets/search.js","status_code":200,"duration_ms":3.623}
+{"timestamp":"2026-11-22T09:34:57.902Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"9386c894254244dba2fe7de4c746320b","method":"GET"}
+{"timestamp":"2026-11-22T09:34:57.903Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"90f35013ce6244a6aab1dfb5e148a307","method":"GET"}
+{"timestamp":"2026-11-22T09:34:57.907Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"90f35013ce6244a6aab1dfb5e148a307","method":"GET","route":"/ui/session","status_code":401,"duration_ms":3.406}
+{"timestamp":"2026-11-22T09:34:57.907Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"9386c894254244dba2fe7de4c746320b","method":"GET","route":"/health","status_code":200,"duration_ms":5.301}
+{"timestamp":"2026-11-22T09:34:57.943Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"bf120ccf37884b8895d6c13d8749b8e5","method":"GET"}
+{"timestamp":"2026-11-22T09:34:57.946Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"bf120ccf37884b8895d6c13d8749b8e5","method":"GET","route":"/ui/assets/vaultbridge-logo.webp","status_code":200,"duration_ms":3.407}
+{"timestamp":"2026-11-22T09:34:58.449Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"d3cf4fcf221d40c89404279f3626eec8","method":"POST"}
+{"timestamp":"2026-11-22T09:34:58.450Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"d3cf4fcf221d40c89404279f3626eec8","method":"POST","route":"/ui/session","status_code":200,"duration_ms":1.652}
+Legacy header viewport: {"baseline": {"font": "50.375px", "height": 47.850006103515625, "width": 344.8500061035156}, "clientWidth": 1280, "fitted": {"font": "50.375px", "height": 47.850006103515625, "width": 344.8500061035156}, "innerWidth": 1280, "scrollWidth": 1280}
+F{"timestamp":"2026-11-22T09:35:00.680Z","level":"INFO","logger":"vaultbridge.application","event":"application_stopping","message":"VaultBridge application is stopping"}
+{"timestamp":"2026-11-22T09:35:00.680Z","level":"INFO","logger":"vaultbridge.indexer","event":"semantic_indexer_shutdown_requested","message":"Semantic indexer shutdown was requested"}
+{"timestamp":"2026-11-22T09:35:00.681Z","level":"INFO","logger":"vaultbridge.indexer","event":"semantic_indexer_stopped","message":"Semantic indexer stopped"}
+{"timestamp":"2026-11-22T09:35:00.681Z","level":"INFO","logger":"vaultbridge.application","event":"application_stopped","message":"VaultBridge application stopped","duration_ms":1.031}
+
+================================== FAILURES ===================================
+__ test_hygiene_all_evidence_grouping_bounds_inert_text_and_reflow[firefox] ___
+
+page = <Page url='http://<LOOPBACK_ORIGIN>/ui/'>
+e2e_server = E2EServer(base_url='http://<LOOPBACK_ORIGIN>', vault_path=WindowsPath('<TEMP>/vaultbridge-e2e-pdghoknz/vault'))
+browser_failures = <tests.e2e.conftest.BrowserFailureMonitor object at <OBJECT_ADDRESS>>
+
+    def test_hygiene_all_evidence_grouping_bounds_inert_text_and_reflow(page, e2e_server, browser_failures):
+        payload = wire_json(result_fixture("storage_unavailable"))
+        hostile = "Notes/<img src=x onerror=window.hygieneOwned=true>" + "long" * 100 + ".md"
+        payload["findings"][0]["primary_path"] = hostile
+        payload["findings"][0]["category"] = "<script>window.hygieneOwned=true</script>"
+        payload["findings"][0]["related_paths"] = [f"Related/{i}.md" for i in range(10)]
+        # Interleaved kinds preserve first-seen group order and server order within groups.
+        payload["findings"].append({**deepcopy(payload["findings"][0]), "primary_path": "second.md"})
+        payload["findings"].extend(deepcopy(payload["findings"][3]) for _ in range(500 - len(payload["findings"])))
+        page.route("**" + ENDPOINT, lambda route: respond(route, payload))
+        open_hygiene(page, e2e_server, browser_failures)
+        page.get_by_role("button", name="Run scan", exact=True).click()
+        expect(page.locator("#hygiene-status")).to_have_attribute("data-hygiene-state", "partial")
+        expect(page.locator("#hygiene-status")).to_contain_text("500 returned findings")
+        expect(page.locator("#hygiene-status")).to_contain_text("Findings truncated")
+        expect(page.locator(".hygiene-counts > li").first).to_have_text("missing relationship target: 2")
+        expect(page.locator(".hygiene-findings").first.locator(".hygiene-path")).to_have_text([hostile, "second.md"])
+        expect(page.locator(".hygiene-findings > li")).to_have_count(500)
+        expect(page.locator("#hygiene-results img, #hygiene-results script")).to_have_count(0)
+        assert page.evaluate("window.hygieneOwned") is None
+        for expected in ["Source order (zero-based)", "Line", "Column", "Field", "Source index (zero-based)",
+                         "Source indices (zero-based)", "Peer count", "Related paths truncated", "Vault-level diagnostic",
+                         "storage unavailable", "semantic unavailable", "relationship unavailable", "Related/9.md"]:
+            assert expected in page.locator("#hygiene-results").inner_text()
+        for width in [1280, 375, 320]:
+            page.set_viewport_size({"width": width, "height": 800})
+            assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+            heading = page.locator(".app-header__identity h1")
+            expect(heading).to_be_visible()
+            metrics = heading.evaluate("""element => {
+              const measure=()=>({width:element.getBoundingClientRect().width,
+                height:element.getBoundingClientRect().height,font:getComputedStyle(element).fontSize});
+              const fitted=measure(), old=element.style.overflowWrap;
+              element.style.overflowWrap='normal'; const baseline=measure(); element.style.overflowWrap=old;
+              return {innerWidth,clientWidth:document.documentElement.clientWidth,
+                scrollWidth:document.documentElement.scrollWidth,fitted,baseline};
+            }""")
+            assert metrics["innerWidth"] == width
+            assert metrics["scrollWidth"] <= metrics["clientWidth"]
+            if width >= 375:
+                assert metrics["fitted"] == metrics["baseline"], "normal-width brand layout changed"
+            print("Legacy header viewport:", json.dumps(metrics, sort_keys=True))
+            page.keyboard.press("Tab")
+            page.locator(".skip-link").focus()
+            expect(page.locator(".skip-link")).to_be_focused()
+            expect(page.locator(".skip-link")).to_be_in_viewport()
+>           assert page.locator(".skip-link").evaluate("e => getComputedStyle(e).outlineStyle") != "none"
+E           AssertionError: assert 'none' != 'none'
+E            +  where 'none' = evaluate('e => getComputedStyle(e).outlineStyle')
+E            +    where evaluate = <Locator frame=<Frame name= url='http://<LOOPBACK_ORIGIN>/ui/'> selector='.skip-link'>.evaluate
+E            +      where <Locator frame=<Frame name= url='http://<LOOPBACK_ORIGIN>/ui/'> selector='.skip-link'> = locator('.skip-link')
+E            +        where locator = <Page url='http://<LOOPBACK_ORIGIN>/ui/'>.locator
+
+tests\e2e\test_hygiene.py:159: AssertionError
+- generated xml file: <SOURCE>\.agent\two-findings\windows-layout-keyboard.xml -
+=========================== short test summary info ===========================
+FAILED tests/e2e/test_hygiene.py::test_hygiene_all_evidence_grouping_bounds_inert_text_and_reflow[firefox]
+1 failed, 1 passed, 58 deselected in 6.82s

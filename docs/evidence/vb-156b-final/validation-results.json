@@ -1,0 +1,76 @@
+[
+  {
+    "label": "windows-finish",
+    "record": {
+      "command": [
+        "<WINDOWS_PYTHON>",
+        "scripts/agent_finish.py",
+        "--task",
+        "Implement VB-156B named Knowledge Spaces Dashboard foundation according to accepted ADR 0011 section 13, including named browser sessions, policy-filtered discovery, explicit selection, selected-space status, security regression tests and legacy compatibility."
+      ],
+      "started": "2026-11-22T10:00:27.379482+00:00",
+      "ended": "2026-11-22T10:19:03.362996+00:00",
+      "exit": 0,
+      "source": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e",
+      "python_counts": {
+        "passed": 4053,
+        "skipped": 316
+      },
+      "packet_created": true
+    }
+  },
+  {
+    "label": "linux-python",
+    "record": {
+      "command": [
+        "<LINUX_PYTHON>",
+        "-m",
+        "pytest",
+        "--ignore=tests/e2e",
+        "-o",
+        "addopts=",
+        "-q",
+        "--junitxml",
+        ".agent/two-findings/linux-python.xml"
+      ],
+      "started": "2026-11-22T09:37:58.828801+00:00",
+      "ended": "2026-11-22T09:50:44.354001+00:00",
+      "exit": 0,
+      "source": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e"
+    }
+  },
+  {
+    "label": "linux-ruff",
+    "record": {
+      "command": [
+        "<LINUX_PYTHON>",
+        "-m",
+        "ruff",
+        "check",
+        "app",
+        "tests",
+        "scripts"
+      ],
+      "started": "2026-11-22T09:38:09.085208+00:00",
+      "ended": "2026-11-22T09:38:09.157739+00:00",
+      "exit": 0,
+      "source": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e"
+    }
+  },
+  {
+    "label": "linux-compileall",
+    "record": {
+      "command": [
+        "<LINUX_PYTHON>",
+        "-m",
+        "compileall",
+        "-q",
+        "app"
+      ],
+      "started": "2026-11-22T09:38:09.309709+00:00",
+      "ended": "2026-11-22T09:38:09.383617+00:00",
+      "exit": 0,
+      "source": "cf8961d2a813117393a08aa7159c602548e5fdfbe4538ea1ce0a649eb801a32e"
+    }
+  }
+]

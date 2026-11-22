@@ -1,0 +1,2175 @@
+{
+  "format": "lossless test identities/outcomes/timing and suite attributes; hostname removed; properties parsed from original JSON where applicable",
+  "selection": "failures/skips only; original suite totals retained",
+  "suites": [
+    {
+      "attributes": {
+        "name": "pytest",
+        "errors": "0",
+        "failures": "2",
+        "skipped": "0",
+        "tests": "740",
+        "time": "1267.503",
+        "timestamp": "2026-11-22T09:27:41.521457+01:00"
+      },
+      "properties": [
+        {
+          "name": "native-pageshow-chromium-root",
+          "value": [
+            false
+          ]
+        },
+        {
+          "name": "native-pageshow-chromium-prefix",
+          "value": [
+            false
+          ]
+        },
+        {
+          "name": "test_native_authenticated_history_qualification[root-https-chromium-clean]-back",
+          "value": {
+            "ready": "complete",
+            "message": "Browser session verified. Selection stays in memory only.",
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [
+              {
+                "key": "vaultbridge.named-ui-session.journal.v1",
+                "phase": "restorable"
+              }
+            ],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": {
+                  "src": null,
+                  "id": null,
+                  "url": "https://vaultbridge.example.test:<PORT_19>/ui/",
+                  "name": null,
+                  "reasons": [
+                    {
+                      "reason": "masked"
+                    },
+                    {
+                      "reason": "response-cache-control-no-store"
+                    },
+                    {
+                      "reason": "response-cache-control-no-store-with-js-network-request"
+                    }
+                  ],
+                  "children": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_authenticated_history_qualification[root-https-chromium-clean]-forward-back",
+          "value": {
+            "ready": "complete",
+            "message": "Browser session verified. Selection stays in memory only.",
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [
+              {
+                "key": "vaultbridge.named-ui-session.journal.v1",
+                "phase": "restorable"
+              }
+            ],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": {
+                  "src": null,
+                  "id": null,
+                  "url": "https://vaultbridge.example.test:<PORT_19>/ui/",
+                  "name": null,
+                  "reasons": [
+                    {
+                      "reason": "masked"
+                    },
+                    {
+                      "reason": "response-cache-control-no-store"
+                    },
+                    {
+                      "reason": "response-cache-control-no-store-with-js-network-request"
+                    }
+                  ],
+                  "children": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_authenticated_history_qualification[root-https-chromium-logout-away]-back",
+          "value": {
+            "ready": "complete",
+            "message": "Page locked. Enter the existing API key to unlock.",
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [
+              {
+                "key": "vaultbridge.named-ui-session.intent.v1",
+                "phase": null
+              },
+              {
+                "key": "vaultbridge.named-ui-session.journal.v1",
+                "phase": "locked"
+              }
+            ],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": {
+                  "src": null,
+                  "id": null,
+                  "url": "https://vaultbridge.example.test:<PORT_20>/ui/",
+                  "name": null,
+                  "reasons": [
+                    {
+                      "reason": "masked"
+                    },
+                    {
+                      "reason": "response-cache-control-no-store"
+                    },
+                    {
+                      "reason": "response-cache-control-no-store-with-js-network-request"
+                    }
+                  ],
+                  "children": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_authenticated_history_qualification[root-https-chromium-logout-away]-forward-back",
+          "value": {
+            "ready": "complete",
+            "message": "Page locked. Enter the existing API key to unlock.",
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [
+              {
+                "key": "vaultbridge.named-ui-session.intent.v1",
+                "phase": null
+              },
+              {
+                "key": "vaultbridge.named-ui-session.journal.v1",
+                "phase": "locked"
+              }
+            ],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": {
+                  "src": null,
+                  "id": null,
+                  "url": "https://vaultbridge.example.test:<PORT_20>/ui/",
+                  "name": null,
+                  "reasons": [
+                    {
+                      "reason": "masked"
+                    }
+                  ],
+                  "children": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_authenticated_history_qualification[prefix-https-chromium-clean]-back",
+          "value": {
+            "ready": "complete",
+            "message": "Browser session verified. Selection stays in memory only.",
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [
+              {
+                "key": "vaultbridge.named-ui-session.journal.v1",
+                "phase": "restorable"
+              }
+            ],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": {
+                  "src": null,
+                  "id": null,
+                  "url": "https://vaultbridge.example.test:<PORT_21>/proxy/ui/",
+                  "name": null,
+                  "reasons": [
+                    {
+                      "reason": "masked"
+                    },
+                    {
+                      "reason": "response-cache-control-no-store"
+                    },
+                    {
+                      "reason": "response-cache-control-no-store-with-js-network-request"
+                    }
+                  ],
+                  "children": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_authenticated_history_qualification[prefix-https-chromium-clean]-forward-back",
+          "value": {
+            "ready": "complete",
+            "message": "Browser session verified. Selection stays in memory only.",
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [
+              {
+                "key": "vaultbridge.named-ui-session.journal.v1",
+                "phase": "restorable"
+              }
+            ],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": {
+                  "src": null,
+                  "id": null,
+                  "url": "https://vaultbridge.example.test:<PORT_21>/proxy/ui/",
+                  "name": null,
+                  "reasons": [
+                    {
+                      "reason": "masked"
+                    },
+                    {
+                      "reason": "response-cache-control-no-store"
+                    },
+                    {
+                      "reason": "response-cache-control-no-store-with-js-network-request"
+                    }
+                  ],
+                  "children": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_authenticated_history_qualification[prefix-https-chromium-logout-away]-back",
+          "value": {
+            "ready": "complete",
+            "message": "Page locked. Enter the existing API key to unlock.",
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [
+              {
+                "key": "vaultbridge.named-ui-session.intent.v1",
+                "phase": null
+              },
+              {
+                "key": "vaultbridge.named-ui-session.journal.v1",
+                "phase": "locked"
+              }
+            ],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": {
+                  "src": null,
+                  "id": null,
+                  "url": "https://vaultbridge.example.test:<PORT_22>/proxy/ui/",
+                  "name": null,
+                  "reasons": [
+                    {
+                      "reason": "masked"
+                    },
+                    {
+                      "reason": "response-cache-control-no-store"
+                    },
+                    {
+                      "reason": "response-cache-control-no-store-with-js-network-request"
+                    }
+                  ],
+                  "children": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_authenticated_history_qualification[prefix-https-chromium-logout-away]-forward-back",
+          "value": {
+            "ready": "complete",
+            "message": "Page locked. Enter the existing API key to unlock.",
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [
+              {
+                "key": "vaultbridge.named-ui-session.intent.v1",
+                "phase": null
+              },
+              {
+                "key": "vaultbridge.named-ui-session.journal.v1",
+                "phase": "locked"
+              }
+            ],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": {
+                  "src": null,
+                  "id": null,
+                  "url": "https://vaultbridge.example.test:<PORT_22>/proxy/ui/",
+                  "name": null,
+                  "reasons": [
+                    {
+                      "reason": "masked"
+                    }
+                  ],
+                  "children": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_bfcache_public_control[root-https-chromium-no-store]",
+          "value": {
+            "ready": "complete",
+            "message": null,
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": {
+                  "src": null,
+                  "id": null,
+                  "url": "https://vaultbridge.example.test:<PORT_23>/public",
+                  "name": null,
+                  "reasons": [
+                    {
+                      "reason": "masked"
+                    },
+                    {
+                      "reason": "response-cache-control-no-store"
+                    },
+                    {
+                      "reason": "response-cache-control-no-store-with-js-network-request"
+                    }
+                  ],
+                  "children": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_bfcache_public_control[root-https-chromium-max-age=60]",
+          "value": {
+            "ready": "complete",
+            "message": null,
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pagehide",
+                "persisted": true,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "visibilitychange",
+                "persisted": null,
+                "hidden": true,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "visibilitychange",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": true,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "navigate",
+                "notRestoredReasons": null
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_bfcache_public_control[prefix-https-chromium-no-store]",
+          "value": {
+            "ready": "complete",
+            "message": null,
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": {
+                  "src": null,
+                  "id": null,
+                  "url": "https://vaultbridge.example.test:<PORT_24>/public",
+                  "name": null,
+                  "reasons": [
+                    {
+                      "reason": "masked"
+                    },
+                    {
+                      "reason": "response-cache-control-no-store"
+                    },
+                    {
+                      "reason": "response-cache-control-no-store-with-js-network-request"
+                    }
+                  ],
+                  "children": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_bfcache_public_control[prefix-https-chromium-max-age=60]",
+          "value": {
+            "ready": "complete",
+            "message": null,
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pagehide",
+                "persisted": true,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "visibilitychange",
+                "persisted": null,
+                "hidden": true,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "visibilitychange",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": true,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "navigate",
+                "notRestoredReasons": null
+              }
+            ]
+          }
+        },
+        {
+          "name": "native-pageshow-firefox-root",
+          "value": [
+            false
+          ]
+        },
+        {
+          "name": "native-pageshow-firefox-prefix",
+          "value": [
+            false
+          ]
+        },
+        {
+          "name": "test_native_authenticated_history_qualification[root-https-firefox-clean]-back",
+          "value": {
+            "ready": "complete",
+            "message": "Browser session verified. Selection stays in memory only.",
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [
+              {
+                "key": "vaultbridge.named-ui-session.journal.v1",
+                "phase": "restorable"
+              }
+            ],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": null
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_authenticated_history_qualification[root-https-firefox-clean]-forward-back",
+          "value": {
+            "ready": "complete",
+            "message": "Browser session verified. Selection stays in memory only.",
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [
+              {
+                "key": "vaultbridge.named-ui-session.journal.v1",
+                "phase": "restorable"
+              }
+            ],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": null
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_authenticated_history_qualification[root-https-firefox-logout-away]-back",
+          "value": {
+            "ready": "complete",
+            "message": "Page locked. Enter the existing API key to unlock.",
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [
+              {
+                "key": "vaultbridge.named-ui-session.intent.v1",
+                "phase": null
+              },
+              {
+                "key": "vaultbridge.named-ui-session.journal.v1",
+                "phase": "locked"
+              }
+            ],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": null
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_authenticated_history_qualification[root-https-firefox-logout-away]-forward-back",
+          "value": {
+            "ready": "complete",
+            "message": "Page locked. Enter the existing API key to unlock.",
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [
+              {
+                "key": "vaultbridge.named-ui-session.intent.v1",
+                "phase": null
+              },
+              {
+                "key": "vaultbridge.named-ui-session.journal.v1",
+                "phase": "locked"
+              }
+            ],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": null
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_authenticated_history_qualification[prefix-https-firefox-clean]-back",
+          "value": {
+            "ready": "complete",
+            "message": "Browser session verified. Selection stays in memory only.",
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [
+              {
+                "key": "vaultbridge.named-ui-session.journal.v1",
+                "phase": "restorable"
+              }
+            ],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": null
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_authenticated_history_qualification[prefix-https-firefox-clean]-forward-back",
+          "value": {
+            "ready": "complete",
+            "message": "Browser session verified. Selection stays in memory only.",
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [
+              {
+                "key": "vaultbridge.named-ui-session.journal.v1",
+                "phase": "restorable"
+              }
+            ],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": null
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_authenticated_history_qualification[prefix-https-firefox-logout-away]-back",
+          "value": {
+            "ready": "complete",
+            "message": "Page locked. Enter the existing API key to unlock.",
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [
+              {
+                "key": "vaultbridge.named-ui-session.intent.v1",
+                "phase": null
+              },
+              {
+                "key": "vaultbridge.named-ui-session.journal.v1",
+                "phase": "locked"
+              }
+            ],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": null
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_authenticated_history_qualification[prefix-https-firefox-logout-away]-forward-back",
+          "value": {
+            "ready": "complete",
+            "message": "Page locked. Enter the existing API key to unlock.",
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [
+              {
+                "key": "vaultbridge.named-ui-session.intent.v1",
+                "phase": null
+              },
+              {
+                "key": "vaultbridge.named-ui-session.journal.v1",
+                "phase": "locked"
+              }
+            ],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": null
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_bfcache_public_control[root-https-firefox-no-store]",
+          "value": {
+            "ready": "complete",
+            "message": null,
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": null
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_bfcache_public_control[root-https-firefox-max-age=60]",
+          "value": {
+            "ready": "complete",
+            "message": null,
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": null
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_bfcache_public_control[prefix-https-firefox-no-store]",
+          "value": {
+            "ready": "complete",
+            "message": null,
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": null
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_bfcache_public_control[prefix-https-firefox-max-age=60]",
+          "value": {
+            "ready": "complete",
+            "message": null,
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": null
+              }
+            ]
+          }
+        },
+        {
+          "name": "native-pageshow-webkit-root",
+          "value": [
+            false
+          ]
+        },
+        {
+          "name": "native-pageshow-webkit-prefix",
+          "value": [
+            false
+          ]
+        },
+        {
+          "name": "test_native_authenticated_history_qualification[root-https-webkit-clean]-back",
+          "value": {
+            "ready": "complete",
+            "message": "Browser session verified. Selection stays in memory only.",
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [
+              {
+                "key": "vaultbridge.named-ui-session.journal.v1",
+                "phase": "restorable"
+              }
+            ],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": null
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_authenticated_history_qualification[root-https-webkit-clean]-forward-back",
+          "value": {
+            "ready": "complete",
+            "message": "Browser session verified. Selection stays in memory only.",
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [
+              {
+                "key": "vaultbridge.named-ui-session.journal.v1",
+                "phase": "restorable"
+              }
+            ],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": null
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_authenticated_history_qualification[root-https-webkit-logout-away]-back",
+          "value": {
+            "ready": "complete",
+            "message": "Page locked. Enter the existing API key to unlock.",
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [
+              {
+                "key": "vaultbridge.named-ui-session.intent.v1",
+                "phase": null
+              },
+              {
+                "key": "vaultbridge.named-ui-session.journal.v1",
+                "phase": "locked"
+              }
+            ],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": null
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_authenticated_history_qualification[root-https-webkit-logout-away]-forward-back",
+          "value": {
+            "ready": "complete",
+            "message": "Page locked. Enter the existing API key to unlock.",
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [
+              {
+                "key": "vaultbridge.named-ui-session.intent.v1",
+                "phase": null
+              },
+              {
+                "key": "vaultbridge.named-ui-session.journal.v1",
+                "phase": "locked"
+              }
+            ],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": null
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_authenticated_history_qualification[prefix-https-webkit-clean]-back",
+          "value": {
+            "ready": "complete",
+            "message": "Browser session verified. Selection stays in memory only.",
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [
+              {
+                "key": "vaultbridge.named-ui-session.journal.v1",
+                "phase": "restorable"
+              }
+            ],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": null
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_authenticated_history_qualification[prefix-https-webkit-clean]-forward-back",
+          "value": {
+            "ready": "complete",
+            "message": "Browser session verified. Selection stays in memory only.",
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [
+              {
+                "key": "vaultbridge.named-ui-session.journal.v1",
+                "phase": "restorable"
+              }
+            ],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": null
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_authenticated_history_qualification[prefix-https-webkit-logout-away]-back",
+          "value": {
+            "ready": "complete",
+            "message": "Page locked. Enter the existing API key to unlock.",
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [
+              {
+                "key": "vaultbridge.named-ui-session.intent.v1",
+                "phase": null
+              },
+              {
+                "key": "vaultbridge.named-ui-session.journal.v1",
+                "phase": "locked"
+              }
+            ],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": null
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_authenticated_history_qualification[prefix-https-webkit-logout-away]-forward-back",
+          "value": {
+            "ready": "complete",
+            "message": "Page locked. Enter the existing API key to unlock.",
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [
+              {
+                "key": "vaultbridge.named-ui-session.intent.v1",
+                "phase": null
+              },
+              {
+                "key": "vaultbridge.named-ui-session.journal.v1",
+                "phase": "locked"
+              }
+            ],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": true,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": null
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_bfcache_public_control[root-https-webkit-no-store]",
+          "value": {
+            "ready": "complete",
+            "message": null,
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": null
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_bfcache_public_control[root-https-webkit-max-age=60]",
+          "value": {
+            "ready": "complete",
+            "message": null,
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": null
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_bfcache_public_control[prefix-https-webkit-no-store]",
+          "value": {
+            "ready": "complete",
+            "message": null,
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": null
+              }
+            ]
+          }
+        },
+        {
+          "name": "test_native_bfcache_public_control[prefix-https-webkit-max-age=60]",
+          "value": {
+            "ready": "complete",
+            "message": null,
+            "locks": {
+              "held": [],
+              "pending": []
+            },
+            "phases": [],
+            "events": [
+              {
+                "type": "DOMContentLoaded",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "load",
+                "persisted": null,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              },
+              {
+                "type": "pageshow",
+                "persisted": false,
+                "hidden": false,
+                "privateHidden": null,
+                "statusEmpty": true,
+                "selectionEmpty": true,
+                "keyEmpty": true
+              }
+            ],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": null
+              }
+            ]
+          }
+        }
+      ],
+      "cases": [
+        {
+          "classname": "tests.e2e.test_hygiene",
+          "name": "test_hygiene_all_evidence_grouping_bounds_inert_text_and_reflow[firefox]",
+          "time": "3.942",
+          "outcome": "failure",
+          "original_identity_sha256": "edbab4893595d307ca5769dc2245eb1f316a47c1afc0787340412e742c0ada07",
+          "identity_parameter_sanitized": false,
+          "failure": {
+            "attributes": {
+              "message": "AssertionError: assert False\n +  where False = evaluate('document.documentElement.scrollWidth <= window.innerWidth')\n +    where evaluate = <Page url='http://<LOOPBACK_ORIGIN>/ui/'>.evaluate"
+            },
+            "text": "page = <Page url='http://<LOOPBACK_ORIGIN>/ui/'>\ne2e_server = E2EServer(base_url='http://<LOOPBACK_ORIGIN>', vault_path=PosixPath('/tmp/vaultbridge-e2e-t_p2hngx/vault'))\nbrowser_failures = <tests.e2e.conftest.BrowserFailureMonitor object at <OBJECT_ADDRESS>>\n\n    def test_hygiene_all_evidence_grouping_bounds_inert_text_and_reflow(page, e2e_server, browser_failures):\n        payload = wire_json(result_fixture(\"storage_unavailable\"))\n        hostile = \"Notes/<img src=x onerror=window.hygieneOwned=true>\" + \"long\" * 100 + \".md\"\n        payload[\"findings\"][0][\"primary_path\"] = hostile\n        payload[\"findings\"][0][\"category\"] = \"<script>window.hygieneOwned=true</script>\"\n        payload[\"findings\"][0][\"related_paths\"] = [f\"Related/{i}.md\" for i in range(10)]\n        # Interleaved kinds preserve first-seen group order and server order within groups.\n        payload[\"findings\"].append({**deepcopy(payload[\"findings\"][0]), \"primary_path\": \"second.md\"})\n        payload[\"findings\"].extend(deepcopy(payload[\"findings\"][3]) for _ in range(500 - len(payload[\"findings\"])))\n        page.route(\"**\" + ENDPOINT, lambda route: respond(route, payload))\n        open_hygiene(page, e2e_server, browser_failures)\n        page.get_by_role(\"button\", name=\"Run scan\", exact=True).click()\n        expect(page.locator(\"#hygiene-status\")).to_have_attribute(\"data-hygiene-state\", \"partial\")\n        expect(page.locator(\"#hygiene-status\")).to_contain_text(\"500 returned findings\")\n        expect(page.locator(\"#hygiene-status\")).to_contain_text(\"Findings truncated\")\n        expect(page.locator(\".hygiene-counts > li\").first).to_have_text(\"missing relationship target: 2\")\n        expect(page.locator(\".hygiene-findings\").first.locator(\".hygiene-path\")).to_have_text([hostile, \"second.md\"])\n        expect(page.locator(\".hygiene-findings > li\")).to_have_count(500)\n        expect(page.locator(\"#hygiene-results img, #hygiene-results script\")).to_have_count(0)\n        assert page.evaluate(\"window.hygieneOwned\") is None\n        for expected in [\"Source order (zero-based)\", \"Line\", \"Column\", \"Field\", \"Source index (zero-based)\",\n                         \"Source indices (zero-based)\", \"Peer count\", \"Related paths truncated\", \"Vault-level diagnostic\",\n                         \"storage unavailable\", \"semantic unavailable\", \"relationship unavailable\", \"Related/9.md\"]:\n            assert expected in page.locator(\"#hygiene-results\").inner_text()\n        for width in [1280, 375, 320]:\n            page.set_viewport_size({\"width\": width, \"height\": 800})\n>           assert page.evaluate(\"document.documentElement.scrollWidth <= window.innerWidth\")\nE           AssertionError: assert False\nE            +  where False = evaluate('document.documentElement.scrollWidth <= window.innerWidth')\nE            +    where evaluate = <Page url='http://<LOOPBACK_ORIGIN>/ui/'>.evaluate\n\ntests/e2e/test_hygiene.py:139: AssertionError"
+          }
+        },
+        {
+          "classname": "tests.e2e.test_hygiene",
+          "name": "test_hygiene_all_evidence_grouping_bounds_inert_text_and_reflow[webkit]",
+          "time": "2.560",
+          "outcome": "failure",
+          "original_identity_sha256": "3b0c490f3eca076417710040bc346de3577b411b7c590a0301a8e2b9ad20ccb3",
+          "identity_parameter_sanitized": false,
+          "failure": {
+            "attributes": {
+              "message": "AssertionError: assert False\n +  where False = evaluate('document.documentElement.scrollWidth <= window.innerWidth')\n +    where evaluate = <Page url='http://<LOOPBACK_ORIGIN>/ui/'>.evaluate"
+            },
+            "text": "page = <Page url='http://<LOOPBACK_ORIGIN>/ui/'>\ne2e_server = E2EServer(base_url='http://<LOOPBACK_ORIGIN>', vault_path=PosixPath('/tmp/vaultbridge-e2e-t_p2hngx/vault'))\nbrowser_failures = <tests.e2e.conftest.BrowserFailureMonitor object at <OBJECT_ADDRESS>>\n\n    def test_hygiene_all_evidence_grouping_bounds_inert_text_and_reflow(page, e2e_server, browser_failures):\n        payload = wire_json(result_fixture(\"storage_unavailable\"))\n        hostile = \"Notes/<img src=x onerror=window.hygieneOwned=true>\" + \"long\" * 100 + \".md\"\n        payload[\"findings\"][0][\"primary_path\"] = hostile\n        payload[\"findings\"][0][\"category\"] = \"<script>window.hygieneOwned=true</script>\"\n        payload[\"findings\"][0][\"related_paths\"] = [f\"Related/{i}.md\" for i in range(10)]\n        # Interleaved kinds preserve first-seen group order and server order within groups.\n        payload[\"findings\"].append({**deepcopy(payload[\"findings\"][0]), \"primary_path\": \"second.md\"})\n        payload[\"findings\"].extend(deepcopy(payload[\"findings\"][3]) for _ in range(500 - len(payload[\"findings\"])))\n        page.route(\"**\" + ENDPOINT, lambda route: respond(route, payload))\n        open_hygiene(page, e2e_server, browser_failures)\n        page.get_by_role(\"button\", name=\"Run scan\", exact=True).click()\n        expect(page.locator(\"#hygiene-status\")).to_have_attribute(\"data-hygiene-state\", \"partial\")\n        expect(page.locator(\"#hygiene-status\")).to_contain_text(\"500 returned findings\")\n        expect(page.locator(\"#hygiene-status\")).to_contain_text(\"Findings truncated\")\n        expect(page.locator(\".hygiene-counts > li\").first).to_have_text(\"missing relationship target: 2\")\n        expect(page.locator(\".hygiene-findings\").first.locator(\".hygiene-path\")).to_have_text([hostile, \"second.md\"])\n        expect(page.locator(\".hygiene-findings > li\")).to_have_count(500)\n        expect(page.locator(\"#hygiene-results img, #hygiene-results script\")).to_have_count(0)\n        assert page.evaluate(\"window.hygieneOwned\") is None\n        for expected in [\"Source order (zero-based)\", \"Line\", \"Column\", \"Field\", \"Source index (zero-based)\",\n                         \"Source indices (zero-based)\", \"Peer count\", \"Related paths truncated\", \"Vault-level diagnostic\",\n                         \"storage unavailable\", \"semantic unavailable\", \"relationship unavailable\", \"Related/9.md\"]:\n            assert expected in page.locator(\"#hygiene-results\").inner_text()\n        for width in [1280, 375, 320]:\n            page.set_viewport_size({\"width\": width, \"height\": 800})\n>           assert page.evaluate(\"document.documentElement.scrollWidth <= window.innerWidth\")\nE           AssertionError: assert False\nE            +  where False = evaluate('document.documentElement.scrollWidth <= window.innerWidth')\nE            +    where evaluate = <Page url='http://<LOOPBACK_ORIGIN>/ui/'>.evaluate\n\ntests/e2e/test_hygiene.py:139: AssertionError"
+          }
+        }
+      ]
+    }
+  ]
+}

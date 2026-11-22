@@ -1,0 +1,43 @@
+{
+  "earlier_native_linux_inventory": {
+    "platform": "Linux-6.18.58.1-microsoft-standard-WSL2-x86_64-with-glibc2.43",
+    "python": "3.14.4 (main, Aug 20 2026, 10:41:58) [GCC 15.2.0]",
+    "playwright": "1.64.0",
+    "browsers": [
+      {
+        "name": "chromium",
+        "revision": "1248",
+        "installByDefault": true,
+        "browserVersion": "156.0.8078.4",
+        "title": "Chrome for Testing"
+      },
+      {
+        "name": "firefox",
+        "revision": "1555",
+        "installByDefault": true,
+        "browserVersion": "157.0",
+        "title": "Firefox"
+      },
+      {
+        "name": "webkit",
+        "revision": "2370",
+        "installByDefault": true,
+        "revisionOverrides": {
+          "mac14": "2251",
+          "mac14-arm64": "2251"
+        },
+        "browserVersion": "27.2",
+        "title": "WebKit"
+      }
+    ]
+  },
+  "relationship": "earlier final-integration environment inventory, not a CF execution; CF native events independently record platform Linux and matching browser versions, and the owner identifies actual WSL execution",
+  "final_platform_observations": {
+    "windows": [
+      "Windows"
+    ],
+    "linux": [
+      "Linux"
+    ]
+  }
+}

@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from functools import wraps
 from typing import TYPE_CHECKING, Generic, TypeVar
 
+from app.repositories.semantic_binding import IndexBindingUnavailableError
 from app.services.knowledge_hygiene import KnowledgeHygieneRequest, KnowledgeHygieneService
 from app.services.knowledge_spaces import (
     AuthorizedSpaceBinding,
@@ -65,6 +66,54 @@ class QualifiedNoteRead:
 class SpaceOperations:
     _resolver: SpacePolicyResolver = field(repr=False)
     _admission: ScopedOperationAdmission | None = field(default=None, repr=False)
+
+    def readable_spaces(self):
+        return self._resolver.readable_metadata()
+
+    def selected_space_status(self, scope=None, *, cancel=None):
+        bindings = self._resolver.authorize_read_metadata(scope)
+        eligible, rows, scheduler = [], [], {}
+        for binding in bindings:
+            sid = binding.space_id.value
+            if binding.policy.indexing == "disabled":
+                rows.append(dict(space_id=sid, index_state="disabled", search_available=False, refresh_required=False))
+            elif Capability.SEMANTIC_RETRIEVAL not in binding.policy.capabilities:
+                rows.append(dict(space_id=sid, index_state="not_permitted", search_available=False,
+                                 refresh_required=False))
+            else:
+                eligible.append(binding)
+                # Do not validate roots or acquire admission before the scheduler
+                # condition. Binding membership is immutable; operational guards
+                # are repeated under admission below.
+                owners = binding._owners
+                scheduler[sid] = (owners.scheduler.observe_status(cancel)
+                                  if type(owners) is SpaceOwners and owners.scheduler is not None else None)
+        with self._admit(cancel) as token:
+            for binding in eligible:
+                if token is not None:
+                    token.check()
+                sid = binding.space_id.value
+                state, available, refresh = "unavailable", False, True
+                try:
+                    owners = self._owners(binding)
+                    observed, ready, available = owners.semantic.observe_dashboard_status()
+                    work = scheduler[sid]
+                    if observed and work is not None:
+                        refresh = work.refresh_required or not ready
+                        if work.active_work and not work.blocked:
+                            state = "indexing"
+                        elif ready and not refresh:
+                            state = "ready"
+                except (OSError, NoteUnavailableError, IndexBindingUnavailableError):
+                    pass
+                except SpaceError as exc:
+                    if exc.category != "unavailable_space":
+                        raise
+                rows.append(dict(space_id=sid, index_state=state, search_available=available,
+                                 refresh_required=refresh))
+            if token is not None:
+                token.check()
+        return tuple(sorted(rows, key=lambda row: row["space_id"]))
 
     def compatibility_read(self, operation, *, cancel=None, **arguments):
         """Default-only legacy dispatch, without federation's new bounds."""

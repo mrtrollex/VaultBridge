@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>VaultBridge</title><link rel="stylesheet" href="./assets/app.css">
+  <script type="module" src="./assets/named-app.js"></script>
+</head>
+<body class="named-foundation">
+<a class="skip-link" href="#main">Skip to content</a>
+<header><img src="./assets/vaultbridge-logo.webp" alt="" width="96" height="96"><h1>VaultBridge</h1><p>Named Knowledge Spaces · Access / Spaces / Status</p></header>
+<main id="main" class="main-content">
+  <section aria-labelledby="access-heading" class="panel">
+    <h2 id="access-heading">Access</h2>
+    <p id="session-message" role="status" aria-live="polite">Checking browser support…</p>
+    <form id="unlock-form" hidden>
+      <label for="api-key">Existing API key</label>
+      <input id="api-key" type="password" autocomplete="off" required spellcheck="false">
+      <button type="submit">Unlock</button>
+    </form>
+    <button id="logout" type="button" hidden>Log out</button>
+    <button id="retry-session" type="button" hidden>Retry session validation</button>
+  </section>
+  <section id="spaces" aria-labelledby="spaces-heading" class="panel" hidden>
+    <h2 id="spaces-heading">Spaces</h2>
+    <p id="spaces-message" role="status" aria-live="polite"></p>
+    <button id="reload-spaces" type="button">Reload spaces</button>
+    <label for="single-space">Single space</label><select id="single-space"><option value="">Choose a space</option></select>
+    <button id="choose-multiple" type="button">Choose multiple spaces</button>
+    <form id="selection-form" hidden>
+      <fieldset><legend>Explicit selection for future federated operations</legend><div id="space-options"></div></fieldset>
+      <button type="submit">Apply</button><button id="cancel-selection" type="button">Cancel</button>
+    </form>
+    <p id="active-selection">No spaces selected</p>
+    <h3>Read capabilities</h3><div id="capabilities"></div>
+    <h3>Selected semantic index status</h3><button id="refresh-status" type="button" disabled>Refresh status</button>
+    <div id="index-status"></div>
+  </section>
+  <section class="panel" aria-labelledby="about-heading">
+    <h2 id="about-heading">About</h2>
+    <p>This foundation supports access, explicit space selection and selected status. Browsing notes, Search, Query and Relationships are not available in this Dashboard yet.</p>
+    <p>Use one canonical HTTPS origin on a dedicated trusted hostname. All ports and proxy routes on that hostname must be trusted; cookies are not isolated by port.</p>
+    <p>Uncertain cookie mutations require operator-confirmed draining of old issuers, current-key rotation when needed, then clearing cookies and lifecycle records. There is no in-page reset.</p>
+  </section>
+</main>
+</body></html>

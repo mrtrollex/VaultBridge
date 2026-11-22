@@ -8,13 +8,16 @@ VaultBridge exposes a deliberately small API over an Obsidian Markdown vault. It
 
 This is the current ownership/compatibility reference. Detailed lifecycle sections retain slice IDs
 as provenance; their internal/private constructors do not mean public named mode is unavailable.
-Named REST/MCP/CLI composition ships in v1.5.0. The Dashboard remains legacy-only.
+Named REST/MCP/CLI composition ships in v1.5.0, whose Dashboard remains legacy-only.
+This working source adds the VB-156B named Access / Spaces / Status foundation; acceptance is
+incomplete, including WebKit qualification. No release/deployment is implied.
 The [ACCEPTED ADR 0011](docs/adr/0011-named-knowledge-spaces-dashboard.md) defines VB-156A's
 future named Dashboard session, discovery/status, scope and compatibility contracts. Its fresh
 independent architecture/security review returned APPROVE and the owner accepted the design on
-2026-11-20. VB-156A is complete for architecture/design only; current runtime behavior is unchanged.
-VB-156B–E remain future implementation tasks requiring separate authorization. The named UI/cookie/
-discovery exclusions below remain in force until follow-up implementation replaces them.
+2026-11-20. VB-156A completed architecture/design only and changed no runtime behavior.
+The owner separately authorized VB-156B implementation. VB-156C–E remain future tasks. B's exact
+read-cookie/discovery/status amendment is described in [the Dashboard guide](docs/DASHBOARD.md);
+historical VB-152 exclusions below retain their dated provenance.
 Release status and image evidence belong in [the release ledger](docs/RELEASE_CHECKLIST.md), not here.
 
 - [Current architecture](#current-architecture) and [HTTP compatibility](#http-api-versioning)
@@ -766,8 +769,10 @@ path flags select scoped validation and cannot expand an omitted default-only se
 Explicitly private constructors remain test seams. Slice D replaces public activation guards with
 runtime-aware composition; `require_legacy_composition()` remains on raw legacy composition and
 unsupported named maintenance. Named health uses minimal projections; readiness authorizes default
-before probes. Dashboard/session/assets/cookies and CLI maintenance retain their explicit fences.
-There is no named UI or discovery. See [Slice A evidence](docs/VB152_A_VERIFICATION.md) and
+before probes. VB-152 originally fenced named Dashboard/session/assets/cookies/discovery. The
+VB-156B working source replaces only those exclusions with ADR 0011's explicit UI route gate,
+guarded read-cookie allowlist and policy discovery/status; CLI maintenance remains fenced.
+See [Slice A evidence](docs/VB152_A_VERIFICATION.md) and
 [Slice B evidence](docs/VB152_B_VERIFICATION.md). The task owner confirms Slice B independently
 accepted and merged through PR #148, and Slice C accepted and merged through PR #149.
 
@@ -829,10 +834,19 @@ No scope is inferred from artifact metadata. Scoped CLI semantic reads need a pe
 owner profile; no automatic initialization/rebuild/watch. Named maintenance/status commands are
 fenced until separately contracted. Legacy stopped-service maintenance remains unchanged.
 
-Named Dashboard interaction is deferred: all `/ui`/session/assets routes are fenced with static
-404/no-store and old cookies cannot authenticate REST in named composition. The current Dashboard
-is fully retained in legacy mode. Named public health is minimal, with default-only policy-gated
-readiness and no registry/count diagnostics; no registry/label discovery is selected. Rebind,
+VB-152's original named UI/cookie/discovery exclusions are narrowly superseded in the VB-156B
+working source by accepted ADR 0011. Named composition registers an isolated shell/session/assets
+router and exactly two metadata GETs. Browser reads use the exact method/path allowlist and named
+guard; Bearer behavior, aliases, MCP and writes retain their old contract. Legacy Dashboard and
+renewing sessions are retained. SpacePolicyResolver owns the pure readable-ID policy projection;
+SpaceOperations owns whole-selection status authorization, scheduler observation before admission,
+then minimal bound semantic/repository observation. WAL observations fail conservatively unavailable
+rather than risking coordination-file creation. The UI owns no roots/registry/operational owners.
+Browser coordination uses nonrenewing GET plus Web Locks and the two bounded nonsecret lifecycle
+records; dirty/uncertain outcomes quarantine access across reloads. See [the guide](docs/DASHBOARD.md)
+for browser qualification blockers, canonical issuer and entire-hostname/all-ports trust requirements.
+Named public health remains minimal, with default-only policy-gated
+readiness and no registry/count diagnostics; labels remain private. Rebind,
 old-artifact migration and expanded diagnostics remain separate contracts.
 
 Four slices cover policy-bound existing reads/fences, end-to-end Query, end-to-end authorized

@@ -90,9 +90,12 @@ def test_ui_asset_route_inventory_matches_bundled_files(tmp_path):
         "search.js",
         "hygiene.js",
         "vaultbridge-logo.webp",
+        "named-app.js", "named-session.js", "scoped-client.js", "spaces.js",
     }
     client = client_for(tmp_path)
-    assert all(client.get(f"/ui/assets/{name}").status_code == 200 for name in asset_names)
+    named_only = {"named-app.js", "named-session.js", "scoped-client.js", "spaces.js"}
+    assert all(client.get(f"/ui/assets/{name}").status_code == 200 for name in asset_names - named_only)
+    assert all(client.get(f"/ui/assets/{name}").status_code == 404 for name in named_only)
 
 
 def test_unknown_ui_paths_assets_and_methods_do_not_fall_back_to_html(tmp_path):
