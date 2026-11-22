@@ -112,6 +112,25 @@ authorized implementation; its current runtime constraints remain in force until
 | VB-156D | Typed Knowledge Query and local relationship views; [exact contract](docs/adr/0011-named-knowledge-spaces-dashboard.md#vb-156d--knowledge-query-and-local-relationship-views) | Approved C |
 | VB-156E | Integrated Playwright, accessibility, proxy/privacy and release-source hardening; [exact contract](docs/adr/0011-named-knowledge-spaces-dashboard.md#vb-156e--integrated-browser-accessibility-and-release-hardening) | Approved B–D; security/browser tests already required per slice |
 
+**Accepted VB-156B qualification amendment (2026-11-22):** after the latest fresh independent
+review returned APPROVE, the project owner explicitly accepted
+[ADR 0012 — ACCEPTED](docs/adr/0012-vb-156b-qualification-amendment.md) and decisions W/C/H:
+exclude affected Windows Playwright WebKit builds until a corrected build passes unchanged Strict
+tests; accept the unresolved historical Chromium bootstrap availability risk without a causal-fix
+claim; accept demonstrated safe non-BFCache history restoration as the current evidence, with
+unobserved authenticated BFCache admission/suspension remaining unqualified. The exact profile
+matrix, security invariants and reopening/removal criteria are preserved. **VB-156B final
+implementation integration and acceptance remain separate and incomplete.** The retained implementation
+review APPROVE is not full qualification. ADR 0011 remains ACCEPTED and technically unchanged; this design-baseline checkout
+does not import the separately reviewed implementation. The earlier future-task descriptions record
+the VB-156A baseline, not a new implementation-status assessment. Release/deployment gates remain separate.
+All 150 artifacts in the [durable sanitized evidence record](docs/evidence/vb-156b/README.md) remain
+unchanged, including capture-time PROPOSED/PENDING wording, original failures, review verdicts and
+verified repair hashes. Exact source linkage for original/intermediate runs remains unverified;
+historical passes cannot establish final-source qualification. The accepted amendment does not
+repair or waive those provenance limitations. No release, deployment, actual Safari qualification
+or VB-156C implementation is claimed or authorized by this acceptance record.
+
 **Explicit non-goals:** application/test/dependency/CI/Docker/TrueNAS/release changes in A; B–E
 implementation, general editing/writes, arbitrary files, cross-space promotion/graphs, accounts/RBAC/
 OAuth/session database, frontend service/build dependency, label publication, named Hygiene UI or

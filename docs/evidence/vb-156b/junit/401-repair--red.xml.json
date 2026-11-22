@@ -1,0 +1,33 @@
+[
+  {
+    "attributes": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "1",
+      "skipped": "0",
+      "tests": "1",
+      "time": "7.089",
+      "timestamp": "2026-11-21T15:23:15.007835+01:00"
+    },
+    "properties": [],
+    "cases": [
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_current_protected_read_401_erases_before_cleanup[root-https-chromium-malformed-status]",
+          "time": "6.789"
+        },
+        "outcome": "failure",
+        "diagnostics": [
+          {
+            "kind": "failure",
+            "attributes": {
+              "message": "AssertionError: Locator expected to be hidden\nActual value: visible\nCall log:\n  - Expect \"to_be_hidden\" locator(\"#spaces\") with timeout 5000ms\n  - waiting for locator(\"#spaces\")\n    - locator resolved to <section id=\"spaces\" class=\"panel\" aria-busy=\"true\" aria-labelledby=\"spaces-heading\">…</section>\n    13 × unexpected value \"visible\"\n       - locator resolved to <section id=\"spaces\" class=\"panel\" aria-busy=\"false\" aria-labelledby=\"spaces-heading\">…</section>\n    - unexpected value \"visible\"\n\nAria snapshot:\n- region \"Spaces\":\n  - heading \"Spaces\" [level=2]\n  - status: Spaces unavailable. Retry explicitly.\n  - button \"Reload spaces\"\n  - text: Single space\n  - combobox \"Single space\"\n  - button \"Choose multiple spaces\"\n  - group \"Explicit selection for future federated operations\"\n  - button \"Apply\"\n  - button \"Cancel\"\n  - paragraph: \"Active selection: default\"\n  - heading \"Read capabilities\" [level=3]\n  - paragraph: \"default: permitted reads: knowledge_query, list_notes, literal_search, read_note, relationships, semantic_retrieval. Relationship dialects: markdown_link, obsidian_wikilink. Indexing policy: disabled.\"\n  - heading \"Selected semantic index status\" [level=3]\n  - button \"Refresh status\""
+            },
+            "text": "named_context = <BrowserContext browser=<Browser type=<BrowserType name=chromium executable_path=<USER_HOME>\\AppData\\Local\\ms-playwright\\chromium-1243\\chrome-win64\\chrome.exe> version=153.0.8010.12>>\nnamed = {'app': <app.main.VaultBridgeApplication object at 0x000001F6703B61B0>, 'barrier': <tests.e2e.named_server.Barrier obj...assets/named-app.js', b''), ('/ui/assets/vaultbridge-logo.webp', b''), ('/ui/assets/named-session.js', b''), ...], ...}\noperation = 'status', body_kind = 'malformed'\n\n    @pytest.mark.parametrize(\"operation\", [\"discovery\", \"status\"])\n    @pytest.mark.parametrize(\"body_kind\", PROTECTED_401_BODIES)\n    def test_current_protected_read_401_erases_before_cleanup(named_context, named, operation, body_kind):\n        owner = named_context.new_page()\n        owner.goto(named[\"url\"] + \"/health/live\")\n        page = open_page(named_context, named)\n        login(page)\n        page.locator(\"#choose-multiple\").click()\n        expect(page.locator(\"#space-options input\")).to_have_count(2)\n        observe_protected_reads(page)\n        original, clean = session_cookie(named_context), journal(page)\n        owner.evaluate(\"\"\"lock => {\n          window.lockEntered=false;\n          void navigator.locks.request(lock, () => new Promise(resolve => {\n            window.release401Lock=resolve; window.lockEntered=true;\n          }));\n        }\"\"\", LOCK)\n        owner.wait_for_function(\"lockEntered\")\n        barrier = named[\"barrier\"]\n        barrier.arm(\"DELETE\")\n        target, trigger = protected_read_target(page, named, operation)\n        page.route(target, lambda route: fulfill_protected_401(route, body_kind), times=1)\n        try:\n            trigger.click()\n            # The native mutation lock is unavailable: erasure cannot depend on\n            # acquiring it, a complete JSON body, or asynchronous cookie deletion.\n>           assert_protected_ui_erased(page)\n\ntests\\e2e\\test_named_dashboard.py:442:\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\npage = <Page url='https://vaultbridge.example.test:62196/ui/'>\n\n    def assert_protected_ui_erased(page):\n>       expect(page.locator(\"#spaces\")).to_be_hidden()\nE       AssertionError: Locator expected to be hidden\nE       Actual value: visible\nE       Call log:\nE         - Expect \"to_be_hidden\" locator(\"#spaces\") with timeout 5000ms\nE         - waiting for locator(\"#spaces\")\nE           - locator resolved to <section id=\"spaces\" class=\"panel\" aria-busy=\"true\" aria-labelledby=\"spaces-heading\">…</section>\nE           13 × unexpected value \"visible\"\nE              - locator resolved to <section id=\"spaces\" class=\"panel\" aria-busy=\"false\" aria-labelledby=\"spaces-heading\">…</section>\nE           - unexpected value \"visible\"\nE\nE       Aria snapshot:\nE       - region \"Spaces\":\nE         - heading \"Spaces\" [level=2]\nE         - status: Spaces unavailable. Retry explicitly.\nE         - button \"Reload spaces\"\nE         - text: Single space\nE         - combobox \"Single space\"\nE         - button \"Choose multiple spaces\"\nE         - group \"Explicit selection for future federated operations\"\nE         - button \"Apply\"\nE         - button \"Cancel\"\nE         - paragraph: \"Active selection: default\"\nE         - heading \"Read capabilities\" [level=3]\nE         - paragraph: \"default: permitted reads: knowledge_query, list_notes, literal_search, read_note, relationships, semantic_retrieval. Relationship dialects: markdown_link, obsidian_wikilink. Indexing policy: disabled.\"\nE         - heading \"Selected semantic index status\" [level=3]\nE         - button \"Refresh status\"\n\ntests\\e2e\\test_named_dashboard.py:393: AssertionError"
+          }
+        ]
+      }
+    ]
+  }
+]

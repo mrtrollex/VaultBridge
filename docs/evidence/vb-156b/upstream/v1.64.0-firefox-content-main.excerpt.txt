@@ -1,0 +1,8 @@
+Source: https://github.com/microsoft/playwright/blob/v1.64.0/browser_patches/firefox/juggler/content/main.js
+55:   // Enforce focused state for all top level documents.
+  docShell.overrideHasFocus = true;
+  docShell.forceActiveState = true;
+  docShell.disallowBFCache = true;
+  data.frameTree = new FrameTree(browsingContext);
+  for (const [name, value] of Object.entries(contextCrossProcessCookie.settings)) {
+    if (value !== undefined)

@@ -1,0 +1,8 @@
+['<USER_HOME>\\Desktop\\VaultBridge\\.venv\\Scripts\\python.exe', '-m', 'pytest', 'tests/e2e/test_named_dashboard.py', '-k', 'protected_read or selected_status_failure_states or old_401 or current_401_rotation', '-o', 'addopts=', '-q', '--tracing', 'retain-on-failure', '--output', '.agent\\401-repair\\windows-complete-traces', '--junitxml', '.agent\\401-repair\\windows-complete.xml', '--browser', 'chromium', '--browser', 'firefox', '--browser', 'webkit']
+........................................................................ [ 24%]
+........................................................................ [ 48%]
+........................................................................ [ 72%]
+........................................................................ [ 96%]
+............                                                             [100%]
+- generated xml file: <VB156B_SOURCE>\.agent\401-repair\windows-complete.xml -
+300 passed, 284 deselected in 668.73s (0:11:08)

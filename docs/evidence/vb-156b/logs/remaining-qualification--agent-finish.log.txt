@@ -1,0 +1,198 @@
+{"command": ["<USER_HOME>\\Desktop\\VaultBridge\\.venv\\Scripts\\python.exe", "scripts/agent_finish.py", "--task", "Implement VB-156B named Knowledge Spaces Dashboard foundation according to accepted ADR 0011 section 13, including named browser sessions, policy-filtered discovery, explicit selection, selected-space status, security regression tests and legacy compatibility."], "started_utc": "2026-11-21T12:44:28.820545+00:00"}
+Change base: refs/remotes/origin/main (merge base 90886af56f91)
+Changed files:
+  ARCHITECTURE.md
+  BACKLOG.md
+  app/api/dependencies.py
+  app/api/knowledge_spaces.py
+  app/api/private_reads.py
+  app/core/ui_session.py
+  app/main.py
+  app/repositories/semantic.py
+  app/services/knowledge_spaces.py
+  app/services/semantic_scheduler.py
+  app/services/semantic_search.py
+  app/services/space_operations.py
+  app/services/space_runtime.py
+  app/ui/assets/app.css
+  app/ui/assets/named-app.js
+  app/ui/assets/named-session.js
+  app/ui/assets/scoped-client.js
+  app/ui/assets/spaces.js
+  app/ui/named.html
+  app/ui/named_fence.py
+  app/ui/named_router.py
+  docs/DASHBOARD.md
+  docs/KNOWLEDGE_SPACES.md
+  docs/VB156B_QUALIFICATION.md
+  tests/e2e/named_diagnostics.py
+  tests/e2e/named_server.py
+  tests/e2e/test_named_cookie_delivery.py
+  tests/e2e/test_named_dashboard.py
+  tests/e2e/test_named_qualification.py
+  tests/test_named_dashboard.py
+  tests/test_policy_read_adapters.py
+  tests/test_public_space_composition.py
+  tests/test_ui.py
+Detected areas:
+  docs
+  python
+  semantic
+  api
+  ui
+  mcp
+Automated checks:
+  SELECTED ruff
+  SELECTED pytest (unit/integration, includes tests/eval)
+  SELECTED compileall
+  SELECTED Playwright E2E (Chromium)
+  SELECTED docker build
+  SELECTED MCP dependency in image
+  SELECTED MCP stdio container smoke
+  SELECTED MCP HTTP container smoke
+Agent verification:
+  SKIP / NOT REQUIRED manual verification
+RUN ruff: <USER_HOME>\Desktop\VaultBridge\.venv\Scripts\python.exe -m ruff check app tests scripts
+All checks passed!
+RUN pytest (unit/integration, includes tests/eval): <USER_HOME>\Desktop\VaultBridge\.venv\Scripts\python.exe -m pytest -q --ignore=tests/e2e
+........................................................................ [  1%]
+....s............................s............s......................... [  3%]
+...............s....s................................................... [  4%]
+........................................................................ [  6%]
+........................................................................ [  8%]
+........................................................................ [  9%]
+........................................................................ [ 11%]
+............................................sss......................... [ 13%]
+........ss.s.s......s......................................s............ [ 14%]
+........................................................................ [ 16%]
+.........................................................s.............. [ 18%]
+.s...................................................................... [ 19%]
+........................................................................ [ 21%]
+............sssssssssssssssssss.........ssss..........................ss [ 23%]
+s....................................................................s.. [ 24%]
+........................................................................ [ 26%]
+........................................................................ [ 28%]
+........................................................................ [ 29%]
+........................................................................ [ 31%]
+..................................sssss................................. [ 32%]
+.........................................................s.............. [ 34%]
+........................................................................ [ 36%]
+........................................................................ [ 37%]
+........................................................................ [ 39%]
+........................................................................ [ 41%]
+s....................................................................... [ 42%]
+.........................................................ss............. [ 44%]
+........................................................................ [ 46%]
+.......................................................................s [ 47%]
+ss...................................................................... [ 49%]
+........................................................................ [ 51%]
+..........................................ss...........ss.s..s.......... [ 52%]
+........................................................................ [ 54%]
+............................s............ss...........s................. [ 56%]
+..................ssss.................................................. [ 57%]
+.....................................................s...s.............. [ 59%]
+...............................s........................................ [ 60%]
+........................................................................ [ 62%]
+.........................................ssss..............ss........... [ 64%]
+........ss......s....................................................... [ 65%]
+........................................................................ [ 67%]
+........................................................................ [ 69%]
+............s........................................................... [ 70%]
+........................................................................ [ 72%]
+....................................................sss................. [ 74%]
+........................................................................ [ 75%]
+..................s....................................s......s......... [ 77%]
+.........sss..s..........................s.............................. [ 79%]
+...sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss [ 80%]
+........sssss...s....ssssssssss.sssss........sssss..sssssssss....s...... [ 82%]
+...............ssssssssssssssssssssssssssssssss...................sss..s [ 84%]
+ssssssssssssssssssssssssssssssssssssssssssssss.......................... [ 85%]
+...............................................................s........ [ 87%]
+...............ss....................................................... [ 88%]
+........................................................................ [ 90%]
+.......................................................................s [ 92%]
+ss.......ssss...s.ssssss...........ss.............s...........s......... [ 93%]
+.....s..ss......................................................s....... [ 95%]
+........................................................................ [ 97%]
+........................................................................ [ 98%]
+.....s................sssssss................sss.                        [100%]
+RUN compileall: <USER_HOME>\Desktop\VaultBridge\.venv\Scripts\python.exe -m compileall -q app
+RUN Playwright E2E (Chromium): <USER_HOME>\Desktop\VaultBridge\.venv\Scripts\python.exe -m pytest -q tests/e2e --browser=chromium --tracing=retain-on-failure --output=test-results/playwright
+........................................................................ [ 45%]
+........................................................................ [ 90%]
+................                                                         [100%]
+RUN docker build: docker build -t vaultbridge:agent-check .
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 690B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/python:3.12-slim
+#2 DONE 0.8s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 409B done
+#3 DONE 0.0s
+
+#4 [1/7] FROM docker.io/library/python:3.12-slim@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b
+#4 resolve docker.io/library/python:3.12-slim@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b 0.0s done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 15.86kB 0.0s done
+#5 DONE 0.0s
+
+#6 [2/7] WORKDIR /app
+#6 CACHED
+
+#7 [5/7] RUN pip install --no-cache-dir -r requirements.txt
+#7 CACHED
+
+#8 [6/7] COPY --chown=568:568 app ./app
+#8 CACHED
+
+#9 [3/7] RUN apt-get update &&     apt-get install -y --no-install-recommends libgomp1 &&     rm -rf /var/lib/apt/lists/*
+#9 CACHED
+
+#10 [4/7] COPY requirements.txt .
+#10 CACHED
+
+#11 [7/7] RUN mkdir -p /data/huggingface && chown -R 568:568 /data &&     find /app -type d -exec chmod 755 {} \; &&     find /app -type f -exec chmod 644 {} \;
+#11 CACHED
+
+#12 exporting to image
+#12 exporting layers done
+#12 exporting manifest sha256:5e50344d6b2c68c527f9fe96a562f04febf468e1d2a6a65451e9545e1a0642a8 done
+#12 exporting config sha256:1ef45ccbfe93d8afc726c4fc49bceacb2e4764b8ecc2a203bf961f0fa5cb16d9 done
+#12 exporting attestation manifest sha256:2782aa5ed6a6bf70182fbd3d05cabf033d660f69455b8071f78250c1edfa3c88 done
+#12 exporting manifest list sha256:a3c6c365b6a261a515969897891df227082d0be2b2d7b11a395fdcba96a608a2 done
+#12 naming to docker.io/library/vaultbridge:agent-check done
+#12 unpacking to docker.io/library/vaultbridge:agent-check done
+#12 DONE 0.1s
+RUN MCP dependency in image: docker run --rm --entrypoint python vaultbridge:agent-check -c "from importlib.metadata import version; import app.mcp_server; print(version('mcp'))"
+2.3.0
+RUN MCP stdio container smoke: docker run --rm -i --entrypoint sh vaultbridge:agent-check -c "mkdir -p /tmp/vault /tmp/data && VAULT_PATH=/tmp/vault SEMANTIC_DATA_PATH=/tmp/data python -m app.mcp_server </dev/null"
+{"timestamp":"2026-11-21T12:59:26.673Z","level":"INFO","logger":"vaultbridge.mcp","event":"mcp_server_started","message":"VaultBridge MCP stdio server started","transport":"stdio"}
+{"timestamp":"2026-11-21T12:59:26.682Z","level":"INFO","logger":"vaultbridge.mcp","event":"mcp_server_stopped","message":"VaultBridge MCP stdio server stopped","transport":"stdio"}
+RUN MCP HTTP container smoke: <USER_HOME>\Desktop\VaultBridge\.venv\Scripts\python.exe scripts/smoke_mcp_http.py --image vaultbridge:agent-check
+Disposable root: <USER_HOME>\AppData\Local\Temp\vaultbridge-vb093-9zakugxu
+Disposable cleanup: PASS (<USER_HOME>\AppData\Local\Temp\vaultbridge-vb093-9zakugxu)
+VaultBridge MCP HTTP read-only and write-enabled container smoke: PASS
+Result summary:
+  PASS ruff (exit 0)
+  PASS pytest (unit/integration, includes tests/eval) (exit 0)
+  PASS compileall (exit 0)
+  PASS Playwright E2E (Chromium) (exit 0)
+  PASS docker build (exit 0)
+  PASS MCP dependency in image (exit 0)
+  PASS MCP stdio container smoke (exit 0)
+  PASS MCP HTTP container smoke (exit 0)
+  SKIP / NOT REQUIRED manual verification
+Overall: PASS
+Verification: PASS
+Review packet: .agent/review_packet.md
+
+Next step:
+Start a fresh Codex session and review `.agent/review_packet.md`.
+Do not provide the implementer's conversation history.

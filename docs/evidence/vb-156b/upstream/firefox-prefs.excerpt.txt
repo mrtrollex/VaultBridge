@@ -1,0 +1,39 @@
+Source: https://github.com/microsoft/playwright/blob/v1.63.0/browser_patches/firefox/preferences/playwright.cfg
+browser_patches/firefox/preferences/playwright.cfg:38
+pref("network.auth.use_redirect_for_retries", false);
+
+// Disable cross-process iframes, but not cross-process navigations.
+pref("fission.webContentIsolationStrategy", 0);
+
+// Disable BFCache in parent process.
+// We also separately disable BFCache in content via docSchell property.
+pref("fission.bfcacheInParent", false);
+
+// Disable first-party-based cookie partitioning.
+// When it is enabled, we have to retain "thirdPartyCookie^" permissions
+
+browser_patches/firefox/preferences/playwright.cfg:39
+
+// Disable cross-process iframes, but not cross-process navigations.
+pref("fission.webContentIsolationStrategy", 0);
+
+// Disable BFCache in parent process.
+// We also separately disable BFCache in content via docSchell property.
+pref("fission.bfcacheInParent", false);
+
+// Disable first-party-based cookie partitioning.
+// When it is enabled, we have to retain "thirdPartyCookie^" permissions
+// in the storageState.
+
+browser_patches/firefox/preferences/playwright.cfg:40
+// Disable cross-process iframes, but not cross-process navigations.
+pref("fission.webContentIsolationStrategy", 0);
+
+// Disable BFCache in parent process.
+// We also separately disable BFCache in content via docSchell property.
+pref("fission.bfcacheInParent", false);
+
+// Disable first-party-based cookie partitioning.
+// When it is enabled, we have to retain "thirdPartyCookie^" permissions
+// in the storageState.
+pref("network.cookie.cookieBehavior", 4);

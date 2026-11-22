@@ -1,0 +1,199 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+__________________ test_native_frozen_tab_logout[root-https] ___________________
+
+playwright = <playwright._impl._playwright.Playwright object at 0x7217deed1550>
+named = {'app': <app.main.VaultBridgeApplication object at 0x7217deff7890>, 'barrier': <tests.e2e.named_server.Barrier object ...ts/vaultbridge-logo.webp', b''), ('/ui/assets/named-session.js', b''), ('/ui/assets/scoped-client.js', b''), ...], ...}
+request = <FixtureRequest for <Function test_native_frozen_tab_logout[root-https]>>
+
+    def test_native_frozen_tab_logout(playwright, named, request):
+        """Native Chromium suspension, distinct from authenticated BFCache admission."""
+        browser = playwright.chromium.launch(channel="chromium")
+        context = browser.new_context(ignore_https_errors=True, proxy=named["proxy"])
+        evidence = NativeEvidence(context, request.node.nodeid)
+        try:
+            a = open_page(context, named)
+            login(a)
+            a.locator("#single-space").select_option("research")
+            expect(a.locator("#index-status")).to_contain_text("research: disabled")
+            b = open_page(context, named)
+            expect(b.locator("#index-status")).to_contain_text("default: disabled")
+            a.evaluate("""() => {
+              window.nativeSuspension=[];
+              for (const type of ['freeze','resume'])
+                document.addEventListener(type, () => nativeSuspension.push(type));
+            }""")
+            cdp = context.new_cdp_session(a)
+            cdp.send("Page.setWebLifecycleState", {"state": "frozen"})
+            evidence.record("native-freeze-command-completed")
+            b.get_by_role("button", name="Log out", exact=True).click()
+            expect(b.locator("#session-message")).to_contain_text("removal confirmed")
+            assert not session_cookie(context)
+            start = len(named["inventory"])
+            cdp.send("Page.setWebLifecycleState", {"state": "active"})
+            a.bring_to_front()
+            # A missed storage notification can conservatively leave this old page
+            # logout_pending even though the other tab settled the shared journal.
+            # ADR 0011 permits this locked state; it must never auto-replay a DELETE.
+            expect(a.locator("#session-message")).to_contain_text("Page locked; session removal not confirmed")
+            expect(a.locator("#unlock-form")).to_be_hidden()
+            expect(a.locator("#spaces")).to_be_hidden()
+            expect(a.locator("#single-space")).to_have_value("")
+            expect(a.locator("#index-status")).to_be_empty()
+>           assert a.evaluate("nativeSuspension") == ["freeze", "resume"]
+E           AssertionError: assert [] == ['freeze', 'resume']
+E
+E             Right contains 2 more items, first extra item: 'freeze'
+E             Use -v to get more diff
+
+tests/e2e/test_named_qualification.py:121: AssertionError
+----------------------------- Captured stdout call -----------------------------
+Native qualification events: .agent/remaining-qualification/native-events/6b1aea9b718b445ca8bbb70c5d6907fb.json
+----------------------------- Captured stderr call -----------------------------
+{"timestamp":"2026-11-21T09:16:43.170Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"76a050a6deed404cacca800bd3c44462","method":"GET"}
+{"timestamp":"2026-11-21T09:16:43.373Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"76a050a6deed404cacca800bd3c44462","method":"GET","route":"/ui/","status_code":200,"duration_ms":200.76}
+{"timestamp":"2026-11-21T09:16:43.379Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"9eeddec6968a4a159a4e751d90fd10ff","method":"GET"}
+{"timestamp":"2026-11-21T09:16:43.401Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"5d7ab58574554585ae54a36b5fa77f60","method":"GET"}
+{"timestamp":"2026-11-21T09:16:43.431Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"ce43ef7a52f34887940936dc2b15ba77","method":"GET"}
+{"timestamp":"2026-11-21T09:16:43.452Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"9eeddec6968a4a159a4e751d90fd10ff","method":"GET","route":"/ui/assets/app.css","status_code":200,"duration_ms":73.431}
+{"timestamp":"2026-11-21T09:16:43.467Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"ce43ef7a52f34887940936dc2b15ba77","method":"GET","route":"/ui/assets/vaultbridge-logo.webp","status_code":200,"duration_ms":35.898}
+{"timestamp":"2026-11-21T09:16:43.467Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"16b9dfcd96ea409e9f1636516cf61f4e","method":"GET"}
+{"timestamp":"2026-11-21T09:16:43.470Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"5d7ab58574554585ae54a36b5fa77f60","method":"GET","route":"/ui/assets/named-app.js","status_code":200,"duration_ms":68.719}
+{"timestamp":"2026-11-21T09:16:43.480Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"194ad19888d94ddda8a9f16a1f209209","method":"GET"}
+{"timestamp":"2026-11-21T09:16:43.487Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"72f211165abd43629fb75b146d78f503","method":"GET"}
+{"timestamp":"2026-11-21T09:16:43.517Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"16b9dfcd96ea409e9f1636516cf61f4e","method":"GET","route":"/ui/assets/named-session.js","status_code":200,"duration_ms":49.693}
+{"timestamp":"2026-11-21T09:16:43.524Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"194ad19888d94ddda8a9f16a1f209209","method":"GET","route":"/ui/assets/scoped-client.js","status_code":200,"duration_ms":43.72}
+{"timestamp":"2026-11-21T09:16:43.549Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"72f211165abd43629fb75b146d78f503","method":"GET","route":"/ui/assets/spaces.js","status_code":200,"duration_ms":62.077}
+{"timestamp":"2026-11-21T09:16:43.587Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"24269ed6f7044d26b7a7a11f8ddfe941","method":"GET"}
+{"timestamp":"2026-11-21T09:16:43.592Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"24269ed6f7044d26b7a7a11f8ddfe941","method":"GET","status_code":404,"duration_ms":4.646}
+{"timestamp":"2026-11-21T09:16:43.713Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"02eb554475dc410aaba6d56ef430866d","method":"POST"}
+{"timestamp":"2026-11-21T09:16:43.718Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"02eb554475dc410aaba6d56ef430866d","method":"POST","route":"/ui/session","status_code":200,"duration_ms":4.791}
+{"timestamp":"2026-11-21T09:16:43.725Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"4111249efadb439da5e9637259a11758","method":"GET"}
+{"timestamp":"2026-11-21T09:16:43.749Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"4111249efadb439da5e9637259a11758","method":"GET","route":"/api/v1/knowledge/spaces","status_code":200,"duration_ms":24.293}
+{"timestamp":"2026-11-21T09:16:43.796Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"1874594500c54cbcae8e31024b2a6c49","method":"GET"}
+{"timestamp":"2026-11-21T09:16:43.801Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"1874594500c54cbcae8e31024b2a6c49","method":"GET","route":"/api/v1/knowledge/spaces/status","status_code":200,"duration_ms":5.447}
+{"timestamp":"2026-11-21T09:16:43.875Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"7c850d310b2e43f2a46a2b0390b17c05","method":"GET"}
+{"timestamp":"2026-11-21T09:16:43.879Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"7c850d310b2e43f2a46a2b0390b17c05","method":"GET","route":"/api/v1/knowledge/spaces/status","status_code":200,"duration_ms":3.28}
+{"timestamp":"2026-11-21T09:16:44.002Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"885d21152ba049d1b9f9eff515c7580e","method":"GET"}
+{"timestamp":"2026-11-21T09:16:44.008Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"885d21152ba049d1b9f9eff515c7580e","method":"GET","route":"/ui/","status_code":200,"duration_ms":6.105}
+{"timestamp":"2026-11-21T09:16:44.012Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"996c9ee89913497c933c7c35ea028cbf","method":"GET"}
+{"timestamp":"2026-11-21T09:16:44.012Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"d3a82dc3ffd244c9aff2349cef427372","method":"GET"}
+{"timestamp":"2026-11-21T09:16:44.015Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"7b4acf2892d54161bc18da356fb771bb","method":"GET"}
+{"timestamp":"2026-11-21T09:16:44.028Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"996c9ee89913497c933c7c35ea028cbf","method":"GET","route":"/ui/assets/app.css","status_code":200,"duration_ms":16.118}
+{"timestamp":"2026-11-21T09:16:44.029Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"d3a82dc3ffd244c9aff2349cef427372","method":"GET","route":"/ui/assets/named-app.js","status_code":200,"duration_ms":15.92}
+{"timestamp":"2026-11-21T09:16:44.032Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"bc80630a748841afbeff41af0f5a196d","method":"GET"}
+{"timestamp":"2026-11-21T09:16:44.033Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"320c2842206e42caa02434df4592ef8d","method":"GET"}
+{"timestamp":"2026-11-21T09:16:44.034Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"087a36cfa11d4168a2b50c95307fe409","method":"GET"}
+{"timestamp":"2026-11-21T09:16:44.037Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"7b4acf2892d54161bc18da356fb771bb","method":"GET","route":"/ui/assets/vaultbridge-logo.webp","status_code":200,"duration_ms":22.115}
+{"timestamp":"2026-11-21T09:16:44.042Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"087a36cfa11d4168a2b50c95307fe409","method":"GET","route":"/ui/assets/named-session.js","status_code":200,"duration_ms":8.77}
+{"timestamp":"2026-11-21T09:16:44.043Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"320c2842206e42caa02434df4592ef8d","method":"GET","route":"/ui/assets/spaces.js","status_code":200,"duration_ms":9.701}
+{"timestamp":"2026-11-21T09:16:44.043Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"bc80630a748841afbeff41af0f5a196d","method":"GET","route":"/ui/assets/scoped-client.js","status_code":200,"duration_ms":10.587}
+{"timestamp":"2026-11-21T09:16:44.093Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"1df447dde9d245ddb814252d4387d480","method":"GET"}
+{"timestamp":"2026-11-21T09:16:44.094Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"1df447dde9d245ddb814252d4387d480","method":"GET","route":"/ui/session","status_code":200,"duration_ms":1.097}
+{"timestamp":"2026-11-21T09:16:44.139Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"a7722675e5a64bc0a6e93ec6c1b5edf8","method":"GET"}
+{"timestamp":"2026-11-21T09:16:44.141Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"a7722675e5a64bc0a6e93ec6c1b5edf8","method":"GET","route":"/api/v1/knowledge/spaces","status_code":200,"duration_ms":2.637}
+{"timestamp":"2026-11-21T09:16:44.144Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"8a275926d6154a1bbffeb12f3d1081ba","method":"GET"}
+{"timestamp":"2026-11-21T09:16:44.146Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"8a275926d6154a1bbffeb12f3d1081ba","method":"GET","route":"/api/v1/knowledge/spaces/status","status_code":200,"duration_ms":1.701}
+{"timestamp":"2026-11-21T09:16:44.257Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"255341427f80446c912c7bb170fb0c78","method":"DELETE"}
+{"timestamp":"2026-11-21T09:16:44.258Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"255341427f80446c912c7bb170fb0c78","method":"DELETE","route":"/ui/session","status_code":200,"duration_ms":1.188}
+_________________ test_native_frozen_tab_logout[prefix-https] __________________
+
+playwright = <playwright._impl._playwright.Playwright object at 0x7217deed1550>
+named = {'app': <app.main.VaultBridgeApplication object at 0x7217ded27750>, 'barrier': <tests.e2e.named_server.Barrier object ...ge-logo.webp', b''), ('/proxy/ui/assets/scoped-client.js', b''), ('/proxy/ui/assets/named-session.js', b''), ...], ...}
+request = <FixtureRequest for <Function test_native_frozen_tab_logout[prefix-https]>>
+
+    def test_native_frozen_tab_logout(playwright, named, request):
+        """Native Chromium suspension, distinct from authenticated BFCache admission."""
+        browser = playwright.chromium.launch(channel="chromium")
+        context = browser.new_context(ignore_https_errors=True, proxy=named["proxy"])
+        evidence = NativeEvidence(context, request.node.nodeid)
+        try:
+            a = open_page(context, named)
+            login(a)
+            a.locator("#single-space").select_option("research")
+            expect(a.locator("#index-status")).to_contain_text("research: disabled")
+            b = open_page(context, named)
+            expect(b.locator("#index-status")).to_contain_text("default: disabled")
+            a.evaluate("""() => {
+              window.nativeSuspension=[];
+              for (const type of ['freeze','resume'])
+                document.addEventListener(type, () => nativeSuspension.push(type));
+            }""")
+            cdp = context.new_cdp_session(a)
+            cdp.send("Page.setWebLifecycleState", {"state": "frozen"})
+            evidence.record("native-freeze-command-completed")
+            b.get_by_role("button", name="Log out", exact=True).click()
+            expect(b.locator("#session-message")).to_contain_text("removal confirmed")
+            assert not session_cookie(context)
+            start = len(named["inventory"])
+            cdp.send("Page.setWebLifecycleState", {"state": "active"})
+            a.bring_to_front()
+            # A missed storage notification can conservatively leave this old page
+            # logout_pending even though the other tab settled the shared journal.
+            # ADR 0011 permits this locked state; it must never auto-replay a DELETE.
+            expect(a.locator("#session-message")).to_contain_text("Page locked; session removal not confirmed")
+            expect(a.locator("#unlock-form")).to_be_hidden()
+            expect(a.locator("#spaces")).to_be_hidden()
+            expect(a.locator("#single-space")).to_have_value("")
+            expect(a.locator("#index-status")).to_be_empty()
+>           assert a.evaluate("nativeSuspension") == ["freeze", "resume"]
+E           AssertionError: assert [] == ['freeze', 'resume']
+E
+E             Right contains 2 more items, first extra item: 'freeze'
+E             Use -v to get more diff
+
+tests/e2e/test_named_qualification.py:121: AssertionError
+----------------------------- Captured stdout call -----------------------------
+Native qualification events: .agent/remaining-qualification/native-events/c4c05302d0204bc1aa403a6ef8c5e3f8.json
+----------------------------- Captured stderr call -----------------------------
+{"timestamp":"2026-11-21T09:16:45.633Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"7a669ebe80414a14b26d7d52b9322c6f","method":"GET"}
+{"timestamp":"2026-11-21T09:16:45.673Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"7a669ebe80414a14b26d7d52b9322c6f","method":"GET","route":"/ui/","status_code":200,"duration_ms":40.212}
+{"timestamp":"2026-11-21T09:16:45.692Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"b67185b92c944b7a977320435fcd6480","method":"GET"}
+{"timestamp":"2026-11-21T09:16:45.703Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"b67185b92c944b7a977320435fcd6480","method":"GET","route":"/ui/assets/app.css","status_code":200,"duration_ms":10.795}
+{"timestamp":"2026-11-21T09:16:45.710Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"cb606264f120470bb646026730cb8b39","method":"GET"}
+{"timestamp":"2026-11-21T09:16:45.710Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"98f6f28eee414937b70fac838728a61c","method":"GET"}
+{"timestamp":"2026-11-21T09:16:45.718Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"cb606264f120470bb646026730cb8b39","method":"GET","route":"/ui/assets/named-app.js","status_code":200,"duration_ms":8.63}
+{"timestamp":"2026-11-21T09:16:45.719Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"98f6f28eee414937b70fac838728a61c","method":"GET","route":"/ui/assets/vaultbridge-logo.webp","status_code":200,"duration_ms":8.401}
+{"timestamp":"2026-11-21T09:16:45.757Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"67713003803a4fd3859c43e2fb8aacdf","method":"GET"}
+{"timestamp":"2026-11-21T09:16:45.757Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"ffdf85f255c24e1a87f81f7c2997fe2c","method":"GET"}
+{"timestamp":"2026-11-21T09:16:45.764Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"4c31f88893ec481d93da1e693f0a6a16","method":"GET"}
+{"timestamp":"2026-11-21T09:16:45.768Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"ffdf85f255c24e1a87f81f7c2997fe2c","method":"GET","route":"/ui/assets/named-session.js","status_code":200,"duration_ms":10.832}
+{"timestamp":"2026-11-21T09:16:45.768Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"67713003803a4fd3859c43e2fb8aacdf","method":"GET","route":"/ui/assets/scoped-client.js","status_code":200,"duration_ms":11.533}
+{"timestamp":"2026-11-21T09:16:45.770Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"4c31f88893ec481d93da1e693f0a6a16","method":"GET","route":"/ui/assets/spaces.js","status_code":200,"duration_ms":6.362}
+{"timestamp":"2026-11-21T09:16:45.821Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"d605aa0ad83148b98433c9ec4b775139","method":"GET"}
+{"timestamp":"2026-11-21T09:16:45.825Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"d605aa0ad83148b98433c9ec4b775139","method":"GET","status_code":404,"duration_ms":4.27}
+{"timestamp":"2026-11-21T09:16:45.930Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"00db399974824cbf810b059b4b06f23e","method":"POST"}
+{"timestamp":"2026-11-21T09:16:45.932Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"00db399974824cbf810b059b4b06f23e","method":"POST","route":"/ui/session","status_code":200,"duration_ms":1.79}
+{"timestamp":"2026-11-21T09:16:45.940Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"de60ddbd039c485ba100819372dd1056","method":"GET"}
+{"timestamp":"2026-11-21T09:16:45.942Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"de60ddbd039c485ba100819372dd1056","method":"GET","route":"/api/v1/knowledge/spaces","status_code":200,"duration_ms":1.791}
+{"timestamp":"2026-11-21T09:16:45.992Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"693ea43da51640668eb1f0e88648b512","method":"GET"}
+{"timestamp":"2026-11-21T09:16:45.998Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"693ea43da51640668eb1f0e88648b512","method":"GET","route":"/api/v1/knowledge/spaces/status","status_code":200,"duration_ms":5.602}
+{"timestamp":"2026-11-21T09:16:46.113Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"1c15a3cd09b944f2a428ee24c44da59c","method":"GET"}
+{"timestamp":"2026-11-21T09:16:46.117Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"1c15a3cd09b944f2a428ee24c44da59c","method":"GET","route":"/api/v1/knowledge/spaces/status","status_code":200,"duration_ms":3.725}
+{"timestamp":"2026-11-21T09:16:46.177Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"bc1b9bab2d10475eb8b781d627d8ec09","method":"GET"}
+{"timestamp":"2026-11-21T09:16:46.192Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"bc1b9bab2d10475eb8b781d627d8ec09","method":"GET","route":"/ui/","status_code":200,"duration_ms":15.922}
+{"timestamp":"2026-11-21T09:16:46.204Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"c72607429308421985317890e6937561","method":"GET"}
+{"timestamp":"2026-11-21T09:16:46.206Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"9710310367a64592ac50e56c79c96990","method":"GET"}
+{"timestamp":"2026-11-21T09:16:46.209Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"1bf1007e3656429caec2c1a1b5beaed5","method":"GET"}
+{"timestamp":"2026-11-21T09:16:46.244Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"1bf1007e3656429caec2c1a1b5beaed5","method":"GET","route":"/ui/assets/named-app.js","status_code":200,"duration_ms":35.369}
+{"timestamp":"2026-11-21T09:16:46.245Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"c72607429308421985317890e6937561","method":"GET","route":"/ui/assets/app.css","status_code":200,"duration_ms":41.082}
+{"timestamp":"2026-11-21T09:16:46.250Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"601dd358526e45a6aa34e285c223a57c","method":"GET"}
+{"timestamp":"2026-11-21T09:16:46.252Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"e0431f85ea124f0788381f060082add3","method":"GET"}
+{"timestamp":"2026-11-21T09:16:46.261Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"9710310367a64592ac50e56c79c96990","method":"GET","route":"/ui/assets/vaultbridge-logo.webp","status_code":200,"duration_ms":55.102}
+{"timestamp":"2026-11-21T09:16:46.263Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"b5c2970dc4974e48bd172d8f054d3a59","method":"GET"}
+{"timestamp":"2026-11-21T09:16:46.284Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"e0431f85ea124f0788381f060082add3","method":"GET","route":"/ui/assets/scoped-client.js","status_code":200,"duration_ms":31.752}
+{"timestamp":"2026-11-21T09:16:46.287Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"601dd358526e45a6aa34e285c223a57c","method":"GET","route":"/ui/assets/named-session.js","status_code":200,"duration_ms":37.41}
+{"timestamp":"2026-11-21T09:16:46.299Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"b5c2970dc4974e48bd172d8f054d3a59","method":"GET","route":"/ui/assets/spaces.js","status_code":200,"duration_ms":36.292}
+{"timestamp":"2026-11-21T09:16:46.363Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"a00a5735ff114a7380f333fcc60a7677","method":"GET"}
+{"timestamp":"2026-11-21T09:16:46.364Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"a00a5735ff114a7380f333fcc60a7677","method":"GET","route":"/ui/session","status_code":200,"duration_ms":0.908}
+{"timestamp":"2026-11-21T09:16:46.378Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"7fe356aa8b314ca9a18b990905436841","method":"GET"}
+{"timestamp":"2026-11-21T09:16:46.380Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"7fe356aa8b314ca9a18b990905436841","method":"GET","route":"/api/v1/knowledge/spaces","status_code":200,"duration_ms":2.347}
+{"timestamp":"2026-11-21T09:16:46.434Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"d8f31df4b62b4c99b66e0455261be55b","method":"GET"}
+{"timestamp":"2026-11-21T09:16:46.438Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"d8f31df4b62b4c99b66e0455261be55b","method":"GET","route":"/api/v1/knowledge/spaces/status","status_code":200,"duration_ms":3.462}
+{"timestamp":"2026-11-21T09:16:46.642Z","level":"INFO","logger":"vaultbridge.http","event":"request_started","message":"HTTP request started","request_id":"f5480bce0f304cce95dda6de011ecc11","method":"DELETE"}
+{"timestamp":"2026-11-21T09:16:46.643Z","level":"INFO","logger":"vaultbridge.http","event":"request_completed","message":"HTTP request completed","request_id":"f5480bce0f304cce95dda6de011ecc11","method":"DELETE","route":"/ui/session","status_code":200,"duration_ms":1.384}
+- generated xml file: <VB156B_SOURCE>/.agent/remaining-qualification/linux-frozen.xml -
+=========================== short test summary info ============================
+FAILED tests/e2e/test_named_qualification.py::test_native_frozen_tab_logout[root-https]
+FAILED tests/e2e/test_named_qualification.py::test_native_frozen_tab_logout[prefix-https]
+2 failed, 12 deselected in 5.87s

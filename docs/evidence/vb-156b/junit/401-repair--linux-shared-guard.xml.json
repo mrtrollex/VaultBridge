@@ -1,0 +1,556 @@
+[
+  {
+    "attributes": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "60",
+      "time": "133.758",
+      "timestamp": "2026-11-21T15:37:33.800626+01:00"
+    },
+    "properties": [],
+    "cases": [
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-chromium-json-discovery-other_tab]",
+          "time": "2.198"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-chromium-json-status-other_tab]",
+          "time": "1.689"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-chromium-empty-discovery-other_tab]",
+          "time": "1.592"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-chromium-empty-status-other_tab]",
+          "time": "1.721"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-chromium-malformed-discovery-other_tab]",
+          "time": "1.737"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-chromium-malformed-status-other_tab]",
+          "time": "1.545"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-chromium-truncated-discovery-other_tab]",
+          "time": "2.118"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-chromium-truncated-status-other_tab]",
+          "time": "1.638"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-chromium-non-json-discovery-other_tab]",
+          "time": "2.023"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-chromium-non-json-status-other_tab]",
+          "time": "1.620"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-chromium-json-discovery-other_tab]",
+          "time": "1.704"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-chromium-json-status-other_tab]",
+          "time": "1.901"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-chromium-empty-discovery-other_tab]",
+          "time": "1.844"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-chromium-empty-status-other_tab]",
+          "time": "1.764"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-chromium-malformed-discovery-other_tab]",
+          "time": "2.142"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-chromium-malformed-status-other_tab]",
+          "time": "1.732"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-chromium-truncated-discovery-other_tab]",
+          "time": "1.505"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-chromium-truncated-status-other_tab]",
+          "time": "1.463"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-chromium-non-json-discovery-other_tab]",
+          "time": "1.521"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-chromium-non-json-status-other_tab]",
+          "time": "1.775"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-firefox-json-discovery-other_tab]",
+          "time": "3.812"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-firefox-json-status-other_tab]",
+          "time": "2.517"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-firefox-empty-discovery-other_tab]",
+          "time": "1.913"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-firefox-empty-status-other_tab]",
+          "time": "2.394"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-firefox-malformed-discovery-other_tab]",
+          "time": "2.315"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-firefox-malformed-status-other_tab]",
+          "time": "1.965"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-firefox-truncated-discovery-other_tab]",
+          "time": "2.321"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-firefox-truncated-status-other_tab]",
+          "time": "1.881"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-firefox-non-json-discovery-other_tab]",
+          "time": "1.888"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-firefox-non-json-status-other_tab]",
+          "time": "3.944"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-firefox-json-discovery-other_tab]",
+          "time": "2.468"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-firefox-json-status-other_tab]",
+          "time": "2.502"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-firefox-empty-discovery-other_tab]",
+          "time": "2.318"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-firefox-empty-status-other_tab]",
+          "time": "1.922"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-firefox-malformed-discovery-other_tab]",
+          "time": "1.828"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-firefox-malformed-status-other_tab]",
+          "time": "2.390"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-firefox-truncated-discovery-other_tab]",
+          "time": "1.880"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-firefox-truncated-status-other_tab]",
+          "time": "1.869"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-firefox-non-json-discovery-other_tab]",
+          "time": "2.449"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-firefox-non-json-status-other_tab]",
+          "time": "4.468"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-webkit-json-discovery-other_tab]",
+          "time": "2.830"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-webkit-json-status-other_tab]",
+          "time": "2.435"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-webkit-empty-discovery-other_tab]",
+          "time": "2.430"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-webkit-empty-status-other_tab]",
+          "time": "2.567"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-webkit-malformed-discovery-other_tab]",
+          "time": "2.216"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-webkit-malformed-status-other_tab]",
+          "time": "2.239"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-webkit-truncated-discovery-other_tab]",
+          "time": "2.336"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-webkit-truncated-status-other_tab]",
+          "time": "2.540"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-webkit-non-json-discovery-other_tab]",
+          "time": "2.311"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[root-https-webkit-non-json-status-other_tab]",
+          "time": "2.324"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-webkit-json-discovery-other_tab]",
+          "time": "2.500"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-webkit-json-status-other_tab]",
+          "time": "2.361"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-webkit-empty-discovery-other_tab]",
+          "time": "2.341"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-webkit-empty-status-other_tab]",
+          "time": "2.355"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-webkit-malformed-discovery-other_tab]",
+          "time": "2.337"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-webkit-malformed-status-other_tab]",
+          "time": "2.488"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-webkit-truncated-discovery-other_tab]",
+          "time": "2.604"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-webkit-truncated-status-other_tab]",
+          "time": "2.419"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-webkit-non-json-discovery-other_tab]",
+          "time": "2.496"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      },
+      {
+        "attributes": {
+          "classname": "tests.e2e.test_named_dashboard",
+          "name": "test_stale_protected_read_401_after_reauthentication[prefix-https-webkit-non-json-status-other_tab]",
+          "time": "2.400"
+        },
+        "outcome": "passed",
+        "diagnostics": []
+      }
+    ]
+  }
+]

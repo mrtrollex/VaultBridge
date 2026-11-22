@@ -1,0 +1,12 @@
+# Additional retained invocation evidence
+
+A Windows-to-WSL nested-quote invocation intended to select `history or public_control`
+was parsed as a narrower Chromium history selection. It printed `4 passed, 8 deselected
+in 12.36s` to the tool terminal, without the intended redirected log or JUnit. Its
+four explicit native trace archives and event JSON were retained. This invocation
+is not the three-engine qualification result. The subsequent `run_linux_history.py`
+uses structured subprocess arguments and retains the complete 24-case native run,
+full log, JUnit, build manifest and traces without shell-quote ambiguity.
+
+The initial inline Linux build-manifest command also failed parsing before doing
+work; the structured wrapper successfully wrote browser-builds-linux.json.

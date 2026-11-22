@@ -1,0 +1,24 @@
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+root = Path('.agent/401-repair')
+task = ('Implement VB-156B named Knowledge Spaces Dashboard foundation according to accepted ADR 0011 section 13, '
+        'including named browser sessions, policy-filtered discovery, explicit selection, selected-space status, '
+        'security regression tests and legacy compatibility.')
+assert task in Path('.agent/task_packet.md').read_text(encoding='utf-8')
+assert task in (root / 'review_packet.before.md').read_text(encoding='utf-8')
+environment = dict(os.environ)
+environment['PATH'] = r'C:\Program Files\Docker\Docker\resources\bin' + os.pathsep + environment['PATH']
+command = [sys.executable, 'scripts/agent_finish.py', '--task', task]
+with (root / 'agent-finish.log').open('wb') as output:
+    output.write((json.dumps(command) + '\n').encode())
+    output.flush()
+    result = subprocess.run(command, env=environment, stdout=output, stderr=subprocess.STDOUT, check=False)
+(root / 'agent-finish.exit').write_text(str(result.returncode))
+print('agent_finish.py exit:', result.returncode)
+print('Generated packet:', Path('.agent/review_packet.md').is_file())
+print((root / 'agent-finish.log').read_text(encoding='utf-8')[-4500:])
+sys.exit(result.returncode)

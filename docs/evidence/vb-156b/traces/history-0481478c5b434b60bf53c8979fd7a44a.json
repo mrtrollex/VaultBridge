@@ -1,0 +1,66 @@
+{
+  "raw_trace_sha256": "b818d9eb9e423a775fa7af2f2b60e9e8b195d27117aeae4db4fbfaaff16ecf41",
+  "original_trace": "VB156B_SOURCE/.agent/remaining-qualification/native-traces/0481478c5b434b60bf53c8979fd7a44a.zip",
+  "members": [
+    {
+      "member": "trace.trace",
+      "sha256": "9904f7a3a5ae5b4a2300a38bbe1244408b49964228e1826213e9b60775d543e3",
+      "events": [
+        {
+          "type": "context-options",
+          "browserName": "chromium",
+          "playwrightVersion": "1.64.0-beta-1791568591000",
+          "platform": "linux",
+          "wallTime": 1795253089423,
+          "title": null
+        }
+      ]
+    },
+    {
+      "member": "trace.network",
+      "sha256": "58114f19fe436270008a90dea5aeca434bada6a74132ac4e97868c0e1eac6fdd",
+      "events": [
+        {
+          "line": 1,
+          "startedDateTime": "2026-11-21T09:24:49.509Z",
+          "request": {
+            "method": "GET",
+            "scheme": "https",
+            "host": "vaultbridge.example.test",
+            "port": 47673,
+            "path": "/public",
+            "case": null,
+            "cookie_header_present": false,
+            "cookie_names": [],
+            "sec_fetch_site": "none",
+            "origin_present": false
+          },
+          "response": {
+            "status": 200,
+            "set_cookie": []
+          }
+        },
+        {
+          "line": 2,
+          "startedDateTime": "2026-11-21T09:24:49.644Z",
+          "request": {
+            "method": "GET",
+            "scheme": "https",
+            "host": "vaultbridge.example.test",
+            "port": 45687,
+            "path": "/health/live",
+            "case": null,
+            "cookie_header_present": false,
+            "cookie_names": [],
+            "sec_fetch_site": "same-site",
+            "origin_present": false
+          },
+          "response": {
+            "status": 200,
+            "set_cookie": []
+          }
+        }
+      ]
+    }
+  ]
+}

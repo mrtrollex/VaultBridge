@@ -1,0 +1,7 @@
+Source: https://github.com/microsoft/playwright/blob/v1.64.0/browser_patches/firefox/preferences/playwright.cfg
+[
+  {
+    "line": 45,
+    "context": "pref(\"fission.webContentIsolationStrategy\", 0);\n\n// Disable BFCache in parent process.\n// We also separately disable BFCache in content via docSchell property.\npref(\"fission.bfcacheInParent\", false);\n\n// Disable first-party-based cookie partitioning.\n// When it is enabled, we have to retain \"thirdPartyCookie^\" permissions\n// in the storageState."
+  }
+]

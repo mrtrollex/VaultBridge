@@ -1,0 +1,4 @@
+["<USER_HOME>/.venvs/vaultbridge-d1-verification/bin/python", "-m", "pytest", "tests/e2e/test_named_qualification.py", "-k", "history or public_control", "--browser", "chromium", "--browser", "firefox", "--browser", "webkit", "-o", "addopts=", "-q", "--junitxml", ".agent/remaining-qualification/linux-history-traced.xml"]
+........................                                                 [100%]
+- generated xml file: <VB156B_SOURCE>/.agent/remaining-qualification/linux-history-traced.xml -
+24 passed, 12 deselected in 46.34s

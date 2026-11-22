@@ -1,0 +1,182 @@
+[
+  {
+    "command_id": "cmd-1",
+    "recorded_utc": "2026-11-20T16:57:14.396Z",
+    "exact_command_sanitized": "& ../VaultBridge/.venv/Scripts/python.exe -m pytest --ignore=tests/e2e -q > .agent/vb156b-backend.log 2>&1",
+    "source_session": "CODEX_SESSION/rollout-2026-11-20T17-22-33-01a1f9c4-4ba9-7723-b308-ffa8b5f0905a.jsonl"
+  },
+  {
+    "command_id": "cmd-2",
+    "recorded_utc": "2026-11-20T17:02:50.710Z",
+    "exact_command_sanitized": "Get-Content scripts/agent_check.py -Encoding utf8 | Select-Object -Skip 426 -First 170; Get-Content scripts/agent_finish.py -Encoding utf8 | Select-Object -First 180; Get-Content .agent/vb156b-backend.log -Tail 3",
+    "source_session": "CODEX_SESSION/rollout-2026-11-20T17-22-33-01a1f9c4-4ba9-7723-b308-ffa8b5f0905a.jsonl"
+  },
+  {
+    "command_id": "cmd-3",
+    "recorded_utc": "2026-11-20T17:06:57.495Z",
+    "exact_command_sanitized": "$env:PYTEST_ADDOPTS='-o addopts='; & ../VaultBridge/.venv/Scripts/python.exe scripts/agent_finish.py --task \"Implement VB-156B named Knowledge Spaces Dashboard foundation according to accepted ADR 0011 section 13, including named browser sessions, policy-filtered discovery, explicit selection, selected-space status, security regression tests and legacy compatibility.\" > .agent/vb156b-finish.log 2>&1",
+    "source_session": "CODEX_SESSION/rollout-2026-11-20T17-22-33-01a1f9c4-4ba9-7723-b308-ffa8b5f0905a.jsonl"
+  },
+  {
+    "command_id": "cmd-4",
+    "recorded_utc": "2026-11-20T17:09:17.031Z",
+    "exact_command_sanitized": "$env:PYTEST_ADDOPTS='-o addopts='; & ../VaultBridge/.venv/Scripts/python.exe scripts/agent_finish.py --task \"Implement VB-156B named Knowledge Spaces Dashboard foundation according to accepted ADR 0011 section 13, including named browser sessions, policy-filtered discovery, explicit selection, selected-space status, security regression tests and legacy compatibility.\" > .agent/vb156b-finish.log 2>&1",
+    "source_session": "CODEX_SESSION/rollout-2026-11-20T17-22-33-01a1f9c4-4ba9-7723-b308-ffa8b5f0905a.jsonl"
+  },
+  {
+    "command_id": "cmd-5",
+    "recorded_utc": "2026-11-20T17:16:01.600Z",
+    "exact_command_sanitized": "& ../VaultBridge/.venv/Scripts/python.exe -m pytest --collect-only --ignore=tests/e2e -o addopts='' -q > .agent/vb156b-collection-final.log; @'\nimport re\nfrom pathlib import Path\nlines=Path('.agent/vb156b-finish.log').read_text(encoding='utf-16').splitlines()\nprogress=''.join(re.match(r'^([.sFxE]+)',line).group(1) for line in lines if re.match(r'^([.sFxE]+)',line))\nnodes=[s for s in Path('.agent/vb156b-collection-final.log').read_text(encoding='utf-16').splitlines() if '::' in s]\nfor i,c in enumerate(progress):\n    if c in 'FE': print(i+1, nodes[i])\nprint('completed',len(progress),'of',len(nodes))\n'@ | & ../VaultBridge/.venv/Scripts/python.exe -",
+    "source_session": "CODEX_SESSION/rollout-2026-11-20T17-22-33-01a1f9c4-4ba9-7723-b308-ffa8b5f0905a.jsonl"
+  },
+  {
+    "command_id": "cmd-6",
+    "recorded_utc": "2026-11-20T17:17:58.843Z",
+    "exact_command_sanitized": "& ../VaultBridge/.venv/Scripts/python.exe -m pytest tests/test_policy_read_adapters.py -k 'named_health_ui_cookie_fences or named_ui_fence_handles_proxy_root_path' -o addopts='' -q; & ../VaultBridge/.venv/Scripts/python.exe -m ruff check app tests scripts; git diff --check; Get-Content .agent/vb156b-finish.log -Tail 4",
+    "source_session": "CODEX_SESSION/rollout-2026-11-20T17-22-33-01a1f9c4-4ba9-7723-b308-ffa8b5f0905a.jsonl"
+  },
+  {
+    "command_id": "cmd-7",
+    "recorded_utc": "2026-11-20T17:25:56.141Z",
+    "exact_command_sanitized": "Copy-Item -LiteralPath .agent/vb156b-finish.log -Destination .agent/vb156b-finish-initial.log; $env:PYTEST_ADDOPTS='-o addopts='; & ../VaultBridge/.venv/Scripts/python.exe scripts/agent_finish.py --task \"Implement VB-156B named Knowledge Spaces Dashboard foundation according to accepted ADR 0011 section 13, including named browser sessions, policy-filtered discovery, explicit selection, selected-space status, security regression tests and legacy compatibility.\" > .agent/vb156b-finish.log 2>&1",
+    "source_session": "CODEX_SESSION/rollout-2026-11-20T17-22-33-01a1f9c4-4ba9-7723-b308-ffa8b5f0905a.jsonl"
+  },
+  {
+    "command_id": "cmd-8",
+    "recorded_utc": "2026-11-21T07:59:39.509Z",
+    "exact_command_sanitized": "& ../VaultBridge/.venv/Scripts/python.exe -m pytest tests/e2e/test_named_cookie_delivery.py --browser webkit -o addopts='' --output=.agent/windows-webkit-traces --tracing retain-on-failure --junitxml=.agent/vb156b-windows-webkit-control.xml -q > .agent/vb156b-windows-webkit-control.log 2>&1\nexit $LASTEXITCODE",
+    "source_session": "CODEX_SESSION/rollout-2026-11-20T17-22-33-01a1f9c4-4ba9-7723-b308-ffa8b5f0905a.jsonl"
+  },
+  {
+    "command_id": "cmd-9",
+    "recorded_utc": "2026-11-21T08:04:12.916Z",
+    "exact_command_sanitized": "if (-not (Test-Path -LiteralPath .agent/vb156b-finish-original.log)) { Copy-Item -LiteralPath .agent/vb156b-finish.log -Destination .agent/vb156b-finish-original.log }\n$env:PATH = 'C:\\Program Files\\Docker\\Docker\\resources\\bin;' + $env:PATH\n$env:PYTHONUNBUFFERED = '1'\n$env:PYTEST_ADDOPTS = '-o addopts='\n& ../VaultBridge/.venv/Scripts/python.exe scripts/agent_finish.py --task \"Implement VB-156B named Knowledge Spaces Dashboard foundation according to accepted ADR 0011 section 13, including named browser sessions, policy-filtered discovery, explicit selection, selected-space status, security regression tests and legacy compatibility.\" > .agent/vb156b-finish.log 2>&1\n$taskFinishExit = $LASTEXITCODE\nSet-Content -LiteralPath .agent/vb156b-finish.exit -Value $taskFinishExit\nexit $taskFinishExit",
+    "source_session": "CODEX_SESSION/rollout-2026-11-20T17-22-33-01a1f9c4-4ba9-7723-b308-ffa8b5f0905a.jsonl"
+  },
+  {
+    "command_id": "cmd-10",
+    "recorded_utc": "2026-11-21T08:23:15.719Z",
+    "exact_command_sanitized": "@'\nimport subprocess,sys\nnode='tests/e2e/test_named_dashboard.py::test_orphan_mutation_quarantined[root-https-chromium-close-DELETE]'\nfor attempt in range(1,31):\n    print('EXACT NODE ATTEMPT',attempt,flush=True)\n    result=subprocess.run([sys.executable,'-m','pytest',node,'--browser=chromium','--tracing=retain-on-failure','--output=.agent/bootstrap-repro-traces','-o','addopts=','-q'])\n    if result.returncode:raise SystemExit(result.returncode)\n'@ | & ../VaultBridge/.venv/Scripts/python.exe - > .agent/vb156b-bootstrap-repro.log 2>&1\nexit $LASTEXITCODE",
+    "source_session": "CODEX_SESSION/rollout-2026-11-20T17-22-33-01a1f9c4-4ba9-7723-b308-ffa8b5f0905a.jsonl"
+  },
+  {
+    "command_id": "cmd-11",
+    "recorded_utc": "2026-11-21T08:24:47.593Z",
+    "exact_command_sanitized": "@'\nimport tempfile,json\nfrom pathlib import Path\nfrom playwright.sync_api import sync_playwright,expect\nfrom tests.e2e.named_server import named_server\nwith tempfile.TemporaryDirectory() as tmp,named_server(Path(tmp),'') as server,sync_playwright() as p:\n    browser=p.chromium.launch()\n    for attempt in range(1,301):\n        context=browser.new_context(ignore_https_errors=True,proxy=server['proxy'])\n        context.tracing.start(screenshots=True,snapshots=True,sources=True)\n        failures=[]; errors=[]\n        context.on('requestfailed',lambda r:failures.append([r.url,r.failure]))\n        page=context.new_page(); page.on('pageerror',lambda e:errors.append(str(e)))\n        page.on('console',lambda msg:errors.append(msg.text) if msg.type=='error' else None)\n        try:\n            page.goto(server['url']+'/ui/')\n            expect(page.locator('#unlock-form')).to_be_visible(timeout=30000)\n        except Exception:\n            print('NATIVE BOOTSTRAP FAILURE',json.dumps(dict(attempt=attempt,failures=failures,errors=errors,message=page.locator('#session-message').text_content())),flush=True)\n            context.tracing.stop(path='.agent/vb156b-bootstrap-native-failure.zip')\n            context.close();browser.close();raise\n        context.tracing.stop();context.close()\n        if attempt%25==0:print('NATIVE BOOTSTRAP PASSED',attempt,flush=True)\n    browser.close()\n'@ | & ../VaultBridge/.venv/Scripts/python.exe - > .agent/vb156b-bootstrap-native.log 2>&1\nexit $LASTEXITCODE",
+    "source_session": "CODEX_SESSION/rollout-2026-11-20T17-22-33-01a1f9c4-4ba9-7723-b308-ffa8b5f0905a.jsonl"
+  },
+  {
+    "command_id": "cmd-12",
+    "recorded_utc": "2026-11-21T08:26:01.706Z",
+    "exact_command_sanitized": "& ../VaultBridge/.venv/Scripts/python.exe -m pytest tests/e2e --browser chromium -o addopts='' --tracing retain-on-failure --output=.agent/vb156b-bootstrap-suite-traces -q > .agent/vb156b-bootstrap-suite.log 2>&1\nexit $LASTEXITCODE",
+    "source_session": "CODEX_SESSION/rollout-2026-11-20T17-22-33-01a1f9c4-4ba9-7723-b308-ffa8b5f0905a.jsonl"
+  },
+  {
+    "command_id": "cmd-13",
+    "recorded_utc": "2026-11-21T08:26:01.706Z",
+    "exact_command_sanitized": "@'\nimport tempfile,json\nfrom pathlib import Path\nfrom playwright.sync_api import sync_playwright,expect\nfrom tests.e2e.named_server import named_server\nwith tempfile.TemporaryDirectory() as tmp,sync_playwright() as p:\n    browser=p.chromium.launch()\n    for attempt in range(1,201):\n        root=Path(tmp)/str(attempt);root.mkdir()\n        with named_server(root,'') as server:\n            context=browser.new_context(ignore_https_errors=True,proxy=server['proxy'])\n            context.tracing.start(screenshots=True,snapshots=True,sources=True)\n            failures=[];errors=[]\n            context.on('requestfailed',lambda r:failures.append([r.url,r.failure]))\n            page=context.new_page();page.on('pageerror',lambda e:errors.append(str(e)))\n            page.on('console',lambda msg:errors.append(msg.text) if msg.type=='error' else None)\n            try:\n                page.goto(server['url']+'/ui/')\n                expect(page.locator('#unlock-form')).to_be_visible(timeout=30000)\n            except Exception:\n                print('NATIVE FRESH BOOTSTRAP FAILURE',json.dumps(dict(attempt=attempt,failures=failures,errors=errors,message=page.locator('#session-message').text_content())),flush=True)\n                context.tracing.stop(path='.agent/vb156b-bootstrap-fresh-failure.zip')\n                context.close();browser.close();raise\n            context.tracing.stop();context.close()\n        if attempt%10==0:print('NATIVE FRESH BOOTSTRAP PASSED',attempt,flush=True)\n    browser.close()\n'@ | & ../VaultBridge/.venv/Scripts/python.exe - > .agent/vb156b-bootstrap-fresh.log 2>&1\nexit $LASTEXITCODE",
+    "source_session": "CODEX_SESSION/rollout-2026-11-20T17-22-33-01a1f9c4-4ba9-7723-b308-ffa8b5f0905a.jsonl"
+  },
+  {
+    "command_id": "cmd-14",
+    "recorded_utc": "2026-11-21T08:27:51.538Z",
+    "exact_command_sanitized": "& ../VaultBridge/.venv/Scripts/python.exe -m pytest tests/e2e/test_named_cookie_delivery.py --browser webkit -o addopts='' --output=.agent/windows-webkit-traces --tracing retain-on-failure --junitxml=.agent/vb156b-windows-webkit-control.xml -q > .agent/vb156b-windows-webkit-control.log 2>&1\nexit $LASTEXITCODE",
+    "source_session": "CODEX_SESSION/rollout-2026-11-20T17-22-33-01a1f9c4-4ba9-7723-b308-ffa8b5f0905a.jsonl"
+  },
+  {
+    "command_id": "cmd-15",
+    "recorded_utc": "2026-11-21T08:30:36.580Z",
+    "exact_command_sanitized": "$env:PATH = 'C:\\Program Files\\Docker\\Docker\\resources\\bin;' + $env:PATH\n$env:PYTHONUNBUFFERED = '1'\n$env:PYTEST_ADDOPTS = '-o addopts='\n& ../VaultBridge/.venv/Scripts/python.exe scripts/agent_finish.py --task \"Implement VB-156B named Knowledge Spaces Dashboard foundation according to accepted ADR 0011 section 13, including named browser sessions, policy-filtered discovery, explicit selection, selected-space status, security regression tests and legacy compatibility.\" > .agent/vb156b-finish.log 2>&1\n$taskFinishExit = $LASTEXITCODE\nSet-Content -LiteralPath .agent/vb156b-finish.exit -Value $taskFinishExit\nexit $taskFinishExit",
+    "source_session": "CODEX_SESSION/rollout-2026-11-20T17-22-33-01a1f9c4-4ba9-7723-b308-ffa8b5f0905a.jsonl"
+  },
+  {
+    "command_id": "cmd-16",
+    "recorded_utc": "2026-11-21T09:06:38.073Z",
+    "exact_command_sanitized": "Get-Content app/ui/assets/spaces.js; Get-Content app/ui/assets/scoped-client.js; Get-Content app/ui/named.html; Get-Content app/ui/router.py | Select-Object -First 65; Get-Content docs/adr/0011-named-knowledge-spaces-dashboard.md -Encoding utf8 | Select-Object -Skip 337 -First 62; Get-Content .agent/vb156b-windows-webkit-control.log -Tail 12; Get-Content scripts/agent_finish.py | Select-Object -First 130; wsl -e sh -c 'id; ls <USER_HOME>/.venvs'",
+    "source_session": "CODEX_SESSION/rollout-2026-11-21T10-05-32-01a1fd5a-8d3f-7083-8b87-5556af166e3a.jsonl"
+  },
+  {
+    "command_id": "cmd-17",
+    "recorded_utc": "2026-11-21T09:09:51.249Z",
+    "exact_command_sanitized": "Copy-Item .agent/remaining-qualification/windows-chromium.log .agent/remaining-qualification/windows-chromium-observer-failure.log; & ../VaultBridge/.venv/Scripts/python.exe -m pytest tests/e2e/test_named_qualification.py --browser chromium --browser firefox --browser webkit -o addopts= -q --tracing retain-on-failure --output .agent/remaining-qualification/traces-windows-v2 --junitxml .agent/remaining-qualification/windows-qualification.xml *> .agent/remaining-qualification/windows-qualification.log; Get-Content .agent/remaining-qualification/windows-qualification.log -Tail 30",
+    "source_session": "CODEX_SESSION/rollout-2026-11-21T10-05-32-01a1fd5a-8d3f-7083-8b87-5556af166e3a.jsonl"
+  },
+  {
+    "command_id": "cmd-18",
+    "recorded_utc": "2026-11-21T09:10:12.272Z",
+    "exact_command_sanitized": "wsl -e sh -c 'cd <VB156B_SOURCE> && <USER_HOME>/.venvs/vaultbridge-d1-verification/bin/python -m pytest tests/e2e/test_named_qualification.py --browser chromium --browser firefox --browser webkit -o addopts= -q --tracing retain-on-failure --output .agent/remaining-qualification/traces-linux --junitxml .agent/remaining-qualification/linux-qualification.xml > .agent/remaining-qualification/linux-qualification.log 2>&1'; Get-Content .agent/remaining-qualification/linux-qualification.log -Tail 25",
+    "source_session": "CODEX_SESSION/rollout-2026-11-21T10-05-32-01a1fd5a-8d3f-7083-8b87-5556af166e3a.jsonl"
+  },
+  {
+    "command_id": "cmd-19",
+    "recorded_utc": "2026-11-21T09:11:40.572Z",
+    "exact_command_sanitized": "& ../VaultBridge/.venv/Scripts/python.exe -m pytest tests/e2e/test_named_qualification.py -k 'history or public_control' --browser chromium --browser firefox --browser webkit -o addopts= -q --tracing on --output .agent/remaining-qualification/traces-history-windows --junitxml .agent/remaining-qualification/windows-history.xml *> .agent/remaining-qualification/windows-history.log; Get-Content .agent/remaining-qualification/windows-history.log -Tail 30",
+    "source_session": "CODEX_SESSION/rollout-2026-11-21T10-05-32-01a1fd5a-8d3f-7083-8b87-5556af166e3a.jsonl"
+  },
+  {
+    "command_id": "cmd-20",
+    "recorded_utc": "2026-11-21T09:13:05.142Z",
+    "exact_command_sanitized": "& ../VaultBridge/.venv/Scripts/python.exe -m ruff check app tests scripts; & ../VaultBridge/.venv/Scripts/python.exe -m pytest tests/test_named_dashboard.py tests/test_ui_session.py -o addopts= -q --junitxml .agent/remaining-qualification/backend.xml *> .agent/remaining-qualification/backend.log; Get-Content .agent/remaining-qualification/backend.log -Tail 5",
+    "source_session": "CODEX_SESSION/rollout-2026-11-21T10-05-32-01a1fd5a-8d3f-7083-8b87-5556af166e3a.jsonl"
+  },
+  {
+    "command_id": "cmd-21",
+    "recorded_utc": "2026-11-21T09:14:12.668Z",
+    "exact_command_sanitized": "wsl -e sh -c 'cd <VB156B_SOURCE> && <USER_HOME>/.venvs/vaultbridge-d1-verification/bin/python -m pytest tests/e2e/test_named_dashboard.py tests/e2e/test_named_cookie_delivery.py tests/e2e/test_named_qualification.py --browser chromium --browser firefox --browser webkit -o addopts= -q --tracing retain-on-failure --output .agent/remaining-qualification/traces-linux-final --junitxml .agent/remaining-qualification/linux-final.xml > .agent/remaining-qualification/linux-final.log 2>&1'; Get-Content .agent/remaining-qualification/linux-final.log -Tail 20",
+    "source_session": "CODEX_SESSION/rollout-2026-11-21T10-05-32-01a1fd5a-8d3f-7083-8b87-5556af166e3a.jsonl"
+  },
+  {
+    "command_id": "cmd-22",
+    "recorded_utc": "2026-11-21T09:14:47.520Z",
+    "exact_command_sanitized": "& ../VaultBridge/.venv/Scripts/python.exe -m pytest tests/e2e/test_named_dashboard.py tests/e2e/test_named_cookie_delivery.py tests/e2e/test_named_qualification.py --browser chromium --browser firefox -o addopts= -q --tracing retain-on-failure --output .agent/remaining-qualification/traces-windows-final --junitxml .agent/remaining-qualification/windows-final.xml *> .agent/remaining-qualification/windows-final.log; Get-Content .agent/remaining-qualification/windows-final.log -Tail 15",
+    "source_session": "CODEX_SESSION/rollout-2026-11-21T10-05-32-01a1fd5a-8d3f-7083-8b87-5556af166e3a.jsonl"
+  },
+  {
+    "command_id": "cmd-23",
+    "recorded_utc": "2026-11-21T09:15:30.339Z",
+    "exact_command_sanitized": "& ../VaultBridge/.venv/Scripts/python.exe -m pytest tests/e2e/test_named_qualification.py -k frozen -o addopts= -q --tracing on --output .agent/remaining-qualification/traces-frozen-windows --junitxml .agent/remaining-qualification/windows-frozen.xml *> .agent/remaining-qualification/windows-frozen.log; Get-Content .agent/remaining-qualification/windows-frozen.log -Tail 20",
+    "source_session": "CODEX_SESSION/rollout-2026-11-21T10-05-32-01a1fd5a-8d3f-7083-8b87-5556af166e3a.jsonl"
+  },
+  {
+    "command_id": "cmd-24",
+    "recorded_utc": "2026-11-21T09:16:38.425Z",
+    "exact_command_sanitized": "Copy-Item .agent/remaining-qualification/windows-frozen.log .agent/remaining-qualification/windows-frozen-form-expectation.log; Copy-Item .agent/remaining-qualification/windows-frozen.xml .agent/remaining-qualification/windows-frozen-form-expectation.xml; & ../VaultBridge/.venv/Scripts/python.exe -m pytest tests/e2e/test_named_qualification.py -k frozen -o addopts= -q --tracing on --output .agent/remaining-qualification/traces-frozen-windows-confirmed --junitxml .agent/remaining-qualification/windows-frozen.xml *> .agent/remaining-qualification/windows-frozen.log; Get-Content .agent/remaining-qualification/windows-frozen.log -Tail 12",
+    "source_session": "CODEX_SESSION/rollout-2026-11-21T10-05-32-01a1fd5a-8d3f-7083-8b87-5556af166e3a.jsonl"
+  },
+  {
+    "command_id": "cmd-25",
+    "recorded_utc": "2026-11-21T09:16:38.425Z",
+    "exact_command_sanitized": "wsl -e sh -c 'cd <VB156B_SOURCE> && <USER_HOME>/.venvs/vaultbridge-d1-verification/bin/python -m pytest tests/e2e/test_named_qualification.py -k frozen -o addopts= -q --tracing on --output .agent/remaining-qualification/traces-frozen-linux --junitxml .agent/remaining-qualification/linux-frozen.xml > .agent/remaining-qualification/linux-frozen.log 2>&1'; Get-Content .agent/remaining-qualification/linux-frozen.log -Tail 12",
+    "source_session": "CODEX_SESSION/rollout-2026-11-21T10-05-32-01a1fd5a-8d3f-7083-8b87-5556af166e3a.jsonl"
+  },
+  {
+    "command_id": "cmd-26",
+    "recorded_utc": "2026-11-21T09:19:25.592Z",
+    "exact_command_sanitized": "& ../VaultBridge/.venv/Scripts/python.exe -m pytest tests/e2e/test_named_qualification.py -k bootstrap --browser chromium --browser firefox --browser webkit -o addopts= -q -s --tracing on --output .agent/remaining-qualification/traces-bootstrap-windows --junitxml .agent/remaining-qualification/windows-bootstrap.xml *> .agent/remaining-qualification/windows-bootstrap.log; Get-Content .agent/remaining-qualification/windows-bootstrap.log -Tail 5",
+    "source_session": "CODEX_SESSION/rollout-2026-11-21T10-05-32-01a1fd5a-8d3f-7083-8b87-5556af166e3a.jsonl"
+  },
+  {
+    "command_id": "cmd-27",
+    "recorded_utc": "2026-11-21T09:21:54.949Z",
+    "exact_command_sanitized": "Get-Content .agent/remaining-qualification/linux-final.log -Tail 6; Get-Content docs/VB156B_QUALIFICATION.md -Encoding utf8 | Select-Object -Last 18; & ../VaultBridge/.venv/Scripts/python.exe -m pytest tests/e2e/test_named_qualification.py --collect-only -q --browser chromium | Select-Object -Last 2",
+    "source_session": "CODEX_SESSION/rollout-2026-11-21T10-05-32-01a1fd5a-8d3f-7083-8b87-5556af166e3a.jsonl"
+  },
+  {
+    "command_id": "cmd-28",
+    "recorded_utc": "2026-11-21T09:23:27.721Z",
+    "exact_command_sanitized": "& ../VaultBridge/.venv/Scripts/python.exe -m pytest tests/e2e/test_named_qualification.py -k 'history or public_control' --browser chromium --browser firefox --browser webkit -o addopts= -q --junitxml .agent/remaining-qualification/windows-history-traced.xml *> .agent/remaining-qualification/windows-history-traced.log; Get-Content .agent/remaining-qualification/windows-history-traced.log -Tail 9",
+    "source_session": "CODEX_SESSION/rollout-2026-11-21T10-05-32-01a1fd5a-8d3f-7083-8b87-5556af166e3a.jsonl"
+  },
+  {
+    "command_id": "cmd-29",
+    "recorded_utc": "2026-11-21T09:23:27.721Z",
+    "exact_command_sanitized": "wsl -e sh -c 'cd <VB156B_SOURCE> && <USER_HOME>/.venvs/vaultbridge-d1-verification/bin/python -m pytest tests/e2e/test_named_qualification.py -k \"history or public_control\" --browser chromium --browser firefox --browser webkit -o addopts= -q --junitxml .agent/remaining-qualification/linux-history-traced.xml > .agent/remaining-qualification/linux-history-traced.log 2>&1'; Get-Content .agent/remaining-qualification/linux-history-traced.log -Tail 9",
+    "source_session": "CODEX_SESSION/rollout-2026-11-21T10-05-32-01a1fd5a-8d3f-7083-8b87-5556af166e3a.jsonl"
+  },
+  {
+    "command_id": "cmd-30",
+    "recorded_utc": "2026-11-21T14:56:11.997Z",
+    "exact_command_sanitized": "& ../VaultBridge/.venv/Scripts/python.exe -c \"import json,hashlib,pathlib,subprocess,xml.etree.ElementTree as E; r=pathlib.Path('.agent/401-repair'); d=json.loads((r/'scope.json').read_text()); assert all(hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest()==h for p,h in d['files'].items()); summary={n:[s.attrib for s in E.parse(r/(n+'.xml')).getroot().iter('testsuite')] for n in ('windows-complete','linux-complete')}; (r/'focused-results.json').write_text(json.dumps(summary,indent=2)); result=subprocess.run(['git','diff','--check'],capture_output=True,check=False); (r/'diff-check.log').write_bytes(result.stdout+result.stderr); assert result.returncode==0; print('Final source hashes match; 300 focused passes per OS; git diff --check PASS.')\"; Get-Content .agent/401-repair/agent-finish.log -Tail 3",
+    "source_session": "CODEX_SESSION/rollout-2026-11-21T10-05-32-01a1fd5a-8d3f-7083-8b87-5556af166e3a.jsonl"
+  }
+]

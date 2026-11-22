@@ -1,0 +1,111 @@
+{"command": ["<USER_HOME>\\Desktop\\VaultBridge\\.venv\\Scripts\\python.exe", "scripts/agent_finish.py", "--task", "Implement VB-156B named Knowledge Spaces Dashboard foundation according to accepted ADR 0011 section 13, including named browser sessions, policy-filtered discovery, explicit selection, selected-space status, security regression tests and legacy compatibility."], "started_utc": "2026-11-21T09:31:34.572935+00:00"}
+Change base: refs/remotes/origin/main (merge base 90886af56f91)
+Changed files:
+  ARCHITECTURE.md
+  BACKLOG.md
+  app/api/dependencies.py
+  app/api/knowledge_spaces.py
+  app/api/private_reads.py
+  app/core/ui_session.py
+  app/main.py
+  app/repositories/semantic.py
+  app/services/knowledge_spaces.py
+  app/services/semantic_scheduler.py
+  app/services/semantic_search.py
+  app/services/space_operations.py
+  app/services/space_runtime.py
+  app/ui/assets/app.css
+  app/ui/assets/named-app.js
+  app/ui/assets/named-session.js
+  app/ui/assets/scoped-client.js
+  app/ui/assets/spaces.js
+  app/ui/named.html
+  app/ui/named_fence.py
+  app/ui/named_router.py
+  docs/DASHBOARD.md
+  docs/KNOWLEDGE_SPACES.md
+  docs/VB156B_QUALIFICATION.md
+  tests/e2e/named_diagnostics.py
+  tests/e2e/named_server.py
+  tests/e2e/test_named_cookie_delivery.py
+  tests/e2e/test_named_dashboard.py
+  tests/e2e/test_named_qualification.py
+  tests/test_named_dashboard.py
+  tests/test_policy_read_adapters.py
+  tests/test_public_space_composition.py
+  tests/test_ui.py
+Detected areas:
+  docs
+  python
+  semantic
+  api
+  ui
+  mcp
+Automated checks:
+  SELECTED ruff
+  SELECTED pytest (unit/integration, includes tests/eval)
+  SELECTED compileall
+  SELECTED Playwright E2E (Chromium)
+  SELECTED docker build
+  SELECTED MCP dependency in image
+  SELECTED MCP stdio container smoke
+  SELECTED MCP HTTP container smoke
+Agent verification:
+  SKIP / NOT REQUIRED manual verification
+RUN ruff: <USER_HOME>\Desktop\VaultBridge\.venv\Scripts\python.exe -m ruff check app tests scripts
+All checks passed!
+RUN pytest (unit/integration, includes tests/eval): <USER_HOME>\Desktop\VaultBridge\.venv\Scripts\python.exe -m pytest -q --ignore=tests/e2e
+........................................................................ [  1%]
+....s............................s............s......................... [  3%]
+...............s....s................................................... [  4%]
+........................................................................ [  6%]
+........................................................................ [  8%]
+........................................................................ [  9%]
+........................................................................ [ 11%]
+............................................sss......................... [ 13%]
+........ss.s.s......s......................................s............ [ 14%]
+........................................................................ [ 16%]
+.........................................................s.............. [ 18%]
+.s...................................................................... [ 19%]
+........................................................................ [ 21%]
+............sssssssssssssssssss.........ssss..........................ss [ 23%]
+s....................................................................s.. [ 24%]
+........................................................................ [ 26%]
+........................................................................ [ 28%]
+........................................................................ [ 29%]
+........................................................................ [ 31%]
+..................................sssss................................. [ 32%]
+.........................................................s.............. [ 34%]
+........................................................................ [ 36%]
+........................................................................ [ 37%]
+........................................................................ [ 39%]
+........................................................................ [ 41%]
+s....................................................................... [ 42%]
+.........................................................ss............. [ 44%]
+........................................................................ [ 46%]
+.......................................................................s [ 47%]
+ss...................................................................... [ 49%]
+........................................................................ [ 51%]
+..........................................ss...........ss.s..s.......... [ 52%]
+........................................................................ [ 54%]
+............................s............ss...........s................. [ 56%]
+..................ssss.................................................. [ 57%]
+.....................................................s...s.............. [ 59%]
+...............................s........................................ [ 60%]
+........................................................................ [ 62%]
+.........................................ssss..............ss........... [ 64%]
+........ss......s....................................................... [ 65%]
+........................................................................ [ 67%]
+........................................................................ [ 69%]
+............s........................................................... [ 70%]
+........................................................................ [ 72%]
+....................................................sss................. [ 74%]
+........................................................................ [ 75%]
+..................s....................................s......s......... [ 77%]
+.........sss..s..........................s.............................. [ 79%]
+...sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss [ 80%]
+........sssss...s....ssssssssss.sssss........sssss..sssssssss....s...... [ 82%]
+...............ssssssssssssssssssssssssssssssss...................sss..s [ 84%]
+ssssssssssssssssssssssssssssssssssssssssssssss.......................... [ 85%]
+...............................................................s........ [ 87%]
+...............ss...........................................
