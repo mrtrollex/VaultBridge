@@ -55,6 +55,18 @@ def test_inline_task_generates_default_packet(tmp_path, capsys):
     assert "Task packet: .agent/task_packet.md" in capsys.readouterr().out
 
 
+def test_task_output_cannot_replace_the_managed_review_packet(tmp_path, capsys):
+    root = _repository(tmp_path)
+    managed = root / ".agent/review_packet.md"
+    managed.parent.mkdir()
+    managed.write_bytes(b"managed packet\n")
+    assert agent_task.main(
+        ["--task", "Prepare context.", "--output", str(managed)], root=root,
+    ) == 2
+    assert "reserved for agent_finish.py" in capsys.readouterr().err
+    assert managed.read_bytes() == b"managed packet\n"
+
+
 def test_task_file_generates_packet_at_explicit_output(tmp_path):
     root = _repository(tmp_path)
     task_file = tmp_path / "task.md"

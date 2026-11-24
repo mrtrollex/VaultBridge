@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 
@@ -65,7 +66,7 @@ def test_repository_state_discovers_branch_base_and_all_changed_files(tmp_path):
     state = agent_review.collect_repository_state(root, base_ref="main")
 
     assert state.branch == "feature/review"
-    assert state.discovery.base_ref == "main"
+    assert state.discovery.base_ref == "refs/heads/main"
     assert len(state.discovery.merge_base or "") == 40
     assert state.discovery.files == (
         "README.md",
@@ -203,6 +204,68 @@ def test_task_file_cannot_use_hardlink_as_output(tmp_path, capsys, monkeypatch):
     assert exit_code == 2
     assert "--task-file and --output must refer to different files" in capsys.readouterr().err
     assert task_file.read_text(encoding="utf-8") == original
+
+
+@pytest.mark.parametrize("alias_kind", ["absolute", "relative", "directory", "hardlink", "absent-via-directory"])
+def test_standalone_output_cannot_target_managed_packet(tmp_path, monkeypatch, capsys, alias_kind):
+    root = _repository(tmp_path)
+    monkeypatch.chdir(root)
+    managed = root / agent_review.PACKET_PATH
+    managed.parent.mkdir()
+    if alias_kind != "absent-via-directory":
+        managed.write_bytes(b"managed packet\n")
+    if alias_kind == "absolute":
+        output = managed
+    elif alias_kind == "relative":
+        output = Path("other/../.agent/review_packet.md")
+    elif alias_kind == "hardlink":
+        output = root / "alias.md"
+        output.hardlink_to(managed)
+    else:
+        directory = root / "alias"
+        if os.name == "nt":
+            subprocess.run(
+                ["cmd.exe", "/c", "mklink", "/J", str(directory), str(managed.parent)],
+                check=True, capture_output=True,
+            )
+        else:
+            directory.symlink_to(managed.parent, target_is_directory=True)
+        assert directory.samefile(managed.parent)
+        name = managed.name.upper() if alias_kind == "absent-via-directory" else managed.name
+        output = directory / name
+
+    assert agent_review.main(["--task", "Standalone.", "--output", str(output)], root=root) == 2
+    assert "reserved for agent_finish.py" in capsys.readouterr().err
+    if alias_kind == "absent-via-directory":
+        assert not managed.exists() and not output.exists()
+    else:
+        assert managed.read_bytes() == b"managed packet\n"
+
+
+@pytest.mark.parametrize("present", [False, True])
+@pytest.mark.parametrize("absolute", [False, True])
+@pytest.mark.parametrize("name", ["review_packet.md", "REVIEW_PACKET.MD"])
+def test_managed_packet_case_spellings_are_reserved(tmp_path, monkeypatch, capsys, present, absolute, name):
+    root = _repository(tmp_path)
+    monkeypatch.chdir(root)
+    managed = root / agent_review.PACKET_PATH
+    managed.parent.mkdir()
+    if present:
+        managed.write_bytes(b"managed packet\n")
+    output = managed.with_name(name)
+    if not absolute:
+        output = output.relative_to(root)
+
+    assert agent_review.main(["--task", "Standalone.", "--output", str(output)], root=root) == 2
+    assert "reserved for agent_finish.py" in capsys.readouterr().err
+    if present:
+        assert managed.read_bytes() == b"managed packet\n"
+    else:
+        assert not managed.exists() and not output.exists()
+
+    distinct = managed.with_name("standalone.md")
+    assert agent_review.main(["--task", "Distinct.", "--output", str(distinct)], root=root) == 0
+    assert "Distinct." in distinct.read_text(encoding="utf-8")
 
 
 def test_inline_task_is_supported(tmp_path, capsys):

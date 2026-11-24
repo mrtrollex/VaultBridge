@@ -1,11 +1,19 @@
 from __future__ import annotations
 
+import ctypes
+import os
 import subprocess
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
 
-from scripts import agent_check
+from scripts import agent_check, agent_validation
+
+
+@pytest.fixture(autouse=True)
+def isolated_report(monkeypatch, tmp_path):
+    monkeypatch.setattr(agent_check, "REPOSITORY_ROOT", tmp_path)
 
 
 @pytest.mark.parametrize(
@@ -30,10 +38,14 @@ def test_classify_file_uses_repository_paths(path, expected):
 
 
 def test_discovery_unions_branch_index_worktree_and_untracked(monkeypatch, tmp_path):
+    base = "a" * 40
+    reference = "refs/remotes/origin/main"
     responses = {
         ("rev-parse", "--show-toplevel"): f"{tmp_path}\n".encode(),
         ("symbolic-ref", "--quiet", "refs/remotes/origin/HEAD"): b"refs/remotes/origin/main\n",
-        ("merge-base", "HEAD", "refs/remotes/origin/main"): b"0123456789abcdef\n",
+        ("rev-parse", "--verify", "--quiet", "--end-of-options", f"{reference}^{{commit}}"): base.encode(),
+        ("rev-parse", "--symbolic-full-name", "--verify", "--end-of-options", reference): reference.encode(),
+        ("merge-base", "HEAD", base): b"0123456789abcdef\n",
         ("diff", "--no-renames", "--name-only", "-z", "0123456789abcdef", "HEAD"): b"app/main.py\0",
         ("diff", "--cached", "--no-renames", "--name-only", "-z"): b"tests/test_api.py\0",
         ("diff", "--no-renames", "--name-only", "-z"): b"docs/guide with spaces.md\0",
@@ -56,6 +68,7 @@ def test_discovery_unions_branch_index_worktree_and_untracked(monkeypatch, tmp_p
         "tests/test_api.py",
     )
     assert discovery.base == "refs/remotes/origin/main (merge base 0123456789ab)"
+    assert discovery.base_commit == base
 
 
 def test_explicit_changed_files_are_deterministic_and_skip_git(monkeypatch, tmp_path):
@@ -72,6 +85,182 @@ def test_explicit_changed_files_are_deterministic_and_skip_git(monkeypatch, tmp_
 
     assert discovery.files == ("app/main.py", "tests/test_ui.py")
     assert discovery.base == "explicit changed files"
+
+
+@pytest.mark.parametrize("path", [
+    r"C:\SomeUser\private.py", "C:/SomeUser/private.py", r"C:SomeUser\private.py",
+    r"\\server\shared\private.py", "/home/SomeUser/private.py", "docs/../private.py",
+    "docs//private.py", "docs/./private.py", "docs/report.py:secret", "docs/private.py\n",
+])
+def test_rejects_absolute_foreign_paths_traversal_and_malformed_components(tmp_path, capsys, path):
+    assert agent_check.main(["--changed-file", path]) == 2
+    message = capsys.readouterr().err
+    assert "ERROR changed-file discovery:" in message
+    assert "SomeUser" not in message and "secret" not in message
+    assert not (tmp_path / agent_validation.REPORT_PATH).exists()
+
+
+def test_preserves_normal_native_absolute_and_portable_relative_paths(tmp_path):
+    target = tmp_path / "docs" / "guide with spaces.md"
+    discovery = agent_check.discover_changed_files(
+        tmp_path, supplied_files=(str(target), "./docs/guide with spaces.md", r"docs\guide with spaces.md"),
+    )
+    assert discovery.files == ("docs/guide with spaces.md",)
+
+
+def test_native_absolute_aliases_select_the_canonical_python_checks(tmp_path, monkeypatch, capsys):
+    relative = "tests/test_agent_task.py"
+    if os.name == "nt":
+        root = Path(__file__).resolve().parents[1]
+        canonical = root / relative
+        get_short_name = ctypes.WinDLL("kernel32", use_last_error=True).GetShortPathNameW
+        get_short_name.argtypes = [ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_uint]
+        get_short_name.restype = ctypes.c_uint
+        buffer = ctypes.create_unicode_buffer(32768)
+        assert 0 < get_short_name(str(canonical), buffer, len(buffer)) < len(buffer)
+        alias = Path(buffer.value)
+        assert alias.samefile(canonical)
+        inputs = [(root, canonical), (root, alias)]
+    else:
+        inputs = []
+        for ancestor in ("checkout:parent", "checkout.parent."):
+            root = tmp_path / ancestor / "repository"
+            canonical = root / relative
+            canonical.parent.mkdir(parents=True)
+            canonical.touch()
+            alias = tmp_path / f"alias-{len(inputs)}"
+            alias.symlink_to(root, target_is_directory=True)
+            inputs.extend(((root, canonical), (root, alias / relative)))
+
+    for root, target in inputs:
+        monkeypatch.setattr(agent_check, "REPOSITORY_ROOT", root)
+        assert agent_check.discover_changed_files(root, supplied_files=(str(target),)).files == (relative,)
+        assert agent_check.main(["--dry-run", "--changed-file", str(target)]) == 0
+        output = capsys.readouterr().out
+        assert [line.strip().split(":")[0] for line in output.splitlines() if "WOULD RUN" in line] == [
+            "WOULD RUN ruff", "WOULD RUN pytest (unit/integration, includes tests/eval)", "WOULD RUN compileall",
+        ]
+        assert agent_check.main(["--dry-run", "--changed-file", str(root / "tests" / ".." / relative)]) == 2
+    outside = tmp_path / "outside.py"
+    outside.touch()
+    assert agent_check.main(["--dry-run", "--changed-file", str(outside)]) == 2
+    assert "outside the repository" in capsys.readouterr().err
+
+
+def test_native_absolute_case_alias_selects_all_tracked_checks(tmp_path, capsys):
+    canonical = tmp_path / "app/main.py"
+    canonical.parent.mkdir()
+    canonical.touch()
+    subprocess.run(["git", "init", "--quiet"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "add", "--", "app/main.py"], cwd=tmp_path, check=True)
+    alias = tmp_path / "APP/MAIN.PY"
+    if not alias.exists():
+        # On case-sensitive filesystems, exercise a real alias to the same file.
+        alias.parent.mkdir()
+        alias.symlink_to(canonical)
+    assert alias.samefile(canonical)
+    expected = (
+        "ruff", "pytest", "compileall", "playwright-e2e",
+        "docker-build", "mcp-dependency", "mcp-stdio", "mcp-http",
+    )
+
+    outputs = []
+    for path in (canonical, alias):
+        files = agent_check.discover_changed_files(tmp_path, supplied_files=(str(path),)).files
+        checks = agent_check.select_checks(agent_check.classify_files(files), files)
+        assert files == ("app/main.py",)
+        assert tuple(check.key for check in checks) == expected
+        assert agent_check.main(["--dry-run", "--changed-file", str(path)]) == 0
+        outputs.append(capsys.readouterr().out)
+    assert outputs[0] == outputs[1]
+    assert outputs[0].count("WOULD RUN") == len(expected)
+
+
+def test_native_absolute_exact_matches_check_index_ambiguity(tmp_path, monkeypatch, capsys):
+    names = ("app/main.py", "APP/MAIN.PY", "App/Main.py")
+    canonical, uppercase, mixed = (tmp_path / name for name in names)
+    canonical.parent.mkdir()
+    canonical.touch()
+    if not uppercase.exists():
+        uppercase.parent.mkdir()
+        uppercase.touch()
+    same_file = canonical.samefile(uppercase)
+
+    monkeypatch.setenv("GIT_INDEX_FILE", str(tmp_path / "isolated-index"))
+
+    def git(*args, **kwargs):
+        return subprocess.run(
+            ["git", *args], cwd=tmp_path, capture_output=True, check=True, **kwargs,
+        ).stdout.decode("ascii").strip()
+
+    git("init", "--quiet")
+    blob = git("hash-object", "-w", names[0])
+    entries = "".join(f"100644 {blob}\t{name}\n" for name in names[:2]).encode("ascii")
+    git("update-index", "--index-info", input=entries)
+    assert set(git("ls-files").splitlines()) == set(names[:2])
+
+    if same_file:
+        assert canonical.samefile(mixed)
+        for path in (canonical, uppercase, mixed):
+            assert agent_check.main(["--dry-run", "--changed-file", str(path)]) == 2
+            output = capsys.readouterr()
+            assert "ambiguous changed-file identity in the Git index" in output.err
+            assert not output.out
+    else:
+        for name, path, count in zip(names[:2], (canonical, uppercase), (8, 0), strict=True):
+            assert agent_check.discover_changed_files(tmp_path, supplied_files=(str(path),)).files == (name,)
+            assert agent_check.main(["--dry-run", "--changed-file", str(path)]) == 0
+            assert capsys.readouterr().out.count("WOULD RUN") == count
+
+
+def test_native_absolute_new_source_path_keeps_python_checks(tmp_path, capsys):
+    tracked = tmp_path / "notes.txt"
+    tracked.touch()
+    subprocess.run(["git", "init", "--quiet"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "add", "--", "notes.txt"], cwd=tmp_path, check=True)
+    new = tmp_path / "app/new.py"
+    new.parent.mkdir()
+    for exists in (False, True):
+        if exists:
+            # A different directory entry with the same identity is still a new source path.
+            os.link(tracked, new)
+        files = agent_check.discover_changed_files(tmp_path, supplied_files=(str(new),)).files
+        assert files == ("app/new.py",)
+        assert agent_check.main(["--dry-run", "--changed-file", str(new)]) == 0
+        assert "WOULD RUN pytest" in capsys.readouterr().out
+
+
+def test_existing_native_absolute_source_fails_closed_when_identity_is_unavailable(
+    tmp_path, monkeypatch, capsys,
+):
+    path = tmp_path / "app/new.py"
+    path.parent.mkdir()
+    path.touch()
+    subprocess.run(["git", "init", "--quiet"], cwd=tmp_path, check=True)
+
+    def unavailable(directory):
+        raise PermissionError("directory identity unavailable")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(agent_check.os, "listdir", unavailable)
+        assert agent_check.main(["--dry-run", "--changed-file", str(path)]) == 2
+    output = capsys.readouterr()
+    assert "could not establish changed-file identity" in output.err
+    assert "Overall: DRY RUN" not in output.out
+
+
+@pytest.mark.parametrize("suffix", [".", " "])
+def test_windows_aliases_cannot_suppress_required_python_checks(tmp_path, capsys, suffix):
+    path = "tests/test_agent_task.py"
+    assert agent_check.main(["--dry-run", "--changed-file", path]) == 0
+    assert "WOULD RUN pytest" in capsys.readouterr().out
+    for alias in (path + suffix, str(tmp_path / path) + suffix, f"tests{suffix}/test_agent_task.py"):
+        assert agent_check.main(["--dry-run", "--changed-file", alias]) == 2
+        output = capsys.readouterr()
+        assert "invalid repository-relative changed file" in output.err
+        assert "Overall: DRY RUN" not in output.out
+    with pytest.raises(agent_check.DiscoveryError, match="invalid repository-relative changed file"):
+        agent_check._nul_paths((path + suffix).encode() + b"\0")
 
 
 def test_real_git_cross_domain_renames_preserve_source_requirements(tmp_path):
@@ -351,7 +540,30 @@ def test_command_start_failure_is_required_but_unavailable():
         availability=lambda selected: None,
     )
 
-    assert results == (
-        agent_check.CheckResult(check, agent_check.UNAVAILABLE, "executable unavailable"),
+    result, = results
+    assert (result.check, result.status, result.detail) == (
+        check, agent_check.UNAVAILABLE, "executable unavailable",
     )
+    assert result.launch_attempted is True
+    assert result.exit_code is None
     assert agent_check.result_exit_code(results) == 3
+
+
+def test_wall_clock_adjustment_does_not_change_elapsed_duration():
+    check = agent_check.available_checks()[0]
+    first = datetime(2026, 11, 22, 12, tzinfo=UTC)
+    timestamps = iter((first, first - timedelta(seconds=1)))
+    ticks = iter((100, 450))
+
+    result, = agent_check.execute_checks(
+        [check],
+        runner=lambda selected: 7,
+        availability=lambda selected: None,
+        clock=agent_validation.Clock(timestamps.__next__, ticks.__next__),
+    )
+
+    assert result.started_at == "2026-11-22T12:00:00.000000+00:00"
+    assert result.ended_at == "2026-11-22T11:59:59.000000+00:00"
+    assert result.elapsed_ns == 350
+    assert result.exit_code == 7
+    assert agent_check.result_exit_code([result]) == 1

@@ -12,12 +12,20 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import os
+import re
 import shutil
+import stat
 import subprocess
 import sys
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from pathlib import Path, PurePosixPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
+from uuid import UUID, uuid4
+
+if __package__:
+    from . import agent_validation
+else:
+    import agent_validation
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 IMAGE_TAG = "vaultbridge:agent-check"
@@ -66,6 +74,7 @@ class Discovery:
     base: str
     base_ref: str | None = None
     merge_base: str | None = None
+    base_commit: str | None = None
 
 
 @dataclass(frozen=True)
@@ -84,7 +93,12 @@ class Check:
 class CheckResult:
     check: Check
     status: str
-    detail: str = ""
+    detail: str
+    started_at: str
+    ended_at: str
+    elapsed_ns: int
+    exit_code: int | None
+    launch_attempted: bool
 
 
 CommandRunner = Callable[[Check], int]
@@ -100,14 +114,13 @@ def _git(root: Path, *args: str, check: bool = True) -> bytes:
         stderr=subprocess.PIPE,
     )
     if check and completed.returncode != 0:
-        detail = completed.stderr.decode("utf-8", "replace").strip()
-        raise DiscoveryError(detail or f"git {' '.join(args)} failed")
+        raise DiscoveryError(f"git {args[0]} failed during change discovery")
     return completed.stdout if completed.returncode == 0 else b""
 
 
 def _git_ref_exists(root: Path, ref: str) -> bool:
     completed = subprocess.run(
-        ["git", "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"],
+        ["git", "rev-parse", "--verify", "--quiet", "--end-of-options", f"{ref}^{{commit}}"],
         cwd=root,
         check=False,
         stdout=subprocess.DEVNULL,
@@ -124,7 +137,7 @@ def choose_base_ref(
 ) -> str:
     if requested:
         if not _git_ref_exists(root, requested):
-            raise DiscoveryError(f"base reference does not exist: {requested}")
+            raise DiscoveryError("the requested base does not resolve to a commit")
         return requested
 
     candidates: list[str] = []
@@ -144,24 +157,187 @@ def choose_base_ref(
 
 
 def _nul_paths(output: bytes) -> set[str]:
-    return {
-        os.fsdecode(item).replace("\\", "/")
-        for item in output.split(b"\0")
-        if item
-    }
+    return {_relative_path(os.fsdecode(item)) for item in output.split(b"\0") if item}
+
+
+def _relative_path(path: str) -> str:
+    try:
+        agent_validation.portable_path_parts(path)
+    except ValueError as error:
+        raise DiscoveryError("invalid repository-relative changed file") from error
+    return path
+
+
+def _tracked_supplied_paths(root: Path) -> set[str]:
+    args = ("ls-files", "--cached", "-z")
+    try:
+        output = _git(root, *args)
+    except DiscoveryError:
+        marker = root / ".git"
+        if not marker.exists() and "GIT_DIR" not in os.environ:
+            # Explicit paths also work in an exported tree without an index.
+            return set()
+        if sys.platform != "linux" or "microsoft" not in os.uname().release.lower() or not marker.is_file():
+            raise
+        prefix, _, pointer = marker.read_text(encoding="utf-8").strip().partition(": ")
+        if prefix != "gitdir" or not PureWindowsPath(pointer).is_absolute():
+            raise
+        # A worktree created by Windows Git can have a drive-qualified gitdir.
+        converted = subprocess.run(["wslpath", "-u", pointer], capture_output=True, check=False)
+        git_dir = Path(os.fsdecode(converted.stdout.rstrip(b"\r\n")))
+        if converted.returncode != 0 or not git_dir.is_absolute():
+            raise DiscoveryError("could not resolve the Git worktree directory")
+        output = _git(root, "--git-dir", str(git_dir), "--work-tree", str(root), *args)
+    return {os.fsdecode(item) for item in output.split(b"\0") if item}
+
+
+def _disk_spelling(root: Path, relative: str) -> tuple[str, list[set[str]]]:
+    parent = root
+    siblings = []
+    for name in relative.split("/"):
+        names = set(os.listdir(parent))
+        siblings.append(names)
+        if name not in names:
+            target = (parent / name).lstat()
+            matches = [
+                entry for entry in names
+                if target.st_ino and os.path.samestat(target, (parent / entry).lstat())
+            ]
+            if len(matches) != 1:
+                raise DiscoveryError("ambiguous changed-file identity")
+            name = matches[0]
+        parent /= name
+    return _relative_path(parent.relative_to(root).as_posix()), siblings
+
+
+def _possible_index_alias(parts: list[str], name: str) -> bool:
+    indexed_parts = name.split("/")
+    # Leave Unicode and 8.3 spellings to the filesystem's name lookup.
+    return len(indexed_parts) == len(parts) and all(
+        indexed.casefold() == supplied.casefold()
+        or not indexed.isascii() or not supplied.isascii()
+        or "~" in indexed or "~" in supplied
+        for indexed, supplied in zip(indexed_parts, parts, strict=True)
+    )
+
+
+def _index_entry_matches(root: Path, name: str, target: os.stat_result) -> bool:
+    try:
+        indexed = (root / _relative_path(name)).lstat()
+    except (FileNotFoundError, NotADirectoryError):
+        return False
+    return os.path.samestat(target, indexed)
+
+
+def _canonical_existing_path(root: Path, path: Path, relative: str) -> str:
+    try:
+        target = path.stat()
+    except FileNotFoundError:
+        return relative
+    if not stat.S_ISREG(target.st_mode):
+        return relative
+
+    tracked = _tracked_supplied_paths(root)
+    if relative in tracked:
+        parts = relative.split("/")
+        if not any(
+            name != relative and _possible_index_alias(parts, name)
+            and (not target.st_ino or _index_entry_matches(root, name, target))
+            for name in tracked
+        ):
+            return relative
+
+    # Verify that matching file identities also share a directory entry.
+    spelling, siblings = _disk_spelling(root, relative)
+    parts = spelling.split("/")
+    if not target.st_ino:
+        raise DiscoveryError("changed-file identity is unavailable")
+    matches = []
+    for name in tracked:
+        indexed_parts = name.split("/")
+        if len(indexed_parts) != len(parts) or any(
+            indexed_part != part and indexed_part in entries
+            for indexed_part, part, entries in zip(indexed_parts, parts, siblings, strict=True)
+        ):
+            continue
+        # Hard links can have the same inode under different directory entries.
+        if _index_entry_matches(root, name, target) and (
+            name == spelling or _disk_spelling(root, name)[0] == spelling
+        ):
+            matches.append(name)
+    if len(matches) > 1:
+        raise DiscoveryError("ambiguous changed-file identity in the Git index")
+    return matches[0] if matches else spelling
+
+
+def _relative_to_native_root(path: Path, root: Path) -> Path:
+    try:
+        relative = path.relative_to(root)
+        if not relative.parts or path.parents[len(relative.parts) - 1].as_posix() == root.as_posix():
+            return relative
+    except ValueError:
+        pass
+    # POSIX path subtraction is case-sensitive even on a case-insensitive mount.
+    for parent in path.parents:
+        try:
+            if parent.samefile(root):
+                return path.relative_to(parent)
+        except FileNotFoundError:
+            continue
+    raise ValueError("path has no repository ancestor")
 
 
 def _normalize_supplied_path(root: Path, raw_path: str) -> str:
     candidate = Path(raw_path)
+    portable = raw_path.replace("\\", "/")
+    native_posix_absolute = candidate.is_absolute() and os.name != "nt"
+    components = raw_path if native_posix_absolute else portable
+    if ".." in components.split("/") or any(ord(char) < 32 or ord(char) == 127 for char in raw_path):
+        raise DiscoveryError("invalid repository-relative changed file")
     if candidate.is_absolute():
+        if not native_posix_absolute:
+            # Reject Win32 aliases before resolve() can erase the spelling.
+            suffix = portable[len(candidate.anchor.replace("\\", "/")):]
+            if any(part.endswith((".", " ")) or ":" in part for part in suffix.split("/")):
+                raise DiscoveryError("invalid repository-relative changed file")
+            if candidate.drive.startswith("\\\\") and candidate.drive.casefold() != root.drive.casefold():
+                raise DiscoveryError("changed file uses an unsupported Windows path namespace")
         try:
-            candidate = candidate.resolve().relative_to(root.resolve())
-        except ValueError as error:
-            raise DiscoveryError(f"changed file is outside the repository: {raw_path}") from error
-    normalized = PurePosixPath(str(candidate).replace("\\", "/"))
-    if not normalized.parts or normalized.is_absolute() or ".." in normalized.parts:
-        raise DiscoveryError(f"invalid repository-relative changed file: {raw_path}")
-    return normalized.as_posix().removeprefix("./")
+            root = root.resolve()
+            candidate = candidate.resolve()
+            relative = _relative_to_native_root(candidate, root)
+        except (ValueError, OSError, RuntimeError) as error:
+            raise DiscoveryError("changed file is outside the repository") from error
+        try:
+            return _canonical_existing_path(root, candidate, _relative_path(relative.as_posix()))
+        except (OSError, UnicodeError) as error:
+            raise DiscoveryError("could not establish changed-file identity") from error
+    windows = PureWindowsPath(raw_path)
+    if windows.drive or windows.root or PurePosixPath(raw_path).is_absolute():
+        raise DiscoveryError("changed file uses an unsupported absolute or drive-relative path")
+    return _relative_path(portable.removeprefix("./"))
+
+
+def _resolved_base(root: Path, expression: str) -> tuple[str, str | None]:
+    commit = _git(
+        root, "rev-parse", "--verify", "--quiet", "--end-of-options", f"{expression}^{{commit}}",
+        check=False,
+    ).decode("ascii", "replace").strip()
+    if not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", commit):
+        raise DiscoveryError("the selected base could not be resolved")
+    symbolic = _git(
+        root, "rev-parse", "--symbolic-full-name", "--verify", "--end-of-options", expression,
+        check=False,
+    ).decode("utf-8", "replace").strip()
+    if re.fullmatch(r"refs/(heads|remotes|tags)/[A-Za-z0-9_./-]+", symbolic):
+        # Confirm the canonical ref still names the commit used for comparison.
+        target = _git(
+            root, "rev-parse", "--verify", "--quiet", "--end-of-options", f"{symbolic}^{{commit}}",
+            check=False,
+        ).decode("ascii", "replace").strip()
+        if target == commit:
+            return commit, symbolic
+    return commit, None
 
 
 def discover_changed_files(
@@ -175,10 +351,10 @@ def discover_changed_files(
         return Discovery(files=files, base="explicit changed files")
 
     _git(root, "rev-parse", "--show-toplevel")
-    base = choose_base_ref(root, base_ref)
-    merge_base = _git(root, "merge-base", "HEAD", base).decode("ascii", "replace").strip()
+    base_commit, canonical_ref = _resolved_base(root, choose_base_ref(root, base_ref))
+    merge_base = _git(root, "merge-base", "HEAD", base_commit).decode("ascii", "replace").strip()
     if not merge_base:
-        raise DiscoveryError(f"could not find a merge base for HEAD and {base}")
+        raise DiscoveryError("could not find a merge base for HEAD and the selected base")
 
     files: set[str] = set()
     files.update(
@@ -189,9 +365,10 @@ def discover_changed_files(
     files.update(_nul_paths(_git(root, "ls-files", "--others", "--exclude-standard", "-z")))
     return Discovery(
         files=tuple(sorted(files)),
-        base=f"{base} (merge base {merge_base[:12]})",
-        base_ref=base,
+        base=f"{canonical_ref or base_commit} (merge base {merge_base[:12]})",
+        base_ref=canonical_ref,
         merge_base=merge_base,
+        base_commit=base_commit,
     )
 
 
@@ -420,6 +597,11 @@ def _format_command(command: Sequence[str]) -> str:
     return subprocess.list2cmdline(command) if os.name == "nt" else " ".join(command)
 
 
+def _display_command(check: Check) -> str:
+    command = command_identity(check)
+    return _format_command(command) if command else "(command identity unavailable)"
+
+
 def default_command_runner(check: Check) -> int:
     environment = os.environ.copy()
     environment.update(dict(check.environment))
@@ -499,22 +681,33 @@ def execute_checks(
     *,
     runner: CommandRunner = default_command_runner,
     availability: AvailabilityChecker | None = None,
+    clock: agent_validation.Clock = agent_validation.Clock(),
 ) -> tuple[CheckResult, ...]:
     availability = availability or default_availability_checker()
     results: list[CheckResult] = []
     for check in checks:
+        started_at = clock.stamp()
+        started_ns = clock.monotonic_ns()
         unavailable_reason = availability(check)
+        exit_code = None
+        launch_attempted = not unavailable_reason
         if unavailable_reason:
-            results.append(CheckResult(check, UNAVAILABLE, unavailable_reason))
-            continue
-        print(f"RUN {check.label}: {_format_command(check.command)}", flush=True)
-        try:
-            return_code = runner(check)
-        except OSError as error:
-            results.append(CheckResult(check, UNAVAILABLE, str(error)))
-            continue
+            status, detail = UNAVAILABLE, unavailable_reason
+        else:
+            print(f"RUN {check.label}: {_display_command(check)}", flush=True)
+            try:
+                exit_code = runner(check)
+            except OSError as error:
+                status, detail = UNAVAILABLE, str(error)
+            else:
+                status = PASS if exit_code == 0 else FAIL
+                detail = f"exit {exit_code}"
+        elapsed_ns = clock.monotonic_ns() - started_ns
         results.append(
-            CheckResult(check, PASS if return_code == 0 else FAIL, f"exit {return_code}")
+            CheckResult(
+                check, status, detail, started_at, clock.stamp(), elapsed_ns,
+                exit_code, launch_attempted,
+            )
         )
     return tuple(results)
 
@@ -549,7 +742,7 @@ def print_selection(
     if checks:
         for check in checks:
             if dry_run:
-                print(f"  WOULD RUN {check.label}: {_format_command(check.command)}")
+                print(f"  WOULD RUN {check.label}: {_display_command(check)}")
             else:
                 print(f"  SELECTED {check.label}")
     else:
@@ -570,8 +763,13 @@ def print_results(results: Sequence[CheckResult], manual_requirements: Sequence[
     print("Result summary:")
     if results:
         for result in results:
-            detail = f" ({result.detail})" if result.detail else ""
-            print(f"  {result.status} {result.check.label}{detail}")
+            message = (
+                "command could not be launched"
+                if result.status == UNAVAILABLE and result.launch_attempted
+                else result.detail
+            )
+            detail = f" ({message})" if message else ""
+            print(f"  {result.status} {result.check.label}{detail} [{result.elapsed_ns / 1e9:.3f}s]")
     else:
         print(f"  {NOT_REQUIRED} no automated checks selected")
     if manual_requirements:
@@ -581,10 +779,57 @@ def print_results(results: Sequence[CheckResult], manual_requirements: Sequence[
         print(f"  {NOT_REQUIRED} manual verification")
 
 
+def command_identity(check: Check) -> list[str] | None:
+    if not any(
+        item.key == check.key and item.command == check.command for item in available_checks()
+    ):
+        return None
+    executable, *args = check.command
+    return ["python" if executable == sys.executable else executable, *args]
+
+
+def scope_record(discovery: Discovery, areas: set[str], manual: Sequence[str]) -> dict:
+    return {
+        "base_ref": discovery.base_ref,
+        "base_commit": discovery.base_commit,
+        "merge_base": discovery.merge_base,
+        "change_discovery": "git" if discovery.base_commit else "explicit",
+        "changed_files": [
+            {"path": path, "areas": sorted(classify_file(path))} for path in discovery.files
+        ],
+        "affected_areas": sorted(areas),
+        "manual_requirements": list(manual),
+    }
+
+
+def _report_checks(results: Sequence[CheckResult]) -> list[dict]:
+    checks = []
+    for result in results:
+        check = result.check
+        command = command_identity(check)
+        checks.append({
+            "id": check.key,
+            "selected_command": command,
+            "executed_command": command if result.exit_code is not None else None,
+            "launch_attempted": result.launch_attempted,
+            "started_at": result.started_at,
+            "ended_at": result.ended_at,
+            "elapsed_ns": result.elapsed_ns,
+            "outcome": "UNAVAILABLE" if result.status == UNAVAILABLE else result.status,
+            "exit_code": result.exit_code,
+            "required": True,
+            "unavailable_stage": (
+                "launch" if result.launch_attempted else "prerequisite"
+            ) if result.status == UNAVAILABLE else None,
+        })
+    return checks
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dry-run", action="store_true", help="select checks without running them")
     parser.add_argument("--base", help="override the Git base reference")
+    parser.add_argument("--run-id", type=UUID, help=argparse.SUPPRESS)
     parser.add_argument(
         "--changed-file",
         action="append",
@@ -600,8 +845,10 @@ def main(
     *,
     runner: CommandRunner = default_command_runner,
     availability: AvailabilityChecker | None = None,
+    clock: agent_validation.Clock = agent_validation.Clock(),
 ) -> int:
     args = build_parser().parse_args(argv)
+    source_before = None if args.dry_run else agent_validation.source_identity(REPOSITORY_ROOT)
     try:
         discovery = discover_changed_files(
             REPOSITORY_ROOT,
@@ -626,9 +873,15 @@ def main(
         print("Overall: DRY RUN")
         return 0
 
-    results = execute_checks(checks, runner=runner, availability=availability)
+    started_at = clock.stamp()
+    started_ns = clock.monotonic_ns()
+    results = execute_checks(checks, runner=runner, availability=availability, clock=clock)
+    elapsed_ns = clock.monotonic_ns() - started_ns
+    ended_at = clock.stamp()
+    source_after = agent_validation.source_identity(REPOSITORY_ROOT)
     print_results(results, manual_requirements)
     exit_code = result_exit_code(results)
+    outcome = {0: "PASS", 1: "FAIL", 3: "INCOMPLETE"}[exit_code]
     if exit_code == 0 and manual_requirements:
         print("Overall: AUTOMATED PASS; MANUAL VERIFICATION REMAINS")
     elif exit_code == 0:
@@ -637,6 +890,27 @@ def main(
         print("Overall: INCOMPLETE")
     else:
         print("Overall: FAIL")
+    print(f"Automated verification elapsed: {elapsed_ns / 1e9:.3f}s")
+    try:
+        agent_validation.write_report(REPOSITORY_ROOT, {
+            "schema_version": agent_validation.SCHEMA_VERSION,
+            "run_id": str(args.run_id or uuid4()),
+            "started_at": started_at,
+            "ended_at": ended_at,
+            "elapsed_ns": elapsed_ns,
+            "source_before": source_before,
+            "source_after": source_after,
+            "source_unchanged": source_before is not None and source_before == source_after,
+            **scope_record(discovery, areas, manual_requirements),
+            "checks": _report_checks(results),
+            "overall_outcome": outcome,
+            "exit_code": exit_code,
+            "environment": agent_validation.environment_identity(),
+        })
+    except (OSError, RuntimeError, ValueError):
+        print("Validation report could not be written; see terminal results.", file=sys.stderr)
+    else:
+        print(f"Validation report: {agent_validation.REPORT_PATH.as_posix()}")
     return exit_code
 
 
