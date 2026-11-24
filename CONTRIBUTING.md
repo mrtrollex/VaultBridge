@@ -23,6 +23,10 @@ where AGENTS.md requires one. Keep refactors and features separately reviewable.
 
 The [Codex Playbook](docs/CODEX_PLAYBOOK.md) owns the exact packet, check and review rules.
 Required checks must pass; unavailable verification must be reported. Never weaken tests to pass.
+Completed selector runs record check durations and outcomes in the ignored
+`.agent/validation-results.json`. If the task requires durable qualification evidence, include
+the sanitized artifacts and their manifest in the proposed change and pass
+`--evidence-manifest` to `agent_finish.py`. The playbook describes the manifest format.
 Agents must not commit, push, open PRs, publish or deploy without explicit user instruction.
 
 ## Documentation and privacy

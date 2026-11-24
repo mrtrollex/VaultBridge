@@ -6,7 +6,20 @@ from pathlib import Path
 
 import pytest
 
-from scripts import agent_finish
+from scripts import agent_check, agent_finish, agent_review
+
+
+@pytest.fixture
+def repository(tmp_path, monkeypatch):
+    def git(*args):
+        subprocess.run(["git", *args], cwd=tmp_path, check=True, capture_output=True)
+
+    git("init", "-b", "main")
+    (tmp_path / ".gitignore").write_text(".agent/\n", encoding="utf-8")
+    git("add", ".")
+    git("-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-m", "base")
+    monkeypatch.setattr(agent_check, "REPOSITORY_ROOT", tmp_path)
+    return tmp_path
 
 
 class FakeRunner:
@@ -18,21 +31,25 @@ class FakeRunner:
         normalized = tuple(command)
         self.commands.append(normalized)
         result = next(self.results)
-        if Path(normalized[1]).name == "agent_review.py" and result == 0:
+        if Path(normalized[1]).name == "agent_check.py" and result == 0:
+            return agent_check.main(normalized[2:], runner=lambda check: pytest.fail(check.key))
+        if Path(normalized[1]).name == "agent_review.py":
             output = Path(normalized[normalized.index("--output") + 1])
-            output.write_text("fresh packet\n", encoding="utf-8")
+            if result == 0:
+                return agent_review.main(normalized[2:], root=root)
+            output.write_text("partial packet\n", encoding="utf-8")
         return result
 
 
-def test_successful_check_generates_packet_and_handoff(tmp_path, capsys):
+def test_successful_check_generates_packet_and_handoff(repository, capsys):
     runner = FakeRunner([0, 0])
 
-    exit_code = agent_finish.main(["--task", "Implement it."], root=tmp_path, runner=runner)
+    exit_code = agent_finish.main(["--task", "Implement it."], root=repository, runner=runner)
 
     assert exit_code == 0
-    assert (tmp_path / ".agent/review_packet.md").read_text(encoding="utf-8") == (
-        "fresh packet\n"
-    )
+    content = (repository / ".agent/review_packet.md").read_text(encoding="utf-8")
+    assert "## Original task\n\n```text\nImplement it.\n```" in content
+    assert "## Recorded validation" in content
     output = capsys.readouterr().out
     assert "Verification: PASS" in output
     assert "Review packet: .agent/review_packet.md" in output
@@ -63,29 +80,54 @@ def test_stale_packet_is_removed_before_failed_verification(tmp_path):
     assert not packet.exists()
 
 
-def test_review_generation_failure_is_nonzero_and_leaves_no_packet(tmp_path):
+@pytest.mark.parametrize("absolute", [False, True])
+@pytest.mark.parametrize("name", ["review_packet.md", "REVIEW_PACKET.MD"])
+def test_standalone_review_cannot_publish_during_a_failing_finish(repository, capsys, monkeypatch, absolute, name):
+    monkeypatch.chdir(repository)
+    packet = repository / agent_finish.PACKET_PATH
+    output = packet.with_name(name)
+    if not absolute:
+        output = output.relative_to(repository)
+    packet.parent.mkdir()
+    packet.write_bytes(b"old packet")
+
+    def fail_check(command, root):
+        assert Path(command[1]).name == "agent_check.py"
+        assert not packet.exists()
+        assert agent_review.main(
+            ["--task", "Overlapping standalone review.", "--output", str(output)], root=root,
+        ) == 2
+        return 7
+
+    assert agent_finish.main(["--task", "Managed task."], root=repository, runner=fail_check) == 7
+    assert not packet.exists() and not output.exists()
+    assert "reserved for agent_finish.py" in capsys.readouterr().err
+
+
+def test_review_generation_failure_is_nonzero_and_leaves_no_packet(repository):
     runner = FakeRunner([0, 7])
 
-    exit_code = agent_finish.main(["--task", "Implement it."], root=tmp_path, runner=runner)
+    exit_code = agent_finish.main(["--task", "Implement it."], root=repository, runner=runner)
 
     assert exit_code == 7
-    assert not (tmp_path / ".agent/review_packet.md").exists()
+    assert not (repository / ".agent/review_packet.md").exists()
+    assert not list((repository / ".agent").glob("review-*"))
 
 
-def test_task_string_is_forwarded(tmp_path):
+def test_task_string_is_forwarded(repository):
     runner = FakeRunner([0, 0])
 
-    agent_finish.main(["--task", "Exact inline task."], root=tmp_path, runner=runner)
+    assert agent_finish.main(["--task", "Exact inline task."], root=repository, runner=runner) == 0
 
     assert runner.commands[1][2:4] == ("--task", "Exact inline task.")
 
 
-def test_task_file_is_forwarded(tmp_path):
+def test_task_file_is_forwarded(repository):
     runner = FakeRunner([0, 0])
-    task_file = tmp_path / "task.md"
+    task_file = repository / "task.md"
     task_file.write_text("Exact file task.\n", encoding="utf-8")
 
-    agent_finish.main(["--task-file", str(task_file)], root=tmp_path, runner=runner)
+    assert agent_finish.main(["--task-file", str(task_file)], root=repository, runner=runner) == 0
 
     assert runner.commands[1][2:4] == ("--task-file", str(task_file))
 
@@ -220,21 +262,22 @@ def test_task_sources_are_mutually_exclusive(tmp_path):
     assert error.value.code == 2
 
 
-def test_output_path_is_fixed_under_agent_directory(tmp_path):
+def test_output_path_is_fixed_under_agent_directory(repository):
     runner = FakeRunner([0, 0])
 
-    agent_finish.main(["--task", "Implement it."], root=tmp_path, runner=runner)
+    assert agent_finish.main(["--task", "Implement it."], root=repository, runner=runner) == 0
 
     output_index = runner.commands[1].index("--output")
-    assert Path(runner.commands[1][output_index + 1]) == (
-        tmp_path / ".agent/review_packet.md"
-    )
+    staged = Path(runner.commands[1][output_index + 1])
+    packet = repository / ".agent/review_packet.md"
+    assert staged.parent.parent == packet.parent and staged.name == packet.name
+    assert packet.is_file() and not staged.exists()
 
 
-def test_only_local_check_and_review_scripts_are_invoked(tmp_path):
+def test_only_local_check_and_review_scripts_are_invoked(repository):
     runner = FakeRunner([0, 0])
 
-    agent_finish.main(["--task", "Implement it."], root=tmp_path, runner=runner)
+    assert agent_finish.main(["--task", "Implement it."], root=repository, runner=runner) == 0
 
     assert [Path(command[1]).name for command in runner.commands] == [
         "agent_check.py",

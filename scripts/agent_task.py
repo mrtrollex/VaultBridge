@@ -326,6 +326,7 @@ def main(argv: Sequence[str] | None = None, *, root: Path = REPOSITORY_ROOT) -> 
             label="output",
             must_exist=False,
         )
+        agent_review.packet_destination(root, output)
         if args.task_file is not None and agent_review.paths_refer_to_same_file(
             args.task_file, output
         ):
@@ -380,7 +381,7 @@ def main(argv: Sequence[str] | None = None, *, root: Path = REPOSITORY_ROOT) -> 
                 f"complete task packet exceeds the {args.max_packet_bytes:,}-byte limit"
             )
         output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(packet, encoding="utf-8", newline="\n")
+        agent_review.write_packet(root, output, packet)
     except (OSError, UnicodeError, agent_check.DiscoveryError) as error:
         print(f"ERROR task packet generation: {error}", file=sys.stderr)
         return 2
