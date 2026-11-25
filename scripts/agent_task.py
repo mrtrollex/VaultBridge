@@ -173,6 +173,15 @@ def _changed_files_summary(status_lines: Sequence[str]) -> str:
     )
 
 
+def _context_body(context_file: ContextFile) -> str:
+    if context_file.content is not None:
+        return _fenced(context_file.content, "text")
+    return (
+        f"Omitted because {context_file.omission_reason}. Inspect this file directly "
+        "if the task requires it; no partial content was included."
+    )
+
+
 def render_packet(
     state: RepositoryState,
     *,
@@ -185,15 +194,7 @@ def render_packet(
     if context_files:
         context_sections: list[str] = []
         for context_file in context_files:
-            heading = f"### `{context_file.path}`"
-            if context_file.content is None:
-                body = (
-                    f"Omitted because {context_file.omission_reason}. Inspect this file directly "
-                    "if the task requires it; no partial content was included."
-                )
-            else:
-                body = _fenced(context_file.content, "text")
-            context_sections.extend((heading, body))
+            context_sections.extend((f"### `{context_file.path}`", _context_body(context_file)))
         relevant_context = "\n\n".join(context_sections)
     else:
         relevant_context = (
@@ -218,7 +219,12 @@ def render_packet(
         f"- Working tree before implementation: **{status}**\n\n"
         f"Changed files present before implementation:\n\n{changed}",
         "## Implementation instructions",
-        "- Inspect the relevant code and tests before editing.\n"
+        "- **Risk and feasibility preflight.** After reading the exact task and relevant code and "
+        "tests, assess the actual risks before production edits. Record one proportional LOW, "
+        "MEDIUM or HIGH assessment in this implementation session. Include the level and rationale, "
+        "critical invariants, risks and assumptions, early probes and expected outcomes, missing "
+        "prerequisites, acceptance criteria, scope boundaries, and `GO`, `NEEDS CLARIFICATION` or "
+        "`BLOCKED`. See Assess risk and feasibility in `docs/CODEX_PLAYBOOK.md`.\n"
         "- Preserve unrelated and pre-existing changes.\n"
         "- Make the smallest coherent change that follows existing architecture and conventions.\n"
         "- Add or update focused tests for changed behavior.\n"
@@ -243,16 +249,18 @@ def render_packet_with_limit(
     if len(packet.encode("utf-8")) <= max_packet_bytes:
         return packet
 
-    bounded_context = [
-        ContextFile(
-            context_file.path,
-            None,
-            f"including it would exceed the {max_packet_bytes:,}-byte overall packet limit",
+    # Each layout uses the same headings and separators. Minimize the bodies before
+    # restoring larger entries so later byte savings are available to earlier entries.
+    omission_reason = f"including it would exceed the {max_packet_bytes:,}-byte overall packet limit"
+    bounded_context: list[ContextFile] = []
+    for context_file in context_files:
+        if context_file.content is None:
+            bounded_context.append(context_file)
+            continue
+        omitted = ContextFile(context_file.path, None, omission_reason)
+        bounded_context.append(
+            min((context_file, omitted), key=lambda entry: len(_context_body(entry).encode("utf-8")))
         )
-        if context_file.content is not None
-        else context_file
-        for context_file in context_files
-    ]
     packet = render_packet(
         state,
         task_context=task_context,
@@ -265,7 +273,7 @@ def render_packet_with_limit(
         )
 
     for index, context_file in enumerate(context_files):
-        if context_file.content is None:
+        if context_file.content is None or bounded_context[index].content is not None:
             continue
         candidate_context = list(bounded_context)
         candidate_context[index] = context_file
@@ -360,14 +368,16 @@ def main(argv: Sequence[str] | None = None, *, root: Path = REPOSITORY_ROOT) -> 
             )
 
         state = collect_repository_state(root)
-        task_packet = render_packet(state, task_context=task_context)
-        if len(task_packet.encode("utf-8")) > args.max_packet_bytes:
-            empty_task_packet = render_packet(state, task_context="")
-            if len(empty_task_packet.encode("utf-8")) <= args.max_packet_bytes:
-                raise agent_check.DiscoveryError(
-                    f"task exceeds the supported size for the {args.max_packet_bytes:,}-byte "
-                    "packet limit"
-                )
+        # Selected context can be shorter than the no-context placeholder.
+        if not args.context_file:
+            task_packet = render_packet(state, task_context=task_context)
+            if len(task_packet.encode("utf-8")) > args.max_packet_bytes:
+                empty_task_packet = render_packet(state, task_context="")
+                if len(empty_task_packet.encode("utf-8")) <= args.max_packet_bytes:
+                    raise agent_check.DiscoveryError(
+                        f"task exceeds the supported size for the {args.max_packet_bytes:,}-byte "
+                        "packet limit"
+                    )
         context_files = load_context_files(root, args.context_file)
         packet = render_packet_with_limit(
             state,
