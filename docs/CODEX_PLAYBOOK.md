@@ -33,8 +33,32 @@ bounded size limits. It does not infer requirements from branch names, scan all 
 invoke Codex. Inspect the relevant code directly even when the packet contains excerpts.
 
 Start implementation with that packet, or read it and continue if already in the implementation
-session. State a short plan, assumptions, likely files, exclusions and observable success criteria.
-Preserve unrelated working-tree changes. Never include real vaults or credentials in task files.
+session. Preserve unrelated working-tree changes. Never include real vaults or credentials in task
+files.
+
+## Assess risk and feasibility
+
+After reading the exact task and relevant code and tests, record one assessment in the implementation
+session before production edits. Use the highest applicable risk level from the
+[preflight design](AGENT_PREFLIGHT_DESIGN.md#risk-triggers-and-depth).
+
+- **LOW (1–2 min)** for bounded changes with unchanged contracts and no material unknowns. Use a few
+  lines covering the intended result, invariants, scope and an observable check. Combine answers and
+  omit inapplicable fields.
+- **MEDIUM (5–10 min)** for bounded behavior changes with predictable failure paths or portability
+  questions. Name the assumptions, relevant environments, prerequisites and focused checks.
+- **HIGH (15–30 min)** for changes to critical contracts or material behavior without a credible test path.
+  Run the smallest decisive probe for each critical assumption before editing. Record what would
+  falsify it, the command or fixture, environment, observed outcomes, negative cases and failure or
+  rollback behavior.
+
+Use these timeboxes for the initial assessment. Mark unverified assumptions and planned checks.
+Revisit affected entries when evidence or scope changes. Use **GO** when the scope is feasible and
+critical assumptions are resolved. If a critical assumption remains unresolved, record what would
+resolve it and pause affected production work. Use **NEEDS CLARIFICATION** for a missing decision or
+uncertain scope and **BLOCKED** for an unavailable prerequisite or no credible test path. Continue
+safe investigation within scope. The assessment is advisory. All existing finish, independent review
+and CI requirements still apply.
 
 ## Implement and check
 
@@ -203,7 +227,7 @@ session with only `.agent/review_packet.md`, without implementer history. Do not
 delegate to or wait for a reviewer, or perform a review/fix/review loop in the implementation session.
 
 ```text
-agent_task.py -> implementation -> agent_finish.py invokes agent_check.py
+agent_task.py -> risk and feasibility assessment -> implementation -> agent_finish.py invokes agent_check.py
 -> agent_review.py writes review_packet.md -> separate fresh read-only review
 -> APPROVE -> explicitly authorized PR / independent CI
 ```
