@@ -79,7 +79,48 @@ python scripts/agent_check.py
 Canonical Python checks are Ruff on `app tests scripts`, full non-E2E pytest (including evaluation)
 and `python -m compileall -q app`. UI changes select Chromium E2E; applicable Docker/MCP changes
 select Compose/build/container checks. Do not run Ruff over vendored TrueNAS libraries.
-Read the actual selector output; this paragraph is not a substitute for its current classification.
+
+A complete Git-discovered change limited to the seven literal workflow script paths and six test
+paths in `scripts/agent_check.py` selects the required `pytest-workflow` check. A change to this
+playbook can accompany those paths. At least one allowlisted script or test must change. The check
+runs exactly these modules and retains Ruff and app compilation:
+
+```text
+python -m pytest -q tests/test_agent_task.py tests/test_agent_check.py tests/test_agent_finish.py tests/test_agent_review.py tests/test_agent_validation.py tests/test_agent_evidence.py
+```
+
+The selector considers the committed, staged, unstaged, and nonignored untracked delta and both
+endpoints of Git-identified renames and copies. Runtime paths, shared fixtures, dependencies,
+global configuration, CI workflow files, unknown non-documentation paths, and workflow changes
+mixed with any path outside the allowlist use the broader Python profile with applicable additional
+checks. Explicit path lists, untracked files, additions, copies, and type changes cannot qualify
+for the workflow profile.
+
+Managed finish and review independently resolve `refs/remotes/origin/main`, or `refs/heads/main`
+when the remote-tracking reference is unavailable. Both require a unique merge base. Standalone
+comparisons can use `--base` or honor `GITHUB_BASE_REF` in GitHub Actions. Comparisons against
+those overrides use the broader Python checks when Python checks apply. Managed runs ignore
+the GitHub base hint and reject explicit scope overrides.
+
+Every Git-discovered scope requires a readable index with fully visible entries. Failed or malformed
+discovery, `skip-worktree`, `assume-unchanged`, and unresolved index entries block validation.
+The same visibility requirement applies to source fingerprints used at handoff. Git source, index,
+or configuration redirection through environment variables blocks discovery. A clean or documentation-only scope
+can omit automated checks after discovery succeeds.
+
+Discovery checks tracked files outside the Git diff against the bytes expected from the index.
+Worktree `.gitattributes` files along indexed paths must be indexed themselves, even when Git ignores
+them. Changes to indexed attribute files require full Python checks. Private attribute overrides
+block validation. Global and system rules may be present when their effective checkout conversion
+attributes match the repository-only result. Git reads that result with the global and system
+sources disabled for the inspection subprocess.
+
+The checkout comparison uses repository attributes, index line-ending metadata, Git-parsed
+`core.autocrlf` booleans or `input`, and case-insensitive `core.eol` values. A raw mismatch joins the
+changed-file scope even when Git normalizes it to the same blob. Active filter, ident, and encoding
+attributes and ambiguous or incomplete inspection block validation. The inspection reads the
+checkout and uses batched Git metadata without running an external checkout filter.
+
 Explicit changed files may use native absolute paths. Those paths are resolved against the
 canonical checkout root, and the resulting repository-relative names are checked for portability.
 Ambiguous Windows spellings and parent traversal are rejected before resolution.
@@ -133,6 +174,13 @@ For durable qualification evidence, keep reviewed, sanitized artifacts in the PR
 their exact source, platform and relevant tool versions, executed checks, outcomes and limitations.
 The local report does not automatically become PR evidence and is never used to reuse a result
 or skip a check.
+
+Finish and review reconstruction match the workflow pytest check ID and exact selected and executed
+command to the current scope, including checkout-byte differences outside the Git diff. Raw source
+fingerprints establish stability between observations, and the checkout comparison establishes
+expected input bytes. A workflow result cannot satisfy full pytest. When the change includes
+the selector or evidence code, the local run uses the changed tools and is supplementary evidence.
+Fresh independent review and complete hosted Python, Chromium and Docker CI remain acceptance gates.
 
 For browser regression setup, install development dependencies and run
 `python -m playwright install chromium`. `tests/e2e/` uses a disposable local application without

@@ -30,6 +30,27 @@ else:
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 IMAGE_TAG = "vaultbridge:agent-check"
 AREAS = ("docs", "python", "semantic", "api", "ui", "mcp", "docker", "truenas/deployment")
+TRUSTED_BASE_REFS = ("refs/remotes/origin/main", "refs/heads/main")
+
+WORKFLOW_TESTS = (
+    "tests/test_agent_task.py",
+    "tests/test_agent_check.py",
+    "tests/test_agent_finish.py",
+    "tests/test_agent_review.py",
+    "tests/test_agent_validation.py",
+    "tests/test_agent_evidence.py",
+)
+WORKFLOW_PYTHON_PATHS = frozenset({
+    "scripts/agent_task.py",
+    "scripts/agent_check.py",
+    "scripts/agent_finish.py",
+    "scripts/agent_review.py",
+    "scripts/agent_validation.py",
+    "scripts/agent_evidence.py",
+    "scripts/agent_evidence_io.py",
+    *WORKFLOW_TESTS,
+})
+WORKFLOW_PATHS = WORKFLOW_PYTHON_PATHS | {"docs/CODEX_PLAYBOOK.md"}
 
 PASS = "PASS"
 FAIL = "FAIL"
@@ -75,6 +96,8 @@ class Discovery:
     base_ref: str | None = None
     merge_base: str | None = None
     base_commit: str | None = None
+    workflow_only: bool = False
+    raw_changed_files: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -106,58 +129,104 @@ AvailabilityChecker = Callable[[Check], str | None]
 
 
 def _git(root: Path, *args: str, check: bool = True) -> bytes:
-    completed = subprocess.run(
-        ["git", *args],
-        cwd=root,
-        check=False,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
+    try:
+        completed = subprocess.run(
+            [*agent_validation.GIT_READ_COMMAND, *args],
+            cwd=root,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+    except OSError as error:
+        raise DiscoveryError("Git could not be launched during change discovery") from error
     if check and completed.returncode != 0:
         raise DiscoveryError(f"git {args[0]} failed during change discovery")
     return completed.stdout if completed.returncode == 0 else b""
 
 
 def _git_ref_exists(root: Path, ref: str) -> bool:
-    completed = subprocess.run(
-        ["git", "rev-parse", "--verify", "--quiet", "--end-of-options", f"{ref}^{{commit}}"],
-        cwd=root,
-        check=False,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    return completed.returncode == 0
+    return bool(_git(
+        root, "rev-parse", "--verify", "--quiet", "--end-of-options", f"{ref}^{{commit}}", check=False,
+    ))
 
 
 def choose_base_ref(
     root: Path,
     requested: str | None,
     *,
+    managed: bool = False,
     environment: Mapping[str, str] = os.environ,
-) -> str:
-    if requested:
+) -> tuple[str, bool]:
+    if requested is not None:
+        if managed:
+            raise DiscoveryError("managed validation requires the trusted comparison base")
         if not _git_ref_exists(root, requested):
             raise DiscoveryError("the requested base does not resolve to a commit")
-        return requested
+        return requested, False
 
+    if not managed and environment.get("GITHUB_ACTIONS") == "true":
+        github_base = environment.get("GITHUB_BASE_REF", "").strip()
+        if github_base:
+            for candidate in (f"refs/remotes/origin/{github_base}", f"refs/heads/{github_base}"):
+                if _git_ref_exists(root, candidate):
+                    return candidate, False
+
+    for candidate in TRUSTED_BASE_REFS:
+        if _git_ref_exists(root, candidate):
+            return candidate, True
+    if managed:
+        raise DiscoveryError("could not determine the trusted main comparison base")
+
+    # Retain alternate default branches for standalone comparisons.
     candidates: list[str] = []
-    github_base = environment.get("GITHUB_BASE_REF", "").strip()
-    if github_base:
-        candidates.extend((f"origin/{github_base}", github_base))
-
     remote_head = _git(root, "symbolic-ref", "--quiet", "refs/remotes/origin/HEAD", check=False)
     if remote_head:
         candidates.append(remote_head.decode("utf-8", "replace").strip())
 
-    candidates.extend(("origin/main", "main", "origin/master", "master", "origin/trunk", "trunk"))
+    candidates.extend(("origin/master", "master", "origin/trunk", "trunk"))
     for candidate in dict.fromkeys(candidates):
         if candidate and _git_ref_exists(root, candidate):
-            return candidate
+            return candidate, False
     raise DiscoveryError("could not determine a base reference; pass --base explicitly")
 
 
 def _nul_paths(output: bytes) -> set[str]:
-    return {_relative_path(os.fsdecode(item)) for item in output.split(b"\0") if item}
+    return {_relative_path(os.fsdecode(item)) for item in _nul_fields(output)}
+
+
+def _nul_fields(output: bytes) -> list[bytes]:
+    if not output:
+        return []
+    fields = output.split(b"\0")
+    if fields[-1] or not all(fields[:-1]):
+        raise DiscoveryError("invalid NUL-delimited Git discovery output")
+    return fields[:-1]
+
+
+def _diff_paths(output: bytes) -> tuple[set[str], bool]:
+    files: set[str] = set()
+    unambiguous = True
+    fields = iter(_nul_fields(output))
+    for status in fields:
+        if status in {b"M", b"D", b"A", b"T", b"U"}:
+            path_count = 1
+        elif status in {b"R100", b"C100"}:
+            path_count = 2
+        else:
+            raise DiscoveryError("unrecognized Git change status")
+        for _ in range(path_count):
+            path = next(fields, None)
+            if path is None:
+                raise DiscoveryError("incomplete Git change record")
+            files.add(_relative_path(os.fsdecode(path)))
+        # A copy match can have multiple identical sources. Additions,
+        # type changes and unmerged entries also need the broader checks.
+        unambiguous &= status not in {b"A", b"C100", b"T", b"U"}
+    return files, unambiguous
+
+
+def _workflow_path_set(paths: Sequence[str] | set[str]) -> bool:
+    return WORKFLOW_PATHS.issuperset(paths) and not WORKFLOW_PYTHON_PATHS.isdisjoint(paths)
 
 
 def _relative_path(path: str) -> str:
@@ -345,30 +414,71 @@ def discover_changed_files(
     *,
     base_ref: str | None = None,
     supplied_files: Sequence[str] = (),
+    managed: bool = False,
 ) -> Discovery:
     if supplied_files:
+        if managed:
+            raise DiscoveryError("managed validation requires Git-discovered scope")
         files = tuple(sorted({_normalize_supplied_path(root, path) for path in supplied_files}))
         return Discovery(files=files, base="explicit changed files")
 
-    _git(root, "rev-parse", "--show-toplevel")
-    base_commit, canonical_ref = _resolved_base(root, choose_base_ref(root, base_ref))
-    merge_base = _git(root, "merge-base", "HEAD", base_commit).decode("ascii", "replace").strip()
-    if not merge_base:
-        raise DiscoveryError("could not find a merge base for HEAD and the selected base")
+    try:
+        agent_validation.require_checkout_environment()
+    except ValueError as error:
+        raise DiscoveryError(str(error)) from error
+    top_level = _git(root, "rev-parse", "--show-toplevel").rstrip(b"\r\n")
+    if not top_level or os.path.normcase(os.path.realpath(os.fsdecode(top_level))) != (
+        os.path.normcase(os.path.realpath(root))
+    ):
+        raise DiscoveryError("change discovery requires the Git repository root")
+    try:
+        index_paths = agent_validation.visible_index_paths(_git(root, "ls-files", "--cached", "-v", "-z"))
+        absent_attributes = agent_validation.require_supported_checkout_attributes(root, index_paths)
+        checkout_settings = agent_validation.checkout_eol_settings(root)
+    except ValueError as error:
+        raise DiscoveryError(str(error)) from error
+    except (OSError, subprocess.CalledProcessError) as error:
+        raise DiscoveryError("could not inspect Git checkout settings and attributes") from error
 
-    files: set[str] = set()
-    files.update(
-        _nul_paths(_git(root, "diff", "--no-renames", "--name-only", "-z", merge_base, "HEAD"))
+    comparison_ref, trusted = choose_base_ref(root, base_ref, managed=managed)
+    base_commit, canonical_ref = _resolved_base(root, comparison_ref)
+    if trusted and canonical_ref != comparison_ref:
+        raise DiscoveryError("could not verify the trusted main comparison reference")
+    merge_base = _git(root, "merge-base", "--all", "HEAD", base_commit).decode("ascii", "replace").strip()
+    if not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", merge_base):
+        raise DiscoveryError("could not establish a unique merge base for HEAD and the selected base")
+
+    # Exact matches identify copies from unchanged paths as well as renames.
+    # Edited renames still show both endpoints as a deletion and an addition.
+    diff_args = (
+        "diff", "--no-ext-diff", "--no-relative", "--ignore-submodules=none",
+        "--find-renames=100%", "--find-copies=100%", "--find-copies-harder", "--name-status", "-z",
     )
-    files.update(_nul_paths(_git(root, "diff", "--cached", "--no-renames", "--name-only", "-z")))
-    files.update(_nul_paths(_git(root, "diff", "--no-renames", "--name-only", "-z")))
-    files.update(_nul_paths(_git(root, "ls-files", "--others", "--exclude-standard", "-z")))
+    files: set[str] = set()
+    unambiguous = True
+    for revisions in ((merge_base, "HEAD"), ("--cached",), ()):
+        paths, complete = _diff_paths(_git(root, *diff_args, *revisions))
+        files.update(paths)
+        unambiguous &= complete
+    untracked = _nul_paths(_git(root, "ls-files", "--others", "--exclude-standard", "-z"))
+    files.update(untracked)
+    try:
+        raw_changed = agent_validation.checkout_byte_changes(
+            root, index_paths, files, checkout_settings, absent_attributes,
+        )
+    except ValueError as error:
+        raise DiscoveryError(str(error)) from error
+    except (OSError, RuntimeError, subprocess.CalledProcessError) as error:
+        raise DiscoveryError("could not verify tracked checkout bytes") from error
+    files.update(raw_changed)
     return Discovery(
         files=tuple(sorted(files)),
         base=f"{canonical_ref or base_commit} (merge base {merge_base[:12]})",
         base_ref=canonical_ref,
         merge_base=merge_base,
         base_commit=base_commit,
+        workflow_only=trusted and unambiguous and not untracked and _workflow_path_set(files),
+        raw_changed_files=tuple(sorted(raw_changed)),
     )
 
 
@@ -381,6 +491,8 @@ def classify_file(path: str) -> set[str]:
 
     if (
         (normalized.startswith(("app/", "tests/", "scripts/")) and normalized.endswith(".py"))
+        or PurePosixPath(normalized).name == ".gitattributes"
+        or normalized.startswith(("tests/fixtures/", ".github/workflows/"))
         or normalized == "pyproject.toml"
         or normalized.startswith("requirements")
     ):
@@ -489,6 +601,12 @@ def available_checks() -> tuple[Check, ...]:
             (python, "-m", "pytest", "-q", "--ignore=tests/e2e"),
             python_path,
         ),
+        Check(
+            "pytest-workflow",
+            "pytest (developer workflow)",
+            (python, "-m", "pytest", "-q", *WORKFLOW_TESTS),
+            (*python_path, ("PYTEST_ADDOPTS", "")),
+        ),
         Check("compileall", "compileall", (python, "-m", "compileall", "-q", "app")),
         Check(
             "playwright-e2e",
@@ -578,10 +696,19 @@ def available_checks() -> tuple[Check, ...]:
     )
 
 
-def select_checks(areas: set[str], paths: Sequence[str] = ()) -> tuple[Check, ...]:
+def select_checks(
+    areas: set[str], paths: Sequence[str] = (), *, workflow_only: bool = False,
+) -> tuple[Check, ...]:
     selected: set[str] = set()
-    if areas & {"python", "semantic", "api", "ui", "mcp", "docker"}:
-        selected.update(("ruff", "pytest", "compileall"))
+    if areas & {"python", "semantic", "api", "ui", "mcp", "docker"} or any(
+        not classify_file(path) for path in paths
+    ):
+        pytest_key = (
+            "pytest-workflow"
+            if workflow_only and areas <= {"python", "docs"} and _workflow_path_set(paths)
+            else "pytest"
+        )
+        selected.update(("ruff", pytest_key, "compileall"))
     if "ui" in areas:
         selected.add("playwright-e2e")
     if "docker" in areas:
@@ -732,7 +859,8 @@ def print_selection(
     print("Changed files:")
     if discovery.files:
         for path in discovery.files:
-            print(f"  {path}")
+            detail = " (checkout bytes differ)" if path in discovery.raw_changed_files else ""
+            print(f"  {path}{detail}")
     else:
         print("  (none)")
     print("Detected areas:")
@@ -794,6 +922,7 @@ def scope_record(discovery: Discovery, areas: set[str], manual: Sequence[str]) -
         "base_commit": discovery.base_commit,
         "merge_base": discovery.merge_base,
         "change_discovery": "git" if discovery.base_commit else "explicit",
+        "raw_changed_files": list(discovery.raw_changed_files),
         "changed_files": [
             {"path": path, "areas": sorted(classify_file(path))} for path in discovery.files
         ],
@@ -848,19 +977,27 @@ def main(
     clock: agent_validation.Clock = agent_validation.Clock(),
 ) -> int:
     args = build_parser().parse_args(argv)
+    managed = args.run_id is not None
+    if managed and args.dry_run:
+        print("ERROR managed validation requires check execution", file=sys.stderr)
+        return 2
     source_before = None if args.dry_run else agent_validation.source_identity(REPOSITORY_ROOT)
     try:
         discovery = discover_changed_files(
             REPOSITORY_ROOT,
             base_ref=args.base,
             supplied_files=args.changed_file,
+            managed=managed,
         )
     except DiscoveryError as error:
         print(f"ERROR changed-file discovery: {error}", file=sys.stderr)
         return 2
+    if managed and source_before is None:
+        print("ERROR managed validation could not establish source identity", file=sys.stderr)
+        return 2
 
     areas = classify_files(discovery.files)
-    checks = select_checks(areas, discovery.files)
+    checks = select_checks(areas, discovery.files, workflow_only=discovery.workflow_only)
     manual_requirements = select_manual_requirements(discovery.files, areas)
     print_selection(
         discovery,
@@ -881,6 +1018,9 @@ def main(
     source_after = agent_validation.source_identity(REPOSITORY_ROOT)
     print_results(results, manual_requirements)
     exit_code = result_exit_code(results)
+    if managed and exit_code == 0 and source_before != source_after:
+        print("ERROR managed validation source changed or became unavailable", file=sys.stderr)
+        return 2
     outcome = {0: "PASS", 1: "FAIL", 3: "INCOMPLETE"}[exit_code]
     if exit_code == 0 and manual_requirements:
         print("Overall: AUTOMATED PASS; MANUAL VERIFICATION REMAINS")

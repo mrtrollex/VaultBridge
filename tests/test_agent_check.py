@@ -12,7 +12,9 @@ from scripts import agent_check, agent_validation
 
 
 @pytest.fixture(autouse=True)
-def isolated_report(monkeypatch, tmp_path):
+def isolated_validation(monkeypatch, tmp_path):
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    monkeypatch.delenv("GITHUB_BASE_REF", raising=False)
     monkeypatch.setattr(agent_check, "REPOSITORY_ROOT", tmp_path)
 
 
@@ -39,16 +41,21 @@ def test_classify_file_uses_repository_paths(path, expected):
 
 def test_discovery_unions_branch_index_worktree_and_untracked(monkeypatch, tmp_path):
     base = "a" * 40
+    merge_base = "0123456789abcdef" * 2 + "01234567"
     reference = "refs/remotes/origin/main"
+    diff = (
+        "diff", "--no-ext-diff", "--no-relative", "--ignore-submodules=none",
+        "--find-renames=100%", "--find-copies=100%", "--find-copies-harder", "--name-status", "-z",
+    )
     responses = {
-        ("rev-parse", "--show-toplevel"): f"{tmp_path}\n".encode(),
-        ("symbolic-ref", "--quiet", "refs/remotes/origin/HEAD"): b"refs/remotes/origin/main\n",
+        ("rev-parse", "--show-toplevel"): os.fsencode(tmp_path) + b"\n",
+        ("ls-files", "--cached", "-v", "-z"): b"H app/main.py\0",
         ("rev-parse", "--verify", "--quiet", "--end-of-options", f"{reference}^{{commit}}"): base.encode(),
         ("rev-parse", "--symbolic-full-name", "--verify", "--end-of-options", reference): reference.encode(),
-        ("merge-base", "HEAD", base): b"0123456789abcdef\n",
-        ("diff", "--no-renames", "--name-only", "-z", "0123456789abcdef", "HEAD"): b"app/main.py\0",
-        ("diff", "--cached", "--no-renames", "--name-only", "-z"): b"tests/test_api.py\0",
-        ("diff", "--no-renames", "--name-only", "-z"): b"docs/guide with spaces.md\0",
+        ("merge-base", "--all", "HEAD", base): merge_base.encode() + b"\n",
+        (*diff, merge_base, "HEAD"): b"M\0app/main.py\0",
+        (*diff, "--cached"): b"D\0tests/test_api.py\0",
+        diff: b"M\0docs/guide with spaces.md\0",
         ("ls-files", "--others", "--exclude-standard", "-z"): b"scripts/new.py\0",
     }
 
@@ -58,6 +65,9 @@ def test_discovery_unions_branch_index_worktree_and_untracked(monkeypatch, tmp_p
 
     monkeypatch.setattr(agent_check, "_git", fake_git)
     monkeypatch.setattr(agent_check, "_git_ref_exists", lambda root, ref: ref == "refs/remotes/origin/main")
+    monkeypatch.setattr(agent_validation, "require_supported_checkout_attributes", lambda *args: None)
+    monkeypatch.setattr(agent_validation, "checkout_eol_settings", lambda root: (b"false", b"lf"))
+    monkeypatch.setattr(agent_validation, "checkout_byte_changes", lambda *args: set())
 
     discovery = agent_check.discover_changed_files(tmp_path)
 
@@ -69,6 +79,507 @@ def test_discovery_unions_branch_index_worktree_and_untracked(monkeypatch, tmp_p
     )
     assert discovery.base == "refs/remotes/origin/main (merge base 0123456789ab)"
     assert discovery.base_commit == base
+    assert not discovery.workflow_only
+
+
+WORKFLOW_TESTS = (
+    "tests/test_agent_task.py", "tests/test_agent_check.py", "tests/test_agent_finish.py",
+    "tests/test_agent_review.py", "tests/test_agent_validation.py", "tests/test_agent_evidence.py",
+)
+WORKFLOW_SCRIPTS = (
+    "scripts/agent_task.py", "scripts/agent_check.py", "scripts/agent_finish.py",
+    "scripts/agent_review.py", "scripts/agent_validation.py", "scripts/agent_evidence.py",
+    "scripts/agent_evidence_io.py",
+)
+PLAYBOOK = "docs/CODEX_PLAYBOOK.md"
+FULL_CHECKS = ("ruff", "pytest", "compileall")
+WORKFLOW_CHECKS = ("ruff", "pytest-workflow", "compileall")
+
+
+@pytest.fixture
+def workflow_checkout(tmp_path):
+    def git(*args):
+        return subprocess.check_output(
+            ["git", "-c", "user.name=Test", "-c", "user.email=test@example.invalid", *args],
+            cwd=tmp_path, stderr=subprocess.DEVNULL,
+        )
+
+    def write(path, content="changed\n"):
+        target = tmp_path / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content, encoding="utf-8")
+
+    git("init", "-b", "main")
+    for path in (*WORKFLOW_SCRIPTS, *WORKFLOW_TESTS, PLAYBOOK, "app/module.py", "docs/guide.md"):
+        write(path, f"base: {path}\n")
+    git("add", ".")
+    git("commit", "-m", "base")
+    return git, write
+
+
+def _checks_for(discovery):
+    return agent_check.select_checks(
+        agent_check.classify_files(discovery.files), discovery.files, workflow_only=discovery.workflow_only,
+    )
+
+
+def _materialize_index(root, git):
+    git("checkout-index", "--all", "--prefix=.git/materialized/")
+    for name in git("ls-files", "-z").decode("utf-8").strip("\0").split("\0"):
+        (root / ".git/materialized" / name).replace(root / name)
+
+
+def test_local_and_managed_scope_ignore_inherited_feature_base(tmp_path, workflow_checkout, monkeypatch):
+    git, write = workflow_checkout
+    git("update-ref", "refs/remotes/origin/main", "HEAD")
+    git("switch", "-c", "feature")
+    write("app/module.py")
+    git("commit", "-am", "committed runtime change")
+    git("update-ref", "refs/remotes/origin/feature", "HEAD")
+    git("symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/feature")
+    write(WORKFLOW_TESTS[0])
+    expected = agent_check.discover_changed_files(tmp_path)
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    monkeypatch.setenv("GITHUB_BASE_REF", "feature")
+    assert agent_check.discover_changed_files(tmp_path) == expected
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    assert agent_check.discover_changed_files(tmp_path, managed=True) == expected
+    assert expected.base_ref == "refs/remotes/origin/main"
+    assert expected.files == ("app/module.py", WORKFLOW_TESTS[0])
+    assert tuple(check.key for check in _checks_for(expected)) == FULL_CHECKS
+
+
+def test_hosted_ci_and_explicit_comparisons_keep_selected_base_without_narrowing(
+    tmp_path, workflow_checkout, monkeypatch,
+):
+    git, write = workflow_checkout
+    git("switch", "-c", "release")
+    write("app/module.py")
+    git("commit", "-am", "runtime included in release")
+    git("update-ref", "refs/remotes/origin/release", "HEAD")
+    git("switch", "-c", "feature")
+    write(WORKFLOW_TESTS[0])
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setenv("GITHUB_BASE_REF", "release")
+    discovery = agent_check.discover_changed_files(tmp_path)
+    assert discovery.base_ref == "refs/remotes/origin/release"
+    assert discovery.files == (WORKFLOW_TESTS[0],)
+    assert tuple(check.key for check in _checks_for(discovery)) == FULL_CHECKS
+
+    explicit = agent_check.discover_changed_files(tmp_path, base_ref="release")
+    assert explicit.base_ref == "refs/heads/release"
+    assert explicit.files == discovery.files
+    assert tuple(check.key for check in _checks_for(explicit)) == FULL_CHECKS
+    with pytest.raises(agent_check.DiscoveryError, match="requires the trusted"):
+        agent_check.discover_changed_files(tmp_path, base_ref="release", managed=True)
+
+
+@pytest.mark.parametrize("problem", ("missing", "redirected", "ambiguous"))
+def test_invalid_trusted_comparison_blocks_discovery(tmp_path, workflow_checkout, monkeypatch, problem):
+    git, _ = workflow_checkout
+    git("switch", "-c", "feature")
+    if problem == "missing":
+        git("branch", "-D", "main")
+        message = "trusted main comparison base"
+    elif problem == "redirected":
+        git("symbolic-ref", "refs/remotes/origin/main", "refs/heads/feature")
+        message = "verify the trusted main comparison reference"
+    else:
+        real_git = agent_check._git
+
+        def git_with_ambiguous_base(root, *args, **kwargs):
+            if args[0] == "merge-base":
+                assert args[1] == "--all"
+                return b"a" * 40 + b"\n" + b"b" * 40 + b"\n"
+            return real_git(root, *args, **kwargs)
+
+        monkeypatch.setattr(agent_check, "_git", git_with_ambiguous_base)
+        message = "unique merge base"
+    with pytest.raises(agent_check.DiscoveryError, match=message):
+        agent_check.discover_changed_files(tmp_path, managed=True)
+
+
+def test_git_index_environment_override_cannot_redefine_checkout(tmp_path, workflow_checkout, monkeypatch):
+    monkeypatch.setenv("GIT_INDEX_FILE", str(tmp_path / "other-index"))
+    with pytest.raises(agent_check.DiscoveryError, match="Git environment overrides"):
+        agent_check.discover_changed_files(tmp_path)
+    assert agent_validation.source_identity(tmp_path) is None
+
+
+def test_git_config_environment_cannot_exclude_untracked_pytest_configuration(
+    tmp_path, workflow_checkout, monkeypatch,
+):
+    git, write = workflow_checkout
+    write(WORKFLOW_TESTS[0])
+    write("conftest.py")
+    scope = agent_check.discover_changed_files(tmp_path, managed=True)
+    assert scope.files == ("conftest.py", WORKFLOW_TESTS[0])
+    assert tuple(check.key for check in _checks_for(scope)) == FULL_CHECKS
+
+    exclude = tmp_path / ".git/scope-excludes"
+    exclude.write_text("conftest.py\n", encoding="utf-8")
+    config = tmp_path / ".git/scope-config"
+    git("config", "--file", str(config), "core.excludesFile", exclude.as_posix())
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(config))
+    assert git("ls-files", "--others", "--exclude-standard", "-z") == b""
+    with pytest.raises(agent_check.DiscoveryError, match="Git environment overrides"):
+        agent_check.discover_changed_files(tmp_path, managed=True)
+    assert agent_validation.source_identity(tmp_path) is None
+
+
+@pytest.mark.parametrize(("autocrlf", "eol", "attribute", "expected"), [
+    ("true", "lf", "", b"checkout\r\n"),
+    ("YES", "lf", "", b"checkout\r\n"),
+    ("On", "lf", "", b"checkout\r\n"),
+    ("2", "lf", "", b"checkout\r\n"),
+    (None, "lf", "", b"checkout\r\n"),
+    ("false", "lf", "", b"checkout\n"),
+    ("NO", "crlf", "", b"checkout\n"),
+    ("off", "lf", "", b"checkout\n"),
+    ("0", "lf", "", b"checkout\n"),
+    ("", "lf", "", b"checkout\n"),
+    ("input", "crlf", "app/module.py text\n", b"checkout\n"),
+    ("INPUT", "CRLF", "app/module.py text\n", b"checkout\n"),
+    ("false", "crlf", "app/module.py text=auto\n", b"checkout\r\n"),
+    ("FALSE", "CRLF", "app/module.py text=auto\n", b"checkout\r\n"),
+    ("true", "crlf", "app/module.py text eol=lf\n", b"checkout\n"),
+    ("false", "lf", "app/module.py eol=crlf\n", b"checkout\r\n"),
+    ("true", "crlf", "app/module.py -text\n", b"checkout\n"),
+])
+def test_git_materialized_checkout_keeps_workflow_eligible(
+    tmp_path, workflow_checkout, autocrlf, eol, attribute, expected,
+):
+    git, write = workflow_checkout
+    git("config", "core.autocrlf", "false")
+    (tmp_path / ".gitattributes").write_bytes(attribute.encode("ascii"))
+    runtime = tmp_path / "app/module.py"
+    runtime.write_bytes(b"checkout\n")
+    git("add", ".gitattributes", "app/module.py")
+    git("commit", "-m", "checkout attributes")
+    if autocrlf is None:
+        with (tmp_path / ".git/config").open("ab") as config:
+            config.write(b"\n[core]\n\tautocrlf\n")
+    else:
+        git("config", "core.autocrlf", autocrlf)
+    git("config", "core.eol", eol)
+    _materialize_index(tmp_path, git)
+    assert runtime.read_bytes() == expected
+    assert _checks_for(agent_check.discover_changed_files(tmp_path, managed=True)) == ()
+    write(WORKFLOW_TESTS[0])
+    scope = agent_check.discover_changed_files(tmp_path, managed=True)
+    assert scope.raw_changed_files == ()
+    assert scope.files == (WORKFLOW_TESTS[0],)
+    assert tuple(check.key for check in _checks_for(scope)) == WORKFLOW_CHECKS
+
+
+def test_checkout_hidden_raw_difference_generalizes_beyond_the_reference_fixture(
+    tmp_path, workflow_checkout,
+):
+    git, write = workflow_checkout
+    git("config", "core.autocrlf", "true")
+    _materialize_index(tmp_path, git)
+    runtime = tmp_path / "app/module.py"
+    crlf = runtime.read_bytes()
+    assert b"\r\n" in crlf
+    runtime.write_bytes(crlf.replace(b"\r\n", b"\n"))
+    write(WORKFLOW_TESTS[0])
+    assert git("diff", "--name-only").splitlines() == [WORKFLOW_TESTS[0].encode()]
+    scope = agent_check.discover_changed_files(tmp_path, managed=True)
+    assert scope.raw_changed_files == ("app/module.py",)
+    assert tuple(check.key for check in _checks_for(scope)) == FULL_CHECKS
+
+
+@pytest.mark.parametrize("attribute", ("filter=unset", "ident", "working-tree-encoding=UTF-16LE"))
+def test_unsupported_transformations_block_before_running_clean_filters(
+    tmp_path, workflow_checkout, capsys, attribute,
+):
+    git, write = workflow_checkout
+    write(".gitattributes", f"app/module.py {attribute}\n")
+    git("add", ".gitattributes")
+    git("config", "filter.unset.clean", "echo invoked >> .git/filter-invoked; cat")
+    git("config", "filter.unset.smudge", "echo invoked >> .git/filter-invoked; cat")
+    write("app/module.py")
+    assert agent_check.main(["--run-id", "286a7db0-4bf9-4d54-8186-a18ad770036e"]) == 2
+    assert "unsupported Git checkout transformation" in capsys.readouterr().err
+    assert not (tmp_path / ".git/filter-invoked").exists()
+    assert not (tmp_path / agent_validation.REPORT_PATH).exists()
+
+
+def test_private_attributes_cannot_override_tracked_line_ending_contract(
+    tmp_path, workflow_checkout, capsys,
+):
+    git, write = workflow_checkout
+    write(".gitattributes", "app/module.py text eol=lf\n")
+    git("add", ".gitattributes", "app/module.py")
+    git("commit", "-m", "tracked LF contract")
+    (tmp_path / ".git/info/attributes").write_text("app/module.py text eol=crlf\n", encoding="ascii")
+    _materialize_index(tmp_path, git)
+    write(WORKFLOW_TESTS[0])
+    assert git("check-attr", "eol", "--", "app/module.py").strip() == b"app/module.py: eol: crlf"
+    assert b"\r\n" in (tmp_path / "app/module.py").read_bytes()
+    assert git("diff", "--name-only").splitlines() == [WORKFLOW_TESTS[0].encode()]
+    assert agent_check.main(["--dry-run"]) == 2
+    assert "private Git attribute overrides" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("attribute_path", (".gitattributes", "app/.gitattributes"))
+@pytest.mark.parametrize("visible", ("clean", "docs", "workflow"))
+def test_untracked_attribute_sources_block_any_visible_scope(
+    tmp_path, workflow_checkout, capsys, attribute_path, visible,
+):
+    _, write = workflow_checkout
+    write(attribute_path, "module.py text eol=crlf\n")
+    if visible == "docs":
+        write("docs/guide.md")
+    if visible == "workflow":
+        write(WORKFLOW_TESTS[0])
+    assert agent_check.main(["--dry-run"]) == 2
+    assert "unindexed worktree .gitattributes" in capsys.readouterr().err
+    assert agent_validation.source_identity(tmp_path) is None
+
+
+def test_modified_indexed_nested_attribute_file_requires_full_checks(tmp_path, workflow_checkout):
+    git, write = workflow_checkout
+    attributes = "docs/.gitattributes"
+    write(attributes, "*.md text eol=lf\n")
+    git("add", attributes)
+    git("commit", "-m", "indexed nested attributes")
+    _materialize_index(tmp_path, git)
+    write(WORKFLOW_TESTS[0])
+    assert agent_check.discover_changed_files(tmp_path, managed=True).workflow_only
+    write(attributes, "*.md text eol=crlf\n")
+    scope = agent_check.discover_changed_files(tmp_path, managed=True)
+    assert attributes in scope.files
+    assert tuple(check.key for check in _checks_for(scope)) == FULL_CHECKS
+
+
+@pytest.mark.parametrize(("key", "value"), (("core.autocrlf", "maybe"), ("core.eol", "unknown")))
+def test_invalid_checkout_configuration_blocks_selection(tmp_path, workflow_checkout, capsys, key, value):
+    git, _ = workflow_checkout
+    git("config", key, value)
+    with pytest.raises(ValueError, match="unsupported Git line-ending configuration"):
+        agent_validation.checkout_eol_settings(tmp_path)
+    assert agent_check.main(["--dry-run"]) == 2
+    assert "ERROR changed-file discovery:" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("value", ("diff=astextplain", "text eol=crlf"))
+def test_global_attributes_must_leave_checkout_conversion_unchanged(
+    tmp_path, workflow_checkout, capsys, value,
+):
+    git, write = workflow_checkout
+    config = tmp_path / ".git/external-attributes"
+    config.write_text(f"app/module.py {value}\n", encoding="ascii")
+    git("config", "core.attributesFile", config.as_posix())
+    assert value.split()[-1].split("=")[1].encode() in git("check-attr", "--all", "--", "app/module.py")
+    write(WORKFLOW_TESTS[0])
+    if value.startswith("diff="):
+        assert agent_check.discover_changed_files(tmp_path, managed=True).workflow_only
+    else:
+        assert agent_check.main(["--dry-run"]) == 2
+        assert "global or system Git attributes affect checkout" in capsys.readouterr().err
+
+
+def test_system_conversion_is_excluded_from_repository_attribute_proof(
+    workflow_checkout, monkeypatch, capsys,
+):
+    git = agent_validation._git
+    isolated = []
+
+    def with_system_rule(root, *args, **kwargs):
+        if args[0] == "check-attr":
+            assert kwargs.get("env") is None
+            return git(root, *args, **kwargs) + b"app/module.py\0eol\0crlf\0"
+        if args[0] == "-c" and args[2] == "check-attr":
+            isolated.append(kwargs["env"]["GIT_ATTR_NOSYSTEM"])
+            assert args[1].startswith("core.attributesFile=")
+        return git(root, *args, **kwargs)
+
+    # Model an installed system rule without changing the host Git installation.
+    monkeypatch.setattr(agent_validation, "_git", with_system_rule)
+    assert agent_check.main(["--dry-run"]) == 2
+    assert isolated == ["1"]
+    assert "global or system Git attributes affect checkout" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("output", (None, b"", b"H app/module.py", b"not an index record\0"))
+def test_failed_or_ambiguous_checkout_inspection_blocks_selection(
+    workflow_checkout, monkeypatch, capsys, output,
+):
+    git = agent_validation._git
+
+    def inspection(root, *args, **kwargs):
+        if args[-5:] == ("ls-files", "--cached", "--stage", "--eol", "-z"):
+            if output is None:
+                raise subprocess.CalledProcessError(1, args)
+            return output
+        return git(root, *args, **kwargs)
+
+    monkeypatch.setattr(agent_validation, "_git", inspection)
+    assert agent_check.main(["--dry-run"], runner=lambda check: pytest.fail("unexpected check")) == 2
+    assert "ERROR changed-file discovery:" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("path", (*WORKFLOW_SCRIPTS, *WORKFLOW_TESTS))
+def test_each_allowlisted_python_path_selects_fixed_required_command(tmp_path, workflow_checkout, path):
+    _, write = workflow_checkout
+    write(path)
+    discovery = agent_check.discover_changed_files(tmp_path)
+    assert discovery.files == (path,)
+    checks = _checks_for(discovery)
+    assert tuple(check.key for check in checks) == WORKFLOW_CHECKS
+    assert agent_check.command_identity(checks[1]) == ["python", "-m", "pytest", "-q", *WORKFLOW_TESTS]
+    assert dict(checks[1].environment)["PYTEST_ADDOPTS"] == ""
+
+
+def test_workflow_only_across_committed_staged_and_unstaged_paths(tmp_path, workflow_checkout):
+    git, write = workflow_checkout
+    git("switch", "-c", "feature")
+    write("scripts/agent_task.py")
+    git("commit", "-am", "workflow commit")
+    write("tests/test_agent_task.py")
+    git("add", "tests/test_agent_task.py")
+    write(PLAYBOOK)
+    discovery = agent_check.discover_changed_files(tmp_path)
+    assert discovery.files == (PLAYBOOK, "scripts/agent_task.py", "tests/test_agent_task.py")
+    assert tuple(check.key for check in _checks_for(discovery)) == WORKFLOW_CHECKS
+
+
+def test_staged_runtime_change_reverted_only_in_worktree_still_requires_full(tmp_path, workflow_checkout):
+    git, write = workflow_checkout
+    runtime = "app/module.py"
+    original = (tmp_path / runtime).read_text(encoding="utf-8")
+    write(runtime)
+    git("add", runtime)
+    write(runtime, original)
+    write(WORKFLOW_TESTS[0])
+    discovery = agent_check.discover_changed_files(tmp_path)
+    assert discovery.files == (runtime, WORKFLOW_TESTS[0])
+    assert tuple(check.key for check in _checks_for(discovery)) == FULL_CHECKS
+
+
+@pytest.mark.parametrize("path", (
+    "app/module.py", "scripts/agent_future.py", "tests/test_agent_future.py", "unknown.dat",
+    "requirements-dev.txt", "pyproject.toml", ".gitattributes", "conftest.py",
+    "pytest.ini", "tests/fixtures/shared.md", ".github/workflows/ci.yml",
+))
+def test_full_profile_for_other_changes_alone_or_with_workflow(tmp_path, workflow_checkout, path):
+    git, write = workflow_checkout
+    write(path)
+    if path == ".gitattributes":
+        git("add", path)
+    for prefix in ((), (WORKFLOW_SCRIPTS[0],)):
+        for workflow in prefix:
+            write(workflow)
+        discovery = agent_check.discover_changed_files(tmp_path)
+        assert set(discovery.files) == {path, *prefix}
+        assert tuple(check.key for check in _checks_for(discovery)) == FULL_CHECKS
+
+
+@pytest.mark.parametrize("path", (PLAYBOOK, "docs/guide.md", "AGENTS.md", ".agents/skills/new/SKILL.md"))
+def test_docs_only_remain_docs_and_only_playbook_can_accompany_workflow(tmp_path, workflow_checkout, path):
+    _, write = workflow_checkout
+    assert _checks_for(agent_check.discover_changed_files(tmp_path)) == ()
+    write(path)
+    assert _checks_for(agent_check.discover_changed_files(tmp_path)) == ()
+    write(WORKFLOW_SCRIPTS[0])
+    checks = _checks_for(agent_check.discover_changed_files(tmp_path))
+    assert tuple(check.key for check in checks) == (WORKFLOW_CHECKS if path == PLAYBOOK else FULL_CHECKS)
+
+
+@pytest.mark.parametrize("operation", ("rename", "edited-rename", "delete", "copy"))
+def test_structural_git_deltas_preserve_runtime_path(tmp_path, workflow_checkout, operation):
+    git, write = workflow_checkout
+    source = "app/module.py"
+    destination = "docs/copied.md"
+    if operation == "delete":
+        (tmp_path / source).unlink()
+        expected = {source}
+    else:
+        if operation == "copy":
+            write(destination, (tmp_path / source).read_text(encoding="utf-8"))
+            git("add", destination)
+        else:
+            git("mv", source, destination)
+            if operation == "edited-rename":
+                write(destination)
+                git("add", destination)
+        expected = {source, destination}
+    write(WORKFLOW_TESTS[0])
+    discovery = agent_check.discover_changed_files(tmp_path)
+    assert set(discovery.files) == {*expected, WORKFLOW_TESTS[0]}
+    assert tuple(check.key for check in _checks_for(discovery)) == FULL_CHECKS
+
+
+def test_copy_into_allowlist_and_untracked_destination_cannot_hide_runtime(tmp_path, workflow_checkout):
+    git, write = workflow_checkout
+    source = "app/module.py"
+    destination = "scripts/agent_evidence_io.py"
+    # Model a base predating the allowlisted filename.
+    git("rm", destination)
+    git("commit", "-m", "base without destination")
+    write(destination, (tmp_path / source).read_text(encoding="utf-8"))
+    discovery = agent_check.discover_changed_files(tmp_path)
+    assert discovery.files == (destination,)
+    assert tuple(check.key for check in _checks_for(discovery)) == FULL_CHECKS
+    git("add", destination)
+    discovery = agent_check.discover_changed_files(tmp_path)
+    assert discovery.files == (source, destination)
+    assert tuple(check.key for check in _checks_for(discovery)) == FULL_CHECKS
+
+
+@pytest.mark.parametrize("flag", ("--assume-unchanged", "--skip-worktree"))
+@pytest.mark.parametrize("visible", (
+    (), ("docs/guide.md",), (WORKFLOW_TESTS[0],), ("app/also_visible.py",),
+    (WORKFLOW_TESTS[0], "app/also_visible.py"),
+))
+def test_index_flags_block_discovery_for_any_visible_scope(tmp_path, workflow_checkout, flag, visible):
+    git, write = workflow_checkout
+    git("update-index", flag, "app/module.py")
+    write("app/module.py")
+    for path in visible:
+        write(path)
+    original = git("ls-files", "-v", "--", "app/module.py")
+    with pytest.raises(agent_check.DiscoveryError, match="Git index contains hidden"):
+        agent_check.discover_changed_files(tmp_path)
+    assert git("ls-files", "-v", "--", "app/module.py") == original
+
+
+@pytest.mark.parametrize("output", (None, b"H app/module.py", b"M app/module.py\0", b"H \0"))
+def test_failed_or_incomplete_index_inspection_blocks_checks(
+    workflow_checkout, monkeypatch, capsys, output,
+):
+    real_git = agent_check._git
+
+    def git(root, *args, **kwargs):
+        if args == ("ls-files", "--cached", "-v", "-z"):
+            if output is None:
+                raise agent_check.DiscoveryError("git ls-files failed")
+            return output
+        return real_git(root, *args, **kwargs)
+
+    monkeypatch.setattr(agent_check, "_git", git)
+    assert agent_check.main(["--dry-run"], runner=lambda check: pytest.fail("unexpected check")) == 2
+    assert "ERROR changed-file discovery:" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("output", (None, b"M\0scripts/agent_task.py", b"C100\0scripts/agent_task.py\0", b"X\0p\0"))
+def test_failed_or_incomplete_discovery_blocks_check_execution(
+    tmp_path, workflow_checkout, monkeypatch, capsys, output,
+):
+    real_git = agent_check._git
+
+    def git(root, *args, **kwargs):
+        if args[0] == "diff" and "--cached" in args:
+            if output is None:
+                raise agent_check.DiscoveryError("git diff failed")
+            return output
+        return real_git(root, *args, **kwargs)
+
+    monkeypatch.setattr(agent_check, "_git", git)
+    assert agent_check.main([], runner=lambda check: pytest.fail("unexpected check")) == 2
+    assert "ERROR changed-file discovery:" in capsys.readouterr().err
+    assert not (tmp_path / agent_validation.REPORT_PATH).exists()
 
 
 def test_explicit_changed_files_are_deterministic_and_skip_git(monkeypatch, tmp_path):
@@ -207,7 +718,7 @@ def test_native_absolute_exact_matches_check_index_ambiguity(tmp_path, monkeypat
             assert "ambiguous changed-file identity in the Git index" in output.err
             assert not output.out
     else:
-        for name, path, count in zip(names[:2], (canonical, uppercase), (8, 0), strict=True):
+        for name, path, count in zip(names[:2], (canonical, uppercase), (8, 3), strict=True):
             assert agent_check.discover_changed_files(tmp_path, supplied_files=(str(path),)).files == (name,)
             assert agent_check.main(["--dry-run", "--changed-file", str(path)]) == 0
             assert capsys.readouterr().out.count("WOULD RUN") == count

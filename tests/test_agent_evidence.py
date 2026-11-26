@@ -123,7 +123,9 @@ def test_finish_rechecks_declared_evidence_before_packet(repository, change_afte
 
     def run(command, root):
         if command[1].endswith("agent_check.py"):
-            result = agent_check.main(command[2:])
+            result = agent_check.main(
+                command[2:], runner=lambda check: 0, availability=lambda check: None,
+            )
             if change_after_preflight:
                 artifact.write_bytes(b"replaced")
             return result
@@ -153,7 +155,9 @@ def test_narrower_individually_valid_manifest_cannot_replace_preflight_manifest(
 
     def run(command, root):
         if command[1].endswith("agent_check.py"):
-            return agent_check.main(command[2:])
+            return agent_check.main(
+                command[2:], runner=lambda check: 0, availability=lambda check: None,
+            )
         # Substitute immediately before the packet process, after the initial
         # finish recheck. The narrowed replacement also validates on its own.
         _manifest(repository, _item("report.md"))

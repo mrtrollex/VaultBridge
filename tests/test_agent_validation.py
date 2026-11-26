@@ -15,6 +15,9 @@ from scripts import agent_check, agent_finish, agent_review, agent_validation
 
 @pytest.fixture
 def repository(tmp_path, monkeypatch):
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    monkeypatch.delenv("GITHUB_BASE_REF", raising=False)
+
     def git(*args):
         subprocess.run(["git", *args], cwd=tmp_path, check=True, capture_output=True)
 
@@ -25,6 +28,228 @@ def repository(tmp_path, monkeypatch):
     git("-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-m", "base")
     monkeypatch.setattr(agent_check, "REPOSITORY_ROOT", tmp_path)
     return tmp_path
+
+
+@pytest.fixture
+def workflow_repository(repository):
+    workflow = repository / "scripts/agent_review.py"
+    workflow.parent.mkdir()
+    workflow.write_text("# base\n", encoding="utf-8")
+    agent_validation._git(repository, "add", "scripts/agent_review.py")
+    agent_validation._git(
+        repository, "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-m", "workflow base",
+    )
+    workflow.write_text("# changed\n", encoding="utf-8")
+    return repository
+
+
+@pytest.mark.parametrize("narrowed_report", [False, True])
+def test_managed_finish_reconstructs_trusted_base_despite_ci_environment(
+    workflow_repository, monkeypatch, capsys, narrowed_report,
+):
+    root = workflow_repository
+    _commit_runtime_on_feature(root)
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setenv("GITHUB_BASE_REF", "feature")
+    checks_run = []
+
+    def pass_check(check):
+        checks_run.append(check.key)
+        return 0
+
+    def runner(command, cwd):
+        if command[1].endswith("agent_check.py"):
+            if not narrowed_report:
+                return agent_check.main(command[2:], runner=pass_check, availability=lambda check: None)
+
+            # Recreate the earlier report with a feature-based scope, a valid
+            # source fingerprint, and a successful focused check for this run ID.
+            assert agent_check.main(["--base", "feature"], runner=pass_check, availability=lambda check: None) == 0
+            report = json.loads((root / agent_validation.REPORT_PATH).read_bytes())
+            assert report["base_ref"] == "refs/heads/feature"
+            assert [record["path"] for record in report["changed_files"]] == ["scripts/agent_review.py"]
+            focused = next(check for check in agent_check.available_checks() if check.key == "pytest-workflow")
+            focused_command = agent_check.command_identity(focused)
+            report["checks"][1].update(
+                id=focused.key, selected_command=focused_command, executed_command=focused_command,
+            )
+            report["run_id"] = command[command.index("--run-id") + 1]
+            agent_validation.write_report(root, report)
+            return 0
+        assert not narrowed_report
+        return agent_review.main(command[2:], root=cwd)
+
+    assert agent_finish.main(
+        ["--task", "Workflow task."], root=root, runner=runner,
+    ) == (2 if narrowed_report else 0)
+    assert checks_run == ["ruff", "pytest", "compileall"]
+    packet = root / agent_finish.PACKET_PATH
+    if narrowed_report:
+        assert "validation scope does not match" in capsys.readouterr().err
+        assert not packet.exists()
+    else:
+        content = packet.read_text(encoding="utf-8")
+        assert "refs/heads/main" in content and "app/module.py" in content
+        assert "- pytest: PASS" in content
+
+
+def _commit_runtime_on_feature(root):
+    git = agent_validation._git
+    git(root, "switch", "-c", "feature")
+    runtime = root / "app/module.py"
+    runtime.parent.mkdir()
+    runtime.write_text("VALUE = 1\n", encoding="utf-8")
+    git(root, "add", "app/module.py")
+    git(root, "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-m", "runtime")
+
+
+def test_managed_review_rejects_report_after_trusted_base_moves(workflow_repository):
+    root = workflow_repository
+    _commit_runtime_on_feature(root)
+    assert agent_check.main([], runner=lambda check: 0, availability=lambda check: None) == 0
+    report = json.loads((root / agent_validation.REPORT_PATH).read_bytes())
+    agent_validation._git(root, "update-ref", "refs/heads/main", "HEAD")
+    assert agent_validation.source_identity(root) == report["source_before"]
+    with pytest.raises(agent_check.DiscoveryError, match="validation scope does not match"):
+        agent_review.capture_validated_state(root, report["run_id"])
+
+
+@pytest.mark.parametrize(("flag", "documentation"), [
+    ("--skip-worktree", False), ("--assume-unchanged", True),
+])
+def test_invisible_index_blocks_clean_or_docs_only_finish_and_review(repository, flag, documentation):
+    git = agent_validation._git
+    runtime = repository / "runtime.py"
+    runtime.write_text("VALUE = 1\n", encoding="utf-8")
+    git(repository, "add", "runtime.py")
+    git(repository, "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-m", "runtime")
+    if documentation:
+        (repository / "base.md").write_text("Updated documentation.\n", encoding="utf-8")
+    assert agent_check.main([], runner=lambda check: pytest.fail("unexpected check")) == 0
+    report = json.loads((repository / agent_validation.REPORT_PATH).read_bytes())
+    assert report["checks"] == []
+    assert agent_review.capture_validated_state(repository, report["run_id"])[1] == report
+
+    git(repository, "update-index", flag, "runtime.py")
+    # Bytes remain identical to the report. The visibility flag alone makes
+    # the earlier source observation insufficient for the current handoff.
+    assert agent_validation.source_identity(repository) is None
+    with pytest.raises(agent_check.DiscoveryError, match="validation source does not match"):
+        agent_review.capture_validated_state(repository, report["run_id"])
+    runtime.write_text("VALUE = 2\n", encoding="utf-8")
+    packet = repository / agent_finish.PACKET_PATH
+    packet.write_text("prior packet", encoding="utf-8")
+
+    def runner(command, root):
+        assert command[1].endswith("agent_check.py")
+        return agent_check.main(command[2:], runner=lambda check: pytest.fail("unexpected check"))
+
+    assert agent_finish.main(["--task", "Workflow task."], root=repository, runner=runner) == 2
+    assert not packet.exists()
+
+
+def test_visibility_lost_after_checks_blocks_managed_handoff(workflow_repository):
+    root = workflow_repository
+
+    def run(check):
+        if check.key == "compileall":
+            agent_validation._git(root, "update-index", "--assume-unchanged", "base.md")
+        return 0
+
+    def runner(command, cwd):
+        assert command[1].endswith("agent_check.py")
+        return agent_check.main(command[2:], runner=run, availability=lambda check: None)
+
+    assert agent_finish.main(["--task", "Workflow task."], root=root, runner=runner) == 2
+    assert not (root / agent_finish.PACKET_PATH).exists()
+    assert not (root / agent_validation.REPORT_PATH).exists()
+
+
+@pytest.mark.parametrize("outcome", ("PASS", "FAIL", "UNAVAILABLE"))
+def test_required_workflow_check_controls_packet_publication(workflow_repository, outcome):
+    commands = []
+
+    def run(check):
+        commands.append(check.command)
+        if check.key == "pytest-workflow":
+            if outcome == "UNAVAILABLE":
+                raise FileNotFoundError("pytest command unavailable")
+            if outcome == "FAIL":
+                return 7
+        return 0
+
+    def runner(command, root):
+        if command[1].endswith("agent_check.py"):
+            return agent_check.main(command[2:], runner=run, availability=lambda check: None)
+        assert outcome == "PASS"
+        return agent_review.main(command[2:], root=root)
+
+    root = workflow_repository
+    expected_exit = {"PASS": 0, "FAIL": 1, "UNAVAILABLE": 3}[outcome]
+    assert agent_finish.main(["--task", "Workflow task."], root=root, runner=runner) == expected_exit
+    report = json.loads((root / agent_validation.REPORT_PATH).read_bytes())
+    assert [check["id"] for check in report["checks"]] == ["ruff", "pytest-workflow", "compileall"]
+    result = report["checks"][1]
+    command = ["python", *commands[1][1:]]
+    assert result["required"] is result["launch_attempted"] is True
+    assert result["selected_command"] == command
+    assert result["executed_command"] == (None if outcome == "UNAVAILABLE" else command)
+    assert result["outcome"] == outcome
+    packet = root / agent_finish.PACKET_PATH
+    if outcome == "PASS":
+        content = packet.read_text(encoding="utf-8")
+        assert "pytest-workflow: PASS" in content
+        assert " ".join(command) in content
+        assert "Fresh independent review and full hosted CI remain required." in content
+    else:
+        assert not packet.exists()
+
+
+@pytest.mark.parametrize(
+    ("scope", "problem"),
+    [
+        ("workflow", "full-instead-of-workflow"),
+        ("full", "workflow-instead-of-full"),
+        ("workflow", "wrong-command"),
+        ("workflow", "missing-command"),
+        ("workflow", "omitted-check"),
+        ("workflow", "wrong-base"),
+        ("workflow", "incomplete-scope"),
+    ],
+)
+def test_finish_rejects_incompatible_workflow_evidence(workflow_repository, scope, problem):
+    root = workflow_repository
+    if scope == "full":
+        (root / "unknown.dat").touch()
+
+    def runner(command, cwd):
+        assert command[1].endswith("agent_check.py")
+        assert agent_check.main(command[2:], runner=lambda check: 0, availability=lambda check: None) == 0
+        report = json.loads((root / agent_validation.REPORT_PATH).read_bytes())
+        result = report["checks"][1]
+        assert result["id"] == ("pytest" if scope == "full" else "pytest-workflow")
+        if problem.endswith("instead-of-full") or problem.endswith("instead-of-workflow"):
+            replacement = "pytest-workflow" if scope == "full" else "pytest"
+            check = next(check for check in agent_check.available_checks() if check.key == replacement)
+            result.update(
+                id=replacement, selected_command=agent_check.command_identity(check),
+                executed_command=agent_check.command_identity(check),
+            )
+        elif problem == "wrong-command":
+            result["executed_command"].pop()
+        elif problem == "missing-command":
+            del result["executed_command"]
+        elif problem == "omitted-check":
+            report["checks"].pop(1)
+        elif problem == "wrong-base":
+            report["base_commit"] = "0" * 40
+        else:
+            report["changed_files"].clear()
+        agent_validation.write_report(root, report)
+        return 0
+
+    assert agent_finish.main(["--task", "Workflow task."], root=root, runner=runner) == 2
+    assert not (root / agent_finish.PACKET_PATH).exists()
 
 
 @pytest.mark.parametrize(
@@ -85,7 +310,7 @@ def test_report_omits_sensitive_command_environment_and_error_data(repository, m
     monkeypatch.setenv("API_KEY", secret)
     ruff = agent_check.available_checks()[0]
     custom = agent_check.Check("custom", "custom", ("cmd", secret), (("TOKEN", secret),))
-    monkeypatch.setattr(agent_check, "select_checks", lambda *args: (ruff, custom))
+    monkeypatch.setattr(agent_check, "select_checks", lambda *args, **kwargs: (ruff, custom))
 
     def run(check):
         if check == ruff:
@@ -157,18 +382,26 @@ def test_source_identity_changes_for_staged_delta_and_ignores_private_artifacts(
     assert agent_validation.source_identity(repository) != baseline
 
 
-def test_normalized_tracked_fixture_invalidates_stale_validation(repository):
-    relative = "tests/fixtures/vb151_g_reference.json"
-    fixture = repository / relative
+REFERENCE_FIXTURE = "tests/fixtures/vb151_g_reference.json"
+
+
+def _commit_reference_fixture(root):
+    fixture = root / REFERENCE_FIXTURE
     fixture.parent.mkdir(parents=True)
-    lf = (Path(__file__).parent.parent / relative).read_bytes()
+    lf = (Path(__file__).parent.parent / REFERENCE_FIXTURE).read_bytes()
     assert b"\r" not in lf and b"\n" in lf
-    crlf = lf.replace(b"\n", b"\r\n")
     fixture.write_bytes(lf)
-    (repository / ".gitattributes").write_bytes(f"{relative} text eol=lf\n".encode())
+    (root / ".gitattributes").write_text(f"{REFERENCE_FIXTURE} text eol=lf\n", encoding="ascii")
     git = agent_validation._git
-    git(repository, "add", ".")
-    git(repository, "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-m", "fixture")
+    git(root, "add", ".gitattributes", REFERENCE_FIXTURE)
+    git(root, "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-m", "fixture")
+    return fixture, lf, lf.replace(b"\n", b"\r\n")
+
+
+def test_normalized_tracked_fixture_invalidates_stale_validation(repository):
+    fixture, lf, crlf = _commit_reference_fixture(repository)
+    relative = REFERENCE_FIXTURE
+    git = agent_validation._git
     assert agent_check.main([]) == 0
     report = json.loads((repository / agent_validation.REPORT_PATH).read_bytes())
     assert agent_review.capture_validated_state(repository, report["run_id"])[1] == report
@@ -188,6 +421,106 @@ def test_normalized_tracked_fixture_invalidates_stale_validation(repository):
     assert after["raw_tracked_sha256"] != before["raw_tracked_sha256"]
     with pytest.raises(agent_check.DiscoveryError, match="validation source does not match"):
         agent_review.capture_validated_state(repository, report["run_id"])
+
+
+@pytest.mark.parametrize("scope", ("clean", "documentation", "workflow", "staged"))
+def test_fixture_normalized_before_first_snapshot_requires_full_validation(workflow_repository, scope):
+    root = workflow_repository
+    fixture, _, crlf = _commit_reference_fixture(root)
+    workflow = "scripts/agent_review.py"
+    if scope in {"clean", "documentation"}:
+        (root / workflow).write_text("# base\n", encoding="utf-8")
+    if scope == "documentation":
+        (root / "base.md").write_text("changed docs\n", encoding="utf-8")
+    fixture.write_bytes(crlf)
+    git = agent_validation._git
+    if scope == "staged":
+        git(root, "add", "--", REFERENCE_FIXTURE)
+    oid = git(root, "rev-parse", f"HEAD:{REFERENCE_FIXTURE}")
+    assert git(root, "rev-parse", f":{REFERENCE_FIXTURE}") == oid
+    assert git(root, "hash-object", REFERENCE_FIXTURE) == oid
+    assert git(root, "hash-object", "--no-filters", REFERENCE_FIXTURE) != oid
+    assert REFERENCE_FIXTURE.encode() not in git(root, "diff", "--name-only")
+    if scope == "staged":
+        assert REFERENCE_FIXTURE.encode() not in git(root, "status", "--porcelain")
+
+    assert agent_check.main([], runner=lambda check: 0, availability=lambda check: None) == 0
+    report = json.loads((root / agent_validation.REPORT_PATH).read_bytes())
+    assert report["source_unchanged"] is True
+    assert report["raw_changed_files"] == [REFERENCE_FIXTURE]
+    assert [check["id"] for check in report["checks"]] == ["ruff", "pytest", "compileall"]
+    assert agent_review.capture_validated_state(root, report["run_id"])[1] == report
+
+    if scope == "workflow":
+        # Even a matching source fingerprint and valid focused command cannot
+        # certify an earlier report which omitted the raw-only input.
+        report["raw_changed_files"].clear()
+        report["changed_files"] = [item for item in report["changed_files"] if item["path"] == workflow]
+        focused = next(check for check in agent_check.available_checks() if check.key == "pytest-workflow")
+        command = agent_check.command_identity(focused)
+        report["checks"][1].update(id=focused.key, selected_command=command, executed_command=command)
+        agent_validation.write_report(root, report)
+        with pytest.raises(agent_check.DiscoveryError, match="validation scope does not match"):
+            agent_review.capture_validated_state(root, report["run_id"])
+
+
+def test_normalization_hidden_source_drift_after_selection_blocks_finish(workflow_repository):
+    root = workflow_repository
+    fixture, _, crlf = _commit_reference_fixture(root)
+    observed = []
+
+    def run(check):
+        observed.append(check.key)
+        if check.key == "pytest-workflow":
+            fixture.write_bytes(crlf)
+        return 0
+
+    def runner(command, cwd):
+        assert command[1].endswith("agent_check.py")
+        return agent_check.main(command[2:], runner=run, availability=lambda check: None)
+
+    assert agent_finish.main(["--task", "Workflow task."], root=root, runner=runner) == 2
+    assert observed == ["ruff", "pytest-workflow", "compileall"]
+    assert not (root / agent_finish.PACKET_PATH).exists()
+
+
+def test_ignored_nested_attributes_block_exact_normalization_reproducer_and_managed_handoff(
+    workflow_repository, capsys,
+):
+    root = workflow_repository
+    fixture, lf, crlf = _commit_reference_fixture(root)
+    override = "tests/fixtures/.gitattributes"
+    git = agent_validation._git
+    (root / ".git/info/exclude").write_text(f"{override}\n", encoding="ascii")
+    assert agent_check.main([], runner=lambda check: 0, availability=lambda check: None) == 0
+    report = json.loads((root / agent_validation.REPORT_PATH).read_bytes())
+    assert [check["id"] for check in report["checks"]] == ["ruff", "pytest-workflow", "compileall"]
+
+    (root / override).write_text(f"{fixture.name} text eol=crlf\n", encoding="ascii")
+    assert git(root, "check-ignore", override).strip() == override.encode()
+    assert git(root, "check-attr", "eol", "--", REFERENCE_FIXTURE).strip().endswith(b": eol: crlf")
+    assert fixture.read_bytes() == lf
+    # Attribute provenance alone invalidates the previous proof while the
+    # tracked bytes and the ordinary Git delta still match that report.
+    assert agent_validation.source_identity(root) is None
+    with pytest.raises(agent_check.DiscoveryError, match="validation source does not match"):
+        agent_review.capture_validated_state(root, report["run_id"])
+
+    fixture.write_bytes(crlf)
+    git(root, "add", "--", REFERENCE_FIXTURE)
+    oid = git(root, "rev-parse", f"HEAD:{REFERENCE_FIXTURE}")
+    assert git(root, "rev-parse", f":{REFERENCE_FIXTURE}") == oid
+    assert git(root, "hash-object", REFERENCE_FIXTURE) == oid
+    assert git(root, "hash-object", "--no-filters", REFERENCE_FIXTURE) != oid
+    assert git(root, "status", "--porcelain").splitlines() == [b" M scripts/agent_review.py"]
+
+    def runner(command, cwd):
+        assert command[1].endswith("agent_check.py")
+        return agent_check.main(command[2:], runner=lambda check: pytest.fail("unexpected check"))
+
+    assert agent_finish.main(["--task", "Workflow task."], root=root, runner=runner) == 2
+    assert "unindexed worktree .gitattributes" in capsys.readouterr().err
+    assert not (root / agent_finish.PACKET_PATH).exists()
 
 
 def test_tracked_missing_input_is_stable_and_head_includes_staged_removal(repository):
