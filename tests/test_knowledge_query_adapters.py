@@ -132,20 +132,27 @@ def invalid_requests():
         yield {"literal_text": "Independent", field: value}, "invalid_request"
 
 
+@pytest.fixture
+def strict_validation_runtime(settings):
+    # Rejections must precede admission, so the real read-only owners need no index reconciliation.
+    with compose_persisted_space_reads(settings) as runtime:
+        yield runtime
+
+
 @pytest.mark.parametrize("data,code", list(invalid_requests()))
-def test_shared_strict_validation_before_work(settings, runtime, monkeypatch, data, code):
+def test_shared_strict_validation_before_work(settings, strict_validation_runtime, monkeypatch, data, code):
     def forbidden(*args, **kwargs):
         pytest.fail("invalid request reached admission/owner")
     monkeypatch.setattr(SpaceOperations, "_admit", forbidden)
     monkeypatch.setattr(VaultService, "scoped_session", forbidden)
-    response = rest(settings, runtime).post(URL, headers=AUTH, json=data)
+    response = rest(settings, strict_validation_runtime).post(URL, headers=AUTH, json=data)
     assert response.json() == {"detail": code}, response.text
     assert response.status_code == 422
-    response = tool(create_private_read_server(settings=settings, operations=runtime.operations),
+    response = tool(create_private_read_server(settings=settings, operations=strict_validation_runtime.operations),
                     "knowledge_query", data)
     assert response.is_error and response.content[0].text == f"{code}: Operation failed."
     output = StringIO()
-    assert _run_scoped_cli(settings, "query", data, operations=runtime.operations,
+    assert _run_scoped_cli(settings, "query", data, operations=strict_validation_runtime.operations,
                            json_output=True, output=output) == 2
     assert json.loads(output.getvalue()) == {"category": code}
 
