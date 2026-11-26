@@ -12,7 +12,9 @@ from scripts import agent_check, agent_validation
 
 
 @pytest.fixture(autouse=True)
-def isolated_report(monkeypatch, tmp_path):
+def isolated_validation(monkeypatch, tmp_path):
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    monkeypatch.delenv("GITHUB_BASE_REF", raising=False)
     monkeypatch.setattr(agent_check, "REPOSITORY_ROOT", tmp_path)
 
 

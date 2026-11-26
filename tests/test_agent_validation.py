@@ -15,6 +15,9 @@ from scripts import agent_check, agent_finish, agent_review, agent_validation
 
 @pytest.fixture
 def repository(tmp_path, monkeypatch):
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    monkeypatch.delenv("GITHUB_BASE_REF", raising=False)
+
     def git(*args):
         subprocess.run(["git", *args], cwd=tmp_path, check=True, capture_output=True)
 
