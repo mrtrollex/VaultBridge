@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ctypes
 import os
+import shutil
 import subprocess
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -96,25 +97,38 @@ FULL_CHECKS = ("ruff", "pytest", "compileall")
 WORKFLOW_CHECKS = ("ruff", "pytest-workflow", "compileall")
 
 
-@pytest.fixture
-def workflow_checkout(tmp_path):
+def _checkout_helpers(root):
     def git(*args):
         return subprocess.check_output(
             ["git", "-c", "user.name=Test", "-c", "user.email=test@example.invalid", *args],
-            cwd=tmp_path, stderr=subprocess.DEVNULL,
+            cwd=root, stderr=subprocess.DEVNULL,
         )
 
     def write(path, content="changed\n"):
-        target = tmp_path / path
+        target = root / path
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
 
+    return git, write
+
+
+@pytest.fixture(scope="module")
+def workflow_template(tmp_path_factory):
+    root = tmp_path_factory.mktemp("workflow-template")
+    git, write = _checkout_helpers(root)
     git("init", "-b", "main")
     for path in (*WORKFLOW_SCRIPTS, *WORKFLOW_TESTS, PLAYBOOK, "app/module.py", "docs/guide.md"):
         write(path, f"base: {path}\n")
     git("add", ".")
     git("commit", "-m", "base")
-    return git, write
+    return root
+
+
+@pytest.fixture
+def workflow_checkout(tmp_path, workflow_template):
+    # Each test owns its worktree and all Git metadata, including the object store.
+    shutil.copytree(workflow_template, tmp_path, dirs_exist_ok=True)
+    return _checkout_helpers(tmp_path)
 
 
 def _checks_for(discovery):
