@@ -41,7 +41,7 @@ def _git(
     allowed_return_codes: tuple[int, ...] = (0,),
 ) -> bytes:
     completed = subprocess.run(
-        ["git", *args],
+        [*agent_validation.GIT_READ_COMMAND, *args],
         cwd=root,
         check=False,
         stdout=subprocess.PIPE,
@@ -87,7 +87,7 @@ def _untracked_files(root: Path) -> tuple[str, ...]:
 
 
 def _untracked_diff(root: Path, path: str, *, stat: bool) -> bytes:
-    args = ["diff", "--no-index", "--no-ext-diff", "--no-renames"]
+    args = ["diff", "--no-index", "--no-ext-diff", "--no-textconv", "--no-renames"]
     if stat:
         args.append("--stat")
     args.extend(("--", "/dev/null", path))
@@ -99,21 +99,26 @@ def collect_repository_state(
     *,
     base_ref: str | None = None,
     excluded_files: Sequence[str] = (),
+    managed: bool = False,
 ) -> RepositoryState:
     ensure_repository_root(root)
-    discovery = agent_check.discover_changed_files(root, base_ref=base_ref)
+    discovery = agent_check.discover_changed_files(root, base_ref=base_ref, managed=managed)
     if discovery.merge_base is None:
         raise agent_check.DiscoveryError("Git discovery did not provide a merge base")
 
     excluded = {PurePosixPath(path.replace("\\", "/")).as_posix() for path in excluded_files}
     files = tuple(path for path in discovery.files if path not in excluded)
-    discovery = replace(discovery, files=files)
+    discovery = replace(
+        discovery, files=files, workflow_only=discovery.workflow_only and files == discovery.files,
+        raw_changed_files=tuple(path for path in discovery.raw_changed_files if path not in excluded),
+    )
 
     tracked_diff = _git(
         root,
         "--literal-pathspecs",
         "diff",
         "--no-ext-diff",
+        "--no-textconv",
         "--no-renames",
         "--binary",
         discovery.merge_base,
@@ -125,6 +130,7 @@ def collect_repository_state(
         "--literal-pathspecs",
         "diff",
         "--no-ext-diff",
+        "--no-textconv",
         "--no-renames",
         "--stat",
         discovery.merge_base,
@@ -163,14 +169,14 @@ def capture_validated_state(root: Path, run_id: str) -> tuple[RepositoryState, d
         or report.get("source_after") != source
     ):
         raise agent_check.DiscoveryError("validation source does not match the current checkout")
-    state = collect_repository_state(root)
+    state = collect_repository_state(root, managed=True)
     discovery = state.discovery
     areas = agent_check.classify_files(discovery.files)
     manual = agent_check.select_manual_requirements(discovery.files, areas)
     expected = agent_check.scope_record(discovery, areas, manual)
     if any(field not in report or report[field] != value for field, value in expected.items()):
         raise agent_check.DiscoveryError("validation scope does not match the current change scope")
-    selected = agent_check.select_checks(areas, discovery.files)
+    selected = agent_check.select_checks(areas, discovery.files, workflow_only=discovery.workflow_only)
     checks = report.get("checks")
     if (
         not agent_validation.valid_timing(report)
@@ -223,6 +229,13 @@ def verification_summary(report: dict) -> str:
     ]
     if not checks:
         lines.append("- No automated checks were selected.")
+    for check in checks:
+        if check["id"] == "pytest-workflow":
+            lines.append(f"- Required workflow pytest command: `{' '.join(check['executed_command'])}`")
+            lines.append(
+                "- The changed workflow code selected and verified this local run. "
+                "Fresh independent review and full hosted CI remain required."
+            )
     lines.extend(
         f"- Manual verification remains: {requirement}" for requirement in report["manual_requirements"]
     )
@@ -241,7 +254,7 @@ def render_packet(
 ) -> str:
     files = state.discovery.files
     areas = agent_check.classify_files(files)
-    checks = agent_check.select_checks(areas, files)
+    checks = agent_check.select_checks(areas, files, workflow_only=state.discovery.workflow_only)
     manual = agent_check.select_manual_requirements(files, areas)
 
     sections = [
@@ -251,6 +264,10 @@ def render_packet(
     ]
 
     changed_files = "\n".join(f"- `{path}`" for path in files) or "- (none)"
+    if state.discovery.raw_changed_files:
+        changed_files += "\n\nCheckout-byte differences outside the Git diff:\n\n" + "\n".join(
+            f"- `{path}`" for path in state.discovery.raw_changed_files
+        )
     sections.extend(
         (
             "## Repository state",
@@ -431,6 +448,8 @@ def main(argv: Sequence[str] | None = None, *, root: Path = REPOSITORY_ROOT) -> 
             except ValueError:
                 pass
         if args.run_id:
+            if args.base is not None:
+                raise agent_check.DiscoveryError("managed review requires the trusted comparison base")
             if (args.evidence_manifest is None) != (args.evidence_sha256 is None):
                 raise agent_check.DiscoveryError("managed evidence requires the preflight manifest digest")
         evidence = (
