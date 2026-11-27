@@ -175,7 +175,7 @@ their exact source, platform and relevant tool versions, executed checks, outcom
 The local report does not automatically become PR evidence and is never used to reuse a result
 or skip a check.
 
-Finish and review reconstruction match the workflow pytest check ID and exact selected and executed
+Finish and review reconstruction match the required pytest check ID and exact selected and executed
 command to the current scope, including checkout-byte differences outside the Git diff. Raw source
 fingerprints establish stability between observations, and the checkout comparison establishes
 expected input bytes. A workflow result cannot satisfy full pytest. When the change includes
@@ -256,6 +256,11 @@ has exited before removing an abandoned empty `.agent/finish.lock` directory. On
 `agent_finish.py` publishes `.agent/review_packet.md`. That filename and its case variants
 are reserved in the managed directory, including when it has no packet yet. Use stdout or a
 distinct file for standalone packet generation.
+
+With the optional pinned plugin installed, `--parallel-pytest` applies the fixed four-worker
+command to the selected required Python suite. Finish checks the recorded mode against the request.
+The packet shows the exact pytest command, and review reconstructs it from the recorded mode
+and the existing trusted scope. See [Development](../DEVELOPMENT.md#opt-in-to-parallel-pytest).
 
 For a task that requires retained focused Windows and WSL results, repeat `--focused-results`
 with the applicable `.agent/focused-windows-<timestamp>.json` and

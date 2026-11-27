@@ -836,6 +836,20 @@ def test_check_selection_reuses_full_pytest_for_semantic_evaluation():
     assert pytest_check.command[-1] == "--ignore=tests/e2e"
 
 
+@pytest.mark.parametrize("installed_version", [None, "3.7.0", "3.8.0"])
+def test_parallel_pytest_requires_the_pinned_optional_plugin(monkeypatch, installed_version):
+    monkeypatch.setattr(agent_validation, "package_version", lambda package: installed_version)
+    probe = agent_check.default_availability_checker()
+    serial = next(check for check in agent_check.available_checks() if check.key == "pytest")
+    parallel = next(check for check in agent_check.available_checks(parallel_pytest=True) if check.key == "pytest")
+
+    assert probe(serial) is None
+    if installed_version == "3.8.0":
+        assert probe(parallel) is None
+    else:
+        assert "python -m pip install pytest-xdist==3.8.0" in probe(parallel)
+
+
 def test_ui_selection_adds_playwright_e2e_with_chromium_only():
     checks = agent_check.select_checks({"ui"})
     keys = {check.key for check in checks}
@@ -937,12 +951,13 @@ def test_action_openapi_requires_manual_runtime_mapping_verification(capsys):
     assert "Overall: PASS\n" not in output
 
 
-def test_dry_run_runs_no_verification_commands(capsys):
+@pytest.mark.parametrize("parallel_pytest", [False, True])
+def test_dry_run_runs_no_verification_commands(capsys, parallel_pytest):
     def unexpected_runner(check):
         pytest.fail(f"dry-run executed {check.key}")
 
     exit_code = agent_check.main(
-        ["--dry-run", "--changed-file", "app/ui/assets/app.js"],
+        ["--dry-run", "--changed-file", "app/ui/assets/app.js", *(["--parallel-pytest"] if parallel_pytest else [])],
         runner=unexpected_runner,
         availability=lambda check: pytest.fail(f"dry-run probed {check.key}"),
     )
@@ -951,7 +966,17 @@ def test_dry_run_runs_no_verification_commands(capsys):
     assert exit_code == 0
     assert "Detected areas:\n  ui" in output
     assert "WOULD RUN pytest (unit/integration, includes tests/eval)" in output
-    assert "WOULD RUN Playwright E2E (Chromium)" in output
+    full_command = "python -m pytest -q --ignore=tests/e2e"
+    expected = full_command
+    if parallel_pytest:
+        expected += " -n 4 --dist load --max-worker-restart 0 -p scripts.agent_pytest"
+    assert [line for line in output.splitlines() if full_command in line] == [
+        f"  WOULD RUN pytest (unit/integration, includes tests/eval): {expected}",
+    ]
+    assert (
+        "  WOULD RUN Playwright E2E (Chromium): python -m pytest -q tests/e2e --browser=chromium "
+        "--tracing=retain-on-failure --output=test-results/playwright\n"
+    ) in output
     assert "SKIP / NOT REQUIRED manual verification" in output
     assert "Overall: DRY RUN" in output
 

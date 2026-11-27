@@ -402,13 +402,18 @@ def source_identity(root: Path) -> dict[str, str] | None:
         return None
 
 
+def package_version(package: str) -> str | None:
+    try:
+        return version(package)
+    except PackageNotFoundError:
+        return None
+
+
 def environment_identity() -> dict:
-    packages = {}
-    for package in ("ruff", "pytest", "playwright", "pytest-playwright"):
-        try:
-            packages[package] = version(package)
-        except PackageNotFoundError:
-            packages[package] = None
+    packages = {
+        package: package_version(package)
+        for package in ("ruff", "pytest", "playwright", "pytest-playwright", "pytest-xdist")
+    }
     system = platform.system()
     machine = platform.machine().lower()
     return {

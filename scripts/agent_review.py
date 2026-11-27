@@ -157,7 +157,9 @@ def _fenced(content: str, language: str = "") -> str:
     return f"{fence}{language}\n{content.rstrip()}\n{fence}"
 
 
-def capture_validated_state(root: Path, run_id: str) -> tuple[RepositoryState, dict]:
+def capture_validated_state(
+    root: Path, run_id: str, *, parallel_pytest: bool | None = None,
+) -> tuple[RepositoryState, dict]:
     report = agent_validation.read_report(root, run_id)
     if report is None:
         raise agent_check.DiscoveryError("missing, stale or malformed validation report for this run")
@@ -176,14 +178,24 @@ def capture_validated_state(root: Path, run_id: str) -> tuple[RepositoryState, d
     expected = agent_check.scope_record(discovery, areas, manual)
     if any(field not in report or report[field] != value for field, value in expected.items()):
         raise agent_check.DiscoveryError("validation scope does not match the current change scope")
-    selected = agent_check.select_checks(areas, discovery.files, workflow_only=discovery.workflow_only)
+    recorded_parallel = report.get("parallel_pytest", False)
+    if type(recorded_parallel) is not bool or (parallel_pytest is not None and recorded_parallel != parallel_pytest):
+        raise agent_check.DiscoveryError("validation report does not match the requested pytest mode")
+    selected = agent_check.select_checks(
+        areas, discovery.files, workflow_only=discovery.workflow_only, parallel_pytest=recorded_parallel,
+    )
     checks = report.get("checks")
+    environment = agent_validation.environment_identity()
     if (
         not agent_validation.valid_timing(report)
         or report.get("overall_outcome") != "PASS"
         or type(report.get("exit_code")) is not int
         or report["exit_code"] != 0
-        or report.get("environment") != agent_validation.environment_identity()
+        or report.get("environment") != environment
+        or (
+            any(check.needs_xdist for check in selected)
+            and environment["tool_versions"]["pytest-xdist"] != agent_check.XDIST_VERSION
+        )
         or not isinstance(checks, list)
         or len(checks) != len(selected)
     ):
@@ -230,6 +242,8 @@ def verification_summary(report: dict) -> str:
     if not checks:
         lines.append("- No automated checks were selected.")
     for check in checks:
+        if check["id"] == "pytest":
+            lines.append(f"- Required full pytest command: `{' '.join(check['executed_command'])}`")
         if check["id"] == "pytest-workflow":
             lines.append(f"- Required workflow pytest command: `{' '.join(check['executed_command'])}`")
             lines.append(
