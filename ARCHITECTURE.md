@@ -9,15 +9,16 @@ VaultBridge exposes a deliberately small API over an Obsidian Markdown vault. It
 This is the current ownership/compatibility reference. Detailed lifecycle sections retain slice IDs
 as provenance; their internal/private constructors do not mean public named mode is unavailable.
 Named REST/MCP/CLI composition ships in v1.5.0, whose Dashboard remains legacy-only.
-This working source adds the VB-156B named Access / Spaces / Status foundation; acceptance is
-incomplete, including WebKit qualification. No release/deployment is implied.
+The owner accepted the VB-156B named Access / Spaces / Status foundation, which merged in PR #158.
+This working source adds VB-156C scoped Browse, raw Markdown reading and federated Search using
+the existing REST contracts and the named session lifecycle.
 The [ACCEPTED ADR 0011](docs/adr/0011-named-knowledge-spaces-dashboard.md) defines VB-156A's
-future named Dashboard session, discovery/status, scope and compatibility contracts. Its fresh
+named Dashboard session, discovery/status, scope and compatibility contracts. Its fresh
 independent architecture/security review returned APPROVE and the owner accepted the design on
 2026-11-20. VB-156A completed architecture/design only and changed no runtime behavior.
-The owner separately authorized VB-156B implementation. VB-156C–E remain future tasks. B's exact
-read-cookie/discovery/status amendment is described in [the Dashboard guide](docs/DASHBOARD.md);
-historical VB-152 exclusions below retain their dated provenance.
+The [Dashboard guide](docs/DASHBOARD.md) describes the read-cookie boundary and current views.
+Knowledge Query, Relationships and integrated release hardening remain future slices.
+Historical VB-152 exclusions below retain their dated provenance.
 Release status and image evidence belong in [the release ledger](docs/RELEASE_CHECKLIST.md), not here.
 
 - [Current architecture](#current-architecture) and [HTTP compatibility](#http-api-versioning)

@@ -171,11 +171,12 @@ or uncertain commit, and 2 invalid/denied/capability/configuration/programming f
 
 ## Dashboard, health and recovery
 
-The VB-156B working source serves an isolated named `/ui/` Access / Spaces / Status foundation,
-with explicit bundled routes and safe 404/405/no-store boundaries. Its acceptance remains incomplete,
-including WebKit qualification; this is not functionality published in v1.5.0. Browsing content,
-Search, Query, Relationships and named Hygiene UI are outside this slice. Legacy UI/session renewal
-are retained. See [Dashboard sessions and entire-hostname trust](DASHBOARD.md#named-access--spaces--status)
+The accepted VB-156B foundation serves an isolated named `/ui/` with explicit bundled routes and
+safe 404/405/no-store boundaries. The VB-156C working source adds Browse, raw Markdown reading and
+federated Literal and Semantic Search. It reuses the explicit scope and qualified results of the
+existing REST routes. Knowledge Query, Relationships and named Hygiene UI remain deferred.
+Published v1.5.0 has the legacy-only Dashboard. See
+[Dashboard sessions and entire-hostname trust](DASHBOARD.md#named-access--spaces--status)
 for secure-context/Web Locks/shared-storage requirements, nonrenewing restore, orphan quarantine,
 fixed expiry, recovery and copied-token limits. All ports/routes of a dedicated hostname must be
 trusted, with one canonical issuer and drained legacy handover; cookies have no port isolation.

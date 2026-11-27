@@ -7,7 +7,7 @@
 </head>
 <body class="named-foundation">
 <a class="skip-link" href="#main">Skip to content</a>
-<header><img src="./assets/vaultbridge-logo.webp" alt="" width="96" height="96"><h1>VaultBridge</h1><p>Named Knowledge Spaces · Access / Spaces / Status</p></header>
+<header><img src="./assets/vaultbridge-logo.webp" alt="" width="96" height="96"><h1>VaultBridge</h1><p>Named Knowledge Spaces</p></header>
 <main id="main" class="main-content">
   <section aria-labelledby="access-heading" class="panel">
     <h2 id="access-heading">Access</h2>
@@ -20,14 +20,19 @@
     <button id="logout" type="button" hidden>Log out</button>
     <button id="retry-session" type="button" hidden>Retry session validation</button>
   </section>
+  <nav id="named-views" aria-label="Knowledge Spaces views" hidden>
+    <button type="button" data-view="spaces" aria-controls="spaces">Spaces</button>
+    <button type="button" data-view="browse" aria-controls="browse">Browse</button>
+    <button type="button" data-view="named-search" aria-controls="named-search">Search</button>
+  </nav>
   <section id="spaces" aria-labelledby="spaces-heading" class="panel" hidden>
     <h2 id="spaces-heading">Spaces</h2>
     <p id="spaces-message" role="status" aria-live="polite"></p>
     <button id="reload-spaces" type="button">Reload spaces</button>
-    <label for="single-space">Single space</label><select id="single-space"><option value="">Choose a space</option></select>
+    <label for="single-space">Browse space</label><select id="single-space"><option value="">Choose a space</option></select>
     <button id="choose-multiple" type="button">Choose multiple spaces</button>
     <form id="selection-form" hidden>
-      <fieldset><legend>Explicit selection for future federated operations</legend><div id="space-options"></div></fieldset>
+      <fieldset><legend>Search spaces</legend><div id="space-options"></div></fieldset>
       <button type="submit">Apply</button><button id="cancel-selection" type="button">Cancel</button>
     </form>
     <p id="active-selection">No spaces selected</p>
@@ -35,9 +40,60 @@
     <h3>Selected semantic index status</h3><button id="refresh-status" type="button" disabled>Refresh status</button>
     <div id="index-status"></div>
   </section>
+  <section id="browse" aria-labelledby="browse-heading" class="panel" hidden>
+    <h2 id="browse-heading">Browse</h2>
+    <p class="named-scope" id="browse-scope"></p>
+    <form autocomplete="off" novalidate aria-describedby="browse-scope">
+      <fieldset disabled>
+        <legend>List notes</legend>
+        <label for="browse-folder">Folder (optional)</label>
+        <input id="browse-folder" name="folder" type="text" spellcheck="false">
+        <label for="browse-limit">Result limit</label>
+        <select id="browse-limit" name="limit">
+          <option>10</option><option>25</option><option selected>50</option><option>100</option>
+        </select>
+        <button type="submit">List notes</button>
+      </fieldset>
+    </form>
+    <p role="status"></p>
+    <div class="named-coverage"></div>
+    <ol class="named-results" aria-label="Browse results"></ol>
+  </section>
+  <section id="named-search" aria-labelledby="named-search-heading" class="panel" hidden>
+    <h2 id="named-search-heading">Search</h2>
+    <p class="named-scope" id="search-scope"></p>
+    <form autocomplete="off" novalidate aria-describedby="search-scope">
+      <fieldset disabled>
+        <legend>Search selected spaces</legend>
+        <label for="named-search-mode">Mode</label>
+        <select id="named-search-mode" name="mode">
+          <option value="literal">Literal</option><option value="semantic">Semantic</option>
+        </select>
+        <label for="named-search-query">Query</label>
+        <input id="named-search-query" name="query" type="text" required>
+        <label for="named-search-folder">Folder (optional)</label>
+        <input id="named-search-folder" name="folder" type="text" spellcheck="false">
+        <label for="named-search-limit">Result limit</label>
+        <select id="named-search-limit" name="limit">
+          <option>5</option><option selected>10</option><option>25</option><option>50</option><option>100</option>
+        </select>
+        <button type="submit">Run search</button>
+      </fieldset>
+    </form>
+    <p role="status"></p>
+    <div class="named-coverage"></div>
+    <ol class="named-results" aria-label="Search results"></ol>
+  </section>
+  <section id="named-reader" aria-labelledby="named-reader-heading" class="panel" hidden>
+    <button type="button">Back to results</button>
+    <h2 id="named-reader-heading" tabindex="-1"></h2>
+    <p class="named-scope"></p>
+    <p role="status"></p>
+    <pre aria-label="Raw Markdown" hidden></pre>
+  </section>
   <section class="panel" aria-labelledby="about-heading">
     <h2 id="about-heading">About</h2>
-    <p>This foundation supports access, explicit space selection and selected status. Browsing notes, Search, Query and Relationships are not available in this Dashboard yet.</p>
+    <p>Browse notes in one space or search explicitly selected spaces. Open results to read raw Markdown.</p>
     <p>Use one canonical HTTPS origin on a dedicated trusted hostname. All ports and proxy routes on that hostname must be trusted; cookies are not isolated by port.</p>
     <p>Uncertain cookie mutations require operator-confirmed draining of old issuers, current-key rotation when needed, then clearing cookies and lifecycle records. There is no in-page reset.</p>
   </section>

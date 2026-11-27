@@ -27,7 +27,7 @@
 
 * { box-sizing: border-box; }
 
-/* Isolated named Access / Spaces / Status composition. */
+/* Isolated named Knowledge Spaces composition. */
 .named-foundation { max-width: 68rem; line-height: 1.6; }
 .named-foundation .panel {
   margin-block: 1.5rem;
@@ -54,6 +54,17 @@
 .named-foundation button:disabled { opacity: 0.65; cursor: default; }
 .named-foundation fieldset { min-width: 0; margin-block: 1rem; border: 1px solid var(--border-strong); }
 .named-foundation input[type="checkbox"] { width: 1.25rem; height: 1.25rem; margin-right: 0.75rem; }
+.named-foundation [aria-current="page"] { border-color: var(--primary-accent); }
+.named-foundation .named-results { padding-inline-start: 1.5rem; }
+.named-foundation .named-results > li { padding-block: 0.75rem; border-top: 1px solid var(--border); }
+.named-foundation .named-results p { margin: 0.25rem 0; white-space: pre-wrap; }
+#named-reader pre {
+  padding: 1rem;
+  background: var(--card-background);
+  border: 1px solid var(--border);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 
 html {
   min-width: 18rem;

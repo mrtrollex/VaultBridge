@@ -51,16 +51,17 @@ the [architecture](ARCHITECTURE.md) and [Knowledge Spaces guide](docs/KNOWLEDGE_
 The following priorities are **candidates**. They do not allocate new task IDs, approve scope,
 set release dates or override existing acceptance criteria. Choose one bounded issue at a time.
 
-### Accepted design for future capability — Named Knowledge Spaces Dashboard
+### Named Knowledge Spaces Dashboard
 
 VB-156A completes the accepted design of a practical read-only first-party Dashboard for explicit
 named-space browsing, qualified note reading, federated search, Knowledge Query and local relationships. Its
 [accepted ADR 0011](docs/adr/0011-named-knowledge-spaces-dashboard.md) defines browser-session,
 policy-filtered discovery, selected-status, privacy and legacy compatibility contracts, followed by
-future B–E slices in [BACKLOG.md](BACKLOG.md#accepted-named-knowledge-spaces-dashboard-design).
+implementation slices in [BACKLOG.md](BACKLOG.md#accepted-named-knowledge-spaces-dashboard-design).
 The fresh independent architecture/security review returned APPROVE; the owner accepted the reviewed
-design on 2026-11-20. Named Dashboard remains unavailable in the current runtime. B–E require separate
-implementation authorization and acceptance; design acceptance promises no release/date or shipment.
+design on 2026-11-20. VB-156B was accepted and merged in PR #158. VB-156C extends the named
+Dashboard in the working source with scoped browsing, reading and federated search.
+Knowledge Query, Relationships and integrated release hardening remain future slices.
 
 ### P0 — Documentation and productization
 
