@@ -3,7 +3,9 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import shutil
 import subprocess
+import sys
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
@@ -43,9 +45,19 @@ def workflow_repository(repository):
     return repository
 
 
-@pytest.mark.parametrize("narrowed_report", [False, True])
+@pytest.fixture
+def installed_xdist(monkeypatch):
+    package_version = agent_validation.package_version
+    monkeypatch.setattr(
+        agent_validation, "package_version", lambda package: (
+            "3.8.0" if package == "pytest-xdist" else package_version(package)
+        ),
+    )
+
+
+@pytest.mark.parametrize(("parallel_pytest", "narrowed_report"), [(False, False), (False, True), (True, False)])
 def test_managed_finish_reconstructs_trusted_base_despite_ci_environment(
-    workflow_repository, monkeypatch, capsys, narrowed_report,
+    workflow_repository, monkeypatch, capsys, installed_xdist, parallel_pytest, narrowed_report,
 ):
     root = workflow_repository
     _commit_runtime_on_feature(root)
@@ -54,7 +66,7 @@ def test_managed_finish_reconstructs_trusted_base_despite_ci_environment(
     checks_run = []
 
     def pass_check(check):
-        checks_run.append(check.key)
+        checks_run.append(check)
         return 0
 
     def runner(command, cwd):
@@ -80,9 +92,14 @@ def test_managed_finish_reconstructs_trusted_base_despite_ci_environment(
         return agent_review.main(command[2:], root=cwd)
 
     assert agent_finish.main(
-        ["--task", "Workflow task."], root=root, runner=runner,
+        ["--task", "Workflow task.", *(["--parallel-pytest"] if parallel_pytest else [])], root=root, runner=runner,
     ) == (2 if narrowed_report else 0)
-    assert checks_run == ["ruff", "pytest", "compileall"]
+    assert [check.key for check in checks_run] == ["ruff", "pytest", "compileall"]
+    assert dict(checks_run[1].environment)["PYTEST_ADDOPTS"] == ""
+    command = ["python", "-m", "pytest", "-q", "--ignore=tests/e2e"]
+    if parallel_pytest:
+        command += ["-n", "4", "--dist", "load", "--max-worker-restart", "0", "-p", "scripts.agent_pytest"]
+    assert ["python", *checks_run[1].command[1:]] == command
     packet = root / agent_finish.PACKET_PATH
     if narrowed_report:
         assert "validation scope does not match" in capsys.readouterr().err
@@ -91,6 +108,7 @@ def test_managed_finish_reconstructs_trusted_base_despite_ci_environment(
         content = packet.read_text(encoding="utf-8")
         assert "refs/heads/main" in content and "app/module.py" in content
         assert "- pytest: PASS" in content
+        assert f"- Required full pytest command: `{' '.join(command)}`" in content
 
 
 def _commit_runtime_on_feature(root):
@@ -165,9 +183,23 @@ def test_visibility_lost_after_checks_blocks_managed_handoff(workflow_repository
     assert not (root / agent_validation.REPORT_PATH).exists()
 
 
-@pytest.mark.parametrize("outcome", ("PASS", "FAIL", "UNAVAILABLE"))
-def test_required_workflow_check_controls_packet_publication(workflow_repository, outcome):
+@pytest.mark.parametrize(
+    ("parallel_pytest", "outcome"),
+    [(False, "PASS"), (False, "FAIL"), (False, "UNAVAILABLE"),
+     (True, "PASS"), (True, "FAIL"), (True, "UNAVAILABLE")],
+)
+def test_required_workflow_check_controls_packet_publication(
+    workflow_repository, installed_xdist, monkeypatch, capsys, parallel_pytest, outcome,
+):
     commands = []
+    missing_xdist = parallel_pytest and outcome == "UNAVAILABLE"
+    if missing_xdist:
+        package_version = agent_validation.package_version
+        monkeypatch.setattr(
+            agent_validation, "package_version", lambda package: (
+                None if package == "pytest-xdist" else package_version(package)
+            ),
+        )
 
     def run(check):
         commands.append(check.command)
@@ -180,27 +212,39 @@ def test_required_workflow_check_controls_packet_publication(workflow_repository
 
     def runner(command, root):
         if command[1].endswith("agent_check.py"):
-            return agent_check.main(command[2:], runner=run, availability=lambda check: None)
+            return agent_check.main(command[2:], runner=run)
         assert outcome == "PASS"
         return agent_review.main(command[2:], root=root)
 
     root = workflow_repository
     expected_exit = {"PASS": 0, "FAIL": 1, "UNAVAILABLE": 3}[outcome]
-    assert agent_finish.main(["--task", "Workflow task."], root=root, runner=runner) == expected_exit
+    args = ["--task", "Workflow task.", *(["--parallel-pytest"] if parallel_pytest else [])]
+    assert agent_finish.main(args, root=root, runner=runner) == expected_exit
     report = json.loads((root / agent_validation.REPORT_PATH).read_bytes())
+    assert report["parallel_pytest"] is parallel_pytest
     assert [check["id"] for check in report["checks"]] == ["ruff", "pytest-workflow", "compileall"]
     result = report["checks"][1]
-    command = ["python", *commands[1][1:]]
-    assert result["required"] is result["launch_attempted"] is True
+    command = ["python", "-m", "pytest", "-q", *agent_check.WORKFLOW_TESTS]
+    if parallel_pytest:
+        command += ["-n", "4", "--dist", "load", "--max-worker-restart", "0", "-p", "scripts.agent_pytest"]
+    assert result["required"] is True
+    assert result["launch_attempted"] is (not missing_xdist)
     assert result["selected_command"] == command
     assert result["executed_command"] == (None if outcome == "UNAVAILABLE" else command)
     assert result["outcome"] == outcome
+    assert [["python", *argv[1:]] for argv in commands if argv[2] == "pytest"] == (
+        [] if missing_xdist else [command]
+    )
+    if missing_xdist:
+        assert result["unavailable_stage"] == "prerequisite"
+        assert "python -m pip install pytest-xdist==3.8.0" in capsys.readouterr().out
     packet = root / agent_finish.PACKET_PATH
     if outcome == "PASS":
         content = packet.read_text(encoding="utf-8")
         assert "pytest-workflow: PASS" in content
         assert " ".join(command) in content
         assert "Fresh independent review and full hosted CI remain required." in content
+        assert agent_review.capture_validated_state(root, report["run_id"])[1] == report
     else:
         assert not packet.exists()
 
@@ -211,20 +255,25 @@ def test_required_workflow_check_controls_packet_publication(workflow_repository
         ("workflow", "full-instead-of-workflow"),
         ("full", "workflow-instead-of-full"),
         ("workflow", "wrong-command"),
+        ("parallel", "wrong-command"),
+        ("parallel", "omitted-crash-guard"),
+        ("parallel", "serial-instead-of-parallel"),
         ("workflow", "missing-command"),
         ("workflow", "omitted-check"),
         ("workflow", "wrong-base"),
         ("workflow", "incomplete-scope"),
     ],
 )
-def test_finish_rejects_incompatible_workflow_evidence(workflow_repository, scope, problem):
+def test_finish_rejects_incompatible_workflow_evidence(workflow_repository, installed_xdist, scope, problem):
     root = workflow_repository
     if scope == "full":
         (root / "unknown.dat").touch()
 
     def runner(command, cwd):
         assert command[1].endswith("agent_check.py")
-        assert agent_check.main(command[2:], runner=lambda check: 0, availability=lambda check: None) == 0
+        check_args = [argument for argument in command[2:]
+                      if problem != "serial-instead-of-parallel" or argument != "--parallel-pytest"]
+        assert agent_check.main(check_args, runner=lambda check: 0, availability=lambda check: None) == 0
         report = json.loads((root / agent_validation.REPORT_PATH).read_bytes())
         result = report["checks"][1]
         assert result["id"] == ("pytest" if scope == "full" else "pytest-workflow")
@@ -236,20 +285,134 @@ def test_finish_rejects_incompatible_workflow_evidence(workflow_repository, scop
                 executed_command=agent_check.command_identity(check),
             )
         elif problem == "wrong-command":
-            result["executed_command"].pop()
+            if scope == "parallel":
+                for field in ("selected_command", "executed_command"):
+                    command_args = result[field]
+                    command_args[command_args.index("-n") + 1] = "2"
+            else:
+                result["executed_command"].pop()
         elif problem == "missing-command":
             del result["executed_command"]
+        elif problem == "omitted-crash-guard":
+            for field in ("selected_command", "executed_command"):
+                assert result[field][-2:] == ["-p", "scripts.agent_pytest"]
+                del result[field][-2:]
         elif problem == "omitted-check":
             report["checks"].pop(1)
         elif problem == "wrong-base":
             report["base_commit"] = "0" * 40
+        elif problem == "serial-instead-of-parallel":
+            assert report["parallel_pytest"] is False
         else:
             report["changed_files"].clear()
         agent_validation.write_report(root, report)
         return 0
 
-    assert agent_finish.main(["--task", "Workflow task."], root=root, runner=runner) == 2
+    args = ["--task", "Workflow task.", *(["--parallel-pytest"] if scope == "parallel" else [])]
+    assert agent_finish.main(args, root=root, runner=runner) == 2
     assert not (root / agent_finish.PACKET_PATH).exists()
+
+
+_CRASH_AFTER_COLLECTION = """\
+import os
+import socket
+from pathlib import Path
+
+import pytest
+
+
+def pytest_configure_node(node):
+    if not hasattr(node.config, "collection_gate"):
+        node.config.collection_gate = socket.create_server(("127.0.0.1", 0))
+        node.config.collection_gate.settimeout(20)
+    node.workerinput["collection_gate"] = node.config.collection_gate.getsockname()
+
+
+@pytest.hookimpl(wrapper=True)
+def pytest_collection_finish(session):
+    worker = getattr(session.config, "workerinput", {})
+    # Hold the other collection reports until the controller sees gw0 crash.
+    if worker.get("workerid") not in (None, "gw0"):
+        with socket.create_connection(worker["collection_gate"], timeout=20) as connection:
+            assert connection.recv(1) == b"x"
+    result = yield
+    if worker.get("workerid") == "gw0":
+        os._exit(73)
+    return result
+
+
+def pytest_xdist_node_collection_finished(node, ids):
+    if node.gateway.id == "gw0":
+        Path(".agent/collected").write_text("\\n".join(ids), encoding="utf-8")
+
+
+def pytest_testnodedown(node, error):
+    if node.gateway.id == "gw0" and error is not None:
+        Path(".agent/crashed").write_text(str(error), encoding="utf-8")
+        with node.config.collection_gate as server:
+            for _ in range(3):
+                connection, _ = server.accept()
+                with connection:
+                    connection.sendall(b"x")
+"""
+
+
+@pytest.mark.parametrize(
+    ("scenario", "expected_exit"),
+    [("before-scheduling", 1), ("during-test", 1), ("passing", 0), ("failing", 1), ("serial", 0)],
+)
+def test_managed_pytest_worker_outcomes(repository, scenario, expected_exit):
+    parallel = scenario != "serial"
+    if parallel and agent_validation.package_version("pytest-xdist") != agent_check.XDIST_VERSION:
+        pytest.skip("requires the optional pinned pytest-xdist development plugin")
+
+    root = repository
+    source = Path(__file__).resolve().parents[1]
+    for filename in (".gitignore", "pyproject.toml"):
+        shutil.copyfile(source / filename, root / filename)
+    for directory in ("scripts", "tests", "app", ".agent"):
+        (root / directory).mkdir()
+    for script in (source / "scripts").glob("agent_*.py"):
+        shutil.copyfile(script, root / "scripts" / script.name)
+    if scenario == "before-scheduling":
+        (root / "tests/conftest.py").write_text(_CRASH_AFTER_COLLECTION, encoding="utf-8")
+
+    setup = "from pathlib import Path\n"
+    assertions = ""
+    if scenario == "during-test":
+        setup = "import os\n" + setup
+        assertions = "    os._exit(73)\n"
+    elif scenario == "failing":
+        assertions = "    assert False\n"
+    elif scenario == "serial":
+        assertions = "    assert not hasattr(pytestconfig, 'workerinput')\n"
+    (root / "tests/test_probe.py").write_text(
+        setup + "\n\ndef test_probe(pytestconfig):\n    Path('.agent/ran').touch()\n" + assertions, encoding="utf-8",
+    )
+
+    packet = root / agent_finish.PACKET_PATH
+    packet.write_text("old passing packet\n", encoding="utf-8")
+    command = [sys.executable, "scripts/agent_finish.py", "--task", "Check worker outcomes."]
+    if parallel:
+        command.append("--parallel-pytest")
+    result = subprocess.run(command, cwd=root, check=False, capture_output=True, text=True, timeout=120)
+    assert result.returncode == expected_exit, result.stdout + result.stderr
+    report = json.loads((root / agent_validation.REPORT_PATH).read_bytes())
+    pytest_outcome = "PASS" if expected_exit == 0 else "FAIL"
+    assert [check["outcome"] for check in report["checks"]] == ["PASS", pytest_outcome, "PASS"]
+    pytest_check = report["checks"][1]
+    assert pytest_check["id"] == "pytest"
+    assert pytest_check["exit_code"] == expected_exit
+    assert pytest_check["executed_command"] == pytest_check["selected_command"]
+    if parallel:
+        assert pytest_check["executed_command"][-2:] == ["-p", "scripts.agent_pytest"]
+    else:
+        assert pytest_check["executed_command"] == ["python", "-m", "pytest", "-q", "--ignore=tests/e2e"]
+    assert packet.exists() is (expected_exit == 0)
+    assert (root / ".agent/ran").exists() is (scenario != "before-scheduling")
+    if scenario == "before-scheduling":
+        assert (root / ".agent/collected").read_text(encoding="utf-8") == "tests/test_probe.py::test_probe"
+        assert (root / ".agent/crashed").read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize(

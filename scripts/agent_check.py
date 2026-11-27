@@ -51,6 +51,8 @@ WORKFLOW_PYTHON_PATHS = frozenset({
     *WORKFLOW_TESTS,
 })
 WORKFLOW_PATHS = WORKFLOW_PYTHON_PATHS | {"docs/CODEX_PLAYBOOK.md"}
+PYTEST_PARALLEL_ARGS = ("-n", "4", "--dist", "load", "--max-worker-restart", "0", "-p", "scripts.agent_pytest")
+XDIST_VERSION = "3.8.0"
 
 PASS = "PASS"
 FAIL = "FAIL"
@@ -110,6 +112,7 @@ class Check:
     needs_compose: bool = False
     needs_playwright: bool = False
     needs_chromium: bool = False
+    needs_xdist: bool = False
 
 
 @dataclass(frozen=True)
@@ -590,22 +593,26 @@ def select_manual_requirements(paths: Sequence[str], areas: set[str]) -> tuple[s
     return tuple(requirements)
 
 
-def available_checks() -> tuple[Check, ...]:
+def available_checks(*, parallel_pytest: bool = False) -> tuple[Check, ...]:
     python = sys.executable
     python_path = (("PYTHONPATH", str(REPOSITORY_ROOT)),)
+    pytest_args = PYTEST_PARALLEL_ARGS if parallel_pytest else ()
+    pytest_environment = (*python_path, ("PYTEST_ADDOPTS", ""))
     return (
         Check("ruff", "ruff", (python, "-m", "ruff", "check", "app", "tests", "scripts")),
         Check(
             "pytest",
             "pytest (unit/integration, includes tests/eval)",
-            (python, "-m", "pytest", "-q", "--ignore=tests/e2e"),
-            python_path,
+            (python, "-m", "pytest", "-q", "--ignore=tests/e2e", *pytest_args),
+            pytest_environment,
+            needs_xdist=parallel_pytest,
         ),
         Check(
             "pytest-workflow",
             "pytest (developer workflow)",
-            (python, "-m", "pytest", "-q", *WORKFLOW_TESTS),
-            (*python_path, ("PYTEST_ADDOPTS", "")),
+            (python, "-m", "pytest", "-q", *WORKFLOW_TESTS, *pytest_args),
+            pytest_environment,
+            needs_xdist=parallel_pytest,
         ),
         Check("compileall", "compileall", (python, "-m", "compileall", "-q", "app")),
         Check(
@@ -698,6 +705,7 @@ def available_checks() -> tuple[Check, ...]:
 
 def select_checks(
     areas: set[str], paths: Sequence[str] = (), *, workflow_only: bool = False,
+    parallel_pytest: bool = False,
 ) -> tuple[Check, ...]:
     selected: set[str] = set()
     if areas & {"python", "semantic", "api", "ui", "mcp", "docker"} or any(
@@ -717,7 +725,7 @@ def select_checks(
         selected.add("truenas-compose")
     if "mcp" in areas:
         selected.update(("docker-build", "mcp-dependency", "mcp-stdio", "mcp-http"))
-    return tuple(check for check in available_checks() if check.key in selected)
+    return tuple(check for check in available_checks(parallel_pytest=parallel_pytest) if check.key in selected)
 
 
 def _format_command(command: Sequence[str]) -> str:
@@ -754,6 +762,8 @@ def default_availability_checker() -> AvailabilityChecker:
     cache: dict[str, str | None] = {}
 
     def probe(check: Check) -> str | None:
+        if check.needs_xdist and agent_validation.package_version("pytest-xdist") != XDIST_VERSION:
+            return f"pytest-xdist=={XDIST_VERSION} required; run python -m pip install pytest-xdist=={XDIST_VERSION}"
         if check.needs_playwright:
             if "playwright" not in cache:
                 package_available = playwright_package_available()
@@ -909,7 +919,8 @@ def print_results(results: Sequence[CheckResult], manual_requirements: Sequence[
 
 def command_identity(check: Check) -> list[str] | None:
     if not any(
-        item.key == check.key and item.command == check.command for item in available_checks()
+        item.key == check.key and item.command == check.command
+        for item in available_checks(parallel_pytest=check.needs_xdist)
     ):
         return None
     executable, *args = check.command
@@ -958,6 +969,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dry-run", action="store_true", help="select checks without running them")
     parser.add_argument("--base", help="override the Git base reference")
+    parser.add_argument("--parallel-pytest", action="store_true", help="run the selected pytest suite in parallel")
     parser.add_argument("--run-id", type=UUID, help=argparse.SUPPRESS)
     parser.add_argument(
         "--changed-file",
@@ -997,7 +1009,9 @@ def main(
         return 2
 
     areas = classify_files(discovery.files)
-    checks = select_checks(areas, discovery.files, workflow_only=discovery.workflow_only)
+    checks = select_checks(
+        areas, discovery.files, workflow_only=discovery.workflow_only, parallel_pytest=args.parallel_pytest,
+    )
     manual_requirements = select_manual_requirements(discovery.files, areas)
     print_selection(
         discovery,
@@ -1042,6 +1056,7 @@ def main(
             "source_after": source_after,
             "source_unchanged": source_before is not None and source_before == source_after,
             **scope_record(discovery, areas, manual_requirements),
+            "parallel_pytest": args.parallel_pytest,
             "checks": _report_checks(results),
             "overall_outcome": outcome,
             "exit_code": exit_code,

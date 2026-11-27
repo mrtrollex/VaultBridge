@@ -39,6 +39,7 @@ def build_parser() -> argparse.ArgumentParser:
     task_source.add_argument("--task", help="use inline task context")
     parser.add_argument("--evidence-manifest", help="require the declared repository evidence")
     parser.add_argument("--focused-results", action="append", default=[], help="include a matching focused run record")
+    parser.add_argument("--parallel-pytest", action="store_true", help="run the selected pytest suite in parallel")
     return parser
 
 
@@ -73,6 +74,8 @@ def _finish(args: argparse.Namespace, root: Path, packet: Path, runner: CommandR
 
     run_id = str(uuid4())
     check_command = (sys.executable, str(root / "scripts/agent_check.py"), "--run-id", run_id)
+    if args.parallel_pytest:
+        check_command += ("--parallel-pytest",)
     check_result = runner(check_command, root)
     if check_result != 0:
         print(f"Verification: FAIL (exit {check_result})", file=sys.stderr)
@@ -80,7 +83,7 @@ def _finish(args: argparse.Namespace, root: Path, packet: Path, runner: CommandR
 
     if evidence is not None:
         agent_evidence.validate(root, evidence.manifest, expected_sha256=evidence.sha256)
-    snapshot = agent_review.capture_validated_state(root, run_id)
+    snapshot = agent_review.capture_validated_state(root, run_id, parallel_pytest=args.parallel_pytest)
     state, report = snapshot
     source = report["source_before"]
     focused = agent_validation.focused_records(root, args.focused_results, source)
@@ -100,7 +103,7 @@ def _finish(args: argparse.Namespace, root: Path, packet: Path, runner: CommandR
             agent_evidence.validate(root, evidence.manifest, expected_sha256=evidence.sha256)
         if focused != agent_validation.focused_records(root, args.focused_results, source):
             raise agent_check.DiscoveryError("focused records changed during packet generation")
-        if snapshot != agent_review.capture_validated_state(root, run_id):
+        if snapshot != agent_review.capture_validated_state(root, run_id, parallel_pytest=args.parallel_pytest):
             raise agent_check.DiscoveryError("packet scope, diff or validation report changed before handoff")
 
     published = False

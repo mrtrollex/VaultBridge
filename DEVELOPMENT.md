@@ -45,6 +45,45 @@ Use `python scripts/agent_check.py --dry-run` to inspect change-aware selection 
 `python scripts/agent_finish.py --task-file path/to/task.md` for completion. A failed or required-but-
 unavailable check is incomplete; manual reminders and independent CI remain separate requirements.
 
+### Opt in to parallel pytest
+
+Install the optional plugin in the same development environment that runs the checks.
+
+```text
+python -m pip install pytest-xdist==3.8.0
+```
+
+The managed workflow defaults to the serial commands. To preview the parallel command or use it
+for managed validation, pass `--parallel-pytest`.
+
+```text
+python scripts/agent_check.py --dry-run --parallel-pytest
+python scripts/agent_finish.py --task-file path/to/task.md --parallel-pytest
+```
+
+The flag adds four workers with load scheduling and zero worker restarts to the selected required
+Python suite. Browser E2E and the other checks retain their existing commands. The validation report
+records the mode and exact pytest command. The Python profiles clear inherited `PYTEST_ADDOPTS` so
+those options cannot change the managed command's scope or worker count.
+
+Run either Python suite directly with the same worker settings.
+
+```text
+python -m pytest -q --ignore=tests/e2e -n 4 --dist load --max-worker-restart 0
+python -m pytest -q tests/test_agent_task.py tests/test_agent_check.py tests/test_agent_finish.py tests/test_agent_review.py tests/test_agent_validation.py tests/test_agent_evidence.py -n 4 --dist load --max-worker-restart 0
+```
+
+Phase 3D measured full-suite wall-time reductions of about 72% on Windows and 74% on native WSL.
+The six-module suite was about 64–67% faster on the same 6-core host. Four workers duplicate
+collection and fixtures and raised peak sampled full-suite memory to about 1.14 GiB on that host.
+Actual timing and resource use depend on the machine and checkout.
+
+An absent or different plugin version makes a selected parallel check unavailable. Install the
+pinned version or omit `--parallel-pytest` for a separate serial run. Managed parallel validation
+loads a guard that fails the check when xdist reports a worker crash, including before scheduling.
+For diagnosis, run the failing node with serial pytest or remove the
+parallel arguments from the direct suite command.
+
 ## Run a disposable application
 
 Follow [Docker setup](docs/DOCKER.md) with a synthetic vault path and a generated throwaway key.
