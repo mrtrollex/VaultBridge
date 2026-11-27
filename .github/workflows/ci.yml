@@ -18,13 +18,13 @@ jobs:
           python-version: "3.12"
           cache: pip
       - name: Install dependencies
-        run: pip install -r requirements-dev.txt
+        run: pip install -r requirements-dev.txt pytest-xdist==3.8.0
       - name: Ruff
         run: ruff check app tests scripts
       - name: Tests
         env:
           PYTHONPATH: .
-        run: pytest -q --ignore=tests/e2e
+        run: python -m pytest -q --ignore=tests/e2e -n 4 --dist load --max-worker-restart 0 -p scripts.agent_pytest
       - name: Compile check
         run: python -m compileall -q app
 
