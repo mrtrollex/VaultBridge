@@ -396,7 +396,7 @@ def serve(app, cert=None, key=None):
 
 
 @contextmanager
-def named_server(root, prefix, *, denied=(), plain=False, termination=False, trust_proxy=True):
+def named_server(root, prefix, *, denied=(), plain=False, termination=False, trust_proxy=True, prepare=None):
     records = []
     for sid in ("default", "research"):
         vault = root / sid
@@ -413,6 +413,8 @@ def named_server(root, prefix, *, denied=(), plain=False, termination=False, tru
                 capabilities=[c.value for c in Capability],
             )
         )
+    if prepare is not None:
+        prepare(records)
     settings = Settings(
         API_KEY=KEY,
         VAULT_PATH=records[0]["root"],

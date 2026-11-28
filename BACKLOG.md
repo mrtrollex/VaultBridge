@@ -21,11 +21,11 @@ The [release ledger](docs/RELEASE_CHECKLIST.md#v150-release-evidence) owns publi
 
 | Work class | Current boundary / where to start |
 | --- | --- |
-| Active | VB-156A and ADR 0012 are accepted. VB-156B implementation is completed and owner-accepted on 2026-11-22 within its precise qualified scope, after final independent review APPROVE. PR preparation is authorized; PR creation, publication, release and deployment are not. VB-156C–E remain future tasks. The prior post-v1.5.0 documentation cleanup retains its separate review boundary. |
+| Active | VB-156B was owner-accepted within the ADR 0012 qualification boundary and merged in PR #158. VB-156C adds scoped Browse, a raw Markdown reader and federated Search in the working source. The [Windows Firefox availability exception](docs/VB156C_QUALIFICATION.md) is owner-accepted. Independent VB-156C review is pending. VB-156D and E remain future tasks. |
 | Blocked on external/operator evidence | VB-082 remains partial. Edit App persistence, host reboot, generated-catalog upgrade, rollback/recovery and ixVolume retain/remove need authorized disposable TrueNAS evidence. |
 | Separate downstream delivery | VB-106 package-source MCP fields and legacy migration preparation exist; upstream form delivery and lifecycle validation remain separate. Refresh upstream before any delivery task. |
 | Deferred | VB-032 design/ADR and VB-033 section update endpoint; neither is authorized by this cleanup. |
-| Optional candidates | VB-034 verified backlink insertion and VB-055 multi-arch remain optional. Diagnostics, qualification tooling and measured refactors are roadmap candidates requiring contracts. Named Dashboard implementation is limited to the separately authorized VB-156B slice below. |
+| Optional candidates | VB-034 verified backlink insertion and VB-055 multi-arch remain optional. Diagnostics, qualification tooling and measured refactors are roadmap candidates requiring contracts. Named Dashboard work follows the separately authorized slices below. |
 | Completed / historical | VB-001–VB-031 foundation/retrieval (where marked), VB-040–VB-060 (except VB-055), Dashboard/MCP/relationship/PKM/Query/Capture/Hygiene work, and accepted VB-150/VB-151/VB-152 remain under their existing contracts below. See dated evidence rather than treating old sequences as next-task advice. |
 
 Application publication is complete for v1.5.0. This does not complete every release-qualification,
@@ -235,6 +235,16 @@ flakiness. See the retained first finish failure and qualification matrix. Windo
 unqualified and overall acceptance INCOMPLETE. Synthetic
 hostname/port evidence does not certify real listeners or copied-token revocation. No independent
 review, deployment, release or TrueNAS validation is claimed.
+
+### VB-156C — Scoped browsing, reader and federated Search — P1
+
+The named Dashboard working source uses scoped list and read, plus the existing federated literal
+and semantic search routes. The exact behavior and acceptance matrix are in
+[ADR 0011 section 13](docs/adr/0011-named-knowledge-spaces-dashboard.md#vb-156c--scoped-browsing-reader-and-federated-search).
+See the [Dashboard guide](docs/DASHBOARD.md#browse-search-and-read-notes) for the operator workflow.
+The [qualification addendum](docs/VB156C_QUALIFICATION.md) records the accepted Windows Firefox
+exception and its reassessment in VB-156E before release qualification.
+Knowledge Query and Relationships are VB-156D. Integrated release hardening is VB-156E.
 
 ## Foundation
 

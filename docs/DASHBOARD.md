@@ -1,18 +1,17 @@
 # Web Dashboard
 
 The bundled `/ui/` Dashboard has separate legacy and named compositions. Published v1.5.0 retains
-the legacy-only Dashboard. This working source includes the VB-156B named Access / Spaces / Status
-foundation. The two confirmed final-integration findings are repaired: deterministic TCP-failure
-qualification and legacy heading reflow at 320 px. New five-profile browser qualification passes;
-final independent implementation review and owner acceptance remain pending. Accepted ADRs 0011
-and 0012 are unchanged. No release, deployment, TrueNAS upgrade or Safari qualification is claimed.
-See the [current source and qualification evidence](VB156B_QUALIFICATION.md).
+the legacy-only Dashboard. The accepted VB-156B named Access / Spaces / Status foundation merged
+in PR #158. This working source adds VB-156C Browse, raw Markdown reading and federated Search
+under [ADR 0011](adr/0011-named-knowledge-spaces-dashboard.md).
+See [VB-156B acceptance and browser qualification](VB156B_QUALIFICATION.md) for the session
+foundation and the build-specific limitations under ADR 0012.
 
 ## Named Access / Spaces / Status
 
 With `KNOWLEDGE_SPACES_JSON`, `/ui/` serves a separate local document and exact bundled assets.
-It does not load legacy Overview, Search or Hygiene controllers. There is no note reader, Browse,
-Search, Query or Relationships UI in this slice. REST/MCP/CLI retain their existing capabilities.
+The named entry loads its own controllers and shares the bundled stylesheet and logo with the
+legacy Dashboard. Knowledge Query, Relationships and named Hygiene presentation remain deferred.
 
 Unlock with the existing current or previous API key. POST `/ui/session` issues the existing
 current-key-signed HttpOnly cookie, host-only, Path=/, SameSite=Strict, Secure when ASGI sees HTTPS.
@@ -60,9 +59,10 @@ current-key rotation. Previous-key overlap can still unlock a new current-signed
 
 Discovery displays readable logical IDs, read capabilities, relationship dialects and indexing policy.
 Unavailable readable spaces remain discoverable; a denied default does not select an alternate.
-Only a returned `default` is initially selected. Single selection and a separate multiple-choice
-Apply/Cancel workflow retain exact IDs in memory. Empty stays empty, never all/default. No Select all,
-persisted selection or implicit expansion. Policy permission is distinct from operational readiness.
+Only a returned `default` is initially selected. Choosing a Browse space sets Search to that space.
+The multiple-choice Apply/Cancel workflow sets Search scope independently and keeps the Browse
+space. An empty selection disables the relevant operation. Policy permission is distinct from
+operational readiness.
 Selected status loads on selection and explicit Refresh only; 403 clears scope and offers Reload
 spaces. A current 401 clears protected DOM/controller state before parsing its body, including empty,
 malformed, truncated and non-JSON bodies, then uses the existing coordinated cookie cleanup. Epoch
@@ -70,6 +70,26 @@ and shared-journal checks protect newer sessions from stale responses. Other fai
 non-atomic observation, not search coverage or a freshness guarantee. The conservative observer
 reports WAL storage unavailable because opening it read-only may create coordination files;
 it never uses immutable mode against live WAL, repairs an index or initializes a model.
+
+### Browse, Search and read notes
+
+- In **Spaces**, choose a Browse space, then open **Browse** and select **List notes**. The optional
+  folder is vault-relative. The list uses a bounded result limit and indicates when it was reached.
+- In **Search**, choose Literal or Semantic, enter a query, and optionally set a folder and a global
+  result limit. To search multiple spaces, explicitly select them and choose **Apply** in **Spaces**.
+  Each submission sends one scoped request and displays the server order and selected-space coverage,
+  including partial and unavailable contributions and any use of a previous compatible index.
+  Semantic search requires permission and enabled indexing for every selected space. A failed semantic
+  request keeps its mode selected so changing modes is an explicit action.
+- Each result shows its exact logical space ID and relative path. **Open note** requires read
+  permission in the result's space and fetches the current Markdown as inert text. **Back to results**
+  restores the originating results, filters, order, scroll and focus while that selection and session
+  are still current. Reopening a result makes a fresh request.
+
+Directory discovery, pagination, Markdown rendering and editing are outside this interface.
+Content, filters and reader return context are memory-only. Changing scope or leaving the view
+discards its content. Logout, current authentication failure and browser lifecycle transitions clear
+protected state. Fresh discovery after session validation does not replay a query or reopen a note.
 
 ### Dedicated hostname and proxy trust
 

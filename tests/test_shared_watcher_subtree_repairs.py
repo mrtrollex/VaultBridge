@@ -230,13 +230,14 @@ def test_directory_substitution_cannot_become_a_symlink_exclusion(tmp_path, monk
         emitter = next(iter(r.watcher._observer.emitters))
         reader = emitter._inotify
 
-        if boundary == "previously-watched":
-            directory.rename(tmp_path / "old-inode")
-            os.symlink(outside, directory, target_is_directory=True)
-
         def loss(native, data):
             for record in parse(data):
                 if record[3] == b"overflow.txt" and not changed.is_set():
+                    if boundary == "previously-watched":
+                        # Inject overflow before the reader can handle the rename
+                        # and rebuild its watch map with this directory absent.
+                        directory.rename(tmp_path / "old-inode")
+                        os.symlink(outside, directory, target_is_directory=True)
                     changed.set()
                     yield -1, InotifyConstants.IN_Q_OVERFLOW, 0, b""
                 else:
@@ -256,6 +257,7 @@ def test_directory_substitution_cannot_become_a_symlink_exclusion(tmp_path, monk
             assert r.scheduler._condition.wait_for(
                 lambda: r.scheduler.status(r.bindings["default"]).monitoring_failed, 5,
             )
+        assert changed.is_set()
         reader.join(5)
         emitter.join(5)
         assert not reader.is_alive() and not emitter.is_alive()

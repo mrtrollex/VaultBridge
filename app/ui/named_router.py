@@ -22,6 +22,8 @@ NAMED_ASSETS = {
     "app.css": "text/css", "vaultbridge-logo.webp": "image/webp",
     "named-app.js": "text/javascript", "named-session.js": "text/javascript",
     "scoped-client.js": "text/javascript", "spaces.js": "text/javascript",
+    "browse.js": "text/javascript", "named-search.js": "text/javascript",
+    "note-reader.js": "text/javascript", "coverage.js": "text/javascript",
 }
 NAMED_UI_PATHS = frozenset({"/ui", "/ui/", "/ui/session"} | {
     "/ui/assets/" + name for name in NAMED_ASSETS

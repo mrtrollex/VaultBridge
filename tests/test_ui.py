@@ -82,6 +82,10 @@ def test_known_ui_assets_have_correct_media_types_and_head_support(tmp_path):
 
 def test_ui_asset_route_inventory_matches_bundled_files(tmp_path):
     asset_names = {path.name for path in (Path("app/ui/assets")).iterdir() if path.is_file()}
+    named_only = {
+        "named-app.js", "named-session.js", "scoped-client.js", "spaces.js",
+        "browse.js", "named-search.js", "note-reader.js", "coverage.js",
+    }
 
     assert asset_names == {
         "app.css",
@@ -90,10 +94,8 @@ def test_ui_asset_route_inventory_matches_bundled_files(tmp_path):
         "search.js",
         "hygiene.js",
         "vaultbridge-logo.webp",
-        "named-app.js", "named-session.js", "scoped-client.js", "spaces.js",
-    }
+    } | named_only
     client = client_for(tmp_path)
-    named_only = {"named-app.js", "named-session.js", "scoped-client.js", "spaces.js"}
     assert all(client.get(f"/ui/assets/{name}").status_code == 200 for name in asset_names - named_only)
     assert all(client.get(f"/ui/assets/{name}").status_code == 404 for name in named_only)
 

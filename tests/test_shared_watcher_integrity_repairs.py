@@ -367,6 +367,13 @@ def test_child_removed_after_native_registration_retires_partial_watch(tmp_path,
         child = r.owners["default"].vault_root / "partial"
         child.mkdir()
         assert retired.wait(5)
+        entry = r.scheduler._owners[r.bindings["default"].space_id]
+        # The removal queues a rebuild that can temporarily retire the root
+        # watch. Wait for its native coverage fence before writing the marker.
+        with r.scheduler._condition:
+            assert r.scheduler._condition.wait_for(
+                lambda: entry.coverage_restored == entry.coverage_revision, 5,
+            )
         native_write_after_dispatch(r, "default", "after.md", monkeypatch)
         assert reader.is_alive() and producer.is_alive()
         assert os.fsencode(child) not in reader._inotify._wd_for_path
